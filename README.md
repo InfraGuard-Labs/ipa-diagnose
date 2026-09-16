@@ -56,17 +56,7 @@ actual application, not a mockup.
 
 ## Installation
 
-**Target experience** (once published to a COPR repository - see
-[packaging/rpm/README.md](packaging/rpm/README.md) for the one remaining
-manual publish step):
-
-```bash
-sudo dnf copr enable <maintainer>/ipa-diagnose
-sudo dnf install ipa-diagnose
-sudo ipa-diagnose
-```
-
-**Available today** (PyPI/pipx - works on any RHEL/CentOS/Fedora host with
+**Available now - PyPI/pipx** (works on any RHEL/CentOS/Fedora host with
 Python 3.9+, and is also the right path for development, testing, and early
 adoption):
 
@@ -75,12 +65,33 @@ pipx install ipa-diagnose
 sudo ipa-diagnose
 ```
 
-**Building and testing the RPM yourself**, entirely in Docker, with zero
-host installs, is documented in
-[packaging/rpm/README.md](packaging/rpm/README.md) - it walks through
-building the RPM, running it through a full install/upgrade/uninstall
-lifecycle in a clean Fedora container, and building the `.src.rpm` COPR
-would build from.
+**Available now - RPM, via the GitHub Release** (built and lifecycle-tested
+- install, dependency resolution, `--version`, CLI startup, graceful
+degradation without a live FreeIPA environment, uninstall - in Docker
+against a clean Fedora container; see
+[packaging/rpm/README.md](packaging/rpm/README.md) for how):
+
+1. Download `ipa-diagnose-0.1.0-1.fc44.fc44.noarch.rpm` from the
+   [v0.1.0 release](https://github.com/InfraGuard-Labs/ipa-diagnose/releases/tag/v0.1.0).
+2. Run:
+   ```bash
+   sudo dnf install ./ipa-diagnose-0.1.0-1.fc44.fc44.noarch.rpm
+   sudo ipa-diagnose
+   ```
+
+**Not yet available** - a COPR repository, so that `sudo dnf install
+ipa-diagnose` works directly without downloading a file first:
+
+```bash
+# Not yet published:
+sudo dnf copr enable <maintainer>/ipa-diagnose
+sudo dnf install ipa-diagnose
+sudo ipa-diagnose
+```
+
+See [packaging/rpm/README.md](packaging/rpm/README.md) for the one
+remaining manual publish step, and for how to build/test the RPM yourself
+in Docker.
 
 `ipa-diagnose` needs to run where `ipa-healthcheck` and the FreeIPA/389-DS
 tooling it shells out to already exist - i.e., on an actual IPA server or
