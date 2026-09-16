@@ -48,6 +48,11 @@ jobs:
       name: pypi
       url: https://pypi.org/project/ipa-diagnose/
     permissions:
+      # Job-level `permissions:` REPLACES the workflow-level defaults rather
+      # than adding to them - contents: read must be repeated here or
+      # actions/checkout has no repo read access at all (this caused a real
+      # "Repository not found" failure on the first attempt with this fix).
+      contents: read
       id-token: write # required for OIDC / Trusted Publishing - no token needed
     steps:
       - uses: actions/checkout@v4
