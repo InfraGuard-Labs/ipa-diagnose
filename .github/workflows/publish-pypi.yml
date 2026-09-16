@@ -1,0 +1,79 @@
+name: Publish to PyPI
+
+# Trusted Publishing (OIDC) only - no PyPI API token is stored or used.
+# PyPI's trusted-publisher config for this project pins the exact
+# owner/repo/workflow-filename/environment combination allowed to publish,
+# so this file's name and the `pypi` environment below are load-bearing,
+# not cosmetic.
+#
+# Two ways this runs:
+#   - Automatically when an official GitHub Release is published. This is
+#     the intended path for every release after v0.1.0.
+#   - Manually via workflow_dispatch, building from a specific tag. This
+#     exists ONLY because v0.1.0's tag/release already existed before this
+#     workflow was added, so the `release: published` event never fired for
+#     it - `release: published` events are not retroactive. Future versions
+#     should not need the manual path.
+#
+# Never triggers on push/PR, so no branch push or pull-request code can
+# publish a package.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git tag to build and publish (e.g. v0.1.0). Only needed for the one-time initial publish of a release that predates this workflow."
+        required: true
+        default: "v0.1.0"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build distributions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.ref }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Build wheel and sdist
+        run: |
+          python -m pip install --upgrade build
+          python -m build --wheel --sdist
+
+      - name: Check package metadata
+        run: |
+          python -m pip install --upgrade twine
+          twine check dist/*
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    name: Publish to PyPI (Trusted Publishing)
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/ipa-diagnose/
+    permissions:
+      id-token: write # required for OIDC / Trusted Publishing - no token needed
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
