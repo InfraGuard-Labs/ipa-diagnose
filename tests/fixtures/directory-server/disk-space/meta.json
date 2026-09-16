@@ -1,0 +1,13 @@
+{
+  "hostname": "ipa02.example.test",
+  "scenario": "elevated but not yet critical disk usage on /var/lib/dirsrv - single snapshot, no journal corroboration",
+  "expected_overall_status": "DEGRADED",
+  "expected_diagnoses": [
+    {
+      "diagnosis_id": "directory-server.disk-space-exhaustion",
+      "status": "TRANSIENT_SUSPECTED",
+      "priority": "PRIMARY_PROBLEM"
+    }
+  ],
+  "notes": "FileSystemSpaceCheck reports WARNING (84% used) on /var/lib/dirsrv/ but ds.disk_space is still SUCCESS and journal_dirsrv shows no 'No space left on device' error. Per the transient-vs-chronic nuance, this must NOT be a confident DIAGNOSED CRITICAL claim - it should come back as TRANSIENT_SUSPECTED with LOW confidence and a next_diagnostic_step to re-check in 15-30 minutes."
+}

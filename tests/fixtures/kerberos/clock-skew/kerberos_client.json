@@ -1,0 +1,13 @@
+{
+  "klist": {
+    "principal": "host/ipa01.example.test@EXAMPLE.TEST",
+    "tickets": [],
+    "raw": "klist: No credentials cache found (filename: /tmp/krb5cc_0)"
+  },
+  "clock_sync": {
+    "method": "chronyc",
+    "ntp_synchronized": false,
+    "offset_seconds": 342.5,
+    "raw": "Reference ID    : 00000000 ()\nStratum         : 0\nLeap status     : Not synchronised\nSystem time     : 342.500000 seconds fast of NTP time"
+  }
+}

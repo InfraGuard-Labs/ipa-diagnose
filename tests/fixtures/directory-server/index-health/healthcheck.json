@@ -1,0 +1,43 @@
+[
+  {
+    "source": "ipahealthcheck.ds.backends",
+    "check": "BackendsCheck",
+    "result": "ERROR",
+    "uuid": "d5000000-0000-0000-0000-000000000001",
+    "when": "20260405101000Z",
+    "duration": "0.041",
+    "kw": {
+      "key": "DSBLE0007",
+      "attribute": "entryrdn",
+      "msg": "System index entryrdn is missing or misconfigured on backend userroot.",
+      "backend": "userroot"
+    }
+  },
+  {
+    "source": "ipahealthcheck.ds.nss",
+    "check": "NssCheck",
+    "result": "SUCCESS",
+    "uuid": "d5000000-0000-0000-0000-000000000002",
+    "when": "20260405101000Z",
+    "duration": "0.033",
+    "kw": {}
+  },
+  {
+    "source": "ipahealthcheck.ipa.files",
+    "check": "IPAFileCheck",
+    "result": "SUCCESS",
+    "uuid": "d5000000-0000-0000-0000-000000000003",
+    "when": "20260405101000Z",
+    "duration": "0.014",
+    "kw": {}
+  },
+  {
+    "source": "ipahealthcheck.system.filesystemspace",
+    "check": "FileSystemSpaceCheck",
+    "result": "SUCCESS",
+    "uuid": "d5000000-0000-0000-0000-000000000004",
+    "when": "20260405101000Z",
+    "duration": "0.018",
+    "kw": {}
+  }
+]

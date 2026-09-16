@@ -1,0 +1,24 @@
+{
+  "agreements": [
+    {
+      "peer": "ipa02.example.test",
+      "status": "green",
+      "last_update_status": "Error (0) Replica acquired successfully: Incremental update succeeded",
+      "last_update_ended": "20260101120000Z"
+    }
+  ],
+  "ruv": [
+    {
+      "replica_id": 4,
+      "ldap_url": "ldap://ipa01.example.test:389",
+      "csn": "5f0a1b2c000000040000",
+      "alive": true
+    },
+    {
+      "replica_id": 5,
+      "ldap_url": "ldap://ipa02.example.test:389",
+      "csn": "5f0a1a1a000000050000",
+      "alive": true
+    }
+  ]
+}

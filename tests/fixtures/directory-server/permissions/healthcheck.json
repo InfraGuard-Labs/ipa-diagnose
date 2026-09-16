@@ -1,0 +1,50 @@
+[
+  {
+    "source": "ipahealthcheck.ds.config",
+    "check": "ConfigCheck",
+    "result": "WARNING",
+    "uuid": "d3000000-0000-0000-0000-000000000001",
+    "when": "20260202143000Z",
+    "duration": "0.011",
+    "kw": {
+      "msg": "nsslapd-errorlog-level is not set to the recommended value.",
+      "attr": "nsslapd-errorlog-level"
+    }
+  },
+  {
+    "source": "ipahealthcheck.ipa.files",
+    "check": "IPAFileCheck",
+    "result": "SUCCESS",
+    "uuid": "d3000000-0000-0000-0000-000000000002",
+    "when": "20260202143000Z",
+    "duration": "0.014",
+    "kw": {}
+  },
+  {
+    "source": "ipahealthcheck.ds.backends",
+    "check": "BackendsCheck",
+    "result": "SUCCESS",
+    "uuid": "d3000000-0000-0000-0000-000000000003",
+    "when": "20260202143000Z",
+    "duration": "0.041",
+    "kw": {}
+  },
+  {
+    "source": "ipahealthcheck.ds.nss",
+    "check": "NssCheck",
+    "result": "SUCCESS",
+    "uuid": "d3000000-0000-0000-0000-000000000004",
+    "when": "20260202143000Z",
+    "duration": "0.033",
+    "kw": {}
+  },
+  {
+    "source": "ipahealthcheck.system.filesystemspace",
+    "check": "FileSystemSpaceCheck",
+    "result": "SUCCESS",
+    "uuid": "d3000000-0000-0000-0000-000000000005",
+    "when": "20260202143000Z",
+    "duration": "0.018",
+    "kw": {}
+  }
+]

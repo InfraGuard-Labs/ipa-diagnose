@@ -1,0 +1,32 @@
+[
+  {
+    "source": "ipahealthcheck.ipa.host",
+    "check": "IPAHostKeytab",
+    "result": "ERROR",
+    "uuid": "dddddddd-0004-0004-0004-000000000001",
+    "when": "20260915103000Z",
+    "duration": "10.041",
+    "kw": {
+      "msg": "kinit: Cannot contact any KDC for realm 'EXAMPLE.TEST' while getting initial credentials",
+      "error": "Cannot contact any KDC for realm 'EXAMPLE.TEST'"
+    }
+  },
+  {
+    "source": "ipahealthcheck.ipa.kdc",
+    "check": "KDCWorkersCheck",
+    "result": "SUCCESS",
+    "uuid": "dddddddd-0004-0004-0004-000000000002",
+    "when": "20260915103000Z",
+    "duration": "0.004",
+    "kw": {}
+  },
+  {
+    "source": "ipahealthcheck.meta.services",
+    "check": "krb5kdc",
+    "result": "SUCCESS",
+    "uuid": "dddddddd-0004-0004-0004-000000000003",
+    "when": "20260915103000Z",
+    "duration": "0.002",
+    "kw": {}
+  }
+]

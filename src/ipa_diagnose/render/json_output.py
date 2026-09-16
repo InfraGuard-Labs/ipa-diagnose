@@ -1,0 +1,69 @@
+"""JSON serialization of a DiagnosisReport, for `--json` / automation use."""
+
+from __future__ import annotations
+
+from typing import Any, Dict
+
+from ipa_diagnose.engine.model import Action, Diagnosis, DiagnosisReport, EvidenceRef, VerificationCondition
+
+
+def _action_to_dict(a: Action) -> Dict[str, Any]:
+    return {
+        "description": a.description,
+        "risk": a.risk.value,
+        "command": a.command,
+        "rationale": a.rationale,
+        "reference": a.reference,
+    }
+
+
+def _verification_to_dict(v: VerificationCondition) -> Dict[str, Any]:
+    return {"description": v.description, "healthcheck_sources": v.healthcheck_sources}
+
+
+def _ref_to_dict(r: EvidenceRef) -> Dict[str, Any]:
+    return {"evidence_id": r.evidence_id, "kind": r.kind, "why_relevant": r.why_relevant}
+
+
+def _diagnosis_to_dict(d: Diagnosis, ai_explanation: str = None) -> Dict[str, Any]:
+    return {
+        "diagnosis_id": d.diagnosis_id,
+        "pack_id": d.pack_id,
+        "rule_id": d.rule_id,
+        "status": d.status.value,
+        "priority": d.priority.value,
+        "severity": d.severity.value,
+        "title": d.title,
+        "why": d.why,
+        "ai_explanation": ai_explanation,
+        "confidence": {
+            "level": d.confidence.level.value,
+            "rationale": d.confidence.rationale,
+            "corroborating_evidence_count": d.confidence.corroborating_evidence_count,
+            "contradicting_evidence_count": d.confidence.contradicting_evidence_count,
+        },
+        "evidence_for": [_ref_to_dict(r) for r in d.evidence_for],
+        "evidence_against": [_ref_to_dict(r) for r in d.evidence_against],
+        "impact": d.impact,
+        "actions": [_action_to_dict(a) for a in d.actions],
+        "verification": [_verification_to_dict(v) for v in d.verification],
+        "limitations": d.limitations,
+        "next_diagnostic_step": d.next_diagnostic_step,
+        "upstream_candidates": d.upstream_candidates,
+        "related_to_titles": d.related_to_titles,
+    }
+
+
+def report_to_dict(report: DiagnosisReport, ai_explanations: Dict[str, str] = None) -> Dict[str, Any]:
+    ai_explanations = ai_explanations or {}
+    return {
+        "generated_at": report.generated_at,
+        "hostname": report.hostname,
+        "overall_status": report.overall_status.value,
+        "packs_evaluated": report.packs_evaluated,
+        "collection_errors": report.collection_errors,
+        "replay_source": report.replay_source,
+        "diagnoses": [
+            _diagnosis_to_dict(d, ai_explanations.get(d.diagnosis_id)) for d in report.diagnoses
+        ],
+    }

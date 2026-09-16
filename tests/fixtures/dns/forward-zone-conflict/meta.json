@@ -1,0 +1,13 @@
+{
+  "hostname": "ipa01.example.test",
+  "scenario": "Configured forward zone auto-unloaded due to an RFC1918 empty-zone collision, plus an unrelated known-false-positive idns WARNING",
+  "expected_overall_status": "DEGRADED",
+  "expected_diagnoses": [
+    {
+      "diagnosis_id": "dns.forward-zone-conflict",
+      "status": "DIAGNOSED",
+      "priority": "PRIMARY_PROBLEM"
+    }
+  ],
+  "notes": "The idns WARNING here is the documented freeipa-healthcheck issue #270 false positive (ipa-ca AAAA record count) - dns_lookup independently shows all system records resolving fine, so srv-autodiscovery correctly declines to diagnose anything from that WARNING alone (falls through, no diagnosis). The real problem, the forward-zone/empty-zone collision, is only visible via the explicit bind-dyndb-ldap unload log line in journal_named, which forward-zone-conflict matches for a HIGH-confidence DIAGNOSED result."
+}

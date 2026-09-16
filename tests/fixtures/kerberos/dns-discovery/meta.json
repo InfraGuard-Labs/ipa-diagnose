@@ -1,0 +1,13 @@
+{
+  "hostname": "ipa01.example.test",
+  "scenario": "kerberos KDC discovery failure (DNS-caused)",
+  "expected_overall_status": "CRITICAL",
+  "expected_diagnoses": [
+    {
+      "diagnosis_id": "kerberos.kdc-discovery-failure",
+      "status": "DIAGNOSED",
+      "priority": "PRIMARY_PROBLEM"
+    }
+  ],
+  "notes": "IPAHostKeytab's kinit fails with 'Cannot contact any KDC for realm' - a discovery/reachability-shaped error, not resolved further here because the SRV-record check itself lives in the dns pack (upstream_candidates=['dns']). The journal is empty because the request never reached any KDC in the first place (documented limitation), and kvno_comparison could not complete (match=null) for the same reason, so KeytabKvnoMismatchRule correctly stays silent (kvno_items is non-empty but no entry has match is False, and the generic-fallback branch is only reached when kvno_items is empty). Only KdcDiscoveryFailureRule fires, at MEDIUM confidence (message says 'cannot contact', not 'cannot resolve') and CRITICAL severity, since Kerberos auth is completely unavailable. This is the pack's single clearest cross-pack causality link."
+}

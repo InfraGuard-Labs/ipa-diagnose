@@ -1,0 +1,38 @@
+[
+  {
+    "source": "ipahealthcheck.ipa.host",
+    "check": "IPAHostKeytab",
+    "result": "SUCCESS",
+    "uuid": "aaaaaaaa-0001-0001-0001-000000000001",
+    "when": "20260915090000Z",
+    "duration": "0.812",
+    "kw": {}
+  },
+  {
+    "source": "ipahealthcheck.ipa.kdc",
+    "check": "KDCWorkersCheck",
+    "result": "SUCCESS",
+    "uuid": "aaaaaaaa-0001-0001-0001-000000000002",
+    "when": "20260915090000Z",
+    "duration": "0.004",
+    "kw": {}
+  },
+  {
+    "source": "ipahealthcheck.meta.services",
+    "check": "krb5kdc",
+    "result": "SUCCESS",
+    "uuid": "aaaaaaaa-0001-0001-0001-000000000003",
+    "when": "20260915090000Z",
+    "duration": "0.002",
+    "kw": {}
+  },
+  {
+    "source": "ipahealthcheck.meta.services",
+    "check": "kadmin",
+    "result": "SUCCESS",
+    "uuid": "aaaaaaaa-0001-0001-0001-000000000004",
+    "when": "20260915090000Z",
+    "duration": "0.002",
+    "kw": {}
+  }
+]

@@ -1,0 +1,13 @@
+{
+  "hostname": "ipa01.example.test",
+  "scenario": "ReplicationConflictCheck WARNING with an enumerated conflict entry; ReplicationCheck itself is SUCCESS and the bind check is healthy",
+  "expected_overall_status": "DEGRADED",
+  "expected_diagnoses": [
+    {
+      "diagnosis_id": "replication.replication-conflicts",
+      "status": "DIAGNOSED",
+      "priority": "WARNING"
+    }
+  ],
+  "notes": "ReplicationCheck (agreement health) is SUCCESS and the GSSAPI bind check succeeds, so the peer-connectivity-break rule does not fire at all - this fixture specifically demonstrates the 'conflicts do not mean replication is down' distinction. The conflict is enumerated by the ldap_query collector, giving HIGH confidence (a direct LDAP fact) and a DIAGNOSED status at WARNING severity, since conflict entries are a maintenance concern rather than a broken link."
+}

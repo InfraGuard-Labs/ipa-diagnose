@@ -1,0 +1,155 @@
+
+=== 1. Fresh install from local RPM file (dnf install ./ipa-diagnose-*.rpm) ===
+Updating and loading repositories:
+ Fedora 44 openh264 (From Cisco) - x86_ 100% |   2.7 KiB/s |   5.3 KiB |  00m02s
+ Fedora 44 - x86_64 - Updates           100% |   2.5 MiB/s |  11.8 MiB |  00m05s
+ Fedora 44 - x86_64                     100% |   4.5 MiB/s |  36.5 MiB |  00m08s
+Repositories loaded.
+Package                 Arch   Version             Repository        Size
+Installing:
+ ipa-diagnose           noarch 0:0.1.0-1.fc44.fc44 @commandline 791.4 KiB
+Installing dependencies:
+ python3-markdown-it-py noarch 0:3.0.0-14.fc44     fedora       541.5 KiB
+ python3-mdurl          noarch 0:0.1.2-14.fc44     fedora        44.0 KiB
+ python3-pygments       noarch 0:2.19.1-9.fc44     fedora        11.3 MiB
+ python3-rich           noarch 0:14.3.2-1.fc44     fedora         3.4 MiB
+
+Transaction Summary:
+ Installing:         5 packages
+
+Total size of inbound packages is 4 MiB. Need to download 4 MiB.
+After this operation, 16 MiB extra will be used (install 16 MiB, remove 0 B).
+[1/4] python3-markdown-it-py-0:3.0.0-14 100% | 556.2 KiB/s | 205.2 KiB |  00m00s
+[2/4] python3-mdurl-0:0.1.2-14.fc44.noa 100% | 531.7 KiB/s |  31.4 KiB |  00m00s
+[3/4] python3-rich-0:14.3.2-1.fc44.noar 100% |   1.4 MiB/s | 663.8 KiB |  00m00s
+[4/4] python3-pygments-0:2.19.1-9.fc44. 100% |   4.5 MiB/s |   2.7 MiB |  00m01s
+--------------------------------------------------------------------------------
+[4/4] Total                             100% |   5.9 MiB/s |   3.5 MiB |  00m01s
+Running transaction
+[1/7] Verify package files              100% |  90.0   B/s |   5.0   B |  00m00s
+[2/7] Prepare transaction               100% | 161.0   B/s |   5.0   B |  00m00s
+[3/7] Installing python3-mdurl-0:0.1.2- 100% |   2.8 MiB/s |  49.4 KiB |  00m00s
+[4/7] Installing python3-markdown-it-py 100% |   9.9 MiB/s | 585.7 KiB |  00m00s
+[5/7] Installing python3-pygments-0:2.1 100% |  49.3 MiB/s |  11.5 MiB |  00m00s
+[6/7] Installing python3-rich-0:14.3.2- 100% |  41.4 MiB/s |   3.5 MiB |  00m00s
+[7/7] Installing ipa-diagnose-0:0.1.0-1 100% |   5.2 MiB/s | 824.3 KiB |  00m00s
+Warning: skipped OpenPGP checks for 1 package from repository: @commandline
+Complete!
+ipa-diagnose-0.1.0-1.fc44.fc44.noarch
+PASS: package is registered with rpm
+/usr/sbin/ipa-diagnose
+PASS: ipa-diagnose is on PATH
+Installed as: 0.1.0-1.fc44.fc44
+
+=== 2. Runtime dependency check (should have pulled in python3-rich automatically) ===
+(python3.14dist(rich) < 15~~ with python3.14dist(rich) >= 13.7)
+/usr/bin/python3
+python(abi) = 3.14
+rpmlib(CompressedFileNames) <= 3.0.4-1
+rpmlib(FileDigests) <= 4.6.0-1
+rpmlib(PartialHardlinkSets) <= 4.0.4-1
+rpmlib(PayloadFilesHavePrefix) <= 4.0-1
+rpmlib(PayloadIsZstd) <= 5.4.18-1
+rpmlib(RichDependencies) <= 4.12.0-1
+rpmlib(TildeInVersions) <= 4.10.0-1
+PASS: python3(rich) dependency resolved
+PASS: rich is actually importable in this environment
+
+=== 3. CLI sanity ===
+ipa-diagnose 0.1.0
+PASS: --version reports a version string
+
+=== 4. First real run on a non-FreeIPA host (must degrade gracefully, not crash) ===
+────────────────────────────── FreeIPA Diagnosis ───────────────────────────────
+Host: 8b4cbad51842    Generated: 2026-09-16T03:58:19Z
+Overall: HEALTHY
+
+No problems detected. All evaluated checks passed.
+────────────────────────────────────────────────────────────────────────────────
+Diagnostic packs evaluated: directory-server, dns, kerberos, replication, 
+certificates
+Evidence collection issues (1):
+  - ipa-healthcheck: ipa-healthcheck is not installed or not on PATH
+PASS: runs without crashing when ipa-healthcheck is absent
+
+=== 5. Demo run against a bundled fixture (--replay) ===
+────────────────────────────── FreeIPA Diagnosis ───────────────────────────────
+Host: ipa01.example.test    Generated: 2026-09-16T03:58:19Z
+(replayed from fixtures: /fixtures/replication/healthy)
+Overall: HEALTHY
+
+No problems detected. All evaluated checks passed.
+────────────────────────────────────────────────────────────────────────────────
+Diagnostic packs evaluated: directory-server, dns, kerberos, replication, 
+certificates
+{
+  "generated_at": "2026-09-16T03:58:20Z",
+  "hostname": "ipa01.example.test",
+  "overall_status": "HEALTHY",
+  "packs_evaluated": [
+    "directory-server",
+    "dns",
+    "kerberos",
+    "replication",
+    "certificates"
+  ],
+  "collection_errors": [],
+  "replay_source": "/fixtures/replication/healthy",
+  "diagnoses": []
+}
+PASS: fixture replay run succeeds
+
+=== 6. Upgrade to a newer build ===
+Updating and loading repositories:
+Repositories loaded.
+Total size of inbound packages is 207 KiB. Need to download 0 B.
+After this operation, 0 B extra will be used (install 791 KiB, remove 791 KiB).
+Running transaction
+Package                   Arch   Version             Repository        Size
+Upgrading:
+ ipa-diagnose             noarch 0:0.1.1-1.fc44.fc44 @commandline 791.4 KiB
+   replacing ipa-diagnose noarch 0:0.1.0-1.fc44.fc44 @commandline 791.4 KiB
+
+Transaction Summary:
+ Upgrading:          1 package
+ Replacing:          1 package
+
+[1/4] Verify package files              100% |  90.0   B/s |   1.0   B |  00m00s
+[2/4] Prepare transaction               100% |  95.0   B/s |   2.0   B |  00m00s
+[3/4] Upgrading ipa-diagnose-0:0.1.1-1. 100% |   9.1 MiB/s | 824.3 KiB |  00m00s
+[4/4] Removing ipa-diagnose-0:0.1.0-1.f 100% |   2.3 KiB/s | 170.0   B |  00m00s
+Warning: skipped OpenPGP checks for 1 package from repository: @commandline
+Complete!
+Now installed as: 0.1.1-1.fc44.fc44
+PASS: version actually changed after upgrade
+ipa-diagnose 0.1.1
+PASS: ipa-diagnose still works after upgrade
+
+=== 7. Uninstall ===
+Package                 Arch   Version             Repository        Size
+Removing:
+ ipa-diagnose           noarch 0:0.1.1-1.fc44.fc44 @commandline 791.4 KiB
+Removing unused dependencies:
+ python3-markdown-it-py noarch 0:3.0.0-14.fc44     fedora       541.5 KiB
+ python3-mdurl          noarch 0:0.1.2-14.fc44     fedora        44.0 KiB
+ python3-pygments       noarch 0:2.19.1-9.fc44     fedora        11.3 MiB
+ python3-rich           noarch 0:14.3.2-1.fc44     fedora         3.4 MiB
+
+Transaction Summary:
+ Removing:           5 packages
+
+After this operation, 16 MiB will be freed (install 0 B, remove 16 MiB).
+Running transaction
+[1/6] Prepare transaction               100% |  21.0   B/s |   5.0   B |  00m00s
+[2/6] Removing ipa-diagnose-0:0.1.1-1.f 100% |   2.6 KiB/s | 170.0   B |  00m00s
+[3/6] Removing python3-rich-0:14.3.2-1. 100% |   5.3 KiB/s | 315.0   B |  00m00s
+[4/6] Removing python3-markdown-it-py-0 100% |   4.4 KiB/s | 230.0   B |  00m00s
+[5/6] Removing python3-mdurl-0:0.1.2-14 100% |   1.1 KiB/s |  31.0   B |  00m00s
+[6/6] Removing python3-pygments-0:2.19. 100% |   9.2 KiB/s |   1.1 KiB |  00m00s
+Complete!
+PASS: rpm no longer reports the package installed
+PASS: ipa-diagnose command is gone
+
+====================================
+RPM lifecycle verification: 11 passed, 0 failed
+====================================

@@ -1,0 +1,13 @@
+[
+  {
+    "source": "ipahealthcheck.dogtag.ca",
+    "check": "DogtagCertsConnectivityCheck",
+    "result": "WARNING",
+    "uuid": "a1000000-0000-0000-0000-000000000001",
+    "when": "20260915120000Z",
+    "duration": "5.021",
+    "kw": {
+      "msg": "Timed out contacting the CA agent endpoint"
+    }
+  }
+]

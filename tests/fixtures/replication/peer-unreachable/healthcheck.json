@@ -1,0 +1,23 @@
+[
+  {
+    "source": "ipahealthcheck.ds.replication",
+    "check": "ReplicationCheck",
+    "result": "ERROR",
+    "uuid": "33333333-3333-3333-3333-333333333333",
+    "when": "20260101120000Z",
+    "duration": "0.045",
+    "kw": {
+      "msg": "Unable to communicate with replica ipa02.example.test: sasl_io_recv failed to decode packet",
+      "agreement": "cn=meToipa02.example.test,cn=replica,cn=dc\\3Dexample\\2Cdc\\3Dtest,cn=mapping tree,cn=config"
+    }
+  },
+  {
+    "source": "ipahealthcheck.ipa.topology",
+    "check": "IPATopologyDomainCheck",
+    "result": "SUCCESS",
+    "uuid": "44444444-4444-4444-4444-444444444444",
+    "when": "20260101120000Z",
+    "duration": "0.201",
+    "kw": {}
+  }
+]

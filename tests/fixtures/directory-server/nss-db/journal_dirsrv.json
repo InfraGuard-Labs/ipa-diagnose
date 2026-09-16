@@ -1,0 +1,8 @@
+[
+  {
+    "unit": "dirsrv@EXAMPLE-TEST.service",
+    "timestamp": "Mar 10 08:14:52",
+    "message": "TLS handshake failed for slapd-EXAMPLE-TEST while reading /etc/dirsrv/slapd-EXAMPLE-TEST/cert8.db; NSS certificate material missing from legacy database",
+    "category": "nss_tls"
+  }
+]

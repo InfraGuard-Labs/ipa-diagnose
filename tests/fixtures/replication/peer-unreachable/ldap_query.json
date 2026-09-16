@@ -1,0 +1,11 @@
+{
+  "conflicts": [],
+  "keytab_bind": {
+    "principal": "ldap/ipa01.example.test@EXAMPLE.TEST",
+    "kinit_ok": true,
+    "klist_ok": true,
+    "bind_ok": false,
+    "target": "ipa02.example.test",
+    "error": "ldap_sasl_interactive_bind_s: Can't contact LDAP server (-1)"
+  }
+}

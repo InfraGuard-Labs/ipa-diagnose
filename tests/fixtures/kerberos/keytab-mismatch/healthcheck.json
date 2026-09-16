@@ -1,0 +1,32 @@
+[
+  {
+    "source": "ipahealthcheck.ipa.host",
+    "check": "IPAHostKeytab",
+    "result": "ERROR",
+    "uuid": "cccccccc-0003-0003-0003-000000000001",
+    "when": "20260915101500Z",
+    "duration": "0.998",
+    "kw": {
+      "msg": "kinit: Preauthentication failed while getting initial credentials",
+      "error": "Preauthentication failed"
+    }
+  },
+  {
+    "source": "ipahealthcheck.ipa.kdc",
+    "check": "KDCWorkersCheck",
+    "result": "SUCCESS",
+    "uuid": "cccccccc-0003-0003-0003-000000000002",
+    "when": "20260915101500Z",
+    "duration": "0.004",
+    "kw": {}
+  },
+  {
+    "source": "ipahealthcheck.meta.services",
+    "check": "krb5kdc",
+    "result": "SUCCESS",
+    "uuid": "cccccccc-0003-0003-0003-000000000003",
+    "when": "20260915101500Z",
+    "duration": "0.002",
+    "kw": {}
+  }
+]

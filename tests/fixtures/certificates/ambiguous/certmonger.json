@@ -1,0 +1,14 @@
+[
+  {
+    "request_id": "20260601000000",
+    "nickname": "Server-Cert",
+    "ca": "IPA",
+    "state": "CA_UNREACHABLE",
+    "stuck": "yes",
+    "ca_error": "",
+    "serial": null,
+    "subject": "CN=ipa01.example.test,O=EXAMPLE.TEST",
+    "issuer": null,
+    "not_valid_after": null
+  }
+]

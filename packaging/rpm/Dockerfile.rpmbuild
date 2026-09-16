@@ -1,0 +1,30 @@
+# Builds the ipa-diagnose RPM entirely inside Docker. Fedora is used as the
+# build host because it carries pyproject-rpm-macros and python3-devel in
+# its base repos with no extra repo configuration (avoiding EPEL/CRB mirror
+# flakiness inside a container build). The resulting spec is standard and
+# also builds on RHEL9/CentOS Stream 9/AlmaLinux 9/Rocky 9 with EPEL9 and
+# CRB/PowerTools enabled - see docs/packaging.md.
+FROM fedora:latest
+
+RUN dnf install -y --setopt=install_weak_deps=False \
+        rpm-build \
+        rpmdevtools \
+        pyproject-rpm-macros \
+        python3-devel \
+        python3-pip \
+        python3-setuptools \
+        python3-wheel \
+        python3-pytest \
+        python3-pytest-cov \
+        python3-rich \
+        git \
+        tar \
+        gzip \
+        make \
+    && dnf clean all
+
+WORKDIR /src
+COPY . /src
+
+RUN chmod +x packaging/rpm/build-rpm.sh
+CMD ["packaging/rpm/build-rpm.sh"]

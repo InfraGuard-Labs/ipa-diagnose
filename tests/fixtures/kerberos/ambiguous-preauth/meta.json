@@ -1,0 +1,13 @@
+{
+  "hostname": "ipa01.example.test",
+  "scenario": "kerberos generic preauth failure, collector unavailable (insufficient evidence)",
+  "expected_overall_status": "UNKNOWN",
+  "expected_diagnoses": [
+    {
+      "diagnosis_id": "kerberos.keytab-kvno-mismatch",
+      "status": "UNKNOWN_INSUFFICIENT_EVIDENCE",
+      "priority": "PRIMARY_PROBLEM"
+    }
+  ],
+  "notes": "IPAHostKeytab fails with the generic 'Preauthentication failed' message, but there is deliberately NO kerberos_client.json fixture file in this directory, so collect_replay returns zero items (simulating the collector being unable to run, e.g. permission-denied). Without kvno_comparison data, KeytabKvnoMismatchRule cannot safely distinguish clock skew / keytab mismatch / salt mismatch, so it emits UNKNOWN_INSUFFICIENT_EVIDENCE with next_diagnostic_step telling the admin to run the kvno/klist -kte comparison and check chronyc/date against the KDC by hand. ClockSkewRule and KdcDiscoveryFailureRule both return None (no clock or DNS-style evidence present at all)."
+}

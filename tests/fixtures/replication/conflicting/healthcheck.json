@@ -1,0 +1,32 @@
+[
+  {
+    "source": "ipahealthcheck.ds.replication",
+    "check": "ReplicationCheck",
+    "result": "SUCCESS",
+    "uuid": "77777777-7777-7777-7777-777777777777",
+    "when": "20260101120000Z",
+    "duration": "0.019",
+    "kw": {}
+  },
+  {
+    "source": "ipahealthcheck.ds.replication",
+    "check": "ReplicationConflictCheck",
+    "result": "WARNING",
+    "uuid": "88888888-8888-8888-8888-888888888888",
+    "when": "20260101120000Z",
+    "duration": "0.027",
+    "kw": {
+      "msg": "Replication conflict entries found under dc=example,dc=test",
+      "conflict_count": 1
+    }
+  },
+  {
+    "source": "ipahealthcheck.ipa.topology",
+    "check": "IPATopologyDomainCheck",
+    "result": "SUCCESS",
+    "uuid": "99999999-9999-9999-9999-999999999999",
+    "when": "20260101120000Z",
+    "duration": "0.203",
+    "kw": {}
+  }
+]

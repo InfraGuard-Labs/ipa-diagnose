@@ -1,0 +1,6 @@
+[
+  {
+    "unit": "certmonger",
+    "line": "certmonger[1234]: Fetching state for request \"20260601000000\": CA_UNREACHABLE"
+  }
+]

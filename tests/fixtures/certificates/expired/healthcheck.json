@@ -1,0 +1,15 @@
+[
+  {
+    "source": "ipahealthcheck.ipa.certs",
+    "check": "IPACertmongerExpirationCheck",
+    "result": "ERROR",
+    "uuid": "ex000000-0000-0000-0000-000000000001",
+    "when": "20260915120000Z",
+    "duration": "0.045",
+    "kw": {
+      "msg": "Request id '20250801000000' status MONITORING expired on 2026-08-01 00:00:00 UTC",
+      "key": "Server-Cert",
+      "days": -45
+    }
+  }
+]

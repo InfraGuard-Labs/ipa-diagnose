@@ -1,0 +1,7 @@
+{
+  "hostname": "ipa01.example.test",
+  "scenario": "replication healthy",
+  "expected_overall_status": "HEALTHY",
+  "expected_diagnoses": [],
+  "notes": "All replication/topology healthcheck results are SUCCESS; no diagnosis rule should fire."
+}

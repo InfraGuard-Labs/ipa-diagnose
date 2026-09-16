@@ -1,0 +1,14 @@
+[
+  {
+    "source": "ipahealthcheck.ipa.idns",
+    "check": "IPADNSSystemRecordsCheck",
+    "result": "ERROR",
+    "uuid": "d4444444-4444-4444-4444-444444444444",
+    "when": "20260915120500Z",
+    "duration": "1.204",
+    "kw": {
+      "msg": "SRV record _kerberos._udp.example.test. required for Kerberos autodiscovery could not be resolved (NXDOMAIN)",
+      "key": "_kerberos._udp.example.test"
+    }
+  }
+]

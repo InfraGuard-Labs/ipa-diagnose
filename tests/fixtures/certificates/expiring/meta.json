@@ -1,0 +1,18 @@
+{
+  "hostname": "ipa01.example.test",
+  "scenario": "certificate approaching its expiry warning window, certmonger reports a clean MONITORING state with no error",
+  "expected_overall_status": "UNKNOWN",
+  "expected_diagnoses": [
+    {
+      "diagnosis_id": "certificates.cert-expired",
+      "status": "DIAGNOSED",
+      "priority": "WARNING"
+    },
+    {
+      "diagnosis_id": "certificates.renewal-master-unreachable",
+      "status": "UNKNOWN_INSUFFICIENT_EVIDENCE",
+      "priority": "PRIMARY_PROBLEM"
+    }
+  ],
+  "notes": "IPACertmongerExpirationCheck is WARNING (approaching, not past, expiry) so cert-expired fires as a low-severity heads-up (WARNING bucket). The same evidence, combined with certmonger showing MONITORING and no ca-error anywhere (no CA_UNREACHABLE/CA_REJECTED/etc. state present), is also the documented signature for the renewal-master-unreachable hypothesis (cluster D): this host sees no local failure explaining why the cert isn't renewing yet, which per freeipa.org/page/Howto/Promote_CA_to_Renewal_and_CRL_Master can mean the CA renewal master replica (not this host) is the actual blocker. That is inherently unconfirmable from one host, so it stays UNKNOWN_INSUFFICIENT_EVIDENCE with severity ERROR (if true, this cert will keep aging toward expiry unnoticed), which makes it the sole PRIMARY candidate and pushes overall_status to UNKNOWN (an ERROR-severity, non-DIAGNOSED primary)."
+}

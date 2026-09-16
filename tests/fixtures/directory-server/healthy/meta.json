@@ -1,0 +1,7 @@
+{
+  "hostname": "ipa01.example.test",
+  "scenario": "directory server healthy",
+  "expected_overall_status": "HEALTHY",
+  "expected_diagnoses": [],
+  "notes": "All ipa-healthcheck ds.*/system.filesystemspace/ipa.files results are SUCCESS. No healthcheck source crosses the WARNING threshold, so the filesystem/journal_dirsrv collectors never even run (see evidence/collect.py's staged-collection gate) and none of the 4 directory-server rules fire."
+}

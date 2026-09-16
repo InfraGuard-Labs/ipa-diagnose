@@ -1,0 +1,7 @@
+{
+  "hostname": "ipa01.example.test",
+  "scenario": "kerberos healthy",
+  "expected_overall_status": "HEALTHY",
+  "expected_diagnoses": [],
+  "notes": "All ipa.host/ipa.kdc/meta.services results are SUCCESS, so no trouble finding exists and none of the three kerberos rules fire (all return None). Staged collectors (kerberos_client, journal_krb5kdc) are never invoked because there is no WARNING-or-worse finding among the pack's healthcheck_sources to trigger them."
+}

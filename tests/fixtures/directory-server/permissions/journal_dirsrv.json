@@ -1,0 +1,8 @@
+[
+  {
+    "unit": "dirsrv@EXAMPLE-TEST.service",
+    "timestamp": "Feb 02 14:29:41",
+    "message": "chown_dir_files: unable to set ownership on /etc/dirsrv/slapd-EXAMPLE-TEST/cert8.db - operation not permitted (EPERM 13)",
+    "category": "permission_denied"
+  }
+]

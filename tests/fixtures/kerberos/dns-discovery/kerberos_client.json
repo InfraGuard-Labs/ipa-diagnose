@@ -1,0 +1,20 @@
+{
+  "klist": {
+    "principal": "host/ipa01.example.test@EXAMPLE.TEST",
+    "tickets": [],
+    "raw": "klist: No credentials cache found (filename: /tmp/krb5cc_0)"
+  },
+  "kvno_comparison": {
+    "principal": "host/ipa01.example.test@EXAMPLE.TEST",
+    "kdc_kvno": null,
+    "keytab_kvno": 2,
+    "match": null,
+    "error": "kvno: Cannot contact any KDC for realm 'EXAMPLE.TEST' while getting credentials for host/ipa01.example.test@EXAMPLE.TEST"
+  },
+  "clock_sync": {
+    "method": "chronyc",
+    "ntp_synchronized": true,
+    "offset_seconds": 0.02,
+    "raw": "Reference ID    : C0A80101 (ntp.example.test)\nStratum         : 3\nLeap status     : Normal\nSystem time     : 0.020000 seconds fast of NTP time"
+  }
+}

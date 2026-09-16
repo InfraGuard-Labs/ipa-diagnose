@@ -1,0 +1,10 @@
+[
+  {
+    "timestamp": "2026-09-15T09:57:58Z",
+    "line": "krb5kdc[1421](Info): AS_REQ (4 etypes {18 17 16 23}) 203.0.113.10: ISSUE: authtime 1789430278, etypes {rep=18 tkt=18 ses=18}, host/ipa01.example.test@EXAMPLE.TEST for krbtgt/EXAMPLE.TEST@EXAMPLE.TEST"
+  },
+  {
+    "timestamp": "2026-09-15T09:58:01Z",
+    "line": "krb5kdc[1421](Error): TGS_REQ (4 etypes {18 17 16 23}) 203.0.113.10: NEEDED_PREAUTH: host/ipa01.example.test@EXAMPLE.TEST for krbtgt/EXAMPLE.TEST@EXAMPLE.TEST, Clock skew too great"
+  }
+]

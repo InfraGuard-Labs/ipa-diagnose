@@ -1,0 +1,29 @@
+[
+  {
+    "path": "/var/lib/dirsrv/",
+    "filesystem": "/dev/mapper/vg-root",
+    "mounted_on": "/",
+    "size_bytes": 21474836480,
+    "used_bytes": 6442450944,
+    "avail_bytes": 15032385536,
+    "used_percent": 30
+  },
+  {
+    "path": "/dev/shm",
+    "filesystem": "tmpfs",
+    "mounted_on": "/dev/shm",
+    "size_bytes": 536870912,
+    "used_bytes": 20971520,
+    "avail_bytes": 515899392,
+    "used_percent": 4
+  },
+  {
+    "path": "/var/log/",
+    "filesystem": "/dev/mapper/vg-root",
+    "mounted_on": "/",
+    "size_bytes": 21474836480,
+    "used_bytes": 6442450944,
+    "avail_bytes": 15032385536,
+    "used_percent": 30
+  }
+]

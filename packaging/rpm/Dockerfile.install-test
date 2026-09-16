@@ -1,0 +1,14 @@
+# A clean, otherwise-unrelated Fedora container used ONLY to verify the RPM
+# installs/upgrades/uninstalls correctly. ipa-diagnose is NOT baked into this
+# image - it is installed at container run time from a mounted RPM, exactly
+# like a real administrator's `dnf install ./ipa-diagnose-*.rpm` would.
+FROM fedora:latest
+
+RUN dnf install -y --setopt=install_weak_deps=False dnf-plugins-core \
+    && dnf clean all
+
+WORKDIR /verify
+COPY packaging/rpm/install-test.sh /verify/install-test.sh
+RUN chmod +x /verify/install-test.sh
+
+ENTRYPOINT ["/verify/install-test.sh"]

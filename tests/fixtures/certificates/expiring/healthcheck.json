@@ -1,0 +1,15 @@
+[
+  {
+    "source": "ipahealthcheck.ipa.certs",
+    "check": "IPACertmongerExpirationCheck",
+    "result": "WARNING",
+    "uuid": "e1000000-0000-0000-0000-000000000001",
+    "when": "20260915120000Z",
+    "duration": "0.045",
+    "kw": {
+      "msg": "Request id '20260101120000' status CA_WORKING/MONITORING expires in 15 days",
+      "key": "Server-Cert",
+      "days": 15
+    }
+  }
+]

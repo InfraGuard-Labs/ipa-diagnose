@@ -1,0 +1,32 @@
+[
+  {
+    "source": "ipahealthcheck.ipa.host",
+    "check": "IPAHostKeytab",
+    "result": "ERROR",
+    "uuid": "bbbbbbbb-0002-0002-0002-000000000001",
+    "when": "20260915095800Z",
+    "duration": "1.204",
+    "kw": {
+      "msg": "kinit: Clock skew too great while getting initial credentials",
+      "error": "Clock skew too great"
+    }
+  },
+  {
+    "source": "ipahealthcheck.ipa.kdc",
+    "check": "KDCWorkersCheck",
+    "result": "SUCCESS",
+    "uuid": "bbbbbbbb-0002-0002-0002-000000000002",
+    "when": "20260915095800Z",
+    "duration": "0.004",
+    "kw": {}
+  },
+  {
+    "source": "ipahealthcheck.meta.services",
+    "check": "krb5kdc",
+    "result": "SUCCESS",
+    "uuid": "bbbbbbbb-0002-0002-0002-000000000003",
+    "when": "20260915095800Z",
+    "duration": "0.002",
+    "kw": {}
+  }
+]

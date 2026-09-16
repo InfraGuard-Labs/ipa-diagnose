@@ -1,0 +1,13 @@
+{
+  "hostname": "ipa05.example.test",
+  "scenario": "BackendsCheck reports a missing system index (DSBLE0007) on the userroot backend",
+  "expected_overall_status": "DEGRADED",
+  "expected_diagnoses": [
+    {
+      "diagnosis_id": "directory-server.missing-system-index",
+      "status": "DIAGNOSED",
+      "priority": "PRIMARY_PROBLEM"
+    }
+  ],
+  "notes": "Matches Red Hat KCS 7132895's documented BackendsCheck/DSBLE0007 missing-system-index finding. The rule's primary recommended action is the scoped `db2index.pl -t entryrdn` (CAUTION); the bare/no-argument form is only ever mentioned as an explicit HIGH_RISK warning never to run, per 389-ds-base GitHub issue #1914 (breaks replication via RUV/tombstone side effects)."
+}

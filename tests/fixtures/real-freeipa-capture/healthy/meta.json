@@ -1,0 +1,5 @@
+{
+  "hostname": "server.ipadiagnose.test",
+  "scenario": "real freeipa/freeipa-server capture - freshly installed, healthy",
+  "notes": "Verbatim ipa-healthcheck --output-type json output from a real container. See ../README.md. Not asserted against a fixed expected_diagnoses list on purpose - see tests/unit/test_real_freeipa_capture.py for why."
+}

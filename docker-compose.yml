@@ -1,0 +1,26 @@
+name: ipa-diagnose
+
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ipa-diagnose-dev:local
+    stdin_open: true
+    tty: true
+    working_dir: /work
+    volumes:
+      - .:/work
+    # No custom entrypoint: `docker compose run --rm dev <anything>` runs
+    # <anything> directly (python, pytest, ipa-diagnose, bash, ...).
+    # `docker compose run --rm dev` with no args drops into bash (Dockerfile CMD).
+
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ipa-diagnose-dev:local
+    working_dir: /work
+    volumes:
+      - .:/work
+    command: ["python", "-m", "pytest", "-q"]

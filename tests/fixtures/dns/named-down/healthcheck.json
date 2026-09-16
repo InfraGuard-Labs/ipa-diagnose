@@ -1,0 +1,26 @@
+[
+  {
+    "source": "ipahealthcheck.ipa.idns",
+    "check": "IPADNSSystemRecordsCheck",
+    "result": "ERROR",
+    "uuid": "d2222222-2222-2222-2222-222222222222",
+    "when": "20260915100000Z",
+    "duration": "2.031",
+    "kw": {
+      "msg": "SRV record _ldap._tcp.example.test. required for LDAP autodiscovery could not be resolved",
+      "key": "_ldap._tcp.example.test"
+    }
+  },
+  {
+    "source": "ipahealthcheck.meta.services",
+    "check": "IpaHealthCheckServicesCheck",
+    "result": "CRITICAL",
+    "uuid": "d2222222-2222-2222-2222-222222222223",
+    "when": "20260915100000Z",
+    "duration": "0.050",
+    "kw": {
+      "msg": "named service is not running",
+      "service": "named"
+    }
+  }
+]

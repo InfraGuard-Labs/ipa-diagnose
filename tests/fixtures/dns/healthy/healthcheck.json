@@ -1,0 +1,11 @@
+[
+  {
+    "source": "ipahealthcheck.ipa.idns",
+    "check": "IPADNSSystemRecordsCheck",
+    "result": "SUCCESS",
+    "uuid": "d1111111-1111-1111-1111-111111111111",
+    "when": "20260915090000Z",
+    "duration": "0.412",
+    "kw": {}
+  }
+]

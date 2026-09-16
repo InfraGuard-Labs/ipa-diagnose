@@ -1,0 +1,52 @@
+[
+  {
+    "source": "ipahealthcheck.system.filesystemspace",
+    "check": "FileSystemSpaceCheck",
+    "result": "WARNING",
+    "uuid": "d2000000-0000-0000-0000-000000000001",
+    "when": "20260115090500Z",
+    "duration": "0.019",
+    "kw": {
+      "msg": "/var/lib/dirsrv/ is using more than 80% of the available space.",
+      "path": "/var/lib/dirsrv/",
+      "store": "dirsrv",
+      "percent": 84
+    }
+  },
+  {
+    "source": "ipahealthcheck.ds.disk_space",
+    "check": "DiskSpaceCheck",
+    "result": "SUCCESS",
+    "uuid": "d2000000-0000-0000-0000-000000000002",
+    "when": "20260115090500Z",
+    "duration": "0.021",
+    "kw": {}
+  },
+  {
+    "source": "ipahealthcheck.ds.backends",
+    "check": "BackendsCheck",
+    "result": "SUCCESS",
+    "uuid": "d2000000-0000-0000-0000-000000000003",
+    "when": "20260115090500Z",
+    "duration": "0.041",
+    "kw": {}
+  },
+  {
+    "source": "ipahealthcheck.ds.nss",
+    "check": "NssCheck",
+    "result": "SUCCESS",
+    "uuid": "d2000000-0000-0000-0000-000000000004",
+    "when": "20260115090500Z",
+    "duration": "0.033",
+    "kw": {}
+  },
+  {
+    "source": "ipahealthcheck.ipa.files",
+    "check": "IPAFileCheck",
+    "result": "SUCCESS",
+    "uuid": "d2000000-0000-0000-0000-000000000005",
+    "when": "20260115090500Z",
+    "duration": "0.014",
+    "kw": {}
+  }
+]

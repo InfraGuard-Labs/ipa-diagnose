@@ -1,0 +1,11 @@
+[
+  {
+    "path": "/var/lib/dirsrv/",
+    "filesystem": "/dev/mapper/vg-root",
+    "mounted_on": "/",
+    "size_bytes": 21474836480,
+    "used_bytes": 6442450944,
+    "avail_bytes": 15032385536,
+    "used_percent": 30
+  }
+]

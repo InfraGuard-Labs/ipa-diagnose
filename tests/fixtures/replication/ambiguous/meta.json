@@ -1,0 +1,13 @@
+{
+  "hostname": "ipa01.example.test",
+  "scenario": "ReplicationCheck ERROR fires but the replication_agreements/ldap_query collectors have nothing to say",
+  "expected_overall_status": "UNKNOWN",
+  "expected_diagnoses": [
+    {
+      "diagnosis_id": "replication.peer-connectivity-break",
+      "status": "UNKNOWN_INSUFFICIENT_EVIDENCE",
+      "priority": "PRIMARY_PROBLEM"
+    }
+  ],
+  "notes": "Deliberately omits replication_agreements.json and ldap_query.json from this fixture directory. Per their documented replay contract, a missing fixture file yields no EvidenceItems (not a CollectorError) - simulating 'the collectors ran but had nothing to corroborate with'. The pack's healthcheck_sources still trigger additional_collectors (ReplicationCheck is ERROR), but the resulting bundle has the trigger finding and zero corroborating items, which the peer-connectivity-break rule must treat as UNKNOWN_INSUFFICIENT_EVIDENCE rather than guessing 'broken link' or 'just conflicts' - unknown is better than wrong."
+}

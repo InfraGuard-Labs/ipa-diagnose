@@ -1,0 +1,29 @@
+[
+  {
+    "source": "ipahealthcheck.ipa.certs",
+    "check": "IPACertmongerExpirationCheck",
+    "result": "SUCCESS",
+    "uuid": "c0000000-0000-0000-0000-000000000001",
+    "when": "20260915120000Z",
+    "duration": "0.045",
+    "kw": {}
+  },
+  {
+    "source": "ipahealthcheck.ipa.certs",
+    "check": "IPACertTracking",
+    "result": "SUCCESS",
+    "uuid": "c0000000-0000-0000-0000-000000000002",
+    "when": "20260915120000Z",
+    "duration": "0.012",
+    "kw": {}
+  },
+  {
+    "source": "ipahealthcheck.dogtag.ca",
+    "check": "DogtagCertsConnectivityCheck",
+    "result": "SUCCESS",
+    "uuid": "c0000000-0000-0000-0000-000000000003",
+    "when": "20260915120000Z",
+    "duration": "0.201",
+    "kw": {}
+  }
+]

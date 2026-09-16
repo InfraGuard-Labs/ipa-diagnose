@@ -1,0 +1,13 @@
+{
+  "hostname": "ipa01.example.test",
+  "scenario": "kerberos clock skew (direct journal evidence)",
+  "expected_overall_status": "DEGRADED",
+  "expected_diagnoses": [
+    {
+      "diagnosis_id": "kerberos.clock-skew",
+      "status": "DIAGNOSED",
+      "priority": "PRIMARY_PROBLEM"
+    }
+  ],
+  "notes": "IPAHostKeytab fails with a 'Clock skew too great' error, and journal_krb5kdc surfaces an explicit clock-skew rejection line from the KDC itself - the direct, HIGH-confidence signal per MIT Kerberos docs. kerberos_client's own chronyc reading corroborates (not synchronized, +342.5s). Only ClockSkewRule fires: KeytabKvnoMismatchRule sees no kvno_comparison item and its generic-failure fallback is suppressed because the finding message is clock-styled and journal clock evidence is present; KdcDiscoveryFailureRule finds no DNS-style error text at all."
+}

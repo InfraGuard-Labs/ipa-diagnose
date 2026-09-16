@@ -1,0 +1,14 @@
+[
+  {
+    "source": "ipahealthcheck.ipa.idns",
+    "check": "IPADNSSystemRecordsCheck",
+    "result": "ERROR",
+    "uuid": "d5555555-5555-5555-5555-555555555555",
+    "when": "20260915130800Z",
+    "duration": "3.550",
+    "kw": {
+      "msg": "SRV record _ldap._tcp.example.test. required for LDAP autodiscovery could not be resolved",
+      "key": "_ldap._tcp.example.test"
+    }
+  }
+]

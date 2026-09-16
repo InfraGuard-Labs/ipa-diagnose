@@ -1,0 +1,13 @@
+{
+  "hostname": "ipa01.example.test",
+  "scenario": "ReplicationCheck ERROR corroborated by a failed GSSAPI bind to the peer, no conflicts present",
+  "expected_overall_status": "DEGRADED",
+  "expected_diagnoses": [
+    {
+      "diagnosis_id": "replication.peer-connectivity-break",
+      "status": "DIAGNOSED",
+      "priority": "PRIMARY_PROBLEM"
+    }
+  ],
+  "notes": "Local kinit/klist succeed (own keytab is fine) but the GSSAPI bind to ipa02 fails to contact the server, and the agreement's last update status shows the same failure. No replication conflict entries are present, which per the research distinguishes this from the replication-conflicts cluster. HIGH confidence because the bind-check failure is direct evidence, not an inference."
+}

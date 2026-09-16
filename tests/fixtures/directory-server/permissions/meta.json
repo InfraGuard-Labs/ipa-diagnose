@@ -1,0 +1,13 @@
+{
+  "hostname": "ipa03.example.test",
+  "scenario": "dirsrv permission-denied at startup with no corroborating IPAFileCheck ownership finding - genuinely ambiguous (Unix perms vs. SELinux)",
+  "expected_overall_status": "UNKNOWN",
+  "expected_diagnoses": [
+    {
+      "diagnosis_id": "directory-server.ownership-selinux-mismatch",
+      "status": "UNKNOWN_INSUFFICIENT_EVIDENCE",
+      "priority": "PRIMARY_PROBLEM"
+    }
+  ],
+  "notes": "A ConfigCheck WARNING (unrelated to file ownership) is what triggers staged collection of the filesystem/journal_dirsrv collectors. journal_dirsrv then surfaces a generic 'Permission denied' from dirsrv's chown_dir_files, but ipahealthcheck.ipa.files (IPAFileCheck) is SUCCESS - no finding names a specific wrong owner/group/mode. Per the documented trap, a generic Permission denied is ambiguous between a plain Unix ownership/mode problem and an SELinux AVC denial, so this must come back UNKNOWN_INSUFFICIENT_EVIDENCE (never a confident DIAGNOSED chown-fix), with next_diagnostic_step covering both `ls -lZ` and `ausearch -m avc -ts recent`."
+}

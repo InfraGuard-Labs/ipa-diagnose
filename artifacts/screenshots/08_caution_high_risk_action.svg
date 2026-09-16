@@ -1,0 +1,299 @@
+<svg class="rich-terminal" viewBox="0 0 1287 1489.6" xmlns="http://www.w3.org/2000/svg">
+    <!-- Generated with Rich https://www.textualize.io -->
+    <style>
+
+    @font-face {
+        font-family: "Fira Code";
+        src: local("FiraCode-Regular"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff2/FiraCode-Regular.woff2") format("woff2"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff/FiraCode-Regular.woff") format("woff");
+        font-style: normal;
+        font-weight: 400;
+    }
+    @font-face {
+        font-family: "Fira Code";
+        src: local("FiraCode-Bold"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff2/FiraCode-Bold.woff2") format("woff2"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff/FiraCode-Bold.woff") format("woff");
+        font-style: bold;
+        font-weight: 700;
+    }
+
+    .terminal-3279274305-matrix {
+        font-family: Fira Code, monospace;
+        font-size: 20px;
+        line-height: 24.4px;
+        font-variant-east-asian: full-width;
+    }
+
+    .terminal-3279274305-title {
+        font-size: 18px;
+        font-weight: bold;
+        font-family: arial;
+    }
+
+    .terminal-3279274305-r1 { fill: #68a0b3 }
+.terminal-3279274305-r2 { fill: #c5c8c6 }
+.terminal-3279274305-r3 { fill: #868887 }
+.terminal-3279274305-r4 { fill: #c5c8c6;font-weight: bold }
+.terminal-3279274305-r5 { fill: #d0b344;font-weight: bold }
+.terminal-3279274305-r6 { fill: #cc555a }
+.terminal-3279274305-r7 { fill: #c5c8c6;font-weight: bold;text-decoration: underline; }
+.terminal-3279274305-r8 { fill: #68a0b3;font-weight: bold }
+.terminal-3279274305-r9 { fill: #98a84b }
+.terminal-3279274305-r10 { fill: #d0b344 }
+    </style>
+
+    <defs>
+    <clipPath id="terminal-3279274305-clip-terminal">
+      <rect x="0" y="0" width="1267.8" height="1438.6" />
+    </clipPath>
+    <clipPath id="terminal-3279274305-line-0">
+    <rect x="0" y="1.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-1">
+    <rect x="0" y="25.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-2">
+    <rect x="0" y="50.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-3">
+    <rect x="0" y="74.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-4">
+    <rect x="0" y="99.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-5">
+    <rect x="0" y="123.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-6">
+    <rect x="0" y="147.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-7">
+    <rect x="0" y="172.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-8">
+    <rect x="0" y="196.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-9">
+    <rect x="0" y="221.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-10">
+    <rect x="0" y="245.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-11">
+    <rect x="0" y="269.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-12">
+    <rect x="0" y="294.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-13">
+    <rect x="0" y="318.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-14">
+    <rect x="0" y="343.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-15">
+    <rect x="0" y="367.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-16">
+    <rect x="0" y="391.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-17">
+    <rect x="0" y="416.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-18">
+    <rect x="0" y="440.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-19">
+    <rect x="0" y="465.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-20">
+    <rect x="0" y="489.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-21">
+    <rect x="0" y="513.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-22">
+    <rect x="0" y="538.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-23">
+    <rect x="0" y="562.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-24">
+    <rect x="0" y="587.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-25">
+    <rect x="0" y="611.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-26">
+    <rect x="0" y="635.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-27">
+    <rect x="0" y="660.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-28">
+    <rect x="0" y="684.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-29">
+    <rect x="0" y="709.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-30">
+    <rect x="0" y="733.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-31">
+    <rect x="0" y="757.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-32">
+    <rect x="0" y="782.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-33">
+    <rect x="0" y="806.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-34">
+    <rect x="0" y="831.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-35">
+    <rect x="0" y="855.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-36">
+    <rect x="0" y="879.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-37">
+    <rect x="0" y="904.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-38">
+    <rect x="0" y="928.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-39">
+    <rect x="0" y="953.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-40">
+    <rect x="0" y="977.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-41">
+    <rect x="0" y="1001.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-42">
+    <rect x="0" y="1026.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-43">
+    <rect x="0" y="1050.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-44">
+    <rect x="0" y="1075.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-45">
+    <rect x="0" y="1099.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-46">
+    <rect x="0" y="1123.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-47">
+    <rect x="0" y="1148.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-48">
+    <rect x="0" y="1172.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-49">
+    <rect x="0" y="1197.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-50">
+    <rect x="0" y="1221.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-51">
+    <rect x="0" y="1245.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-52">
+    <rect x="0" y="1270.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-53">
+    <rect x="0" y="1294.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-54">
+    <rect x="0" y="1319.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-55">
+    <rect x="0" y="1343.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-56">
+    <rect x="0" y="1367.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-3279274305-line-57">
+    <rect x="0" y="1392.3" width="1268.8" height="24.65"/>
+            </clipPath>
+    </defs>
+
+    <rect fill="#292929" stroke="rgba(255,255,255,0.35)" stroke-width="1" x="1" y="1" width="1285" height="1487.6" rx="8"/><text class="terminal-3279274305-title" fill="#c5c8c6" text-anchor="middle" x="642" y="27">ipa-diagnose</text>
+            <g transform="translate(26,22)">
+            <circle cx="0" cy="0" r="7" fill="#ff5f57"/>
+            <circle cx="22" cy="0" r="7" fill="#febc2e"/>
+            <circle cx="44" cy="0" r="7" fill="#28c840"/>
+            </g>
+        
+    <g transform="translate(9, 41)" clip-path="url(#terminal-3279274305-clip-terminal)">
+    
+    <g class="terminal-3279274305-matrix">
+    <text class="terminal-3279274305-r1" x="0" y="20" textLength="524.6" clip-path="url(#terminal-3279274305-line-0)">──────────────────────────────────────────&#160;</text><text class="terminal-3279274305-r2" x="524.6" y="20" textLength="207.4" clip-path="url(#terminal-3279274305-line-0)">FreeIPA&#160;Diagnosis</text><text class="terminal-3279274305-r1" x="732" y="20" textLength="536.8" clip-path="url(#terminal-3279274305-line-0)">&#160;───────────────────────────────────────────</text><text class="terminal-3279274305-r2" x="1268.8" y="20" textLength="12.2" clip-path="url(#terminal-3279274305-line-0)">
+</text><text class="terminal-3279274305-r2" x="0" y="44.4" textLength="719.8" clip-path="url(#terminal-3279274305-line-1)">Host:&#160;ipa05.example.test&#160;&#160;&#160;&#160;Generated:&#160;2026-09-16T04:48:51Z</text><text class="terminal-3279274305-r2" x="1268.8" y="44.4" textLength="12.2" clip-path="url(#terminal-3279274305-line-1)">
+</text><text class="terminal-3279274305-r3" x="0" y="68.8" textLength="927.2" clip-path="url(#terminal-3279274305-line-2)">(replayed&#160;from&#160;fixtures:&#160;/work/tests/fixtures/directory-server/index-health)</text><text class="terminal-3279274305-r2" x="1268.8" y="68.8" textLength="12.2" clip-path="url(#terminal-3279274305-line-2)">
+</text><text class="terminal-3279274305-r4" x="0" y="93.2" textLength="109.8" clip-path="url(#terminal-3279274305-line-3)">Overall:&#160;</text><text class="terminal-3279274305-r5" x="109.8" y="93.2" textLength="97.6" clip-path="url(#terminal-3279274305-line-3)">DEGRADED</text><text class="terminal-3279274305-r2" x="1268.8" y="93.2" textLength="12.2" clip-path="url(#terminal-3279274305-line-3)">
+</text><text class="terminal-3279274305-r2" x="1268.8" y="117.6" textLength="12.2" clip-path="url(#terminal-3279274305-line-4)">
+</text><text class="terminal-3279274305-r6" x="0" y="142" textLength="536.8" clip-path="url(#terminal-3279274305-line-5)">───────────────────────────────────────────&#160;</text><text class="terminal-3279274305-r2" x="536.8" y="142" textLength="183" clip-path="url(#terminal-3279274305-line-5)">PRIMARY&#160;PROBLEM</text><text class="terminal-3279274305-r6" x="719.8" y="142" textLength="549" clip-path="url(#terminal-3279274305-line-5)">&#160;────────────────────────────────────────────</text><text class="terminal-3279274305-r2" x="1268.8" y="142" textLength="12.2" clip-path="url(#terminal-3279274305-line-5)">
+</text><text class="terminal-3279274305-r4" x="0" y="166.4" textLength="817.4" clip-path="url(#terminal-3279274305-line-6)">Missing&#160;or&#160;misconfigured&#160;system&#160;index&#160;on&#160;a&#160;Directory&#160;Server&#160;backend</text><text class="terminal-3279274305-r2" x="1268.8" y="166.4" textLength="12.2" clip-path="url(#terminal-3279274305-line-6)">
+</text><text class="terminal-3279274305-r2" x="1268.8" y="190.8" textLength="12.2" clip-path="url(#terminal-3279274305-line-7)">
+</text><text class="terminal-3279274305-r7" x="0" y="215.2" textLength="36.6" clip-path="url(#terminal-3279274305-line-8)">WHY</text><text class="terminal-3279274305-r2" x="1268.8" y="215.2" textLength="12.2" clip-path="url(#terminal-3279274305-line-8)">
+</text><text class="terminal-3279274305-r2" x="0" y="239.6" textLength="1268.8" clip-path="url(#terminal-3279274305-line-9)">ipa-healthcheck&#x27;s&#160;ipahealthcheck.ds.backends.BackendsCheck&#160;reports&#160;a&#160;missing/misconfigured&#160;system&#160;index&#160;</text><text class="terminal-3279274305-r2" x="1268.8" y="239.6" textLength="12.2" clip-path="url(#terminal-3279274305-line-9)">
+</text><text class="terminal-3279274305-r2" x="0" y="264" textLength="1256.6" clip-path="url(#terminal-3279274305-line-10)">(System&#160;index&#160;entryrdn&#160;is&#160;missing&#160;or&#160;misconfigured&#160;on&#160;backend&#160;userroot.),&#160;matching&#160;the&#160;well-documented&#160;</text><text class="terminal-3279274305-r2" x="1268.8" y="264" textLength="12.2" clip-path="url(#terminal-3279274305-line-10)">
+</text><text class="terminal-3279274305-r2" x="0" y="288.4" textLength="1268.8" clip-path="url(#terminal-3279274305-line-11)">DSBLE0007&#160;error&#160;key&#160;for&#160;BackendsCheck&#160;(Red&#160;Hat&#160;KCS&#160;7132895).&#160;Missing&#160;system&#160;indexes&#160;(entryrdn,&#160;parentId,</text><text class="terminal-3279274305-r2" x="1268.8" y="288.4" textLength="12.2" clip-path="url(#terminal-3279274305-line-11)">
+</text><text class="terminal-3279274305-r2" x="0" y="312.8" textLength="1220" clip-path="url(#terminal-3279274305-line-12)">objectClass,&#160;aci,&#160;nsUniqueId,&#160;nsds5ReplConflict,&#160;etc.)&#160;cause&#160;unindexed&#160;searches&#160;and&#160;degraded/failed&#160;</text><text class="terminal-3279274305-r2" x="1268.8" y="312.8" textLength="12.2" clip-path="url(#terminal-3279274305-line-12)">
+</text><text class="terminal-3279274305-r2" x="0" y="337.2" textLength="329.4" clip-path="url(#terminal-3279274305-line-13)">operations&#160;on&#160;that&#160;backend.</text><text class="terminal-3279274305-r2" x="1268.8" y="337.2" textLength="12.2" clip-path="url(#terminal-3279274305-line-13)">
+</text><text class="terminal-3279274305-r2" x="1268.8" y="361.6" textLength="12.2" clip-path="url(#terminal-3279274305-line-14)">
+</text><text class="terminal-3279274305-r7" x="0" y="386" textLength="97.6" clip-path="url(#terminal-3279274305-line-15)">EVIDENCE</text><text class="terminal-3279274305-r2" x="1268.8" y="386" textLength="12.2" clip-path="url(#terminal-3279274305-line-15)">
+</text><text class="terminal-3279274305-r2" x="0" y="410.4" textLength="1268.8" clip-path="url(#terminal-3279274305-line-16)">&#160;&#160;✓&#160;ipahealthcheck.ds.backends.BackendsCheck&#160;reports&#160;a&#160;missing/misconfigured&#160;system&#160;index:&#160;System&#160;index&#160;</text><text class="terminal-3279274305-r2" x="1268.8" y="410.4" textLength="12.2" clip-path="url(#terminal-3279274305-line-16)">
+</text><text class="terminal-3279274305-r2" x="0" y="434.8" textLength="695.4" clip-path="url(#terminal-3279274305-line-17)">entryrdn&#160;is&#160;missing&#160;or&#160;misconfigured&#160;on&#160;backend&#160;userroot.</text><text class="terminal-3279274305-r2" x="1268.8" y="434.8" textLength="12.2" clip-path="url(#terminal-3279274305-line-17)">
+</text><text class="terminal-3279274305-r2" x="1268.8" y="459.2" textLength="12.2" clip-path="url(#terminal-3279274305-line-18)">
+</text><text class="terminal-3279274305-r7" x="0" y="483.6" textLength="73.2" clip-path="url(#terminal-3279274305-line-19)">IMPACT</text><text class="terminal-3279274305-r2" x="1268.8" y="483.6" textLength="12.2" clip-path="url(#terminal-3279274305-line-19)">
+</text><text class="terminal-3279274305-r2" x="0" y="508" textLength="1232.2" clip-path="url(#terminal-3279274305-line-20)">Searches&#160;relying&#160;on&#160;the&#160;missing&#160;index&#160;become&#160;unindexed&#160;(slow,&#160;resource-intensive,&#160;and&#160;subject&#160;to&#160;the&#160;</text><text class="terminal-3279274305-r2" x="1268.8" y="508" textLength="12.2" clip-path="url(#terminal-3279274305-line-20)">
+</text><text class="terminal-3279274305-r2" x="0" y="532.4" textLength="707.6" clip-path="url(#terminal-3279274305-line-21)">server&#x27;s&#160;unindexed-search&#160;size&#160;limit)&#160;until&#160;it&#160;is&#160;rebuilt.</text><text class="terminal-3279274305-r2" x="1268.8" y="532.4" textLength="12.2" clip-path="url(#terminal-3279274305-line-21)">
+</text><text class="terminal-3279274305-r2" x="1268.8" y="556.8" textLength="12.2" clip-path="url(#terminal-3279274305-line-22)">
+</text><text class="terminal-3279274305-r7" x="0" y="581.2" textLength="158.6" clip-path="url(#terminal-3279274305-line-23)">DO&#160;THIS&#160;FIRST</text><text class="terminal-3279274305-r2" x="1268.8" y="581.2" textLength="12.2" clip-path="url(#terminal-3279274305-line-23)">
+</text><text class="terminal-3279274305-r2" x="0" y="605.6" textLength="1073.6" clip-path="url(#terminal-3279274305-line-24)">Confirm&#160;exactly&#160;which&#160;backend/attribute&#160;is&#160;affected&#160;and&#160;its&#160;current&#160;index&#160;configuration.</text><text class="terminal-3279274305-r2" x="1268.8" y="605.6" textLength="12.2" clip-path="url(#terminal-3279274305-line-24)">
+</text><text class="terminal-3279274305-r2" x="1268.8" y="630" textLength="12.2" clip-path="url(#terminal-3279274305-line-25)">
+</text><text class="terminal-3279274305-r8" x="48.8" y="654.4" textLength="1195.6" clip-path="url(#terminal-3279274305-line-26)">ipa-healthcheck&#160;--source&#160;ipahealthcheck.ds.backends&#160;--output-type&#160;json;&#160;dsconf&#160;&lt;instance&gt;&#160;backend&#160;</text><text class="terminal-3279274305-r2" x="1268.8" y="654.4" textLength="12.2" clip-path="url(#terminal-3279274305-line-26)">
+</text><text class="terminal-3279274305-r8" x="0" y="678.8" textLength="244" clip-path="url(#terminal-3279274305-line-27)">index&#160;list&#160;&lt;backend&gt;</text><text class="terminal-3279274305-r2" x="1268.8" y="678.8" textLength="12.2" clip-path="url(#terminal-3279274305-line-27)">
+</text><text class="terminal-3279274305-r2" x="1268.8" y="703.2" textLength="12.2" clip-path="url(#terminal-3279274305-line-28)">
+</text><text class="terminal-3279274305-r2" x="0" y="727.6" textLength="97.6" clip-path="url(#terminal-3279274305-line-29)">Safety:&#160;</text><text class="terminal-3279274305-r9" x="97.6" y="727.6" textLength="414.8" clip-path="url(#terminal-3279274305-line-29)">SAFE&#160;—&#160;read-only,&#160;no&#160;state&#160;change.</text><text class="terminal-3279274305-r2" x="1268.8" y="727.6" textLength="12.2" clip-path="url(#terminal-3279274305-line-29)">
+</text><text class="terminal-3279274305-r2" x="1268.8" y="752" textLength="12.2" clip-path="url(#terminal-3279274305-line-30)">
+</text><text class="terminal-3279274305-r3" x="0" y="776.4" textLength="451.4" clip-path="url(#terminal-3279274305-line-31)">2&#160;additional&#160;step(s)&#160;-&#160;see&#160;--details.</text><text class="terminal-3279274305-r2" x="1268.8" y="776.4" textLength="12.2" clip-path="url(#terminal-3279274305-line-31)">
+</text><text class="terminal-3279274305-r2" x="1268.8" y="800.8" textLength="12.2" clip-path="url(#terminal-3279274305-line-32)">
+</text><text class="terminal-3279274305-r7" x="0" y="825.2" textLength="219.6" clip-path="url(#terminal-3279274305-line-33)">ADDITIONAL&#160;ACTIONS</text><text class="terminal-3279274305-r2" x="1268.8" y="825.2" textLength="12.2" clip-path="url(#terminal-3279274305-line-33)">
+</text><text class="terminal-3279274305-r2" x="0" y="849.6" textLength="1000.4" clip-path="url(#terminal-3279274305-line-34)">&#160;&#160;-&#160;Reindex&#160;only&#160;the&#160;specific&#160;missing&#160;attribute&#160;(entryrdn)&#160;that&#160;the&#160;finding&#160;named.</text><text class="terminal-3279274305-r2" x="1268.8" y="849.6" textLength="12.2" clip-path="url(#terminal-3279274305-line-34)">
+</text><text class="terminal-3279274305-r1" x="73.2" y="874" textLength="451.4" clip-path="url(#terminal-3279274305-line-35)">db2index.pl&#160;-Z&#160;&lt;instance&gt;&#160;-t&#160;entryrdn</text><text class="terminal-3279274305-r2" x="1268.8" y="874" textLength="12.2" clip-path="url(#terminal-3279274305-line-35)">
+</text><text class="terminal-3279274305-r2" x="0" y="898.4" textLength="146.4" clip-path="url(#terminal-3279274305-line-36)">&#160;&#160;&#160;&#160;Safety:&#160;</text><text class="terminal-3279274305-r10" x="146.4" y="898.4" textLength="658.8" clip-path="url(#terminal-3279274305-line-36)">CAUTION&#160;—&#160;changes&#160;state,&#160;but&#160;is&#160;reversible&#160;and&#160;scoped.</text><text class="terminal-3279274305-r2" x="1268.8" y="898.4" textLength="12.2" clip-path="url(#terminal-3279274305-line-36)">
+</text><text class="terminal-3279274305-r2" x="0" y="922.8" textLength="1244.4" clip-path="url(#terminal-3279274305-line-37)">&#160;&#160;-&#160;Avoid:&#160;do&#160;not&#160;run&#160;db2index.pl/db2index&#160;with&#160;no&#160;arguments/target&#160;attribute&#160;to&#160;&#x27;reindex&#160;everything&#x27;.</text><text class="terminal-3279274305-r2" x="1268.8" y="922.8" textLength="12.2" clip-path="url(#terminal-3279274305-line-37)">
+</text><text class="terminal-3279274305-r1" x="73.2" y="947.2" textLength="305" clip-path="url(#terminal-3279274305-line-38)">db2index.pl&#160;(bare,&#160;no&#160;-t)</text><text class="terminal-3279274305-r2" x="1268.8" y="947.2" textLength="12.2" clip-path="url(#terminal-3279274305-line-38)">
+</text><text class="terminal-3279274305-r2" x="0" y="971.6" textLength="146.4" clip-path="url(#terminal-3279274305-line-39)">&#160;&#160;&#160;&#160;Safety:&#160;</text><text class="terminal-3279274305-r6" x="146.4" y="971.6" textLength="1049.2" clip-path="url(#terminal-3279274305-line-39)">HIGH&#160;RISK&#160;—&#160;potentially&#160;disruptive.&#160;Do&#160;not&#160;run&#160;without&#160;understanding&#160;the&#160;blast&#160;radius.</text><text class="terminal-3279274305-r2" x="1268.8" y="971.6" textLength="12.2" clip-path="url(#terminal-3279274305-line-39)">
+</text><text class="terminal-3279274305-r2" x="1268.8" y="996" textLength="12.2" clip-path="url(#terminal-3279274305-line-40)">
+</text><text class="terminal-3279274305-r7" x="0" y="1020.4" textLength="122" clip-path="url(#terminal-3279274305-line-41)">CONFIDENCE</text><text class="terminal-3279274305-r2" x="1268.8" y="1020.4" textLength="12.2" clip-path="url(#terminal-3279274305-line-41)">
+</text><text class="terminal-3279274305-r2" x="0" y="1044.8" textLength="1256.6" clip-path="url(#terminal-3279274305-line-42)">HIGH:&#160;[HIGH,&#160;Red&#160;Hat&#160;KCS&#160;7132895&#160;documents&#160;this&#160;exact&#160;ipa-healthcheck&#160;BackendsCheck/DSBLE0007&#160;finding]&#160;</text><text class="terminal-3279274305-r2" x="1268.8" y="1044.8" textLength="12.2" clip-path="url(#terminal-3279274305-line-42)">
+</text><text class="terminal-3279274305-r2" x="0" y="1069.2" textLength="695.4" clip-path="url(#terminal-3279274305-line-43)">the&#160;healthcheck&#160;finding&#160;directly&#160;names&#160;the&#160;missing&#160;index.</text><text class="terminal-3279274305-r2" x="1268.8" y="1069.2" textLength="12.2" clip-path="url(#terminal-3279274305-line-43)">
+</text><text class="terminal-3279274305-r2" x="1268.8" y="1093.6" textLength="12.2" clip-path="url(#terminal-3279274305-line-44)">
+</text><text class="terminal-3279274305-r7" x="0" y="1118" textLength="134.2" clip-path="url(#terminal-3279274305-line-45)">LIMITATIONS</text><text class="terminal-3279274305-r2" x="1268.8" y="1118" textLength="12.2" clip-path="url(#terminal-3279274305-line-45)">
+</text><text class="terminal-3279274305-r2" x="0" y="1142.4" textLength="1268.8" clip-path="url(#terminal-3279274305-line-46)">Ideally&#160;you&#160;would&#160;also&#160;confirm&#160;no&#160;new&#160;&#x27;unindexed&#160;search&#x27;&#160;warnings&#160;appear&#160;in&#160;the&#160;access&#160;log&#160;under&#160;normal&#160;</text><text class="terminal-3279274305-r2" x="1268.8" y="1142.4" textLength="12.2" clip-path="url(#terminal-3279274305-line-46)">
+</text><text class="terminal-3279274305-r2" x="0" y="1166.8" textLength="1220" clip-path="url(#terminal-3279274305-line-47)">query&#160;patterns&#160;after&#160;reindexing;&#160;that&#160;requires&#160;an&#160;access-log&#160;collector,&#160;which&#160;is&#160;out&#160;of&#160;this&#160;pack&#x27;s&#160;</text><text class="terminal-3279274305-r2" x="1268.8" y="1166.8" textLength="12.2" clip-path="url(#terminal-3279274305-line-47)">
+</text><text class="terminal-3279274305-r2" x="0" y="1191.2" textLength="268.4" clip-path="url(#terminal-3279274305-line-48)">collector&#160;scope&#160;in&#160;v1.</text><text class="terminal-3279274305-r2" x="1268.8" y="1191.2" textLength="12.2" clip-path="url(#terminal-3279274305-line-48)">
+</text><text class="terminal-3279274305-r2" x="1268.8" y="1215.6" textLength="12.2" clip-path="url(#terminal-3279274305-line-49)">
+</text><text class="terminal-3279274305-r7" x="0" y="1240" textLength="73.2" clip-path="url(#terminal-3279274305-line-50)">VERIFY</text><text class="terminal-3279274305-r2" x="1268.8" y="1240" textLength="12.2" clip-path="url(#terminal-3279274305-line-50)">
+</text><text class="terminal-3279274305-r2" x="0" y="1264.4" textLength="439.2" clip-path="url(#terminal-3279274305-line-51)">After&#160;addressing&#160;this,&#160;confirm&#160;with:</text><text class="terminal-3279274305-r2" x="1268.8" y="1264.4" textLength="12.2" clip-path="url(#terminal-3279274305-line-51)">
+</text><text class="terminal-3279274305-r2" x="1268.8" y="1288.8" textLength="12.2" clip-path="url(#terminal-3279274305-line-52)">
+</text><text class="terminal-3279274305-r4" x="48.8" y="1313.2" textLength="292.8" clip-path="url(#terminal-3279274305-line-53)">sudo&#160;ipa-diagnose&#160;verify</text><text class="terminal-3279274305-r2" x="1268.8" y="1313.2" textLength="12.2" clip-path="url(#terminal-3279274305-line-53)">
+</text><text class="terminal-3279274305-r2" x="1268.8" y="1337.6" textLength="12.2" clip-path="url(#terminal-3279274305-line-54)">
+</text><text class="terminal-3279274305-r2" x="0" y="1362" textLength="549" clip-path="url(#terminal-3279274305-line-55)">&#160;&#160;-&#160;Re-run&#160;BackendsCheck&#160;and&#160;confirm&#160;SUCCESS.</text><text class="terminal-3279274305-r2" x="1268.8" y="1362" textLength="12.2" clip-path="url(#terminal-3279274305-line-55)">
+</text><text class="terminal-3279274305-r2" x="1268.8" y="1386.4" textLength="12.2" clip-path="url(#terminal-3279274305-line-56)">
+</text><text class="terminal-3279274305-r3" x="0" y="1410.8" textLength="1268.8" clip-path="url(#terminal-3279274305-line-57)">────────────────────────────────────────────────────────────────────────────────────────────────────────</text><text class="terminal-3279274305-r2" x="1268.8" y="1410.8" textLength="12.2" clip-path="url(#terminal-3279274305-line-57)">
+</text><text class="terminal-3279274305-r3" x="0" y="1435.2" textLength="1049.2" clip-path="url(#terminal-3279274305-line-58)">Diagnostic&#160;packs&#160;evaluated:&#160;directory-server,&#160;dns,&#160;kerberos,&#160;replication,&#160;certificates</text><text class="terminal-3279274305-r2" x="1268.8" y="1435.2" textLength="12.2" clip-path="url(#terminal-3279274305-line-58)">
+</text>
+    </g>
+    </g>
+</svg>

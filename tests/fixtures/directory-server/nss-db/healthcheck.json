@@ -1,0 +1,41 @@
+[
+  {
+    "source": "ipahealthcheck.ds.nss",
+    "check": "NssCheck",
+    "result": "ERROR",
+    "uuid": "d4000000-0000-0000-0000-000000000001",
+    "when": "20260310081500Z",
+    "duration": "0.033",
+    "kw": {
+      "msg": "Unable to open NSS certificate database for slapd-EXAMPLE-TEST; certificate material could not be read.",
+      "nickname": "Server-Cert"
+    }
+  },
+  {
+    "source": "ipahealthcheck.ds.backends",
+    "check": "BackendsCheck",
+    "result": "SUCCESS",
+    "uuid": "d4000000-0000-0000-0000-000000000002",
+    "when": "20260310081500Z",
+    "duration": "0.041",
+    "kw": {}
+  },
+  {
+    "source": "ipahealthcheck.ipa.files",
+    "check": "IPAFileCheck",
+    "result": "SUCCESS",
+    "uuid": "d4000000-0000-0000-0000-000000000003",
+    "when": "20260310081500Z",
+    "duration": "0.014",
+    "kw": {}
+  },
+  {
+    "source": "ipahealthcheck.system.filesystemspace",
+    "check": "FileSystemSpaceCheck",
+    "result": "SUCCESS",
+    "uuid": "d4000000-0000-0000-0000-000000000004",
+    "when": "20260310081500Z",
+    "duration": "0.018",
+    "kw": {}
+  }
+]

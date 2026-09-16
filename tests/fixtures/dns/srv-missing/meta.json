@@ -1,0 +1,13 @@
+{
+  "hostname": "ipa01.example.test",
+  "scenario": "IPADNSSystemRecordsCheck ERROR for a missing Kerberos SRV record, independently confirmed by a live dig NXDOMAIN",
+  "expected_overall_status": "DEGRADED",
+  "expected_diagnoses": [
+    {
+      "diagnosis_id": "dns.srv-autodiscovery",
+      "status": "DIAGNOSED",
+      "priority": "PRIMARY_PROBLEM"
+    }
+  ],
+  "notes": "ERROR severity is outside the documented WARNING-only false-positive band (issue #270), and dns_lookup's live dig independently confirms _kerberos._udp is genuinely NXDOMAIN while the other system records are fine, giving HIGH confidence. No journal_named evidence of named being down or of a forward-zone collision, so named-service-down and forward-zone-conflict both correctly return None (not applicable)."
+}

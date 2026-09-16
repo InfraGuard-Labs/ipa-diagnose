@@ -1,0 +1,14 @@
+[
+  {
+    "request_id": "20260101120000",
+    "nickname": "Server-Cert",
+    "ca": "IPA",
+    "state": "MONITORING",
+    "stuck": "no",
+    "ca_error": null,
+    "serial": "0x1A2B3C",
+    "subject": "CN=ipa01.example.test,O=EXAMPLE.TEST",
+    "issuer": "CN=Certificate Authority,O=EXAMPLE.TEST",
+    "not_valid_after": "2026-09-30 00:00:00 UTC"
+  }
+]

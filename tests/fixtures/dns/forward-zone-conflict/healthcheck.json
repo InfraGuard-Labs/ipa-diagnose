@@ -1,0 +1,14 @@
+[
+  {
+    "source": "ipahealthcheck.ipa.idns",
+    "check": "IPADNSSystemRecordsCheck",
+    "result": "WARNING",
+    "uuid": "d3333333-3333-3333-3333-333333333333",
+    "when": "20260915111200Z",
+    "duration": "0.389",
+    "kw": {
+      "msg": "Expected 2 AAAA records for ipa-ca, found 1 (see freeipa-healthcheck issue #270 - known false positive on healthy systems)",
+      "key": "ipa-ca AAAA"
+    }
+  }
+]

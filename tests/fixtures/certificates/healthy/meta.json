@@ -1,0 +1,7 @@
+{
+  "hostname": "ipa01.example.test",
+  "scenario": "certificates healthy",
+  "expected_overall_status": "HEALTHY",
+  "expected_diagnoses": [],
+  "notes": "All ipa.certs/dogtag.ca healthcheck results are SUCCESS, so no additional collectors are staged (no certmonger.json/journal_pki.json needed) and no certificates rule fires."
+}

@@ -1,0 +1,23 @@
+[
+  {
+    "source": "ipahealthcheck.ds.replication",
+    "check": "ReplicationCheck",
+    "result": "ERROR",
+    "uuid": "55555555-5555-5555-5555-555555555555",
+    "when": "20260101120000Z",
+    "duration": "0.038",
+    "kw": {
+      "msg": "Unable to communicate with replica ipa02.example.test",
+      "agreement": "cn=meToipa02.example.test,cn=replica,cn=dc\\3Dexample\\2Cdc\\3Dtest,cn=mapping tree,cn=config"
+    }
+  },
+  {
+    "source": "ipahealthcheck.ipa.topology",
+    "check": "IPATopologyDomainCheck",
+    "result": "SUCCESS",
+    "uuid": "66666666-6666-6666-6666-666666666666",
+    "when": "20260101120000Z",
+    "duration": "0.198",
+    "kw": {}
+  }
+]

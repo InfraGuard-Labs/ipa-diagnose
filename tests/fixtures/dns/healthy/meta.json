@@ -1,0 +1,7 @@
+{
+  "hostname": "ipa01.example.test",
+  "scenario": "DNS healthy - IPADNSSystemRecordsCheck SUCCESS, no named/forwarding trouble in the journal",
+  "expected_overall_status": "HEALTHY",
+  "expected_diagnoses": [],
+  "notes": "Baseline healthy fixture. Since IPADNSSystemRecordsCheck is SUCCESS (no WARNING-or-worse finding on ipahealthcheck.ipa.idns), the dns pack's staged collectors (dns_lookup, journal_named) would not actually run in a live collection - their fixture files are included anyway for completeness/documentation and are simply unused reads in this scenario."
+}

@@ -1,0 +1,74 @@
+[
+  {
+    "source": "ipahealthcheck.ds.backends",
+    "check": "BackendsCheck",
+    "result": "SUCCESS",
+    "uuid": "d1000000-0000-0000-0000-000000000001",
+    "when": "20260101120000Z",
+    "duration": "0.041",
+    "kw": {}
+  },
+  {
+    "source": "ipahealthcheck.ds.config",
+    "check": "ConfigCheck",
+    "result": "SUCCESS",
+    "uuid": "d1000000-0000-0000-0000-000000000002",
+    "when": "20260101120000Z",
+    "duration": "0.012",
+    "kw": {}
+  },
+  {
+    "source": "ipahealthcheck.ds.dse",
+    "check": "DSECheck",
+    "result": "SUCCESS",
+    "uuid": "d1000000-0000-0000-0000-000000000003",
+    "when": "20260101120000Z",
+    "duration": "0.009",
+    "kw": {}
+  },
+  {
+    "source": "ipahealthcheck.ds.encryption",
+    "check": "EncryptionCheck",
+    "result": "SUCCESS",
+    "uuid": "d1000000-0000-0000-0000-000000000004",
+    "when": "20260101120000Z",
+    "duration": "0.007",
+    "kw": {}
+  },
+  {
+    "source": "ipahealthcheck.ds.nss",
+    "check": "NssCheck",
+    "result": "SUCCESS",
+    "uuid": "d1000000-0000-0000-0000-000000000005",
+    "when": "20260101120000Z",
+    "duration": "0.033",
+    "kw": {}
+  },
+  {
+    "source": "ipahealthcheck.ds.disk_space",
+    "check": "DiskSpaceCheck",
+    "result": "SUCCESS",
+    "uuid": "d1000000-0000-0000-0000-000000000006",
+    "when": "20260101120000Z",
+    "duration": "0.021",
+    "kw": {}
+  },
+  {
+    "source": "ipahealthcheck.system.filesystemspace",
+    "check": "FileSystemSpaceCheck",
+    "result": "SUCCESS",
+    "uuid": "d1000000-0000-0000-0000-000000000007",
+    "when": "20260101120000Z",
+    "duration": "0.018",
+    "kw": {}
+  },
+  {
+    "source": "ipahealthcheck.ipa.files",
+    "check": "IPAFileCheck",
+    "result": "SUCCESS",
+    "uuid": "d1000000-0000-0000-0000-000000000008",
+    "when": "20260101120000Z",
+    "duration": "0.014",
+    "kw": {}
+  }
+]

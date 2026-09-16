@@ -1,0 +1,13 @@
+{
+  "hostname": "ipa01.example.test",
+  "scenario": "certificate already past its expiration date",
+  "expected_overall_status": "CRITICAL",
+  "expected_diagnoses": [
+    {
+      "diagnosis_id": "certificates.cert-expired",
+      "status": "DIAGNOSED",
+      "priority": "PRIMARY_PROBLEM"
+    }
+  ],
+  "notes": "IPACertmongerExpirationCheck reports ERROR (past expiry, per Red Hat KCS 7007191 / freeipa.org/page/V4/CA_certificate_renewal) so cert-expired DIAGNOSES with HIGH confidence and CRITICAL severity. certmonger itself shows a clean MONITORING/no-error state, so certmonger-tracking-stuck and renewal-master-unreachable both correctly stay silent (no failure state present, and renewal-master-unreachable only considers the WARNING - not ERROR - expiration case, since ERROR/CRITICAL is already a confirmed, direct finding handled by cert-expired)."
+}

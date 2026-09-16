@@ -1,0 +1,5 @@
+{
+  "hostname": "server.ipadiagnose.test",
+  "scenario": "real freeipa/freeipa-server capture - dirsrv stopped via systemctl (induced failure)",
+  "notes": "Verbatim ipa-healthcheck --output-type json output captured immediately after `systemctl stop dirsrv@IPADIAGNOSE-TEST.service` on a real container, including a genuine ERROR (dirsrv not running) and a genuine CRITICAL (an uncaught AttributeError inside a healthcheck plugin itself, since LDAP was down). See ../README.md for what this validated and the real coverage gap it also found. Not asserted against a fixed expected_diagnoses list on purpose - see tests/unit/test_real_freeipa_capture.py for why."
+}

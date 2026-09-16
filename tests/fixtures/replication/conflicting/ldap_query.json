@@ -1,0 +1,16 @@
+{
+  "conflicts": [
+    {
+      "dn": "uid=jdoe,cn=users,cn=accounts,dc=example,dc=test",
+      "message": "namingConflict added by attribute value from a later CSN"
+    }
+  ],
+  "keytab_bind": {
+    "principal": "ldap/ipa01.example.test@EXAMPLE.TEST",
+    "kinit_ok": true,
+    "klist_ok": true,
+    "bind_ok": true,
+    "target": "ipa02.example.test",
+    "error": null
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "hostname": "ipa01.example.test",
+  "scenario": "CA_UNREACHABLE with a generic/empty ca-error (the documented trap), plus one thin, uncorroborated RA-agent/Dogtag connectivity warning",
+  "expected_overall_status": "UNKNOWN",
+  "expected_diagnoses": [
+    {
+      "diagnosis_id": "certificates.certmonger-tracking-stuck",
+      "status": "UNKNOWN_INSUFFICIENT_EVIDENCE",
+      "priority": "PRIMARY_PROBLEM"
+    },
+    {
+      "diagnosis_id": "certificates.ra-agent-desync",
+      "status": "UNKNOWN_INSUFFICIENT_EVIDENCE",
+      "priority": "SECONDARY_INDEPENDENT_PROBLEM"
+    }
+  ],
+  "notes": "certmonger-tracking-stuck: the tracking request is CA_UNREACHABLE but ca-error is empty, so per the documented trap (mankier getcert-list(1); freeipa.org/page/Troubleshooting/PKI) this cannot be safely attributed to network/DNS vs. an expired CA cert vs. a missing trust anchor - stays UNKNOWN_INSUFFICIENT_EVIDENCE, severity ERROR. ra-agent-desync: only a single WARNING-level DogtagCertsConnectivityCheck with no corroborating RA-agent certmonger failure or journal auth error, so it also stays UNKNOWN_INSUFFICIENT_EVIDENCE, but at severity WARNING (thin single signal). certmonger-tracking-stuck's higher severity (ERROR vs WARNING) makes it PRIMARY and ra-agent-desync SECONDARY_INDEPENDENT_PROBLEM; neither pack the other cites as upstream_candidates (replication, directory-server) actually fired in this run, so neither is demoted to RELATED_SYMPTOM. Both being non-DIAGNOSED with a primary/secondary at ERROR severity pushes overall_status to UNKNOWN. The journal_pki.json line is present to exercise that collector's wiring end-to-end; it only repeats the generic CA_UNREACHABLE state (no network/trust-specific text, no RA/4301 auth text) so it does not change either rule's outcome."
+}

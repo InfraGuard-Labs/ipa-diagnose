@@ -1,0 +1,14 @@
+{
+  "hostname": "ipa01.example.test",
+  "scenario": "IPADNSSystemRecordsCheck ERROR present, but dns_lookup/journal_named could not run (simulated permission denied - their fixture files are deliberately absent from this directory)",
+  "expected_overall_status": "UNKNOWN",
+  "expected_diagnoses": [
+    {
+      "diagnosis_id": "dns.srv-autodiscovery",
+      "status": "UNKNOWN_INSUFFICIENT_EVIDENCE",
+      "priority": "PRIMARY_PROBLEM"
+    }
+  ],
+  "expected_collection_errors_at_least": 2,
+  "notes": "This directory intentionally has no dns_lookup.json or journal_named.json, which makes both collectors raise CollectorError (permission_related=True) instead of returning items - simulating a real permission-denied failure to run dig/journalctl. With no independent corroboration available, srv-autodiscovery must not guess: it returns UNKNOWN_INSUFFICIENT_EVIDENCE with next_diagnostic_step pointing at manually running dig against every IPA DNS server in the topology plus journalctl -u named-pkcs11 as root. named-service-down and forward-zone-conflict also see no journal evidence and correctly return None."
+}

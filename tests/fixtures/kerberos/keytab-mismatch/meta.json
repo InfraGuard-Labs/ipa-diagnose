@@ -1,0 +1,13 @@
+{
+  "hostname": "ipa01.example.test",
+  "scenario": "kerberos keytab/KVNO mismatch",
+  "expected_overall_status": "DEGRADED",
+  "expected_diagnoses": [
+    {
+      "diagnosis_id": "kerberos.keytab-kvno-mismatch",
+      "status": "DIAGNOSED",
+      "priority": "PRIMARY_PROBLEM"
+    }
+  ],
+  "notes": "IPAHostKeytab fails with the GENERIC 'Preauthentication failed' error - deliberately the same generic string used in the ambiguous-preauth fixture - to prove the rule does not key off that text. The disambiguating evidence is kerberos_client's direct kvno_comparison item showing KDC kvno=3 vs keytab kvno=2 (match=false); clock_sync shows the host is synchronized, and journal_krb5kdc's one line is classified as preauth_failed (generic), not clock_skew, so ClockSkewRule correctly stays silent (returns None) and KdcDiscoveryFailureRule finds no DNS-style message."
+}
