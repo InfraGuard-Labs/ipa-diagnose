@@ -1,0 +1,52 @@
+# Builds the ipa-diagnose RPM for EL9 (RHEL9/CentOS Stream 9/Rocky 9/
+# AlmaLinux 9) entirely inside Docker. Pinned to a specific Rocky Linux 9
+# minor release (not :latest, not :9 which floats) so the build is
+# reproducible. rockylinux is used as the reference EL9 build host - the
+# resulting RPM is also verified to install cleanly on AlmaLinux 9 (see
+# packaging/rpm/el9/README notes / the top-level packaging report).
+#
+# Unlike the Fedora build (packaging/rpm/Dockerfile.rpmbuild), this one
+# needs:
+#   - CRB (CodeReady Builder) enabled: pyproject-rpm-macros only ships
+#     there on EL9, not in base/AppStream (confirmed).
+#   - EPEL9 enabled: python3-rich and python3-tomli's sibling tooling
+#     live there (python3-tomli is actually in base AppStream, but EPEL
+#     is needed for python3-rich, both at build time for %check and made
+#     a real runtime Requires - see packaging/rpm/el9/ipa-diagnose.spec's
+#     header comment for the full gap analysis).
+#   - python3.11 (plain AppStream package, no module-stream dance)
+#     installed alongside the system-default python3 (3.9): it is used
+#     ONLY to build the wheel (EL9's default python3.9 ships setuptools
+#     53.0.0, which cannot parse this project's pyproject.toml at all -
+#     confirmed). It never appears in the shipped package's dependencies.
+FROM rockylinux:9.3
+
+RUN dnf install -y --setopt=install_weak_deps=False \
+        epel-release \
+        dnf-plugins-core \
+    && dnf config-manager --set-enabled crb \
+    && dnf install -y --setopt=install_weak_deps=False \
+        rpm-build \
+        rpmdevtools \
+        pyproject-rpm-macros \
+        python3-devel \
+        python3-pip \
+        python3-tomli \
+        python3-pytest \
+        python3-rich \
+        python3.11 \
+        python3.11-devel \
+        python3.11-setuptools \
+        python3.11-pip \
+        python3.11-wheel \
+        git \
+        tar \
+        gzip \
+        make \
+    && dnf clean all
+
+WORKDIR /src
+COPY . /src
+
+RUN chmod +x packaging/rpm/el9/build-rpm.sh
+CMD ["packaging/rpm/el9/build-rpm.sh"]
