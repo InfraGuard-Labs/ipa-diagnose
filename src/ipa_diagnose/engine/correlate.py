@@ -126,7 +126,20 @@ def build_report(
         collection_errors=[f"{e.collector}: {e.message}" for e in bundle.collection_errors],
         packs_evaluated=packs_evaluated,
         replay_source=bundle.replay_source,
+        environment=bundle.environment,
+        unknown_severity_findings=_unknown_severity_notes(bundle),
     )
+
+
+def _unknown_severity_notes(bundle: EvidenceBundle) -> List[str]:
+    notes = []
+    for f in bundle.findings:
+        if f.severity == Severity.UNKNOWN:
+            raw_result = f.raw.get("result") if isinstance(f.raw, dict) else None
+            notes.append(
+                f"{f.source}.{f.check}: unrecognized severity {raw_result!r} - treated as ERROR-equivalent, not dropped"
+            )
+    return notes
 
 
 _PRIORITY_ORDER = {

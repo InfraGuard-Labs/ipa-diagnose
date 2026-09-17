@@ -1,0 +1,38 @@
+[
+  {
+    "source": "ipahealthcheck.ds.replication",
+    "check": "ReplicationCheck",
+    "result": "SUCCESS",
+    "uuid": "55555555-5555-5555-5555-555555555555",
+    "when": "20260101120000Z",
+    "duration": "0.021",
+    "kw": {}
+  },
+  {
+    "source": "ipahealthcheck.ipa.topology",
+    "check": "IPATopologyDomainCheck",
+    "result": "SUCCESS",
+    "uuid": "66666666-6666-6666-6666-666666666666",
+    "when": "20260101120000Z",
+    "duration": "0.315",
+    "kw": {}
+  },
+  {
+    "source": "ipahealthcheck.ds.ruv",
+    "check": "RUVCheck",
+    "result": "SUCCESS",
+    "uuid": "77777777-7777-7777-7777-777777777777",
+    "when": "20260101120000Z",
+    "duration": "0.010",
+    "kw": {}
+  },
+  {
+    "source": "ipahealthcheck.ds.ruv",
+    "check": "KnownRUVCheck",
+    "result": "SUCCESS",
+    "uuid": "88888888-8888-8888-8888-888888888888",
+    "when": "20260101120000Z",
+    "duration": "0.010",
+    "kw": {}
+  }
+]

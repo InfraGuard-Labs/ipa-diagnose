@@ -14,10 +14,19 @@ def test_parses_known_severities():
     assert findings[0].qualified_check == "ipahealthcheck.ds.replication.ReplicationCheck"
 
 
-def test_unknown_severity_defaults_to_warning_not_crash():
+def test_unknown_severity_does_not_crash_and_ranks_at_error_not_warning():
+    """An unrecognized future severity must not be silently downgraded to
+    WARNING - that previously let a real, corroborated ERROR/CRITICAL-level
+    problem fall below every rule's `>= ERROR` trigger gate and go
+    completely unreported (reproduced with a real "FATAL" value). It ranks
+    alongside ERROR - not WARNING, and not CRITICAL either (an unrecognized
+    value must not be manufactured into an automatic CRITICAL)."""
+
     raw = [{"source": "x", "check": "y", "result": "SOMETHING_NEW_FROM_2030", "kw": {}}]
     findings = parse_healthcheck_results(raw, command="test", live=False)
-    assert findings[0].severity == Severity.WARNING
+    assert findings[0].severity == Severity.UNKNOWN
+    assert findings[0].severity.rank == Severity.ERROR.rank
+    assert findings[0].severity.rank < Severity.CRITICAL.rank
 
 
 def test_ignores_non_dict_entries():

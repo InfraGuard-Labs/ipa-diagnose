@@ -57,7 +57,7 @@ def render_report(
 
     if not report.diagnoses:
         console.print("[bold green]No problems detected.[/bold green] All evaluated checks passed.")
-        _print_coverage(report, console)
+        _print_coverage(report, console, details=details)
         return
 
     primaries = report.by_priority(PriorityBucket.PRIMARY)
@@ -99,7 +99,7 @@ def render_report(
             console.print(f"  ℹ {d.title}")
         console.print()
 
-    _print_coverage(report, console)
+    _print_coverage(report, console, details=details)
 
 
 def _first_line(text: str) -> str:
@@ -224,10 +224,29 @@ def render_verify(result, console: Console) -> None:
         console.print("[dim]Run `sudo ipa-diagnose` for full detail on this.[/dim]")
 
 
-def _print_coverage(report: DiagnosisReport, console: Console) -> None:
+def _print_coverage(report: DiagnosisReport, console: Console, *, details: bool = False) -> None:
     console.print(Rule(style="dim"))
     console.print(f"[dim]Diagnostic packs evaluated: {', '.join(report.packs_evaluated)}[/dim]")
     if report.collection_errors:
         console.print(f"[yellow]Evidence collection issues ({len(report.collection_errors)}):[/yellow]")
         for err in report.collection_errors:
             console.print(f"  [yellow]- {err}[/yellow]")
+    if report.unknown_severity_findings:
+        console.print(f"[yellow]Unrecognized severity value(s) ({len(report.unknown_severity_findings)}):[/yellow]")
+        for note in report.unknown_severity_findings:
+            console.print(f"  [yellow]- {note}[/yellow]")
+    if details and report.environment:
+        env = report.environment
+        parts = []
+        if env.distro or env.distro_version:
+            parts.append(f"OS: {env.distro or '?'} {env.distro_version or ''}".strip())
+        if env.python_version:
+            parts.append(f"Python: {env.python_version}")
+        if env.freeipa_version:
+            parts.append(f"FreeIPA: {env.freeipa_version}")
+        if env.ipa_healthcheck_version:
+            parts.append(f"ipa-healthcheck: {env.ipa_healthcheck_version}")
+        if env.directory_server_version:
+            parts.append(f"389-ds: {env.directory_server_version}")
+        if parts:
+            console.print(f"[dim]Environment ({'live' if env.detected_live else 'replayed'}): {' | '.join(parts)}[/dim]")

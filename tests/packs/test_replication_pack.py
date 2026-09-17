@@ -34,7 +34,9 @@ def _load_meta(fixture_name: str) -> dict:
     return json.loads((FIXTURES_DIR / fixture_name / "meta.json").read_text(encoding="utf-8"))
 
 
-@pytest.mark.parametrize("fixture_name", ["healthy", "peer-unreachable", "ambiguous", "conflicting"])
+@pytest.mark.parametrize(
+    "fixture_name", ["healthy", "peer-unreachable", "ambiguous", "conflicting", "stale-ruv-removed-replica"]
+)
 def test_fixture_matches_expected_outcome(fixture_name):
     meta = _load_meta(fixture_name)
     fixture_dir = FIXTURES_DIR / fixture_name
@@ -253,6 +255,156 @@ def test_bind_failure_for_a_different_peer_does_not_corroborate_the_trigger():
     assert diag.status != DiagnosisStatus.DIAGNOSED
     for ref in diag.evidence_for:
         assert ref.evidence_id not in {"ldap-query:keytab-bind", "replication-agreements:ipa03"}
+
+
+def test_stale_ruv_removed_replica_no_longer_silently_reports_healthy():
+    """The critical regression this release fixes: a decommissioned replica
+    leaves a stale RUV entry while every other replication/topology check
+    (including RUVCheck/KnownRUVCheck themselves, which real ipa-healthcheck
+    never reports above SUCCESS for this - confirmed against upstream
+    source) looks completely healthy. Before the fix, the RUV collector
+    never even ran in this scenario, so this reported 'Overall: HEALTHY'.
+    Prove it no longer does."""
+
+    bundle = collect_evidence(replay_dir=str(FIXTURES_DIR / "stale-ruv-removed-replica"))
+    report = run_diagnosis(bundle)
+
+    assert report.overall_status.value != "HEALTHY"
+    stale = next(d for d in report.diagnoses if d.diagnosis_id == "replication.stale-ruv")
+    assert stale.status == DiagnosisStatus.UNKNOWN_INSUFFICIENT_EVIDENCE
+    assert stale.status != DiagnosisStatus.DIAGNOSED  # must not guess "decommissioned" without corroboration
+    assert stale.next_diagnostic_step
+    _assert_evidence_refs_are_real(stale, bundle)
+    # The collector must actually have run unconditionally - not merely
+    # "no error", but real RUV items present in the bundle.
+    ruv_items = bundle.items_by_kind("replication_ruv")
+    assert any(i.data.get("replica_id") == 6 and i.data.get("alive") is False for i in ruv_items)
+
+
+def test_multiple_active_replicas_with_one_stale_only_flags_the_stale_one():
+    bundle = _bundle(
+        items=[
+            _ruv_item(4, alive=True),
+            _ruv_item(5, alive=True),
+            _ruv_item(6, alive=True),
+            _ruv_item(9, alive=False),
+        ]
+    )
+    diagnoses = PACK.evaluate(bundle)
+    diag = next(d for d in diagnoses if d.rule_id == "stale-ruv")
+    stale_ids = {ref.evidence_id for ref in diag.evidence_for}
+    assert "replication-ruv:9" in stale_ids
+    for alive_id in ("replication-ruv:4", "replication-ruv:5", "replication-ruv:6"):
+        assert alive_id not in stale_ids
+
+
+def test_stale_ruv_and_real_replication_failure_both_fire_independently():
+    """A genuinely broken agreement and an unrelated stale RUV happening at
+    the same time must both be reported, not merged or have one mask the
+    other."""
+
+    trigger = _finding(
+        "ipahealthcheck.ds.replication",
+        "ReplicationCheck",
+        Severity.ERROR,
+        message="Unable to communicate with replica ipa02.example.test: sasl_io_recv failed to decode packet",
+        keywords={"agreement": "cn=meToipa02.example.test,cn=replica,..."},
+    )
+    bind_failure = EvidenceItem(
+        item_id="ldap-query:keytab-bind",
+        kind="keytab_bind_check",
+        summary="GSSAPI bind to ipa02 failed",
+        data={"target": "ipa02.example.test", "bind_ok": False},
+    )
+    bundle = _bundle(findings=[trigger], items=[bind_failure, _ruv_item(9, alive=False)])
+    diagnoses = {d.rule_id: d for d in PACK.evaluate(bundle)}
+    assert diagnoses["peer-connectivity-break"].status == DiagnosisStatus.DIAGNOSED
+    assert diagnoses["stale-ruv"].status == DiagnosisStatus.UNKNOWN_INSUFFICIENT_EVIDENCE
+    # Neither rule's evidence should bleed into the other's.
+    assert "replication-ruv:9" not in {r.evidence_id for r in diagnoses["peer-connectivity-break"].evidence_for}
+
+
+def test_peer_correlation_prefers_unknown_over_guessing_with_two_ambiguous_failing_peers():
+    """Hardening: if the trigger finding names no specific peer (a renamed
+    kw.agreement field, or message text without a hostname) AND more than
+    one distinct peer is independently failing, the rule must not guess -
+    it must not cite either peer's evidence as confirming this finding."""
+
+    trigger = _finding(
+        "ipahealthcheck.ds.replication",
+        "ReplicationCheck",
+        Severity.ERROR,
+        message="A replication agreement is failing",  # no hostname, no "agreement" keyword at all
+    )
+    bind_failure_b = EvidenceItem(
+        item_id="ldap-query:keytab-bind-b",
+        kind="keytab_bind_check",
+        summary="GSSAPI bind to ipa02 failed",
+        data={"target": "ipa02.example.test", "bind_ok": False},
+    )
+    agreement_failure_c = EvidenceItem(
+        item_id="replication-agreements:ipa03",
+        kind="replication_agreement",
+        summary="agreement to ipa03 is red",
+        data={"peer": "ipa03.example.test", "status": "red"},
+    )
+    bundle = _bundle(findings=[trigger], items=[bind_failure_b, agreement_failure_c])
+    diagnoses = PACK.evaluate(bundle)
+    diag = next(d for d in diagnoses if d.rule_id == "peer-connectivity-break")
+
+    assert diag.status != DiagnosisStatus.DIAGNOSED
+    cited_ids = {ref.evidence_id for ref in diag.evidence_for}
+    assert "ldap-query:keytab-bind-b" not in cited_ids
+    assert "replication-agreements:ipa03" not in cited_ids
+
+
+def test_peer_correlation_keeps_single_unambiguous_candidate_even_without_a_named_peer():
+    """When exactly one peer is failing, there is nothing to misattribute -
+    the rule should still use it even though the trigger finding names no
+    specific peer."""
+
+    trigger = _finding(
+        "ipahealthcheck.ds.replication",
+        "ReplicationCheck",
+        Severity.ERROR,
+        message="A replication agreement is failing",
+    )
+    only_failure = EvidenceItem(
+        item_id="ldap-query:keytab-bind",
+        kind="keytab_bind_check",
+        summary="GSSAPI bind to ipa02 failed",
+        data={"target": "ipa02.example.test", "bind_ok": False},
+    )
+    bundle = _bundle(findings=[trigger], items=[only_failure])
+    diagnoses = PACK.evaluate(bundle)
+    diag = next(d for d in diagnoses if d.rule_id == "peer-connectivity-break")
+    assert diag.status == DiagnosisStatus.DIAGNOSED
+    assert any(ref.evidence_id == "ldap-query:keytab-bind" for ref in diag.evidence_for)
+
+
+def test_unrecognized_severity_still_triggers_the_rule_instead_of_being_silently_dropped():
+    """Reproduces the severity-fallback bug: a real, fully-corroborated
+    problem reported with a future/unrecognized severity value must not
+    silently fail to trigger the rule's >= ERROR gate."""
+
+    trigger = _finding(
+        "ipahealthcheck.ds.replication",
+        "ReplicationCheck",
+        Severity.UNKNOWN,  # what _parse_severity now returns for e.g. "FATAL"
+        message="Unable to communicate with replica ipa02.example.test",
+        keywords={"agreement": "cn=meToipa02.example.test,cn=replica,..."},
+    )
+    bind_failure = EvidenceItem(
+        item_id="ldap-query:keytab-bind",
+        kind="keytab_bind_check",
+        summary="GSSAPI bind to ipa02 failed",
+        data={"target": "ipa02.example.test", "bind_ok": False},
+    )
+    bundle = _bundle(findings=[trigger], items=[bind_failure])
+    diagnoses = PACK.evaluate(bundle)
+    diag = next((d for d in diagnoses if d.rule_id == "peer-connectivity-break"), None)
+    assert diag is not None, "an UNKNOWN-severity ERROR-equivalent finding must still trigger the rule"
+    assert diag.status == DiagnosisStatus.DIAGNOSED
 
 
 def test_confidence_object_is_reused_correctly_when_low():

@@ -13,8 +13,13 @@ ipa-healthcheck JSON is a flat array of objects shaped like:
     }
 
 An unrecognized `result` value (a future ipa-healthcheck severity we don't
-know about yet) is treated as WARNING rather than raising - "unknown is
-better than wrong" applies to parsing failures too, not just diagnoses.
+know about yet) is treated as Severity.UNKNOWN rather than raising, and
+Severity.UNKNOWN ranks alongside ERROR - not WARNING. Reproduced in
+adversarial testing: a real, fully-corroborated problem reported with
+``"result": "FATAL"`` (not a recognized value) was previously downgraded to
+WARNING and silently excluded by every rule's `>= ERROR` trigger gate. An
+unrecognized severity must not silently become benign; it must also not be
+manufactured into an automatic CRITICAL. See evidence/model.py::Severity.
 """
 
 from __future__ import annotations
@@ -31,7 +36,7 @@ _SEVERITY_ALIASES = {s.value: s for s in Severity}
 def _parse_severity(raw: Any) -> Severity:
     if isinstance(raw, str) and raw.upper() in _SEVERITY_ALIASES:
         return _SEVERITY_ALIASES[raw.upper()]
-    return Severity.WARNING
+    return Severity.UNKNOWN
 
 
 _TRACEBACK_LAST_LINE_RE = re.compile(r"([^\n]+)\s*$")

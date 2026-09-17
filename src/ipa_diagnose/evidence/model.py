@@ -18,16 +18,36 @@ from typing import Any, Dict, List, Optional
 
 
 class Severity(enum.Enum):
-    """Mirrors ipa-healthcheck's own severity scale so results compose directly."""
+    """Mirrors ipa-healthcheck's own severity scale so results compose directly.
+
+    ``UNKNOWN`` is not part of ipa-healthcheck's own vocabulary - it is what
+    a Finding gets when its raw ``result`` string does not match any of the
+    four real values (a future ipa-healthcheck severity this build predates).
+    It ranks alongside ERROR (not WARNING, and not CRITICAL): dropping an
+    unrecognized severity to WARNING previously let a real, corroborated
+    ERROR/CRITICAL-equivalent problem fall below the ``>= ERROR`` gate every
+    rule uses and go completely unreported (reproduced with a real
+    ``"result": "FATAL"`` value in adversarial testing) - "unknown is better
+    than wrong" cuts both ways: an unrecognized severity must not silently
+    become benign, but it also must not be manufactured into an automatic
+    CRITICAL. See ``evidence/healthcheck.py::_parse_severity``.
+    """
 
     SUCCESS = "SUCCESS"
     WARNING = "WARNING"
     ERROR = "ERROR"
     CRITICAL = "CRITICAL"
+    UNKNOWN = "UNKNOWN"
 
     @property
     def rank(self) -> int:
-        return {Severity.SUCCESS: 0, Severity.WARNING: 1, Severity.ERROR: 2, Severity.CRITICAL: 3}[self]
+        return {
+            Severity.SUCCESS: 0,
+            Severity.WARNING: 1,
+            Severity.ERROR: 2,
+            Severity.UNKNOWN: 2,
+            Severity.CRITICAL: 3,
+        }[self]
 
     def __lt__(self, other: "Severity") -> bool:
         if not isinstance(other, Severity):
@@ -112,6 +132,26 @@ class CollectionError:
     provenance: Optional[Provenance] = None
 
 
+@dataclasses.dataclass(frozen=True)
+class EnvironmentInfo:
+    """Lightweight, best-effort environment/version metadata - safety context
+    for --details/--json, not a compatibility-mapping engine. Every field is
+    independently optional: detection failures never raise, they just leave
+    the field None (see evidence/environment.py)."""
+
+    distro: Optional[str] = None
+    """e.g. "rhel", "rocky", "almalinux", "fedora" (/etc/os-release ID)."""
+    distro_version: Optional[str] = None
+    """e.g. "9.8" (/etc/os-release VERSION_ID)."""
+    python_version: Optional[str] = None
+    freeipa_version: Optional[str] = None
+    ipa_healthcheck_version: Optional[str] = None
+    directory_server_version: Optional[str] = None
+    detected_live: bool = True
+    """False when this came from a --replay fixture's meta.json rather than
+    the live host."""
+
+
 @dataclasses.dataclass
 class EvidenceBundle:
     """Everything collected for one diagnostic run."""
@@ -121,7 +161,7 @@ class EvidenceBundle:
     findings: List[Finding] = dataclasses.field(default_factory=list)
     items: List[EvidenceItem] = dataclasses.field(default_factory=list)
     collection_errors: List[CollectionError] = dataclasses.field(default_factory=list)
-    healthcheck_version: Optional[str] = None
+    environment: Optional[EnvironmentInfo] = None
     replay_source: Optional[str] = None
     """Set to the fixture directory path when running under --replay."""
 

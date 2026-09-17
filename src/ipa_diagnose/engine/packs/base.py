@@ -55,8 +55,22 @@ class DiagnosticPack:
     additional_collectors: List[str] = dataclasses.field(default_factory=list)
     """Names of targeted (non-healthcheck) collectors this pack can use,
     registered in evidence/collectors/. Collected only when this pack's
-    trigger findings are present (see cli.py's staged-collection flow), not
-    unconditionally on every run."""
+    trigger findings are present (see evidence/collect.py's staged-collection
+    flow), not unconditionally on every run."""
+    unconditional_collectors: List[str] = dataclasses.field(default_factory=list)
+    """Collectors that must run on every invocation regardless of whether
+    this pack's healthcheck_sources have a WARNING+ finding. This is a
+    deliberate, narrow exception to the "collect only when triggered"
+    default above - use it only when a real problem is otherwise
+    structurally undiscoverable. Concretely: a stale RUV from a
+    decommissioned replica does not itself make ipa-healthcheck's own
+    RUVCheck/KnownRUVCheck report anything worse than SUCCESS (confirmed
+    against upstream ipa-healthcheck source - full staleness analysis needs
+    multi-master data healthcheck doesn't have), so gating the
+    ``replication_agreements`` collector behind another replication/topology
+    finding meant a topology that otherwise looked perfectly healthy could
+    hide a real stale RUV entirely (reproduced: reported "Overall: HEALTHY"
+    for exactly that scenario)."""
 
     def evaluate(self, bundle: EvidenceBundle) -> List[Diagnosis]:
         results: List[Diagnosis] = []

@@ -105,12 +105,32 @@ class PeerConnectivityBreakRule(DiagnosticRule):
         bind_failures = [i for i in bind_items if not i.data.get("bind_ok", True)]
         agreement_failures = [i for i in agreement_items if i.data.get("status") == "red"]
 
+        peer_ambiguous = False
         trigger_peer = _trigger_peer(trigger)
         if trigger_peer:
             bind_failures = [i for i in bind_failures if str(i.data.get("target", "")).lower() == trigger_peer]
             agreement_failures = [
                 i for i in agreement_failures if str(i.data.get("peer", "")).lower() == trigger_peer
             ]
+        else:
+            # No peer name could be extracted from this trigger finding at
+            # all (e.g. a future ipa-healthcheck renamed the `kw.agreement`
+            # field and the message text doesn't name a host either). If
+            # there is only ONE failing candidate, there is nothing to
+            # misattribute - keep it. If there is more than one distinct
+            # failing peer, we cannot tell which one this specific
+            # healthcheck error is actually about, and blanket-using all of
+            # them risks citing an unrelated peer's evidence as "confirming"
+            # this one (the exact false-diagnosis mechanism found in
+            # adversarial review). Prefer UNKNOWN over a guess: discard the
+            # candidates so this falls through to the not-corroborated path
+            # below instead of a confident DIAGNOSED citing the wrong peer.
+            candidate_peers = {str(i.data.get("target", "")).lower() for i in bind_failures if i.data.get("target")}
+            candidate_peers |= {str(i.data.get("peer", "")).lower() for i in agreement_failures if i.data.get("peer")}
+            if len(candidate_peers) > 1:
+                bind_failures = []
+                agreement_failures = []
+                peer_ambiguous = True
 
         upstream = ["dns", "kerberos"]
         if _disk_space_signal(bundle):
@@ -314,6 +334,51 @@ class PeerConnectivityBreakRule(DiagnosticRule):
                     "cannot fully do (RUVCheck documents this same limitation). A live write-and-observe "
                     "test on both suppliers is the gold-standard verification step."
                 ),
+                upstream_candidates=upstream,
+            )
+
+        if peer_ambiguous:
+            # Real bind/agreement failures exist, but for more than one
+            # distinct peer, and this trigger finding didn't name which one
+            # it's actually about - attributing any single one of them would
+            # risk citing the wrong peer's evidence (see the comment where
+            # peer_ambiguous is set). This is a distinct case from "nothing
+            # failed": failures ARE present, we just cannot safely say which
+            # one this specific healthcheck error corroborates.
+            return Diagnosis(
+                pack_id="replication",
+                rule_id=self.rule_id,
+                status=DiagnosisStatus.UNKNOWN_INSUFFICIENT_EVIDENCE,
+                title="Replication agreement error - failing peer could not be confirmed",
+                why=(
+                    "ipa-healthcheck's ReplicationCheck reports an agreement error, and more than one "
+                    "peer independently shows a bind or agreement failure, but this specific healthcheck "
+                    "finding does not name which peer it is actually about. Attributing any single one of "
+                    "those failures to this finding would risk citing the wrong peer's evidence."
+                ),
+                confidence=Confidence(
+                    level=ConfidenceLevel.LOW,
+                    rationale=(
+                        "[MED] multiple candidate peers are failing, which is real signal, but without a "
+                        "way to match this specific healthcheck finding to one of them, confidently "
+                        "naming a cause risks being about the wrong replica entirely."
+                    ),
+                    corroborating_evidence_count=len(candidate_peers),
+                ),
+                severity=trigger.severity,
+                evidence_for=base_evidence_for,
+                impact="One or more replication agreements are failing; scope is uncertain until the specific failing agreement is confirmed.",
+                actions=[
+                    Action(
+                        description="List replication agreements for this host to see which ones are actually failing.",
+                        risk=RiskLevel.SAFE,
+                        command="ipa-replica-manage list <host>",
+                        rationale="Confirms exactly which agreement(s) this healthcheck error corresponds to before acting on any one of them.",
+                    ),
+                ],
+                verification=[_verification_condition()],
+                limitations="Cannot confirm which of the multiple failing peers this specific ReplicationCheck finding is about.",
+                next_diagnostic_step="Run `ipa-replica-manage list <host>` as root and compare the failing agreement(s) against this healthcheck finding's timing/details to confirm which peer it actually names.",
                 upstream_candidates=upstream,
             )
 
@@ -679,5 +744,16 @@ PACK = DiagnosticPack(
         TopologyDisconnectedRule(),
     ],
     healthcheck_sources=["ipahealthcheck.ds.replication", "ipahealthcheck.ipa.topology"],
-    additional_collectors=["replication_agreements", "ldap_query"],
+    # ldap_query (conflict search + GSSAPI bind check) stays trigger-gated:
+    # it only matters once ReplicationCheck/topology already looks broken.
+    additional_collectors=["ldap_query"],
+    # replication_agreements runs on every invocation, not just when
+    # something else already looks broken - see
+    # DiagnosticPack.unconditional_collectors and StaleRuvRule's docstring.
+    # A stale RUV from a decommissioned replica does not, by itself, make
+    # RUVCheck/KnownRUVCheck report anything worse than SUCCESS, so gating
+    # this collector behind another replication/topology finding meant that
+    # exact real-world scenario (old replica removed, everything else
+    # healthy) was silently invisible.
+    unconditional_collectors=["replication_agreements"],
 )

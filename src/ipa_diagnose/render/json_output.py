@@ -54,6 +54,20 @@ def _diagnosis_to_dict(d: Diagnosis, ai_explanation: str = None) -> Dict[str, An
     }
 
 
+def _environment_to_dict(env) -> Dict[str, Any] | None:
+    if env is None:
+        return None
+    return {
+        "distro": env.distro,
+        "distro_version": env.distro_version,
+        "python_version": env.python_version,
+        "freeipa_version": env.freeipa_version,
+        "ipa_healthcheck_version": env.ipa_healthcheck_version,
+        "directory_server_version": env.directory_server_version,
+        "detected_live": env.detected_live,
+    }
+
+
 def report_to_dict(report: DiagnosisReport, ai_explanations: Dict[str, str] = None) -> Dict[str, Any]:
     ai_explanations = ai_explanations or {}
     return {
@@ -63,6 +77,8 @@ def report_to_dict(report: DiagnosisReport, ai_explanations: Dict[str, str] = No
         "packs_evaluated": report.packs_evaluated,
         "collection_errors": report.collection_errors,
         "replay_source": report.replay_source,
+        "environment": _environment_to_dict(report.environment),
+        "unknown_severity_findings": report.unknown_severity_findings,
         "diagnoses": [
             _diagnosis_to_dict(d, ai_explanations.get(d.diagnosis_id)) for d in report.diagnoses
         ],

@@ -1,0 +1,13 @@
+{
+  "hostname": "ipa01.example.test",
+  "scenario": "regression fixture (v0.1.1): a replica (ipa03) was decommissioned without cleanup, leaving a stale RUV entry (replica_id 6), while ReplicationCheck, IPATopologyDomainCheck, RUVCheck and KnownRUVCheck all report SUCCESS - this is exactly the topology shape a real external administrator reported (old/decommissioned replicas, stale RUV records, no other visible replication problems).",
+  "expected_overall_status": "DEGRADED",
+  "expected_diagnoses": [
+    {
+      "diagnosis_id": "replication.stale-ruv",
+      "status": "UNKNOWN_INSUFFICIENT_EVIDENCE",
+      "priority": "PRIMARY_PROBLEM"
+    }
+  ],
+  "notes": "Constructed from real ipa-replica-manage list-ruv/ipa-healthcheck field shapes (see docs/research.md and the real capture under tests/fixtures/real-freeipa-capture/). Root cause of the bug this regresses: the replication pack's healthcheck_sources previously did not include ipahealthcheck.ds.ruv, and the replication_agreements collector (the only source of RUV data) only ran when a WARNING+ finding from ds.replication/ipa.topology was already present - a stale RUV alone never opened that gate, so this exact scenario silently reported 'Overall: HEALTHY'. Fixed by making replication_agreements an unconditional_collectors entry (see engine/packs/replication.py). This is HISTORICAL-FIXTURE-STYLE evidence, not a live capture - marked accordingly, not asserted as REAL FREEIPA TESTED."
+}

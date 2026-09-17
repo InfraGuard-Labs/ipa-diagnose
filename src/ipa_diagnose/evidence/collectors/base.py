@@ -3,10 +3,13 @@
 Collectors are read-only by contract: they run diagnostic commands
 (journalctl, getcert list, ipa-replica-manage list, dig, df, klist/kvno,
 read-only ldapsearch) or read a fixture file, and produce EvidenceItem
-objects. They MUST NOT change system state. They run conditionally - only
-when a diagnostic pack's trigger findings are present (see cli.py) - not
-unconditionally on every invocation, per the "do not blindly ingest massive
-logs" requirement.
+objects. They MUST NOT change system state. By default they run
+conditionally - only when a diagnostic pack's trigger findings are present
+(see evidence/collect.py) - not unconditionally on every invocation, per the
+"do not blindly ingest massive logs" requirement. A pack may instead list a
+collector under DiagnosticPack.unconditional_collectors, a narrow,
+deliberate exception for evidence that is structurally undiscoverable any
+other way (see engine/packs/base.py).
 
 Every concrete collector implements both collect_live() (subprocess-backed)
 and collect_replay() (reads tests/fixtures/**/<collector_name>.json) so the

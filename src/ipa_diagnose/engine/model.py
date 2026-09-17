@@ -15,7 +15,7 @@ import dataclasses
 import enum
 from typing import Callable, List, Optional
 
-from ipa_diagnose.evidence.model import EvidenceBundle, Severity
+from ipa_diagnose.evidence.model import EnvironmentInfo, EvidenceBundle, Severity
 
 
 class DiagnosisStatus(enum.Enum):
@@ -186,6 +186,12 @@ class DiagnosisReport:
     collection_errors: List[str] = dataclasses.field(default_factory=list)
     packs_evaluated: List[str] = dataclasses.field(default_factory=list)
     replay_source: Optional[str] = None
+    environment: Optional[EnvironmentInfo] = None
+    unknown_severity_findings: List[str] = dataclasses.field(default_factory=list)
+    """Human-readable notes for any Finding whose raw ipa-healthcheck
+    ``result`` value did not match a known severity (see Severity.UNKNOWN) -
+    surfaced so an unrecognized-but-treated-as-ERROR-equivalent value is
+    visible, not silently absorbed into a diagnosis with no explanation."""
 
     def by_priority(self, bucket: PriorityBucket) -> List[Diagnosis]:
         return [d for d in self.diagnoses if d.priority == bucket]

@@ -24,6 +24,7 @@ from typing import List, Optional
 
 from ipa_diagnose.evidence.collectors.base import CollectorError, run_collector
 from ipa_diagnose.evidence.collectors.registry import get as get_collector
+from ipa_diagnose.evidence.environment import detect_environment
 from ipa_diagnose.evidence.healthcheck import parse_healthcheck_json_text, parse_healthcheck_results
 from ipa_diagnose.evidence.model import CollectionError, EvidenceBundle, Severity
 from ipa_diagnose.engine.registry import all_packs
@@ -41,6 +42,10 @@ def collect_evidence(*, replay_dir: Optional[str] = None) -> EvidenceBundle:
         collected_at=EvidenceBundle.now(),
         replay_source=str(fixture_path) if fixture_path else None,
     )
+
+    # Best-effort; detect_environment() never raises - a detection failure
+    # must never prevent diagnosis from running.
+    bundle.environment = detect_environment(fixture_path=fixture_path)
 
     _collect_healthcheck(bundle, live=live, fixture_path=fixture_path)
     _collect_staged(bundle, fixture_path=fixture_path)
@@ -122,16 +127,20 @@ def _collect_healthcheck(bundle: EvidenceBundle, *, live: bool, fixture_path: Op
 
 
 def _collect_staged(bundle: EvidenceBundle, *, fixture_path: Optional[pathlib.Path]) -> None:
-    triggered_collector_names: List[str] = []
+    collector_names: List[str] = []
     for pack in all_packs():
+        # unconditional_collectors run every time, regardless of trigger
+        # state - see DiagnosticPack.unconditional_collectors for why this
+        # narrow exception exists (standalone stale-RUV discoverability).
+        collector_names.extend(pack.unconditional_collectors)
         has_trigger = any(
             f.severity.rank >= Severity.WARNING.rank and any(f.source.startswith(s) for s in pack.healthcheck_sources)
             for f in bundle.findings
         )
         if has_trigger:
-            triggered_collector_names.extend(pack.additional_collectors)
+            collector_names.extend(pack.additional_collectors)
 
-    for name in dict.fromkeys(triggered_collector_names):
+    for name in dict.fromkeys(collector_names):
         collector = get_collector(name)
         if collector is None:
             continue
