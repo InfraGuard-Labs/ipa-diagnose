@@ -1,0 +1,44 @@
+# Builds the ipa-diagnose RPM for the EL10 family (RHEL 10 / Rocky 10 /
+# AlmaLinux 10) entirely inside Docker.
+#
+# AlmaLinux 10 is used as the primary EL10 build host (rockylinux:10 - the
+# official library image - does not exist/pull as of this writing; only the
+# org-namespaced rockylinux/rockylinux:10 does, which is used separately for
+# cross-distro install testing, not building). AlmaLinux/Rocky/RHEL 10 share
+# ABI and package content for this purpose.
+#
+# EL10's base+AppStream repos ship Python 3.12 (native tomllib - no separate
+# issue there) but only python3-setuptools 69.0.3, and EPEL10 does not carry
+# a newer one either (checked directly: EPEL10 + CRB enabled still resolves
+# to 69.0.3-12.el10_0 from baseos). EL10 also dropped module streams, so
+# there is no "dnf module switch to a newer Python" escape hatch. setuptools
+# 69.0.3 cannot parse this project's PEP 639 SPDX `license = "Apache-2.0"`
+# string form (verified independently - see packaging/rpm/el10/ipa-diagnose.spec
+# %prep for the exact reproduced error and the build-time-only fix applied
+# there, which only patches the packaged copy of pyproject.toml, not the
+# canonical source tree).
+FROM almalinux:10
+
+RUN dnf install -y --setopt=install_weak_deps=False dnf-plugins-core epel-release \
+    && /usr/bin/crb enable \
+    && dnf install -y --setopt=install_weak_deps=False \
+        rpm-build \
+        rpmdevtools \
+        pyproject-rpm-macros \
+        python3-devel \
+        python3-pip \
+        python3-setuptools \
+        python3-wheel \
+        python3-pytest \
+        python3-rich \
+        git \
+        tar \
+        gzip \
+        make \
+    && dnf clean all
+
+WORKDIR /src
+COPY . /src
+
+RUN chmod +x packaging/rpm/el10/build-rpm.sh
+CMD ["packaging/rpm/el10/build-rpm.sh"]
