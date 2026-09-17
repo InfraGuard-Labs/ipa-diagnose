@@ -517,24 +517,53 @@ class ReplicationConflictsRule(DiagnosticRule):
         )
 
 
+_RID_FROM_MSG_RE = re.compile(r"\breplica\s+id\s+(\d+)", re.IGNORECASE)
+
+
+def _explicit_ruv_finding_rid(f: Finding) -> Optional[int]:
+    """Best-effort extraction of which replica ID an explicit
+    ipahealthcheck.ds.ruv error finding is actually about, mirroring
+    ``_trigger_peer`` above. Checked first: structured `kw` fields a future
+    check might use; then the message text (the shape this project's own
+    fixtures/tests already use, e.g. "Replica ID 9 has no corresponding live
+    server"). Returns None when no RID can be confidently extracted."""
+
+    kw = f.keywords if isinstance(f.keywords, dict) else {}
+    for key in ("rid", "replica_id", "replicaID", "replicaid"):
+        raw = kw.get(key)
+        if raw is not None:
+            try:
+                return int(raw)
+            except (TypeError, ValueError):
+                pass
+    m = _RID_FROM_MSG_RE.search(f.message)
+    if m:
+        return int(m.group(1))
+    return None
+
+
+def _ruv_evidence_ref(item) -> EvidenceRef:
+    alive = item.data.get("alive")
+    why = (
+        "ipa-replica-manage list-ruv reports this replica ID with no corresponding live server in this snapshot."
+        if alive is False
+        else "ipa-replica-manage list-ruv reports this replica ID's live status could not be confidently determined in this snapshot."
+    )
+    return EvidenceRef(evidence_id=item.item_id, kind="item", why_relevant=why)
+
+
 class StaleRuvRule(DiagnosticRule):
     rule_id = "stale-ruv"
     summary = "A Replica Update Vector entry has no corresponding live server in this snapshot."
 
     def evaluate(self, bundle: EvidenceBundle) -> Optional[Diagnosis]:
         ruv_items = bundle.items_by_kind("replication_ruv")
-        stale_items = [i for i in ruv_items if i.data.get("alive") is False]
-        if not stale_items:
+        # alive=False ("no corresponding live server") and alive=None
+        # ("could not be determined" - e.g. agreement listing failed) are
+        # both candidates worth surfacing; only alive=True is excluded.
+        candidate_items = [i for i in ruv_items if i.data.get("alive") is not True]
+        if not candidate_items:
             return None
-
-        evidence_for = [
-            EvidenceRef(
-                evidence_id=item.item_id,
-                kind="item",
-                why_relevant="ipa-replica-manage list-ruv reports this replica ID with no corresponding live server in this snapshot.",
-            )
-            for item in stale_items
-        ]
 
         explicit_findings = [
             f
@@ -542,94 +571,162 @@ class StaleRuvRule(DiagnosticRule):
             if f.source.startswith("ipahealthcheck.ds.ruv") and f.severity.rank >= Severity.ERROR.rank
         ]
 
-        if not explicit_findings:
+        # Scope each explicit finding to a specific replica ID where
+        # possible - found in adversarial review: blanket-crediting EVERY
+        # candidate RUV item to ANY explicit finding (the prior behavior)
+        # let a genuinely live/current replica get cited as "confirmed
+        # stale" alongside an unrelated RID ipa-healthcheck actually named,
+        # the same class of cross-attribution bug fixed for
+        # PeerConnectivityBreakRule above.
+        rid_to_findings: "dict[int, List[Finding]]" = {}
+        unscoped_findings: List[Finding] = []
+        for f in explicit_findings:
+            rid = _explicit_ruv_finding_rid(f)
+            if rid is not None:
+                rid_to_findings.setdefault(rid, []).append(f)
+            else:
+                unscoped_findings.append(f)
+
+        # Match by replica_id alone is not quite enough: a domain-suffix and
+        # a CA-suffix RUV entry can legitimately share the same numeric
+        # replica_id (confirmed real-world possibility). If more than one
+        # candidate item shares the RID an explicit finding names, we
+        # genuinely cannot tell which suffix it's about - treat that RID as
+        # unmatched rather than guessing (same "prefer UNKNOWN" principle).
+        candidates_by_rid: "dict[int, List]" = {}
+        for i in candidate_items:
+            candidates_by_rid.setdefault(i.data.get("replica_id"), []).append(i)
+
+        confirmed_items = []
+        confirming_findings: List[Finding] = []
+        seen_finding_ids: "set[str]" = set()
+        for rid, findings_for_rid in rid_to_findings.items():
+            matches = candidates_by_rid.get(rid, [])
+            if len(matches) == 1:
+                confirmed_items.append(matches[0])
+                for f in findings_for_rid:
+                    # Finding is a frozen dataclass but holds dict fields
+                    # (keywords/raw), so it is not hashable - dedup by
+                    # finding_id instead of dict.fromkeys()/a set of Finding.
+                    if f.finding_id not in seen_finding_ids:
+                        seen_finding_ids.add(f.finding_id)
+                        confirming_findings.append(f)
+
+        if not confirmed_items and unscoped_findings and len(candidate_items) == 1:
+            # An explicit finding names no RID, but there is only one
+            # candidate item in the whole bundle - nothing else it could
+            # plausibly be about (mirrors the peer-correlation rule's
+            # single-unambiguous-candidate exception).
+            confirmed_items = list(candidate_items)
+            confirming_findings = list(unscoped_findings)
+
+        if confirmed_items:
+            # DIAGNOSED, scoped ONLY to the confirmed item(s). Any other
+            # candidate items elsewhere in the bundle are deliberately not
+            # cited by this diagnosis rather than risk crediting an
+            # unconfirmed one - see the cross-attribution note above.
+            evidence_for = [_ruv_evidence_ref(item) for item in confirmed_items]
+            evidence_for.extend(
+                EvidenceRef(
+                    evidence_id=f.finding_id,
+                    kind="finding",
+                    why_relevant="ipa-healthcheck explicitly flagged this replica ID's RUV as an error.",
+                )
+                for f in confirming_findings
+            )
             return Diagnosis(
                 pack_id="replication",
                 rule_id=self.rule_id,
-                status=DiagnosisStatus.UNKNOWN_INSUFFICIENT_EVIDENCE,
-                title="Possible stale/orphaned RUV entry",
+                status=DiagnosisStatus.DIAGNOSED,
+                title="Stale/orphaned RUV entry confirmed by ipa-healthcheck",
                 why=(
-                    f"{len(stale_items)} RUV entrie(s) have no corresponding live server in this single-host "
-                    "snapshot. This can mean a replica was retired without cleanup, or simply that it is "
-                    "slow to converge - a single snapshot cannot distinguish the two."
+                    "ipa-healthcheck explicitly flags this replica ID's RUV as an error, corroborated by "
+                    "this host's own list-ruv snapshot for the same RID."
                 ),
                 confidence=Confidence(
-                    level=ConfidenceLevel.LOW,
+                    level=ConfidenceLevel.MEDIUM,
                     rationale=(
-                        "[HIGH mechanism, port389.org CSN design; MED for any specific causal story] RUVCheck's "
-                        "own documentation states local analysis is not possible since it requires collecting "
-                        "the RUV from all masters, which this single-host collector cannot do."
+                        "[HIGH mechanism, port389.org; MED overall] capped at MEDIUM (not HIGH) because "
+                        "RUVCheck's own documentation notes full confirmation still requires cross-checking "
+                        "RUVs from all masters, which this run has not done."
                     ),
-                    corroborating_evidence_count=len(stale_items),
+                    corroborating_evidence_count=len(confirmed_items) + len(confirming_findings),
                 ),
                 severity=Severity.WARNING,
                 evidence_for=evidence_for,
-                impact="If genuinely dead, this RID's changelog data lingers indefinitely; if not, treating it as dead risks data loss.",
+                impact="Stale changelog/RUV state for a retired replica; left alone it is mostly a maintenance nuisance, but cleanup is destructive if the replica is not actually gone.",
                 actions=[
                     Action(
-                        description="Cross-check the RID against the current live server/topology list before concluding it is dead.",
+                        description="Confirm the replica no longer exists in the topology.",
                         risk=RiskLevel.SAFE,
                         command="ipa-replica-manage list",
                     ),
                     Action(
-                        description="Re-run list-ruv again after a delay to rule out a slow-to-converge replica.",
-                        risk=RiskLevel.SAFE,
-                        command="ipa-replica-manage list-ruv",
+                        description="Remove the stale RUV for a confirmed-dead replica ID. Last resort only.",
+                        risk=RiskLevel.HIGH_RISK,
+                        command="ipa-replica-manage clean-ruv <replica_id>",
+                        rationale="Community reports (freeipa-users) that running this against a RID that is not actually dead, or mid-topology-transition, can cause further data loss/desync.",
                     ),
                 ],
                 verification=[_verification_condition()],
-                limitations="A single host's RUV snapshot cannot confirm a replica is permanently gone; cross-referencing all masters' RUVs is the only conclusive method.",
-                next_diagnostic_step=(
-                    "Re-run `ipa-replica-manage list-ruv` after roughly 15 minutes and cross-check the RID "
-                    "against `ipa-replica-manage list` / a live topology query on ALL masters before "
-                    "concluding it is dead."
+                limitations=(
+                    "Full confirmation requires collecting RUVs from every master, not just this host. Any "
+                    "other unconfirmed candidate RUV entries in this run are not included in this diagnosis."
                 ),
             )
 
-        evidence_for.extend(
-            EvidenceRef(
-                evidence_id=f.finding_id,
-                kind="finding",
-                why_relevant="ipa-healthcheck explicitly flagged this stale RID as an error.",
-            )
-            for f in explicit_findings
-        )
+        # No explicit finding could be confidently tied to a specific RID -
+        # report every candidate as an unproven possibility rather than
+        # guessing which one (if any) is real.
+        evidence_for = [_ruv_evidence_ref(item) for item in candidate_items]
+        definite_count = sum(1 for i in candidate_items if i.data.get("alive") is False)
+        uncertain_count = len(candidate_items) - definite_count
+        why_parts = []
+        if definite_count:
+            why_parts.append(f"{definite_count} RUV entrie(s) have no corresponding live server in this single-host snapshot")
+        if uncertain_count:
+            why_parts.append(f"{uncertain_count} RUV entrie(s) could not be confidently classified (peer listing was incomplete)")
         return Diagnosis(
             pack_id="replication",
             rule_id=self.rule_id,
-            status=DiagnosisStatus.DIAGNOSED,
-            title="Stale/orphaned RUV entry confirmed by ipa-healthcheck",
+            status=DiagnosisStatus.UNKNOWN_INSUFFICIENT_EVIDENCE,
+            title="Possible stale/orphaned RUV entry",
             why=(
-                "ipa-healthcheck explicitly flags a stale replica ID, corroborated by this host's own "
-                "list-ruv snapshot showing no corresponding live server for that RID."
+                f"{' and '.join(why_parts)}. This can mean a replica was retired without cleanup, that it is "
+                "slow to converge, or (for entries with incomplete peer data) simply that this host's "
+                "agreement list could not be fully collected - a single snapshot cannot distinguish these."
             ),
             confidence=Confidence(
-                level=ConfidenceLevel.MEDIUM,
+                level=ConfidenceLevel.LOW,
                 rationale=(
-                    "[HIGH mechanism, port389.org; MED overall] capped at MEDIUM (not HIGH) because "
-                    "RUVCheck's own documentation notes full confirmation still requires cross-checking "
-                    "RUVs from all masters, which this run has not done."
+                    "[HIGH mechanism, port389.org CSN design; MED for any specific causal story] RUVCheck's "
+                    "own documentation states local analysis is not possible since it requires collecting "
+                    "the RUV from all masters, which this single-host collector cannot do."
                 ),
-                corroborating_evidence_count=len(stale_items) + len(explicit_findings),
+                corroborating_evidence_count=len(candidate_items),
             ),
             severity=Severity.WARNING,
             evidence_for=evidence_for,
-            impact="Stale changelog/RUV state for a retired replica; left alone it is mostly a maintenance nuisance, but cleanup is destructive if the replica is not actually gone.",
+            impact="If genuinely dead, this RID's changelog data lingers indefinitely; if not, treating it as dead risks data loss.",
             actions=[
                 Action(
-                    description="Confirm the replica no longer exists in the topology.",
+                    description="Cross-check the RID against the current live server/topology list before concluding it is dead.",
                     risk=RiskLevel.SAFE,
                     command="ipa-replica-manage list",
                 ),
                 Action(
-                    description="Remove the stale RUV for a confirmed-dead replica ID. Last resort only.",
-                    risk=RiskLevel.HIGH_RISK,
-                    command="ipa-replica-manage clean-ruv <replica_id>",
-                    rationale="Community reports (freeipa-users) that running this against a RID that is not actually dead, or mid-topology-transition, can cause further data loss/desync.",
+                    description="Re-run list-ruv again after a delay to rule out a slow-to-converge replica.",
+                    risk=RiskLevel.SAFE,
+                    command="ipa-replica-manage list-ruv",
                 ),
             ],
             verification=[_verification_condition()],
-            limitations="Full confirmation requires collecting RUVs from every master, not just this host.",
+            limitations="A single host's RUV snapshot cannot confirm a replica is permanently gone; cross-referencing all masters' RUVs is the only conclusive method.",
+            next_diagnostic_step=(
+                "Re-run `ipa-replica-manage list-ruv` after roughly 15 minutes and cross-check the RID "
+                "against `ipa-replica-manage list` / a live topology query on ALL masters before "
+                "concluding it is dead."
+            ),
         )
 
 

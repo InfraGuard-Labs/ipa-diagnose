@@ -182,6 +182,83 @@ def test_stale_ruv_with_explicit_healthcheck_error_is_diagnosed_but_capped_at_me
     _assert_evidence_refs_are_real(diag, bundle)
 
 
+def test_stale_ruv_explicit_finding_does_not_confirm_an_unrelated_rid():
+    """Found in a fresh adversarial review: an explicit ipahealthcheck.ds.ruv
+    error naming one specific RID must not get blanket-applied to confirm
+    every other candidate RUV item in the bundle - a genuinely-uncertain
+    RID 12 must not be swept into a DIAGNOSED result about RID 9."""
+
+    findings = [
+        _finding(
+            "ipahealthcheck.ds.ruv",
+            "KnownRUVCheck",
+            Severity.ERROR,
+            message="Replica ID 9 has no corresponding live server",
+        )
+    ]
+    bundle = _bundle(findings=findings, items=[_ruv_item(9, alive=False), _ruv_item(12, alive=False)])
+    diagnoses = PACK.evaluate(bundle)
+    diag = next(d for d in diagnoses if d.rule_id == "stale-ruv")
+
+    assert diag.status == DiagnosisStatus.DIAGNOSED
+    cited_ids = {ref.evidence_id for ref in diag.evidence_for}
+    assert "replication-ruv:9" in cited_ids
+    assert "replication-ruv:12" not in cited_ids
+
+
+def test_stale_ruv_ambiguous_rid_shared_across_suffixes_confirms_neither():
+    """A domain-suffix and a CA-suffix RUV entry can legitimately share the
+    same numeric replica_id. An explicit finding naming that RID, with both
+    entries present as candidates, must not guess which suffix it's about -
+    it must confirm neither rather than risk citing the wrong one."""
+
+    findings = [
+        _finding(
+            "ipahealthcheck.ds.ruv",
+            "KnownRUVCheck",
+            Severity.ERROR,
+            message="Replica ID 6 has no corresponding live server",
+        )
+    ]
+    domain_item = _ruv_item(6, alive=False, item_id="replication-ruv:domain:6")
+    ca_item = _ruv_item(6, alive=False, item_id="replication-ruv:ca:6")
+    bundle = _bundle(findings=findings, items=[domain_item, ca_item])
+    diagnoses = PACK.evaluate(bundle)
+    diag = next(d for d in diagnoses if d.rule_id == "stale-ruv")
+
+    assert diag.status != DiagnosisStatus.DIAGNOSED
+    cited_ids = {ref.evidence_id for ref in diag.evidence_for}
+    assert "replication-ruv:domain:6" in cited_ids
+    assert "replication-ruv:ca:6" in cited_ids
+
+
+def test_stale_ruv_uncertain_alive_none_still_confirmed_by_explicit_finding():
+    """A RUV item whose aliveness could not be determined (agreement
+    listing failed independently of list-ruv) must still be confirmable by
+    an explicit ipa-healthcheck finding naming its RID - the tri-state
+    "cannot determine" must not silently swallow real corroboration."""
+
+    findings = [
+        _finding(
+            "ipahealthcheck.ds.ruv",
+            "KnownRUVCheck",
+            Severity.ERROR,
+            message="Replica ID 9 has no corresponding live server",
+        )
+    ]
+    uncertain_item = EvidenceItem(
+        item_id="replication-ruv:domain:9",
+        kind="replication_ruv",
+        summary="RUV entry replica_id=9",
+        data={"replica_id": 9, "ldap_url": "gone9.example.test:389", "suffix": "domain", "csn": None, "alive": None},
+    )
+    bundle = _bundle(findings=findings, items=[uncertain_item])
+    diagnoses = PACK.evaluate(bundle)
+    diag = next(d for d in diagnoses if d.rule_id == "stale-ruv")
+    assert diag.status == DiagnosisStatus.DIAGNOSED
+    assert any(ref.evidence_id == "replication-ruv:domain:9" for ref in diag.evidence_for)
+
+
 def test_stale_ruv_all_alive_does_not_fire():
     bundle = _bundle(items=[_ruv_item(4, alive=True), _ruv_item(5, alive=True)])
     diagnoses = PACK.evaluate(bundle)
