@@ -1,0 +1,37 @@
+# A clean, otherwise plain Rocky Linux 8 container used ONLY to verify the
+# EL8 ipa-diagnose RPM installs/upgrades/uninstalls correctly as a REAL
+# administrator would experience it. Deliberately does NOT preinstall
+# python39 (or anything else beyond what a bare `dnf install
+# dnf-plugins-core` gives you) - the RPM's own Requires must pull in
+# whatever it needs (python39), and this image is where we confirm the
+# default system python3 (3.6.8) is genuinely never touched.
+#
+# `python3` (the python36 module's non-modular package, giving EL8's
+# default /usr/bin/python3 -> 3.6.8) IS explicitly preinstalled here,
+# unlike a bare `rockylinux:8` image which ships with no /usr/bin/python3
+# at all. This matters: a bare container is NOT representative of a real
+# RHEL8/Rocky8 FreeIPA server, which always has system python3 present
+# (FreeIPA's own server packages depend on it). Confirmed directly that
+# this distinction changes the outcome: on a bare image with no python3
+# preinstalled, dnf's `alternatives` system has nothing else to prefer, so
+# installing python39 (pulled in transitively by this RPM) makes
+# /usr/bin/python3 resolve to 3.9 by default - which could look like this
+# package "touched" system python3, even though it never did anything of
+# the sort. With python3 3.6 preinstalled first (registered by its own
+# package at alternatives priority 1000000), installing python39
+# afterwards only registers it as a much-lower-priority alternative
+# (3900) alongside it and never changes the active `best` selection -
+# `/usr/bin/python3 --version` stays 3.6.8 throughout. This image
+# reproduces that realistic ordering so the verification below reflects
+# what an actual admin running `dnf install ./ipa-diagnose*.rpm` on a real
+# RHEL8.10 FreeIPA server would see.
+FROM rockylinux:8
+
+RUN dnf install -y --setopt=install_weak_deps=False dnf-plugins-core python3 \
+    && dnf clean all
+
+WORKDIR /verify
+COPY packaging/rpm/el8/install-test.sh /verify/install-test.sh
+RUN chmod +x /verify/install-test.sh
+
+ENTRYPOINT ["/verify/install-test.sh"]

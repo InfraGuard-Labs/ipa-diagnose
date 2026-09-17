@@ -1,0 +1,100 @@
+# Builds the ipa-diagnose RPM for EL8 (RHEL 8 / Rocky 8 / AlmaLinux 8)
+# entirely inside Docker, targeting the `python39` AppStream module rather
+# than EL8's default python3 (3.6.8, python36 module) - see
+# packaging/rpm/el8/ipa-diagnose.spec's header comment for the full "why".
+#
+# Rocky Linux 8 is used as the build host (pick of Rocky vs. AlmaLinux is
+# arbitrary - both track RHEL 8 1:1; this project verified against Rocky
+# 8.9/8.10). Nothing here is installed on the Windows host - everything
+# happens inside this image.
+FROM rockylinux:8
+
+# python39-devel pulls in /usr/lib/rpm/macros.d/macros.python39, which
+# redefines %__python3/%python3_pkgversion build-root-wide (see the spec).
+# EL8's default `python3`/`python3-devel` (python36 module, 3.6.8) is
+# deliberately NEVER installed in this image, so there is no ambiguity
+# about which interpreter a bare %{__python3} resolves to, and so this
+# image can never accidentally build against 3.6.
+RUN dnf install -y --setopt=install_weak_deps=False \
+        rpm-build \
+        rpmdevtools \
+        python39 \
+        python39-devel \
+        git \
+        tar \
+        gzip \
+        make \
+    && dnf install -y --setopt=install_weak_deps=False epel-release \
+    && dnf install -y --setopt=install_weak_deps=False pyproject-rpm-macros \
+    && dnf clean all
+
+# --- Build/test toolchain: BUILD-TIME ONLY, never shipped in the RPM -------
+#
+# EL8's python39 module ships setuptools 50.3.2 (predates PEP 621 `[project]`
+# table support entirely - added around setuptools 61 - let alone the
+# setuptools>=77 this project's pyproject.toml requires for the PEP 639 SPDX
+# license string), and EL8 (AppStream/BaseOS/Extras/EPEL8) has no
+# python39-prefixed setuptools/pytest package at any version - confirmed via
+# `dnf repoquery --whatprovides 'python39dist(setuptools)' 'python39dist(pytest)'`
+# returning nothing. `%pyproject_wheel` runs `pip wheel --no-build-isolation`,
+# i.e. it already expects the build backend to be preinstalled for
+# %{__python3} rather than fetched per-build - so installing it once here,
+# at image-build time, matches the macros' own design. These are exactly as
+# build-time-only as `BuildRequires: python3-devel python3-setuptools` would
+# be on Fedora: nothing here ends up in the built RPM or as a runtime
+# Requires of it.
+#
+# --target (not a plain `pip install --upgrade`) is deliberate and load-
+# bearing, confirmed by direct reproduction: EL8's Red-Hat-patched python39
+# routes a plain root `pip install` to /usr/local/lib/python3.9/site-packages
+# (its "posix_local" install scheme) rather than /usr/lib/python3.9/site-
+# packages. /usr/local IS on sys.path for an ordinary `python3.9` invocation,
+# but rpm's own %%pyproject_wheel macro always runs the interpreter as
+# `%%{__python3} -Bs ...` - the `-s` deliberately excludes /usr/local (Fedora/
+# RHEL's packaging-purity convention: build environments must not silently
+# pick up locally pip-installed packages). A setuptools/wheel installed the
+# plain way is therefore invisible to %%pyproject_wheel: it silently falls
+# back to EL8's dnf-provided setuptools 50.3.2 (which predates PEP 621
+# `[project]` table support), producing a corrupt "UNKNOWN"-named wheel and
+# then a hard failure ("invalid command 'bdist_wheel'") - confirmed directly
+# by running the exact `%%pyproject_wheel`-equivalent command both ways.
+# `--target /usr/lib/python3.9/site-packages` bypasses that install-scheme
+# routing entirely and drops the packages directly into a directory that
+# stays on sys.path even under `-s`, so %%build, %%install, and %%check all
+# resolve the same modern toolchain regardless of which of those macros
+# happens to add `-s`. The stale dnf-owned setuptools-50.3.2.dist-info is
+# removed immediately after so no ambiguous duplicate metadata is left for
+# importlib.metadata/pip to trip over; dnf's own package database still
+# lists python39-setuptools 50.3.2 as "installed" (its files were merely
+# overwritten in place), which is irrelevant here since this image is never
+# used for anything but this one-shot RPM build.
+RUN /usr/bin/python3.9 -m pip install --no-cache-dir --upgrade \
+        --target /usr/lib/python3.9/site-packages --no-warn-script-location \
+        'setuptools>=77' \
+        wheel \
+        'pytest>=8,<9' \
+        'pytest-cov>=5,<6' \
+    && rm -rf /usr/lib/python3.9/site-packages/setuptools-50.3.2.dist-info
+
+# --- Vendored runtime dependency source: rich -------------------------------
+#
+# rich IS a genuine runtime dependency of the installed CLI (unlike
+# setuptools/pytest above), but EL8 provides no python39dist(rich) at all -
+# there is nothing to BuildRequire/Requires against. `pip download` here
+# resolves and fetches rich + its actual transitive deps (pygments,
+# markdown-it-py, mdurl - all pure Python, all permissively licensed) as
+# wheels into a local wheelhouse. The spec's %install step then does
+# `pip install --no-index --find-links /opt/el8-vendor-wheels`, i.e. it
+# reads only this local wheelhouse and never touches the network at
+# `rpmbuild` time - the only network access for rich happens here, once,
+# at image-build time, pinned to what pyproject.toml declares.
+RUN mkdir -p /opt/el8-vendor-wheels && \
+    /usr/bin/python3.9 -m pip download --no-cache-dir \
+        --dest /opt/el8-vendor-wheels \
+        'rich>=13.7,<15'
+
+WORKDIR /src
+COPY . /src
+
+RUN chmod +x packaging/rpm/el8/build-rpm.sh
+CMD ["packaging/rpm/el8/build-rpm.sh"]
