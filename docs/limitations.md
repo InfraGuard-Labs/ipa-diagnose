@@ -9,7 +9,7 @@ validated, at what tier, and don't claim more.
 |---|---|---|
 | **Unit tested** | Core engine, correlation, redaction, healthcheck parsing | Done - `tests/unit/` |
 | **Fixture validated** | Full evidence-collection → diagnosis pipeline, one scenario per fixture directory, with an expected outcome in `meta.json` | Done - `tests/packs/` (one file per pack) + `tests/adversarial/` (cross-pack, hostile-input, redaction scenarios) |
-| **Container integration tested** | The *packaging* (RPM build, install, dependency resolution, upgrade, uninstall) end to end in a clean container | Done - see [packaging/rpm/README.md](../packaging/rpm/README.md), 11/11 checks passing |
+| **Container integration tested** | The *packaging* (RPM build, install, dependency resolution, upgrade, uninstall) end to end in a clean container | Done across four target platforms (Fedora, EL9, EL10, EL8) - see [docs/compatibility.md](compatibility.md) for the full per-platform matrix and [packaging/rpm/README.md](../packaging/rpm/README.md) for how each is built |
 | **Real FreeIPA behavior validated** | The pipeline runs against an actual live FreeIPA server's real `ipa-healthcheck` output, not fixtures | **Partially performed.** A real `freeipa/freeipa-server` container was provisioned, installed, and used to capture genuine `ipa-healthcheck --output-type json` output for both a healthy server and a real induced failure (`systemctl stop dirsrv`) - see [tests/fixtures/real-freeipa-capture/README.md](../tests/fixtures/real-freeipa-capture/README.md) for exactly what was captured and how. Both captures were run through the real pipeline successfully (`tests/unit/test_real_freeipa_capture.py`). |
 
 **What this one validation pass covered, honestly, and what it didn't:**
@@ -70,12 +70,17 @@ contributor without redesigning anything.
   causal relationship not encoded in a rule's `upstream_candidates` will
   correctly surface as two independent problems rather than being
   discovered automatically.
-- **RPM packaging validated locally in Docker, not yet published.** The spec
-  builds, installs, upgrades, and uninstalls correctly in a clean container;
-  making `sudo dnf install ipa-diagnose` work on a machine that hasn't built
-  the RPM itself needs a COPR project registered under a maintainer's
-  Fedora account - see [packaging/rpm/README.md](../packaging/rpm/README.md)
-  for the exact remaining step.
+- **RPM packaging validated locally in Docker for four target platforms**
+  (Fedora, RHEL/Rocky/AlmaLinux 9, 10, and 8) and published as GitHub
+  Release artifacts. Making `sudo dnf install ipa-diagnose` work without
+  downloading a file first still needs a COPR project registered under a
+  maintainer's Fedora account - see
+  [packaging/rpm/README.md](../packaging/rpm/README.md) for the exact
+  remaining step, and [docs/compatibility.md](compatibility.md) for the
+  full per-platform evidence.
+- **Trust/AD integration and CA-less deployments are untested** - see
+  [docs/compatibility.md](compatibility.md) for what this project's testing
+  does and doesn't cover.
 - **AI explanation quality is bounded by what it's given, by design.** It
   can only rephrase the deterministic `why`/evidence/impact/actions already
   computed - it cannot add insight the engine didn't already have, and

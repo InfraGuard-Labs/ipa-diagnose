@@ -56,46 +56,98 @@ actual application, not a mockup.
 
 ## Installation
 
-**Available now - PyPI/pipx** (works on any RHEL/CentOS/Fedora host with
-Python 3.9+, and is also the right path for development, testing, and early
-adoption):
+`ipa-diagnose` needs to run where `ipa-healthcheck` and the FreeIPA/389-DS
+tooling it shells out to already exist - i.e., on an actual IPA server or
+client, as root. **If you'll be running it routinely as root, prefer the
+RPM path below** - it installs to `/usr/bin`, so plain `sudo ipa-diagnose`
+just works with no caveats. pipx is the right path for development, testing,
+or a quick evaluation.
+
+See [docs/compatibility.md](docs/compatibility.md) for the full,
+evidence-backed platform support matrix - what's actually tested vs.
+researched-only, by platform generation.
+
+### RPM (RHEL / Rocky / AlmaLinux 8, 9, 10, and Fedora)
+
+Each target has its own RPM, built and lifecycle-tested (install, dependency
+resolution, `--version`, CLI startup, graceful degradation without a live
+FreeIPA environment, `--replay`, uninstall, reinstall) in Docker against a
+clean container of that exact distro - see
+[docs/compatibility.md](docs/compatibility.md) for exactly what was tested
+where, and [packaging/rpm/README.md](packaging/rpm/README.md) for how to
+build them yourself.
+
+**RHEL/Rocky/AlmaLinux 9 or 10** - the `rich` runtime dependency comes from
+EPEL, so enable it first:
+
+```bash
+sudo dnf install -y epel-release
+sudo dnf config-manager --set-enabled crb    # "PowerTools" on some 8.x mirrors
+sudo dnf install ./ipa-diagnose-<version>.el9.noarch.rpm   # or .el10.noarch.rpm
+sudo ipa-diagnose
+```
+
+**RHEL/Rocky/AlmaLinux 8** - EL8's default Python (3.6) is too old for this
+project and is never touched; the RPM depends on the `python39` module
+stream instead, installed alongside system Python, not replacing it:
+
+```bash
+sudo dnf install -y python39
+sudo dnf install ./ipa-diagnose-<version>.el8.noarch.rpm
+sudo ipa-diagnose
+```
+
+(The `rich` runtime dependency is vendored into the EL8 package itself,
+since no EL8-compatible `python39-rich` package exists anywhere to depend
+on - see [docs/compatibility.md](docs/compatibility.md) for what that
+means for security updates.)
+
+**Fedora** (current stable):
+
+```bash
+sudo dnf install ./ipa-diagnose-<version>.fc44.noarch.rpm
+sudo ipa-diagnose
+```
+
+Download the correct artifact for your platform from the
+[latest release](https://github.com/InfraGuard-Labs/ipa-diagnose/releases) -
+artifact names clearly indicate their target (`.el8.`, `.el9.`, `.el10.`,
+`.fc44.`); verify against the attached `SHA256SUMS`.
+
+### PyPI / pipx
 
 ```bash
 pipx install ipa-diagnose
-sudo ipa-diagnose
+ipa-diagnose --version
 ```
 
-**Available now - RPM, via the GitHub Release** (built and lifecycle-tested
-- install, dependency resolution, `--version`, CLI startup, graceful
-degradation without a live FreeIPA environment, uninstall - in Docker
-against a clean Fedora container; see
-[packaging/rpm/README.md](packaging/rpm/README.md) for how):
+On RHEL/Rocky/AlmaLinux 9 and 10, `pipx` itself comes from EPEL
+(`sudo dnf install -y epel-release && sudo dnf install -y pipx`); on 8, EPEL
+has no `pipx` package, so use the `python39` module instead
+(`sudo dnf install -y python39 && python3.9 -m pip install --user pipx`).
 
-1. Download `ipa-diagnose-0.1.0-1.fc44.fc44.noarch.rpm` from the
-   [v0.1.0 release](https://github.com/InfraGuard-Labs/ipa-diagnose/releases/tag/v0.1.0).
-2. Run:
-   ```bash
-   sudo dnf install ./ipa-diagnose-0.1.0-1.fc44.fc44.noarch.rpm
-   sudo ipa-diagnose
-   ```
-
-**Not yet available** - a COPR repository, so that `sudo dnf install
-ipa-diagnose` works directly without downloading a file first:
+**Root/sudo caveat (tested, not assumed):** `pipx install` puts the
+executable in the installing user's `~/.local/bin`, which is *not* on
+`sudo`'s `secure_path` by default on RHEL-family systems - confirmed
+directly: after `pipx install ipa-diagnose` as a regular user, plain
+`sudo ipa-diagnose` fails with `sudo: ipa-diagnose: command not found`,
+**even if pipx was run as root itself** (root's own `~/.local/bin` isn't on
+`secure_path` either). Two tested, working options, neither of which
+touches `sudoers` or weakens `secure_path`:
 
 ```bash
-# Not yet published:
-sudo dnf copr enable <maintainer>/ipa-diagnose
-sudo dnf install ipa-diagnose
-sudo ipa-diagnose
+# Option A: install and run as root directly (no further `sudo` needed)
+sudo -i
+pipx install ipa-diagnose
+ipa-diagnose            # already root - just works
+
+# Option B: invoke via the absolute path (works from a normal login)
+pipx install ipa-diagnose
+sudo "$HOME/.local/bin/ipa-diagnose"
 ```
 
-See [packaging/rpm/README.md](packaging/rpm/README.md) for the one
-remaining manual publish step, and for how to build/test the RPM yourself
-in Docker.
-
-`ipa-diagnose` needs to run where `ipa-healthcheck` and the FreeIPA/389-DS
-tooling it shells out to already exist - i.e., on an actual IPA server or
-client, as root (or with `sudo`).
+If you need `sudo ipa-diagnose` (unqualified) to just work, use the RPM
+path instead.
 
 ## Quick start
 
@@ -235,7 +287,7 @@ docker compose run --rm test          # full test suite
 docker compose run --rm dev bash      # interactive shell
 ```
 
-99 tests: unit tests for the engine/correlation/redaction core, per-pack
+130+ tests: unit tests for the engine/correlation/redaction core, per-pack
 fixture tests (one directory per scenario under `tests/fixtures/`, each with
 an expected outcome in `meta.json`), and an adversarial suite covering false
 correlation, prompt injection, secret leakage, command injection, and
@@ -256,6 +308,18 @@ real-FreeIPA-validated - this project does not overclaim which is which.
 - **Diagnosis-first, not auto-remediation.** `ipa-diagnose` never executes a
   CAUTION or HIGH-RISK action automatically, and v1 has no "fix it for me"
   mode. That is a deliberate scope decision, not a missing feature.
+- **Trust/AD integration and CA-less deployments are untested.** The
+  diagnostic packs, evidence collectors, and fixtures were all built and
+  validated against a standalone/CA-enabled FreeIPA topology; cross-forest
+  AD trust and CA-less installs may work but have not been exercised at all.
+  See [docs/compatibility.md](docs/compatibility.md).
+- **Older FreeIPA/`ipa-healthcheck` generations (RHEL/Rocky/AlmaLinux 8,
+  `ipa-healthcheck` 0.12-era) are missing some checks entirely** (e.g.
+  `CertmongerStuckCheck`, the FIPS-token check) that newer generations have -
+  the relevant rules correctly see no evidence rather than misdiagnosing,
+  but coverage is thinner on EL8 by nature of the upstream tool, not a gap
+  in this project's rules. Full generation-by-generation detail in
+  [docs/compatibility.md](docs/compatibility.md).
 
 ## Contributing
 

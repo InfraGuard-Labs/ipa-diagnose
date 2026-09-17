@@ -1,16 +1,42 @@
 # RPM packaging
 
-This directory builds a real, installable `ipa-diagnose` RPM entirely inside
+This directory builds real, installable `ipa-diagnose` RPMs entirely inside
 Docker - nothing here touches the host, and nothing here installs the RPM on
-the host either. It targets the eventual `sudo dnf install ipa-diagnose`
+the host either. It targets the `sudo dnf install ./ipa-diagnose-*.rpm`
 experience FreeIPA/Red Hat IdM administrators expect.
+
+## Per-target builds
+
+**A single spec does not build unmodified across RHEL 8/9/10 and Fedora** -
+this was tried and disproven directly (EL9/EL10 fail on the project's own
+`setuptools>=77` build requirement; EL8 additionally can't use its default
+Python at all). Each target therefore has its own spec and build
+Dockerfile, all producing a package with the same functionality:
+
+| Directory | Target | Key difference from the Fedora spec |
+|---|---|---|
+| `fedora/` | Current Fedora (pinned to an exact tag, e.g. `fedora:44` - never `fedora:latest`, which is what caused the original `python(abi) = 3.14` surprise) | None - Fedora's own toolchain needs no workaround |
+| `el9/` | RHEL/Rocky/AlmaLinux 9 | Split-interpreter build (bootstrap with AppStream `python3.11`, ship against system `python3.9`) plus a build-time-only `pyproject.toml` patch, since EL9's own `python3-setuptools` (53.0.0) predates PEP 621 entirely |
+| `el10/` | RHEL/Rocky/AlmaLinux 10 | A build-time-only `pyproject.toml` patch (setuptools floor + license field form), since EL10's `python3-setuptools` (69.0.3) can build PEP 621 metadata but not this project's PEP 639 SPDX license string |
+| `el8/` | RHEL/Rocky/AlmaLinux 8 | Builds against the `python39` AppStream module (system Python 3.6 is never used/touched); `rich` is vendored into the package since no EL8-compatible `python39-rich` exists anywhere |
+
+Every per-target `pyproject.toml` patch is applied in the spec's `%prep`
+section to a **copy** extracted from the source tarball - the canonical,
+tracked `pyproject.toml` that ships to PyPI is never touched by any of
+these builds. See each spec's own comments for the exact, independently-
+verified failure it works around, and [docs/compatibility.md](../../docs/compatibility.md)
+for the full cross-platform evidence.
+
+The original top-level `ipa-diagnose.spec` / `Dockerfile.rpmbuild` /
+`build-rpm.sh` / `install-test.sh` (below) remain as the Fedora-equivalent
+reference implementation each per-target build was adapted from.
 
 ## What's here
 
 | File | Purpose |
 |---|---|
 | `ipa-diagnose.spec` | The RPM spec. Uses `pyproject-rpm-macros` (Fedora/RHEL9+'s standard way to build a Python package as an RPM) so dependencies are generated automatically from `pyproject.toml` - `rich` becomes a real `Requires:`, and the `openai`/`anthropic`/`bedrock` extras are *not* pulled in as hard RPM dependencies (AI stays optional, installed via `pip install ipa-diagnose[openai]` etc. inside a venv if wanted - see the main README's AI configuration section). `%check` runs the full fixture-based test suite (`tests/unit`, `tests/packs`) as part of the build - a broken package fails to build. |
-| `Dockerfile.rpmbuild` | A Fedora container with `rpm-build`, `pyproject-rpm-macros`, and everything needed to build the spec. Fedora is used (rather than RHEL/CentOS/Alma images) purely to avoid EPEL/CRB mirror configuration inside a container build - the spec itself is standard and builds unmodified on RHEL9/CentOS Stream 9/AlmaLinux 9/Rocky 9 with EPEL9 + CRB (or PowerTools on 8) enabled. |
+| `Dockerfile.rpmbuild` | A Fedora container with `rpm-build`, `pyproject-rpm-macros`, and everything needed to build the spec. **Historically used `fedora:latest`, which is how the published v0.1.0 RPM ended up with an unintentional `python(abi) = 3.14` requirement** - a moving base image silently changes what a rebuild produces. Prefer `fedora/Dockerfile.build` (pinned to an exact tag) for new builds; this file is kept as the original reference implementation. Confirmed directly (not assumed) that this spec does **not** build unmodified on RHEL9/RockyLinux9/AlmaLinux9 or 10/8 - see the per-target directories above for what each actually needs. |
 | `build-rpm.sh` | Runs inside the container: tars the working tree, runs `rpmbuild -ba`. Supports `BUILD_VERSION`/`BUILD_RELEASE` env vars to build a bumped release without touching the tracked `pyproject.toml` (used for the upgrade test below). |
 | `Dockerfile.install-test` + `install-test.sh` | A **separate, clean** Fedora container - `ipa-diagnose` is never baked into this image. The RPM is installed at container run time from a mounted file, exactly like a real `dnf install ./ipa-diagnose-*.rpm`, then the script verifies install, dependency resolution, CLI behavior (including graceful degradation with no FreeIPA present), a `--replay` demo run, upgrade to a newer build, and uninstall. |
 
