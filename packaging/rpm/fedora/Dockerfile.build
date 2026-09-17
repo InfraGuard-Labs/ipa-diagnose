@@ -1,0 +1,36 @@
+# Builds the ipa-diagnose RPM entirely inside Docker, pinned to a specific,
+# currently-supported Fedora release (NOT `fedora:latest`). Pinning to an
+# exact version tag makes the artifact reproducible: `fedora:latest` moves
+# out from under you over time (e.g. it silently became Fedora 44 with
+# Python 3.14 as its default interpreter), so a rebuild against `latest` six
+# months from now would produce a different RPM with a different
+# `python(abi)` requirement than one built today, with no record of why.
+#
+# Fedora 44 is the current stable Fedora release (released 2026-04-28,
+# security support until ~2027-06-02, i.e. 4 weeks after Fedora 46 ships) -
+# re-check https://endoflife.date/fedora before reusing this file long-term
+# and bump the tag below once Fedora 44 approaches its own end of life.
+FROM fedora:44
+
+RUN dnf install -y --setopt=install_weak_deps=False \
+        rpm-build \
+        rpmdevtools \
+        pyproject-rpm-macros \
+        python3-devel \
+        python3-pip \
+        python3-setuptools \
+        python3-wheel \
+        python3-pytest \
+        python3-pytest-cov \
+        python3-rich \
+        git \
+        tar \
+        gzip \
+        make \
+    && dnf clean all
+
+WORKDIR /src
+COPY . /src
+
+RUN chmod +x packaging/rpm/fedora/build-rpm.sh
+CMD ["packaging/rpm/fedora/build-rpm.sh"]

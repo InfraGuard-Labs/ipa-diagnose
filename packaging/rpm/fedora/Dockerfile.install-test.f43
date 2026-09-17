@@ -1,0 +1,12 @@
+# Same as Dockerfile.install-test but pinned to Fedora 43, the secondary
+# supported target (see Dockerfile.build.f43).
+FROM fedora:43
+
+RUN dnf install -y --setopt=install_weak_deps=False dnf-plugins-core \
+    && dnf clean all
+
+WORKDIR /verify
+COPY packaging/rpm/install-test.sh /verify/install-test.sh
+RUN chmod +x /verify/install-test.sh
+
+ENTRYPOINT ["/verify/install-test.sh"]

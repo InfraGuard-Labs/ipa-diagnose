@@ -1,0 +1,32 @@
+# Secondary build target: the previous stable Fedora release, kept alongside
+# Dockerfile.build (Fedora 44, the primary/current-stable target) because
+# supporting one release back is cheap and some administrators lag behind
+# current stable. Same rationale as Dockerfile.build: pinned to an exact
+# tag, not `fedora:latest`, for reproducibility.
+#
+# Fedora 43 was released 2025-10-28, security support until ~2026-12-09 -
+# re-check https://endoflife.date/fedora before reusing this file long-term.
+FROM fedora:43
+
+RUN dnf install -y --setopt=install_weak_deps=False \
+        rpm-build \
+        rpmdevtools \
+        pyproject-rpm-macros \
+        python3-devel \
+        python3-pip \
+        python3-setuptools \
+        python3-wheel \
+        python3-pytest \
+        python3-pytest-cov \
+        python3-rich \
+        git \
+        tar \
+        gzip \
+        make \
+    && dnf clean all
+
+WORKDIR /src
+COPY . /src
+
+RUN chmod +x packaging/rpm/fedora/build-rpm.sh
+CMD ["packaging/rpm/fedora/build-rpm.sh"]

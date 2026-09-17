@@ -1,0 +1,17 @@
+# A clean, otherwise-unrelated container used ONLY to verify the RPM
+# installs/upgrades/uninstalls correctly - pinned to the same exact Fedora
+# version the RPM was built for (see Dockerfile.build / Dockerfile.build.f43
+# in this directory), NOT `fedora:latest`. ipa-diagnose is NOT baked into
+# this image - it is installed at container run time from a mounted RPM,
+# exactly like a real administrator's `dnf install ./ipa-diagnose-*.rpm`
+# would.
+FROM fedora:44
+
+RUN dnf install -y --setopt=install_weak_deps=False dnf-plugins-core \
+    && dnf clean all
+
+WORKDIR /verify
+COPY packaging/rpm/install-test.sh /verify/install-test.sh
+RUN chmod +x /verify/install-test.sh
+
+ENTRYPOINT ["/verify/install-test.sh"]
