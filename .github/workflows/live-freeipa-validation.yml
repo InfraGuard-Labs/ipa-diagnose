@@ -67,8 +67,13 @@ jobs:
       - name: Install public ipa-diagnose v0.1.1 (pipx, production PyPI) INSIDE the FreeIPA container
         run: |
           docker exec ipa-primary bash -c "
-            dnf install -y -q python3-pip >/dev/null 2>&1
-            python3 -m pip install -q pipx
+            set -e
+            for attempt in 1 2 3; do
+              dnf install -y python3-pip && break
+              echo \"dnf install python3-pip attempt \$attempt failed, retrying in 15s...\"
+              sleep 15
+            done
+            python3 -m pip install pipx
             python3 -m pipx install ipa-diagnose
             /root/.local/bin/ipa-diagnose --version
           " | tee -a env-report.txt
@@ -173,11 +178,19 @@ jobs:
           docker exec ipa-a ipa-replica-manage list-ruv > healthy-topology-list-ruv-A.txt 2>&1 || true
           cat healthy-topology-list-ruv-A.txt
 
+      - name: Report runner resource headroom (two FreeIPA servers on one runner)
+        run: free -h; df -h /
+
       - name: Install public v0.1.1 on Server A and confirm HEALTHY on the healthy topology
         run: |
           docker exec ipa-a bash -c "
-            dnf install -y -q python3-pip >/dev/null 2>&1
-            python3 -m pip install -q pipx
+            set -e
+            for attempt in 1 2 3; do
+              dnf install -y python3-pip && break
+              echo \"dnf install python3-pip attempt \$attempt failed, retrying in 15s...\"
+              sleep 15
+            done
+            python3 -m pip install pipx
             python3 -m pipx install ipa-diagnose
           "
           docker exec ipa-a /root/.local/bin/ipa-diagnose --details | tee healthy-topology-diagnose-A.txt || true
