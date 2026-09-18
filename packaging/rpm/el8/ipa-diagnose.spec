@@ -106,11 +106,22 @@ BuildRequires:  pyproject-rpm-macros
 # python39dist(rich) Requires is generated (nothing provides it on EL8),
 # and none is needed.
 
-# Not build-required, but strongly recommended at runtime - see the
-# Fedora/EL9 spec (packaging/rpm/ipa-diagnose.spec) for the full rationale;
-# unchanged here.
-Recommends:     freeipa-healthcheck
-Recommends:     freeipa-server-common
+# DELIBERATELY NO Recommends here (found in gate review: this spec still
+# had `Recommends: freeipa-healthcheck`/`freeipa-server-common` after the
+# EL9/EL10 specs had theirs removed for causing a 300+ package install and
+# a broken `dnf remove` transaction - see packaging/rpm/el9/ipa-diagnose.spec
+# for the full incident). Those exact Fedora-style names are not currently
+# resolvable on EL8 (`dnf repoquery` confirms neither exists under those
+# names in base/AppStream/EPEL8/CRB), so removing them changes nothing
+# functional today - but leaving unresolvable Recommends in place would be
+# a latent trap, not a safe no-op: AlmaLinux 9/10 were BOTH found to
+# resolve the equivalent EL9/EL10 names via a compatibility Provides that
+# neither this project nor EL8's own repos currently advertise. If EL8
+# repos, a future IdM module stream, or a downstream rebuild ever exposes
+# the same kind of compatibility Provides, an un-removed Recommends here
+# would reintroduce the identical explosion/broken-uninstall risk with no
+# guard against it. Omitted for consistency with EL9/EL10, not because
+# EL8 was ever proven safe by design.
 
 %global _description %{expand:
 ipa-diagnose sits on top of ipa-healthcheck and targeted, read-only system
@@ -142,12 +153,17 @@ header comment) because EL8 provides no distro-native python39-rich.}
 # Vendor rich (+ pygments, markdown-it-py, mdurl) into this package's own
 # site-packages - see the spec header comment for why. --no-index means
 # this never touches the network here; it only ever reads
-# %%{_vendor_wheeldir}, which Dockerfile.build populated at image-build time.
+# %%{_vendor_wheeldir}, which Dockerfile.build populated (with exact,
+# hash-verified pins - see that file's comment) at image-build time. The
+# exact version here must match Dockerfile.build's pin exactly, not a
+# range - a range would work today (only one candidate exists in the
+# offline wheelhouse anyway) but would silently stop being an effective
+# pin if the wheelhouse ever gained a second rich version.
 %{__python3} -m pip install \
     --no-index --find-links %{_vendor_wheeldir} \
     --target %{buildroot}%{python3_sitelib} \
     --disable-pip-version-check --no-warn-script-location --no-compile \
-    'rich>=13.7,<15'
+    'rich==14.3.4'
 # pip drops a console-script shim (rich's optional `pygmentize`-style entry
 # points, if any) and __pycache__ dirs into --target; neither is wanted:
 # the shims would reference the buildroot's own path, and bytecode is

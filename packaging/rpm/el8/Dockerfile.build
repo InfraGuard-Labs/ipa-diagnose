@@ -81,17 +81,34 @@ RUN /usr/bin/python3.9 -m pip install --no-cache-dir --upgrade \
 # rich IS a genuine runtime dependency of the installed CLI (unlike
 # setuptools/pytest above), but EL8 provides no python39dist(rich) at all -
 # there is nothing to BuildRequire/Requires against. `pip download` here
-# resolves and fetches rich + its actual transitive deps (pygments,
-# markdown-it-py, mdurl - all pure Python, all permissively licensed) as
-# wheels into a local wheelhouse. The spec's %install step then does
-# `pip install --no-index --find-links /opt/el8-vendor-wheels`, i.e. it
-# reads only this local wheelhouse and never touches the network at
-# `rpmbuild` time - the only network access for rich happens here, once,
-# at image-build time, pinned to what pyproject.toml declares.
+# fetches rich + its actual transitive deps (pygments, markdown-it-py,
+# mdurl - all pure Python, all permissively licensed) as wheels into a
+# local wheelhouse. The spec's %install step then does `pip install
+# --no-index --find-links /opt/el8-vendor-wheels`, i.e. it reads only this
+# local wheelhouse and never touches the network at `rpmbuild` time.
+#
+# EXACT-PINNED WITH HASH VERIFICATION, not a floating range (found in
+# security review: a floating `rich>=13.7,<15` with no hash check means a
+# rebuild of this image next month silently ships whatever the newest
+# release in-range happens to be at that moment, with no reproducibility
+# and no protection against a compromised/tampered PyPI upload landing in
+# a shipped RPM - unacceptable for something vendored INTO the package
+# rather than resolved as a normal distro dependency at install time on a
+# real host). Versions/hashes below were resolved once, deliberately, and
+# must be updated by hand (re-run `pip download --no-deps` for each
+# package at the desired version, then `sha256sum` the wheel) rather than
+# left to silently float - that friction is intentional.
 RUN mkdir -p /opt/el8-vendor-wheels && \
-    /usr/bin/python3.9 -m pip download --no-cache-dir \
+    { \
+        echo 'rich==14.3.4 --hash=sha256:07e7adb4690f68864777b1450859253bed81a99a31ac321ac1817b2313558952'; \
+        echo 'pygments==2.21.0 --hash=sha256:2363c69b61c4a97c838da3b130dcd6468f4848992b21a82f2a63ec34377137d9'; \
+        echo 'markdown-it-py==3.0.0 --hash=sha256:355216845c60bd96232cd8d8c40e8f9765cc86f46880e43a8fd22dc1a1a8cab1'; \
+        echo 'mdurl==0.1.2 --hash=sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8'; \
+    } > /opt/el8-vendor-wheels/requirements.txt && \
+    /usr/bin/python3.9 -m pip download --no-cache-dir --no-deps \
+        --require-hashes \
         --dest /opt/el8-vendor-wheels \
-        'rich>=13.7,<15'
+        -r /opt/el8-vendor-wheels/requirements.txt
 
 WORKDIR /src
 COPY . /src
