@@ -1,0 +1,655 @@
+<svg class="rich-terminal" viewBox="0 0 1287 3710.0" xmlns="http://www.w3.org/2000/svg">
+    <!-- Generated with Rich https://www.textualize.io -->
+    <style>
+
+    @font-face {
+        font-family: "Fira Code";
+        src: local("FiraCode-Regular"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff2/FiraCode-Regular.woff2") format("woff2"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff/FiraCode-Regular.woff") format("woff");
+        font-style: normal;
+        font-weight: 400;
+    }
+    @font-face {
+        font-family: "Fira Code";
+        src: local("FiraCode-Bold"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff2/FiraCode-Bold.woff2") format("woff2"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff/FiraCode-Bold.woff") format("woff");
+        font-style: bold;
+        font-weight: 700;
+    }
+
+    .terminal-2636785142-matrix {
+        font-family: Fira Code, monospace;
+        font-size: 20px;
+        line-height: 24.4px;
+        font-variant-east-asian: full-width;
+    }
+
+    .terminal-2636785142-title {
+        font-size: 18px;
+        font-weight: bold;
+        font-family: arial;
+    }
+
+    .terminal-2636785142-r1 { fill: #868887 }
+.terminal-2636785142-r2 { fill: #c5c8c6 }
+    </style>
+
+    <defs>
+    <clipPath id="terminal-2636785142-clip-terminal">
+      <rect x="0" y="0" width="1267.8" height="3659.0" />
+    </clipPath>
+    <clipPath id="terminal-2636785142-line-0">
+    <rect x="0" y="1.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-1">
+    <rect x="0" y="25.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-2">
+    <rect x="0" y="50.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-3">
+    <rect x="0" y="74.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-4">
+    <rect x="0" y="99.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-5">
+    <rect x="0" y="123.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-6">
+    <rect x="0" y="147.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-7">
+    <rect x="0" y="172.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-8">
+    <rect x="0" y="196.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-9">
+    <rect x="0" y="221.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-10">
+    <rect x="0" y="245.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-11">
+    <rect x="0" y="269.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-12">
+    <rect x="0" y="294.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-13">
+    <rect x="0" y="318.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-14">
+    <rect x="0" y="343.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-15">
+    <rect x="0" y="367.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-16">
+    <rect x="0" y="391.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-17">
+    <rect x="0" y="416.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-18">
+    <rect x="0" y="440.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-19">
+    <rect x="0" y="465.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-20">
+    <rect x="0" y="489.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-21">
+    <rect x="0" y="513.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-22">
+    <rect x="0" y="538.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-23">
+    <rect x="0" y="562.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-24">
+    <rect x="0" y="587.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-25">
+    <rect x="0" y="611.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-26">
+    <rect x="0" y="635.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-27">
+    <rect x="0" y="660.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-28">
+    <rect x="0" y="684.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-29">
+    <rect x="0" y="709.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-30">
+    <rect x="0" y="733.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-31">
+    <rect x="0" y="757.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-32">
+    <rect x="0" y="782.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-33">
+    <rect x="0" y="806.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-34">
+    <rect x="0" y="831.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-35">
+    <rect x="0" y="855.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-36">
+    <rect x="0" y="879.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-37">
+    <rect x="0" y="904.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-38">
+    <rect x="0" y="928.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-39">
+    <rect x="0" y="953.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-40">
+    <rect x="0" y="977.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-41">
+    <rect x="0" y="1001.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-42">
+    <rect x="0" y="1026.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-43">
+    <rect x="0" y="1050.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-44">
+    <rect x="0" y="1075.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-45">
+    <rect x="0" y="1099.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-46">
+    <rect x="0" y="1123.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-47">
+    <rect x="0" y="1148.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-48">
+    <rect x="0" y="1172.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-49">
+    <rect x="0" y="1197.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-50">
+    <rect x="0" y="1221.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-51">
+    <rect x="0" y="1245.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-52">
+    <rect x="0" y="1270.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-53">
+    <rect x="0" y="1294.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-54">
+    <rect x="0" y="1319.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-55">
+    <rect x="0" y="1343.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-56">
+    <rect x="0" y="1367.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-57">
+    <rect x="0" y="1392.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-58">
+    <rect x="0" y="1416.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-59">
+    <rect x="0" y="1441.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-60">
+    <rect x="0" y="1465.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-61">
+    <rect x="0" y="1489.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-62">
+    <rect x="0" y="1514.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-63">
+    <rect x="0" y="1538.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-64">
+    <rect x="0" y="1563.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-65">
+    <rect x="0" y="1587.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-66">
+    <rect x="0" y="1611.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-67">
+    <rect x="0" y="1636.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-68">
+    <rect x="0" y="1660.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-69">
+    <rect x="0" y="1685.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-70">
+    <rect x="0" y="1709.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-71">
+    <rect x="0" y="1733.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-72">
+    <rect x="0" y="1758.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-73">
+    <rect x="0" y="1782.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-74">
+    <rect x="0" y="1807.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-75">
+    <rect x="0" y="1831.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-76">
+    <rect x="0" y="1855.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-77">
+    <rect x="0" y="1880.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-78">
+    <rect x="0" y="1904.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-79">
+    <rect x="0" y="1929.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-80">
+    <rect x="0" y="1953.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-81">
+    <rect x="0" y="1977.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-82">
+    <rect x="0" y="2002.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-83">
+    <rect x="0" y="2026.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-84">
+    <rect x="0" y="2051.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-85">
+    <rect x="0" y="2075.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-86">
+    <rect x="0" y="2099.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-87">
+    <rect x="0" y="2124.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-88">
+    <rect x="0" y="2148.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-89">
+    <rect x="0" y="2173.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-90">
+    <rect x="0" y="2197.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-91">
+    <rect x="0" y="2221.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-92">
+    <rect x="0" y="2246.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-93">
+    <rect x="0" y="2270.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-94">
+    <rect x="0" y="2295.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-95">
+    <rect x="0" y="2319.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-96">
+    <rect x="0" y="2343.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-97">
+    <rect x="0" y="2368.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-98">
+    <rect x="0" y="2392.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-99">
+    <rect x="0" y="2417.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-100">
+    <rect x="0" y="2441.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-101">
+    <rect x="0" y="2465.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-102">
+    <rect x="0" y="2490.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-103">
+    <rect x="0" y="2514.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-104">
+    <rect x="0" y="2539.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-105">
+    <rect x="0" y="2563.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-106">
+    <rect x="0" y="2587.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-107">
+    <rect x="0" y="2612.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-108">
+    <rect x="0" y="2636.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-109">
+    <rect x="0" y="2661.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-110">
+    <rect x="0" y="2685.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-111">
+    <rect x="0" y="2709.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-112">
+    <rect x="0" y="2734.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-113">
+    <rect x="0" y="2758.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-114">
+    <rect x="0" y="2783.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-115">
+    <rect x="0" y="2807.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-116">
+    <rect x="0" y="2831.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-117">
+    <rect x="0" y="2856.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-118">
+    <rect x="0" y="2880.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-119">
+    <rect x="0" y="2905.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-120">
+    <rect x="0" y="2929.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-121">
+    <rect x="0" y="2953.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-122">
+    <rect x="0" y="2978.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-123">
+    <rect x="0" y="3002.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-124">
+    <rect x="0" y="3027.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-125">
+    <rect x="0" y="3051.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-126">
+    <rect x="0" y="3075.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-127">
+    <rect x="0" y="3100.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-128">
+    <rect x="0" y="3124.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-129">
+    <rect x="0" y="3149.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-130">
+    <rect x="0" y="3173.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-131">
+    <rect x="0" y="3197.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-132">
+    <rect x="0" y="3222.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-133">
+    <rect x="0" y="3246.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-134">
+    <rect x="0" y="3271.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-135">
+    <rect x="0" y="3295.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-136">
+    <rect x="0" y="3319.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-137">
+    <rect x="0" y="3344.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-138">
+    <rect x="0" y="3368.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-139">
+    <rect x="0" y="3393.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-140">
+    <rect x="0" y="3417.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-141">
+    <rect x="0" y="3441.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-142">
+    <rect x="0" y="3466.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-143">
+    <rect x="0" y="3490.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-144">
+    <rect x="0" y="3515.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-145">
+    <rect x="0" y="3539.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-146">
+    <rect x="0" y="3563.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-147">
+    <rect x="0" y="3588.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2636785142-line-148">
+    <rect x="0" y="3612.7" width="1268.8" height="24.65"/>
+            </clipPath>
+    </defs>
+
+    <rect fill="#292929" stroke="rgba(255,255,255,0.35)" stroke-width="1" x="1" y="1" width="1285" height="3708" rx="8"/><text class="terminal-2636785142-title" fill="#c5c8c6" text-anchor="middle" x="642" y="27">ipa-diagnose</text>
+            <g transform="translate(26,22)">
+            <circle cx="0" cy="0" r="7" fill="#ff5f57"/>
+            <circle cx="22" cy="0" r="7" fill="#febc2e"/>
+            <circle cx="44" cy="0" r="7" fill="#28c840"/>
+            </g>
+        
+    <g transform="translate(9, 41)" clip-path="url(#terminal-2636785142-clip-terminal)">
+    
+    <g class="terminal-2636785142-matrix">
+    <text class="terminal-2636785142-r1" x="0" y="20" textLength="658.8" clip-path="url(#terminal-2636785142-line-0)">$&#160;dnf&#160;install&#160;-y&#160;./ipa-diagnose-0.1.0-1.el9.noarch.rpm</text><text class="terminal-2636785142-r1" x="683.2" y="20" textLength="585.6" clip-path="url(#terminal-2636785142-line-0)">(Rocky&#160;Linux&#160;9.3,&#160;EPEL&#160;enabled&#160;for&#160;python3-rich)</text><text class="terminal-2636785142-r2" x="1268.8" y="20" textLength="12.2" clip-path="url(#terminal-2636785142-line-0)">
+</text><text class="terminal-2636785142-r2" x="1268.8" y="44.4" textLength="12.2" clip-path="url(#terminal-2636785142-line-1)">
+</text><text class="terminal-2636785142-r2" x="0" y="68.8" textLength="353.8" clip-path="url(#terminal-2636785142-line-2)">$&#160;dnf&#160;install&#160;-y&#160;epel-release</text><text class="terminal-2636785142-r2" x="1268.8" y="68.8" textLength="12.2" clip-path="url(#terminal-2636785142-line-2)">
+</text><text class="terminal-2636785142-r2" x="0" y="93.2" textLength="963.8" clip-path="url(#terminal-2636785142-line-3)">Rocky&#160;Linux&#160;9&#160;-&#160;BaseOS&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;276&#160;kB/s&#160;|&#160;&#160;29&#160;MB&#160;&#160;&#160;&#160;&#160;01:49&#160;&#160;&#160;&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="93.2" textLength="12.2" clip-path="url(#terminal-2636785142-line-3)">
+</text><text class="terminal-2636785142-r2" x="0" y="117.6" textLength="963.8" clip-path="url(#terminal-2636785142-line-4)">Rocky&#160;Linux&#160;9&#160;-&#160;AppStream&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;400&#160;kB/s&#160;|&#160;&#160;24&#160;MB&#160;&#160;&#160;&#160;&#160;01:01&#160;&#160;&#160;&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="117.6" textLength="12.2" clip-path="url(#terminal-2636785142-line-4)">
+</text><text class="terminal-2636785142-r2" x="0" y="142" textLength="963.8" clip-path="url(#terminal-2636785142-line-5)">Rocky&#160;Linux&#160;9&#160;-&#160;Extras&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;3.6&#160;kB/s&#160;|&#160;&#160;17&#160;kB&#160;&#160;&#160;&#160;&#160;00:04&#160;&#160;&#160;&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="142" textLength="12.2" clip-path="url(#terminal-2636785142-line-5)">
+</text><text class="terminal-2636785142-r2" x="0" y="166.4" textLength="878.4" clip-path="url(#terminal-2636785142-line-6)">Last&#160;metadata&#160;expiration&#160;check:&#160;0:00:02&#160;ago&#160;on&#160;Thu&#160;Sep&#160;17&#160;23:48:17&#160;2026.</text><text class="terminal-2636785142-r2" x="1268.8" y="166.4" textLength="12.2" clip-path="url(#terminal-2636785142-line-6)">
+</text><text class="terminal-2636785142-r2" x="0" y="190.8" textLength="268.4" clip-path="url(#terminal-2636785142-line-7)">Dependencies&#160;resolved.</text><text class="terminal-2636785142-r2" x="1268.8" y="190.8" textLength="12.2" clip-path="url(#terminal-2636785142-line-7)">
+</text><text class="terminal-2636785142-r2" x="0" y="215.2" textLength="976" clip-path="url(#terminal-2636785142-line-8)">================================================================================</text><text class="terminal-2636785142-r2" x="1268.8" y="215.2" textLength="12.2" clip-path="url(#terminal-2636785142-line-8)">
+</text><text class="terminal-2636785142-r2" x="0" y="239.6" textLength="963.8" clip-path="url(#terminal-2636785142-line-9)">&#160;Package&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;Arch&#160;&#160;&#160;&#160;&#160;&#160;Version&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;Repo&#160;&#160;&#160;&#160;&#160;&#160;&#160;Size</text><text class="terminal-2636785142-r2" x="1268.8" y="239.6" textLength="12.2" clip-path="url(#terminal-2636785142-line-9)">
+</text><text class="terminal-2636785142-r2" x="0" y="264" textLength="976" clip-path="url(#terminal-2636785142-line-10)">================================================================================</text><text class="terminal-2636785142-r2" x="1268.8" y="264" textLength="12.2" clip-path="url(#terminal-2636785142-line-10)">
+</text><text class="terminal-2636785142-r2" x="0" y="288.4" textLength="134.2" clip-path="url(#terminal-2636785142-line-11)">Installing:</text><text class="terminal-2636785142-r2" x="1268.8" y="288.4" textLength="12.2" clip-path="url(#terminal-2636785142-line-11)">
+</text><text class="terminal-2636785142-r2" x="0" y="312.8" textLength="963.8" clip-path="url(#terminal-2636785142-line-12)">&#160;epel-release&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;noarch&#160;&#160;&#160;&#160;9-10.el9&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;extras&#160;&#160;&#160;&#160;&#160;19&#160;k</text><text class="terminal-2636785142-r2" x="1268.8" y="312.8" textLength="12.2" clip-path="url(#terminal-2636785142-line-12)">
+</text><text class="terminal-2636785142-r2" x="0" y="337.2" textLength="292.8" clip-path="url(#terminal-2636785142-line-13)">Installing&#160;dependencies:</text><text class="terminal-2636785142-r2" x="1268.8" y="337.2" textLength="12.2" clip-path="url(#terminal-2636785142-line-13)">
+</text><text class="terminal-2636785142-r2" x="0" y="361.6" textLength="963.8" clip-path="url(#terminal-2636785142-line-14)">&#160;dbus-libs&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;x86_64&#160;&#160;&#160;&#160;1:1.12.20-8.el9&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;baseos&#160;&#160;&#160;&#160;151&#160;k</text><text class="terminal-2636785142-r2" x="1268.8" y="361.6" textLength="12.2" clip-path="url(#terminal-2636785142-line-14)">
+</text><text class="terminal-2636785142-r2" x="0" y="386" textLength="963.8" clip-path="url(#terminal-2636785142-line-15)">&#160;python3-dateutil&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;noarch&#160;&#160;&#160;&#160;1:2.9.0.post0-1.el9_7&#160;&#160;&#160;&#160;baseos&#160;&#160;&#160;&#160;290&#160;k</text><text class="terminal-2636785142-r2" x="1268.8" y="386" textLength="12.2" clip-path="url(#terminal-2636785142-line-15)">
+</text><text class="terminal-2636785142-r2" x="0" y="410.4" textLength="963.8" clip-path="url(#terminal-2636785142-line-16)">&#160;python3-dbus&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;x86_64&#160;&#160;&#160;&#160;1.2.18-2.el9.0.1&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;baseos&#160;&#160;&#160;&#160;131&#160;k</text><text class="terminal-2636785142-r2" x="1268.8" y="410.4" textLength="12.2" clip-path="url(#terminal-2636785142-line-16)">
+</text><text class="terminal-2636785142-r2" x="0" y="434.8" textLength="963.8" clip-path="url(#terminal-2636785142-line-17)">&#160;python3-dnf-plugins-core&#160;&#160;&#160;&#160;noarch&#160;&#160;&#160;&#160;4.3.0-26.el9&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;baseos&#160;&#160;&#160;&#160;245&#160;k</text><text class="terminal-2636785142-r2" x="1268.8" y="434.8" textLength="12.2" clip-path="url(#terminal-2636785142-line-17)">
+</text><text class="terminal-2636785142-r2" x="0" y="459.2" textLength="963.8" clip-path="url(#terminal-2636785142-line-18)">&#160;python3-six&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;noarch&#160;&#160;&#160;&#160;1.15.0-9.el9&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;baseos&#160;&#160;&#160;&#160;&#160;36&#160;k</text><text class="terminal-2636785142-r2" x="1268.8" y="459.2" textLength="12.2" clip-path="url(#terminal-2636785142-line-18)">
+</text><text class="terminal-2636785142-r2" x="0" y="483.6" textLength="963.8" clip-path="url(#terminal-2636785142-line-19)">&#160;python3-systemd&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;x86_64&#160;&#160;&#160;&#160;234-19.el9&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;baseos&#160;&#160;&#160;&#160;&#160;82&#160;k</text><text class="terminal-2636785142-r2" x="1268.8" y="483.6" textLength="12.2" clip-path="url(#terminal-2636785142-line-19)">
+</text><text class="terminal-2636785142-r2" x="0" y="508" textLength="353.8" clip-path="url(#terminal-2636785142-line-20)">Installing&#160;weak&#160;dependencies:</text><text class="terminal-2636785142-r2" x="1268.8" y="508" textLength="12.2" clip-path="url(#terminal-2636785142-line-20)">
+</text><text class="terminal-2636785142-r2" x="0" y="532.4" textLength="963.8" clip-path="url(#terminal-2636785142-line-21)">&#160;dnf-plugins-core&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;noarch&#160;&#160;&#160;&#160;4.3.0-26.el9&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;baseos&#160;&#160;&#160;&#160;&#160;35&#160;k</text><text class="terminal-2636785142-r2" x="1268.8" y="532.4" textLength="12.2" clip-path="url(#terminal-2636785142-line-21)">
+</text><text class="terminal-2636785142-r2" x="1268.8" y="556.8" textLength="12.2" clip-path="url(#terminal-2636785142-line-22)">
+</text><text class="terminal-2636785142-r2" x="0" y="581.2" textLength="231.8" clip-path="url(#terminal-2636785142-line-23)">Transaction&#160;Summary</text><text class="terminal-2636785142-r2" x="1268.8" y="581.2" textLength="12.2" clip-path="url(#terminal-2636785142-line-23)">
+</text><text class="terminal-2636785142-r2" x="0" y="605.6" textLength="976" clip-path="url(#terminal-2636785142-line-24)">================================================================================</text><text class="terminal-2636785142-r2" x="1268.8" y="605.6" textLength="12.2" clip-path="url(#terminal-2636785142-line-24)">
+</text><text class="terminal-2636785142-r2" x="0" y="630" textLength="231.8" clip-path="url(#terminal-2636785142-line-25)">Install&#160;&#160;8&#160;Packages</text><text class="terminal-2636785142-r2" x="1268.8" y="630" textLength="12.2" clip-path="url(#terminal-2636785142-line-25)">
+</text><text class="terminal-2636785142-r2" x="1268.8" y="654.4" textLength="12.2" clip-path="url(#terminal-2636785142-line-26)">
+</text><text class="terminal-2636785142-r2" x="0" y="678.8" textLength="317.2" clip-path="url(#terminal-2636785142-line-27)">Total&#160;download&#160;size:&#160;988&#160;k</text><text class="terminal-2636785142-r2" x="1268.8" y="678.8" textLength="12.2" clip-path="url(#terminal-2636785142-line-27)">
+</text><text class="terminal-2636785142-r2" x="0" y="703.2" textLength="256.2" clip-path="url(#terminal-2636785142-line-28)">Installed&#160;size:&#160;3.0&#160;M</text><text class="terminal-2636785142-r2" x="1268.8" y="703.2" textLength="12.2" clip-path="url(#terminal-2636785142-line-28)">
+</text><text class="terminal-2636785142-r2" x="0" y="727.6" textLength="256.2" clip-path="url(#terminal-2636785142-line-29)">Downloading&#160;Packages:</text><text class="terminal-2636785142-r2" x="1268.8" y="727.6" textLength="12.2" clip-path="url(#terminal-2636785142-line-29)">
+</text><text class="terminal-2636785142-r2" x="0" y="752" textLength="963.8" clip-path="url(#terminal-2636785142-line-30)">(1/8):&#160;dnf-plugins-core-4.3.0-26.el9.noarch.rpm&#160;&#160;63&#160;kB/s&#160;|&#160;&#160;35&#160;kB&#160;&#160;&#160;&#160;&#160;00:00&#160;&#160;&#160;&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="752" textLength="12.2" clip-path="url(#terminal-2636785142-line-30)">
+</text><text class="terminal-2636785142-r2" x="0" y="776.4" textLength="963.8" clip-path="url(#terminal-2636785142-line-31)">(2/8):&#160;python3-dateutil-2.9.0.post0-1.el9_7.noa&#160;282&#160;kB/s&#160;|&#160;290&#160;kB&#160;&#160;&#160;&#160;&#160;00:01&#160;&#160;&#160;&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="776.4" textLength="12.2" clip-path="url(#terminal-2636785142-line-31)">
+</text><text class="terminal-2636785142-r2" x="0" y="800.8" textLength="963.8" clip-path="url(#terminal-2636785142-line-32)">(3/8):&#160;dbus-libs-1.12.20-8.el9.x86_64.rpm&#160;&#160;&#160;&#160;&#160;&#160;&#160;131&#160;kB/s&#160;|&#160;151&#160;kB&#160;&#160;&#160;&#160;&#160;00:01&#160;&#160;&#160;&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="800.8" textLength="12.2" clip-path="url(#terminal-2636785142-line-32)">
+</text><text class="terminal-2636785142-r2" x="0" y="825.2" textLength="963.8" clip-path="url(#terminal-2636785142-line-33)">(4/8):&#160;python3-dbus-1.2.18-2.el9.0.1.x86_64.rpm&#160;139&#160;kB/s&#160;|&#160;131&#160;kB&#160;&#160;&#160;&#160;&#160;00:00&#160;&#160;&#160;&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="825.2" textLength="12.2" clip-path="url(#terminal-2636785142-line-33)">
+</text><text class="terminal-2636785142-r2" x="0" y="849.6" textLength="963.8" clip-path="url(#terminal-2636785142-line-34)">(5/8):&#160;python3-six-1.15.0-9.el9.noarch.rpm&#160;&#160;&#160;&#160;&#160;&#160;&#160;86&#160;kB/s&#160;|&#160;&#160;36&#160;kB&#160;&#160;&#160;&#160;&#160;00:00&#160;&#160;&#160;&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="849.6" textLength="12.2" clip-path="url(#terminal-2636785142-line-34)">
+</text><text class="terminal-2636785142-r2" x="0" y="874" textLength="963.8" clip-path="url(#terminal-2636785142-line-35)">(6/8):&#160;python3-dnf-plugins-core-4.3.0-26.el9.no&#160;332&#160;kB/s&#160;|&#160;245&#160;kB&#160;&#160;&#160;&#160;&#160;00:00&#160;&#160;&#160;&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="874" textLength="12.2" clip-path="url(#terminal-2636785142-line-35)">
+</text><text class="terminal-2636785142-r2" x="0" y="898.4" textLength="963.8" clip-path="url(#terminal-2636785142-line-36)">(7/8):&#160;python3-systemd-234-19.el9.x86_64.rpm&#160;&#160;&#160;&#160;&#160;92&#160;kB/s&#160;|&#160;&#160;82&#160;kB&#160;&#160;&#160;&#160;&#160;00:00&#160;&#160;&#160;&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="898.4" textLength="12.2" clip-path="url(#terminal-2636785142-line-36)">
+</text><text class="terminal-2636785142-r2" x="0" y="922.8" textLength="963.8" clip-path="url(#terminal-2636785142-line-37)">(8/8):&#160;epel-release-9-10.el9.noarch.rpm&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;15&#160;kB/s&#160;|&#160;&#160;19&#160;kB&#160;&#160;&#160;&#160;&#160;00:01&#160;&#160;&#160;&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="922.8" textLength="12.2" clip-path="url(#terminal-2636785142-line-37)">
+</text><text class="terminal-2636785142-r2" x="0" y="947.2" textLength="976" clip-path="url(#terminal-2636785142-line-38)">--------------------------------------------------------------------------------</text><text class="terminal-2636785142-r2" x="1268.8" y="947.2" textLength="12.2" clip-path="url(#terminal-2636785142-line-38)">
+</text><text class="terminal-2636785142-r2" x="0" y="971.6" textLength="976" clip-path="url(#terminal-2636785142-line-39)">Total&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;147&#160;kB/s&#160;|&#160;988&#160;kB&#160;&#160;&#160;&#160;&#160;00:06&#160;&#160;&#160;&#160;&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="971.6" textLength="12.2" clip-path="url(#terminal-2636785142-line-39)">
+</text><text class="terminal-2636785142-r2" x="0" y="996" textLength="963.8" clip-path="url(#terminal-2636785142-line-40)">Rocky&#160;Linux&#160;9&#160;-&#160;BaseOS&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;1.7&#160;MB/s&#160;|&#160;1.7&#160;kB&#160;&#160;&#160;&#160;&#160;00:00&#160;&#160;&#160;&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="996" textLength="12.2" clip-path="url(#terminal-2636785142-line-40)">
+</text><text class="terminal-2636785142-r2" x="0" y="1020.4" textLength="353.8" clip-path="url(#terminal-2636785142-line-41)">Importing&#160;GPG&#160;key&#160;0x350D275D:</text><text class="terminal-2636785142-r2" x="1268.8" y="1020.4" textLength="12.2" clip-path="url(#terminal-2636785142-line-41)">
+</text><text class="terminal-2636785142-r2" x="0" y="1044.8" textLength="1159" clip-path="url(#terminal-2636785142-line-42)">&#160;Userid&#160;&#160;&#160;&#160;&#160;:&#160;&quot;Rocky&#160;Enterprise&#160;Software&#160;Foundation&#160;-&#160;Release&#160;key&#160;2022&#160;&lt;releng@rockylinux.org&gt;&quot;</text><text class="terminal-2636785142-r2" x="1268.8" y="1044.8" textLength="12.2" clip-path="url(#terminal-2636785142-line-42)">
+</text><text class="terminal-2636785142-r2" x="0" y="1069.2" textLength="768.6" clip-path="url(#terminal-2636785142-line-43)">&#160;Fingerprint:&#160;21CB&#160;256A&#160;E16F&#160;C54C&#160;6E65&#160;2949&#160;702D&#160;426D&#160;350D&#160;275D</text><text class="terminal-2636785142-r2" x="1268.8" y="1069.2" textLength="12.2" clip-path="url(#terminal-2636785142-line-43)">
+</text><text class="terminal-2636785142-r2" x="0" y="1093.6" textLength="610" clip-path="url(#terminal-2636785142-line-44)">&#160;From&#160;&#160;&#160;&#160;&#160;&#160;&#160;:&#160;/etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-9</text><text class="terminal-2636785142-r2" x="1268.8" y="1093.6" textLength="12.2" clip-path="url(#terminal-2636785142-line-44)">
+</text><text class="terminal-2636785142-r2" x="0" y="1118" textLength="305" clip-path="url(#terminal-2636785142-line-45)">Key&#160;imported&#160;successfully</text><text class="terminal-2636785142-r2" x="1268.8" y="1118" textLength="12.2" clip-path="url(#terminal-2636785142-line-45)">
+</text><text class="terminal-2636785142-r2" x="0" y="1142.4" textLength="305" clip-path="url(#terminal-2636785142-line-46)">Running&#160;transaction&#160;check</text><text class="terminal-2636785142-r2" x="1268.8" y="1142.4" textLength="12.2" clip-path="url(#terminal-2636785142-line-46)">
+</text><text class="terminal-2636785142-r2" x="0" y="1166.8" textLength="341.6" clip-path="url(#terminal-2636785142-line-47)">Transaction&#160;check&#160;succeeded.</text><text class="terminal-2636785142-r2" x="1268.8" y="1166.8" textLength="12.2" clip-path="url(#terminal-2636785142-line-47)">
+</text><text class="terminal-2636785142-r2" x="0" y="1191.2" textLength="292.8" clip-path="url(#terminal-2636785142-line-48)">Running&#160;transaction&#160;test</text><text class="terminal-2636785142-r2" x="1268.8" y="1191.2" textLength="12.2" clip-path="url(#terminal-2636785142-line-48)">
+</text><text class="terminal-2636785142-r2" x="0" y="1215.6" textLength="329.4" clip-path="url(#terminal-2636785142-line-49)">Transaction&#160;test&#160;succeeded.</text><text class="terminal-2636785142-r2" x="1268.8" y="1215.6" textLength="12.2" clip-path="url(#terminal-2636785142-line-49)">
+</text><text class="terminal-2636785142-r2" x="0" y="1240" textLength="231.8" clip-path="url(#terminal-2636785142-line-50)">Running&#160;transaction</text><text class="terminal-2636785142-r2" x="1268.8" y="1240" textLength="12.2" clip-path="url(#terminal-2636785142-line-50)">
+</text><text class="terminal-2636785142-r2" x="0" y="1264.4" textLength="976" clip-path="url(#terminal-2636785142-line-51)">&#160;&#160;Preparing&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;:&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;1/1&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="1264.4" textLength="12.2" clip-path="url(#terminal-2636785142-line-51)">
+</text><text class="terminal-2636785142-r2" x="0" y="1288.8" textLength="976" clip-path="url(#terminal-2636785142-line-52)">&#160;&#160;Installing&#160;&#160;&#160;&#160;&#160;&#160;&#160;:&#160;python3-systemd-234-19.el9.x86_64&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;1/8&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="1288.8" textLength="12.2" clip-path="url(#terminal-2636785142-line-52)">
+</text><text class="terminal-2636785142-r2" x="0" y="1313.2" textLength="976" clip-path="url(#terminal-2636785142-line-53)">&#160;&#160;Installing&#160;&#160;&#160;&#160;&#160;&#160;&#160;:&#160;python3-six-1.15.0-9.el9.noarch&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;2/8&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="1313.2" textLength="12.2" clip-path="url(#terminal-2636785142-line-53)">
+</text><text class="terminal-2636785142-r2" x="0" y="1337.6" textLength="976" clip-path="url(#terminal-2636785142-line-54)">&#160;&#160;Installing&#160;&#160;&#160;&#160;&#160;&#160;&#160;:&#160;python3-dateutil-1:2.9.0.post0-1.el9_7.noarch&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;3/8&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="1337.6" textLength="12.2" clip-path="url(#terminal-2636785142-line-54)">
+</text><text class="terminal-2636785142-r2" x="0" y="1362" textLength="976" clip-path="url(#terminal-2636785142-line-55)">&#160;&#160;Installing&#160;&#160;&#160;&#160;&#160;&#160;&#160;:&#160;dbus-libs-1:1.12.20-8.el9.x86_64&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;4/8&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="1362" textLength="12.2" clip-path="url(#terminal-2636785142-line-55)">
+</text><text class="terminal-2636785142-r2" x="0" y="1386.4" textLength="976" clip-path="url(#terminal-2636785142-line-56)">&#160;&#160;Installing&#160;&#160;&#160;&#160;&#160;&#160;&#160;:&#160;python3-dbus-1.2.18-2.el9.0.1.x86_64&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;5/8&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="1386.4" textLength="12.2" clip-path="url(#terminal-2636785142-line-56)">
+</text><text class="terminal-2636785142-r2" x="0" y="1410.8" textLength="976" clip-path="url(#terminal-2636785142-line-57)">&#160;&#160;Installing&#160;&#160;&#160;&#160;&#160;&#160;&#160;:&#160;python3-dnf-plugins-core-4.3.0-26.el9.noarch&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;6/8&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="1410.8" textLength="12.2" clip-path="url(#terminal-2636785142-line-57)">
+</text><text class="terminal-2636785142-r2" x="0" y="1435.2" textLength="976" clip-path="url(#terminal-2636785142-line-58)">&#160;&#160;Installing&#160;&#160;&#160;&#160;&#160;&#160;&#160;:&#160;dnf-plugins-core-4.3.0-26.el9.noarch&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;7/8&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="1435.2" textLength="12.2" clip-path="url(#terminal-2636785142-line-58)">
+</text><text class="terminal-2636785142-r2" x="0" y="1459.6" textLength="976" clip-path="url(#terminal-2636785142-line-59)">&#160;&#160;Installing&#160;&#160;&#160;&#160;&#160;&#160;&#160;:&#160;epel-release-9-10.el9.noarch&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;8/8&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="1459.6" textLength="12.2" clip-path="url(#terminal-2636785142-line-59)">
+</text><text class="terminal-2636785142-r2" x="0" y="1484" textLength="976" clip-path="url(#terminal-2636785142-line-60)">&#160;&#160;Running&#160;scriptlet:&#160;epel-release-9-10.el9.noarch&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;8/8&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="1484" textLength="12.2" clip-path="url(#terminal-2636785142-line-60)">
+</text><text class="terminal-2636785142-r2" x="0" y="1508.4" textLength="805.2" clip-path="url(#terminal-2636785142-line-61)">Many&#160;EPEL&#160;packages&#160;require&#160;the&#160;CodeReady&#160;Builder&#160;(CRB)&#160;repository.</text><text class="terminal-2636785142-r2" x="1268.8" y="1508.4" textLength="12.2" clip-path="url(#terminal-2636785142-line-61)">
+</text><text class="terminal-2636785142-r2" x="0" y="1532.8" textLength="976" clip-path="url(#terminal-2636785142-line-62)">It&#160;is&#160;recommended&#160;that&#160;you&#160;run&#160;/usr/bin/crb&#160;enable&#160;to&#160;enable&#160;the&#160;CRB&#160;repository.</text><text class="terminal-2636785142-r2" x="1268.8" y="1532.8" textLength="12.2" clip-path="url(#terminal-2636785142-line-62)">
+</text><text class="terminal-2636785142-r2" x="1268.8" y="1557.2" textLength="12.2" clip-path="url(#terminal-2636785142-line-63)">
+</text><text class="terminal-2636785142-r2" x="0" y="1581.6" textLength="976" clip-path="url(#terminal-2636785142-line-64)">&#160;&#160;Verifying&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;:&#160;dbus-libs-1:1.12.20-8.el9.x86_64&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;1/8&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="1581.6" textLength="12.2" clip-path="url(#terminal-2636785142-line-64)">
+</text><text class="terminal-2636785142-r2" x="0" y="1606" textLength="976" clip-path="url(#terminal-2636785142-line-65)">&#160;&#160;Verifying&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;:&#160;dnf-plugins-core-4.3.0-26.el9.noarch&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;2/8&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="1606" textLength="12.2" clip-path="url(#terminal-2636785142-line-65)">
+</text><text class="terminal-2636785142-r2" x="0" y="1630.4" textLength="976" clip-path="url(#terminal-2636785142-line-66)">&#160;&#160;Verifying&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;:&#160;python3-dateutil-1:2.9.0.post0-1.el9_7.noarch&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;3/8&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="1630.4" textLength="12.2" clip-path="url(#terminal-2636785142-line-66)">
+</text><text class="terminal-2636785142-r2" x="0" y="1654.8" textLength="976" clip-path="url(#terminal-2636785142-line-67)">&#160;&#160;Verifying&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;:&#160;python3-dbus-1.2.18-2.el9.0.1.x86_64&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;4/8&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="1654.8" textLength="12.2" clip-path="url(#terminal-2636785142-line-67)">
+</text><text class="terminal-2636785142-r2" x="0" y="1679.2" textLength="976" clip-path="url(#terminal-2636785142-line-68)">&#160;&#160;Verifying&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;:&#160;python3-dnf-plugins-core-4.3.0-26.el9.noarch&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;5/8&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="1679.2" textLength="12.2" clip-path="url(#terminal-2636785142-line-68)">
+</text><text class="terminal-2636785142-r2" x="0" y="1703.6" textLength="976" clip-path="url(#terminal-2636785142-line-69)">&#160;&#160;Verifying&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;:&#160;python3-six-1.15.0-9.el9.noarch&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;6/8&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="1703.6" textLength="12.2" clip-path="url(#terminal-2636785142-line-69)">
+</text><text class="terminal-2636785142-r2" x="0" y="1728" textLength="976" clip-path="url(#terminal-2636785142-line-70)">&#160;&#160;Verifying&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;:&#160;python3-systemd-234-19.el9.x86_64&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;7/8&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="1728" textLength="12.2" clip-path="url(#terminal-2636785142-line-70)">
+</text><text class="terminal-2636785142-r2" x="0" y="1752.4" textLength="976" clip-path="url(#terminal-2636785142-line-71)">&#160;&#160;Verifying&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;:&#160;epel-release-9-10.el9.noarch&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;8/8&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="1752.4" textLength="12.2" clip-path="url(#terminal-2636785142-line-71)">
+</text><text class="terminal-2636785142-r2" x="1268.8" y="1776.8" textLength="12.2" clip-path="url(#terminal-2636785142-line-72)">
+</text><text class="terminal-2636785142-r2" x="0" y="1801.2" textLength="122" clip-path="url(#terminal-2636785142-line-73)">Installed:</text><text class="terminal-2636785142-r2" x="1268.8" y="1801.2" textLength="12.2" clip-path="url(#terminal-2636785142-line-73)">
+</text><text class="terminal-2636785142-r2" x="0" y="1825.6" textLength="976" clip-path="url(#terminal-2636785142-line-74)">&#160;&#160;dbus-libs-1:1.12.20-8.el9.x86_64&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="1825.6" textLength="12.2" clip-path="url(#terminal-2636785142-line-74)">
+</text><text class="terminal-2636785142-r2" x="0" y="1850" textLength="976" clip-path="url(#terminal-2636785142-line-75)">&#160;&#160;dnf-plugins-core-4.3.0-26.el9.noarch&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="1850" textLength="12.2" clip-path="url(#terminal-2636785142-line-75)">
+</text><text class="terminal-2636785142-r2" x="0" y="1874.4" textLength="976" clip-path="url(#terminal-2636785142-line-76)">&#160;&#160;epel-release-9-10.el9.noarch&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="1874.4" textLength="12.2" clip-path="url(#terminal-2636785142-line-76)">
+</text><text class="terminal-2636785142-r2" x="0" y="1898.8" textLength="976" clip-path="url(#terminal-2636785142-line-77)">&#160;&#160;python3-dateutil-1:2.9.0.post0-1.el9_7.noarch&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="1898.8" textLength="12.2" clip-path="url(#terminal-2636785142-line-77)">
+</text><text class="terminal-2636785142-r2" x="0" y="1923.2" textLength="976" clip-path="url(#terminal-2636785142-line-78)">&#160;&#160;python3-dbus-1.2.18-2.el9.0.1.x86_64&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="1923.2" textLength="12.2" clip-path="url(#terminal-2636785142-line-78)">
+</text><text class="terminal-2636785142-r2" x="0" y="1947.6" textLength="976" clip-path="url(#terminal-2636785142-line-79)">&#160;&#160;python3-dnf-plugins-core-4.3.0-26.el9.noarch&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="1947.6" textLength="12.2" clip-path="url(#terminal-2636785142-line-79)">
+</text><text class="terminal-2636785142-r2" x="0" y="1972" textLength="976" clip-path="url(#terminal-2636785142-line-80)">&#160;&#160;python3-six-1.15.0-9.el9.noarch&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="1972" textLength="12.2" clip-path="url(#terminal-2636785142-line-80)">
+</text><text class="terminal-2636785142-r2" x="0" y="1996.4" textLength="976" clip-path="url(#terminal-2636785142-line-81)">&#160;&#160;python3-systemd-234-19.el9.x86_64&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="1996.4" textLength="12.2" clip-path="url(#terminal-2636785142-line-81)">
+</text><text class="terminal-2636785142-r2" x="1268.8" y="2020.8" textLength="12.2" clip-path="url(#terminal-2636785142-line-82)">
+</text><text class="terminal-2636785142-r2" x="0" y="2045.2" textLength="109.8" clip-path="url(#terminal-2636785142-line-83)">Complete!</text><text class="terminal-2636785142-r2" x="1268.8" y="2045.2" textLength="12.2" clip-path="url(#terminal-2636785142-line-83)">
+</text><text class="terminal-2636785142-r2" x="1268.8" y="2069.6" textLength="12.2" clip-path="url(#terminal-2636785142-line-84)">
+</text><text class="terminal-2636785142-r2" x="0" y="2094" textLength="463.6" clip-path="url(#terminal-2636785142-line-85)">$&#160;dnf&#160;config-manager&#160;--set-enabled&#160;crb</text><text class="terminal-2636785142-r2" x="1268.8" y="2094" textLength="12.2" clip-path="url(#terminal-2636785142-line-85)">
+</text><text class="terminal-2636785142-r2" x="1268.8" y="2118.4" textLength="12.2" clip-path="url(#terminal-2636785142-line-86)">
+</text><text class="terminal-2636785142-r2" x="0" y="2142.8" textLength="707.6" clip-path="url(#terminal-2636785142-line-87)">$&#160;dnf&#160;install&#160;-y&#160;/work/ipa-diagnose-0.1.0-1.el9.noarch.rpm</text><text class="terminal-2636785142-r2" x="1268.8" y="2142.8" textLength="12.2" clip-path="url(#terminal-2636785142-line-87)">
+</text><text class="terminal-2636785142-r2" x="0" y="2167.2" textLength="963.8" clip-path="url(#terminal-2636785142-line-88)">Extra&#160;Packages&#160;for&#160;Enterprise&#160;Linux&#160;9&#160;-&#160;x86_64&#160;&#160;662&#160;kB/s&#160;|&#160;&#160;20&#160;MB&#160;&#160;&#160;&#160;&#160;00:31&#160;&#160;&#160;&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="2167.2" textLength="12.2" clip-path="url(#terminal-2636785142-line-88)">
+</text><text class="terminal-2636785142-r2" x="0" y="2191.6" textLength="963.8" clip-path="url(#terminal-2636785142-line-89)">Extra&#160;Packages&#160;for&#160;Enterprise&#160;Linux&#160;9&#160;openh264&#160;&#160;898&#160;&#160;B/s&#160;|&#160;2.5&#160;kB&#160;&#160;&#160;&#160;&#160;00:02&#160;&#160;&#160;&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="2191.6" textLength="12.2" clip-path="url(#terminal-2636785142-line-89)">
+</text><text class="terminal-2636785142-r2" x="0" y="2216" textLength="963.8" clip-path="url(#terminal-2636785142-line-90)">Rocky&#160;Linux&#160;9&#160;-&#160;BaseOS&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;3.6&#160;kB/s&#160;|&#160;4.3&#160;kB&#160;&#160;&#160;&#160;&#160;00:01&#160;&#160;&#160;&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="2216" textLength="12.2" clip-path="url(#terminal-2636785142-line-90)">
+</text><text class="terminal-2636785142-r2" x="0" y="2240.4" textLength="963.8" clip-path="url(#terminal-2636785142-line-91)">Rocky&#160;Linux&#160;9&#160;-&#160;AppStream&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;3.7&#160;kB/s&#160;|&#160;4.8&#160;kB&#160;&#160;&#160;&#160;&#160;00:01&#160;&#160;&#160;&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="2240.4" textLength="12.2" clip-path="url(#terminal-2636785142-line-91)">
+</text><text class="terminal-2636785142-r2" x="0" y="2264.8" textLength="963.8" clip-path="url(#terminal-2636785142-line-92)">Rocky&#160;Linux&#160;9&#160;-&#160;CRB&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;815&#160;kB/s&#160;|&#160;5.5&#160;MB&#160;&#160;&#160;&#160;&#160;00:06&#160;&#160;&#160;&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="2264.8" textLength="12.2" clip-path="url(#terminal-2636785142-line-92)">
+</text><text class="terminal-2636785142-r2" x="0" y="2289.2" textLength="878.4" clip-path="url(#terminal-2636785142-line-93)">Last&#160;metadata&#160;expiration&#160;check:&#160;0:00:01&#160;ago&#160;on&#160;Thu&#160;Sep&#160;17&#160;23:51:21&#160;2026.</text><text class="terminal-2636785142-r2" x="1268.8" y="2289.2" textLength="12.2" clip-path="url(#terminal-2636785142-line-93)">
+</text><text class="terminal-2636785142-r2" x="0" y="2313.6" textLength="268.4" clip-path="url(#terminal-2636785142-line-94)">Dependencies&#160;resolved.</text><text class="terminal-2636785142-r2" x="1268.8" y="2313.6" textLength="12.2" clip-path="url(#terminal-2636785142-line-94)">
+</text><text class="terminal-2636785142-r2" x="0" y="2338" textLength="976" clip-path="url(#terminal-2636785142-line-95)">================================================================================</text><text class="terminal-2636785142-r2" x="1268.8" y="2338" textLength="12.2" clip-path="url(#terminal-2636785142-line-95)">
+</text><text class="terminal-2636785142-r2" x="0" y="2362.4" textLength="963.8" clip-path="url(#terminal-2636785142-line-96)">&#160;Package&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;Arch&#160;&#160;&#160;&#160;&#160;&#160;&#160;Version&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;Repository&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;Size</text><text class="terminal-2636785142-r2" x="1268.8" y="2362.4" textLength="12.2" clip-path="url(#terminal-2636785142-line-96)">
+</text><text class="terminal-2636785142-r2" x="0" y="2386.8" textLength="976" clip-path="url(#terminal-2636785142-line-97)">================================================================================</text><text class="terminal-2636785142-r2" x="1268.8" y="2386.8" textLength="12.2" clip-path="url(#terminal-2636785142-line-97)">
+</text><text class="terminal-2636785142-r2" x="0" y="2411.2" textLength="134.2" clip-path="url(#terminal-2636785142-line-98)">Installing:</text><text class="terminal-2636785142-r2" x="1268.8" y="2411.2" textLength="12.2" clip-path="url(#terminal-2636785142-line-98)">
+</text><text class="terminal-2636785142-r2" x="0" y="2435.6" textLength="963.8" clip-path="url(#terminal-2636785142-line-99)">&#160;ipa-diagnose&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;noarch&#160;&#160;&#160;&#160;&#160;0.1.0-1.el9.el9&#160;&#160;&#160;&#160;&#160;&#160;&#160;@commandline&#160;&#160;&#160;&#160;&#160;180&#160;k</text><text class="terminal-2636785142-r2" x="1268.8" y="2435.6" textLength="12.2" clip-path="url(#terminal-2636785142-line-99)">
+</text><text class="terminal-2636785142-r2" x="0" y="2460" textLength="292.8" clip-path="url(#terminal-2636785142-line-100)">Installing&#160;dependencies:</text><text class="terminal-2636785142-r2" x="1268.8" y="2460" textLength="12.2" clip-path="url(#terminal-2636785142-line-100)">
+</text><text class="terminal-2636785142-r2" x="0" y="2484.4" textLength="963.8" clip-path="url(#terminal-2636785142-line-101)">&#160;python3-CommonMark&#160;&#160;&#160;&#160;&#160;noarch&#160;&#160;&#160;&#160;&#160;0.9.1-8.el9&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;epel&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;102&#160;k</text><text class="terminal-2636785142-r2" x="1268.8" y="2484.4" textLength="12.2" clip-path="url(#terminal-2636785142-line-101)">
+</text><text class="terminal-2636785142-r2" x="0" y="2508.8" textLength="963.8" clip-path="url(#terminal-2636785142-line-102)">&#160;python3-pygments&#160;&#160;&#160;&#160;&#160;&#160;&#160;noarch&#160;&#160;&#160;&#160;&#160;2.7.4-4.el9&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;crb&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;1.8&#160;M</text><text class="terminal-2636785142-r2" x="1268.8" y="2508.8" textLength="12.2" clip-path="url(#terminal-2636785142-line-102)">
+</text><text class="terminal-2636785142-r2" x="0" y="2533.2" textLength="963.8" clip-path="url(#terminal-2636785142-line-103)">&#160;python3-rich&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;noarch&#160;&#160;&#160;&#160;&#160;13.1.0-1.el9&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;epel&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;402&#160;k</text><text class="terminal-2636785142-r2" x="1268.8" y="2533.2" textLength="12.2" clip-path="url(#terminal-2636785142-line-103)">
+</text><text class="terminal-2636785142-r2" x="0" y="2557.6" textLength="963.8" clip-path="url(#terminal-2636785142-line-104)">&#160;python3-setuptools&#160;&#160;&#160;&#160;&#160;noarch&#160;&#160;&#160;&#160;&#160;53.0.0-15.el9&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;baseos&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;831&#160;k</text><text class="terminal-2636785142-r2" x="1268.8" y="2557.6" textLength="12.2" clip-path="url(#terminal-2636785142-line-104)">
+</text><text class="terminal-2636785142-r2" x="1268.8" y="2582" textLength="12.2" clip-path="url(#terminal-2636785142-line-105)">
+</text><text class="terminal-2636785142-r2" x="0" y="2606.4" textLength="231.8" clip-path="url(#terminal-2636785142-line-106)">Transaction&#160;Summary</text><text class="terminal-2636785142-r2" x="1268.8" y="2606.4" textLength="12.2" clip-path="url(#terminal-2636785142-line-106)">
+</text><text class="terminal-2636785142-r2" x="0" y="2630.8" textLength="976" clip-path="url(#terminal-2636785142-line-107)">================================================================================</text><text class="terminal-2636785142-r2" x="1268.8" y="2630.8" textLength="12.2" clip-path="url(#terminal-2636785142-line-107)">
+</text><text class="terminal-2636785142-r2" x="0" y="2655.2" textLength="231.8" clip-path="url(#terminal-2636785142-line-108)">Install&#160;&#160;5&#160;Packages</text><text class="terminal-2636785142-r2" x="1268.8" y="2655.2" textLength="12.2" clip-path="url(#terminal-2636785142-line-108)">
+</text><text class="terminal-2636785142-r2" x="1268.8" y="2679.6" textLength="12.2" clip-path="url(#terminal-2636785142-line-109)">
+</text><text class="terminal-2636785142-r2" x="0" y="2704" textLength="207.4" clip-path="url(#terminal-2636785142-line-110)">Total&#160;size:&#160;3.3&#160;M</text><text class="terminal-2636785142-r2" x="1268.8" y="2704" textLength="12.2" clip-path="url(#terminal-2636785142-line-110)">
+</text><text class="terminal-2636785142-r2" x="0" y="2728.4" textLength="317.2" clip-path="url(#terminal-2636785142-line-111)">Total&#160;download&#160;size:&#160;3.1&#160;M</text><text class="terminal-2636785142-r2" x="1268.8" y="2728.4" textLength="12.2" clip-path="url(#terminal-2636785142-line-111)">
+</text><text class="terminal-2636785142-r2" x="0" y="2752.8" textLength="244" clip-path="url(#terminal-2636785142-line-112)">Installed&#160;size:&#160;15&#160;M</text><text class="terminal-2636785142-r2" x="1268.8" y="2752.8" textLength="12.2" clip-path="url(#terminal-2636785142-line-112)">
+</text><text class="terminal-2636785142-r2" x="0" y="2777.2" textLength="256.2" clip-path="url(#terminal-2636785142-line-113)">Downloading&#160;Packages:</text><text class="terminal-2636785142-r2" x="1268.8" y="2777.2" textLength="12.2" clip-path="url(#terminal-2636785142-line-113)">
+</text><text class="terminal-2636785142-r2" x="0" y="2801.6" textLength="963.8" clip-path="url(#terminal-2636785142-line-114)">(1/4):&#160;python3-setuptools-53.0.0-15.el9.noarch.&#160;748&#160;kB/s&#160;|&#160;831&#160;kB&#160;&#160;&#160;&#160;&#160;00:01&#160;&#160;&#160;&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="2801.6" textLength="12.2" clip-path="url(#terminal-2636785142-line-114)">
+</text><text class="terminal-2636785142-r2" x="0" y="2826" textLength="963.8" clip-path="url(#terminal-2636785142-line-115)">(2/4):&#160;python3-CommonMark-0.9.1-8.el9.noarch.rp&#160;&#160;65&#160;kB/s&#160;|&#160;102&#160;kB&#160;&#160;&#160;&#160;&#160;00:01&#160;&#160;&#160;&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="2826" textLength="12.2" clip-path="url(#terminal-2636785142-line-115)">
+</text><text class="terminal-2636785142-r2" x="0" y="2850.4" textLength="963.8" clip-path="url(#terminal-2636785142-line-116)">(3/4):&#160;python3-rich-13.1.0-1.el9.noarch.rpm&#160;&#160;&#160;&#160;&#160;157&#160;kB/s&#160;|&#160;402&#160;kB&#160;&#160;&#160;&#160;&#160;00:02&#160;&#160;&#160;&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="2850.4" textLength="12.2" clip-path="url(#terminal-2636785142-line-116)">
+</text><text class="terminal-2636785142-r2" x="0" y="2874.8" textLength="963.8" clip-path="url(#terminal-2636785142-line-117)">(4/4):&#160;python3-pygments-2.7.4-4.el9.noarch.rpm&#160;&#160;1.1&#160;MB/s&#160;|&#160;1.8&#160;MB&#160;&#160;&#160;&#160;&#160;00:01&#160;&#160;&#160;&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="2874.8" textLength="12.2" clip-path="url(#terminal-2636785142-line-117)">
+</text><text class="terminal-2636785142-r2" x="0" y="2899.2" textLength="976" clip-path="url(#terminal-2636785142-line-118)">--------------------------------------------------------------------------------</text><text class="terminal-2636785142-r2" x="1268.8" y="2899.2" textLength="12.2" clip-path="url(#terminal-2636785142-line-118)">
+</text><text class="terminal-2636785142-r2" x="0" y="2923.6" textLength="976" clip-path="url(#terminal-2636785142-line-119)">Total&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;652&#160;kB/s&#160;|&#160;3.1&#160;MB&#160;&#160;&#160;&#160;&#160;00:04&#160;&#160;&#160;&#160;&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="2923.6" textLength="12.2" clip-path="url(#terminal-2636785142-line-119)">
+</text><text class="terminal-2636785142-r2" x="0" y="2948" textLength="963.8" clip-path="url(#terminal-2636785142-line-120)">Extra&#160;Packages&#160;for&#160;Enterprise&#160;Linux&#160;9&#160;-&#160;x86_64&#160;&#160;1.6&#160;MB/s&#160;|&#160;1.6&#160;kB&#160;&#160;&#160;&#160;&#160;00:00&#160;&#160;&#160;&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="2948" textLength="12.2" clip-path="url(#terminal-2636785142-line-120)">
+</text><text class="terminal-2636785142-r2" x="0" y="2972.4" textLength="353.8" clip-path="url(#terminal-2636785142-line-121)">Importing&#160;GPG&#160;key&#160;0x3228467C:</text><text class="terminal-2636785142-r2" x="1268.8" y="2972.4" textLength="12.2" clip-path="url(#terminal-2636785142-line-121)">
+</text><text class="terminal-2636785142-r2" x="0" y="2996.8" textLength="671" clip-path="url(#terminal-2636785142-line-122)">&#160;Userid&#160;&#160;&#160;&#160;&#160;:&#160;&quot;Fedora&#160;(epel9)&#160;&lt;epel@fedoraproject.org&gt;&quot;</text><text class="terminal-2636785142-r2" x="1268.8" y="2996.8" textLength="12.2" clip-path="url(#terminal-2636785142-line-122)">
+</text><text class="terminal-2636785142-r2" x="0" y="3021.2" textLength="768.6" clip-path="url(#terminal-2636785142-line-123)">&#160;Fingerprint:&#160;FF8A&#160;D134&#160;4597&#160;106E&#160;CE81&#160;3B91&#160;8A38&#160;72BF&#160;3228&#160;467C</text><text class="terminal-2636785142-r2" x="1268.8" y="3021.2" textLength="12.2" clip-path="url(#terminal-2636785142-line-123)">
+</text><text class="terminal-2636785142-r2" x="0" y="3045.6" textLength="597.8" clip-path="url(#terminal-2636785142-line-124)">&#160;From&#160;&#160;&#160;&#160;&#160;&#160;&#160;:&#160;/etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-9</text><text class="terminal-2636785142-r2" x="1268.8" y="3045.6" textLength="12.2" clip-path="url(#terminal-2636785142-line-124)">
+</text><text class="terminal-2636785142-r2" x="0" y="3070" textLength="305" clip-path="url(#terminal-2636785142-line-125)">Key&#160;imported&#160;successfully</text><text class="terminal-2636785142-r2" x="1268.8" y="3070" textLength="12.2" clip-path="url(#terminal-2636785142-line-125)">
+</text><text class="terminal-2636785142-r2" x="0" y="3094.4" textLength="305" clip-path="url(#terminal-2636785142-line-126)">Running&#160;transaction&#160;check</text><text class="terminal-2636785142-r2" x="1268.8" y="3094.4" textLength="12.2" clip-path="url(#terminal-2636785142-line-126)">
+</text><text class="terminal-2636785142-r2" x="0" y="3118.8" textLength="341.6" clip-path="url(#terminal-2636785142-line-127)">Transaction&#160;check&#160;succeeded.</text><text class="terminal-2636785142-r2" x="1268.8" y="3118.8" textLength="12.2" clip-path="url(#terminal-2636785142-line-127)">
+</text><text class="terminal-2636785142-r2" x="0" y="3143.2" textLength="292.8" clip-path="url(#terminal-2636785142-line-128)">Running&#160;transaction&#160;test</text><text class="terminal-2636785142-r2" x="1268.8" y="3143.2" textLength="12.2" clip-path="url(#terminal-2636785142-line-128)">
+</text><text class="terminal-2636785142-r2" x="0" y="3167.6" textLength="329.4" clip-path="url(#terminal-2636785142-line-129)">Transaction&#160;test&#160;succeeded.</text><text class="terminal-2636785142-r2" x="1268.8" y="3167.6" textLength="12.2" clip-path="url(#terminal-2636785142-line-129)">
+</text><text class="terminal-2636785142-r2" x="0" y="3192" textLength="231.8" clip-path="url(#terminal-2636785142-line-130)">Running&#160;transaction</text><text class="terminal-2636785142-r2" x="1268.8" y="3192" textLength="12.2" clip-path="url(#terminal-2636785142-line-130)">
+</text><text class="terminal-2636785142-r2" x="0" y="3216.4" textLength="976" clip-path="url(#terminal-2636785142-line-131)">&#160;&#160;Preparing&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;:&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;1/1&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="3216.4" textLength="12.2" clip-path="url(#terminal-2636785142-line-131)">
+</text><text class="terminal-2636785142-r2" x="0" y="3240.8" textLength="976" clip-path="url(#terminal-2636785142-line-132)">&#160;&#160;Installing&#160;&#160;&#160;&#160;&#160;&#160;&#160;:&#160;python3-pygments-2.7.4-4.el9.noarch&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;1/5&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="3240.8" textLength="12.2" clip-path="url(#terminal-2636785142-line-132)">
+</text><text class="terminal-2636785142-r2" x="0" y="3265.2" textLength="976" clip-path="url(#terminal-2636785142-line-133)">&#160;&#160;Installing&#160;&#160;&#160;&#160;&#160;&#160;&#160;:&#160;python3-setuptools-53.0.0-15.el9.noarch&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;2/5&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="3265.2" textLength="12.2" clip-path="url(#terminal-2636785142-line-133)">
+</text><text class="terminal-2636785142-r2" x="0" y="3289.6" textLength="976" clip-path="url(#terminal-2636785142-line-134)">&#160;&#160;Installing&#160;&#160;&#160;&#160;&#160;&#160;&#160;:&#160;python3-CommonMark-0.9.1-8.el9.noarch&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;3/5&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="3289.6" textLength="12.2" clip-path="url(#terminal-2636785142-line-134)">
+</text><text class="terminal-2636785142-r2" x="0" y="3314" textLength="976" clip-path="url(#terminal-2636785142-line-135)">&#160;&#160;Installing&#160;&#160;&#160;&#160;&#160;&#160;&#160;:&#160;python3-rich-13.1.0-1.el9.noarch&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;4/5&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="3314" textLength="12.2" clip-path="url(#terminal-2636785142-line-135)">
+</text><text class="terminal-2636785142-r2" x="0" y="3338.4" textLength="976" clip-path="url(#terminal-2636785142-line-136)">&#160;&#160;Installing&#160;&#160;&#160;&#160;&#160;&#160;&#160;:&#160;ipa-diagnose-0.1.0-1.el9.el9.noarch&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;5/5&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="3338.4" textLength="12.2" clip-path="url(#terminal-2636785142-line-136)">
+</text><text class="terminal-2636785142-r2" x="0" y="3362.8" textLength="976" clip-path="url(#terminal-2636785142-line-137)">&#160;&#160;Running&#160;scriptlet:&#160;ipa-diagnose-0.1.0-1.el9.el9.noarch&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;5/5&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="3362.8" textLength="12.2" clip-path="url(#terminal-2636785142-line-137)">
+</text><text class="terminal-2636785142-r2" x="0" y="3387.2" textLength="976" clip-path="url(#terminal-2636785142-line-138)">&#160;&#160;Verifying&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;:&#160;python3-CommonMark-0.9.1-8.el9.noarch&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;1/5&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="3387.2" textLength="12.2" clip-path="url(#terminal-2636785142-line-138)">
+</text><text class="terminal-2636785142-r2" x="0" y="3411.6" textLength="976" clip-path="url(#terminal-2636785142-line-139)">&#160;&#160;Verifying&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;:&#160;python3-rich-13.1.0-1.el9.noarch&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;2/5&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="3411.6" textLength="12.2" clip-path="url(#terminal-2636785142-line-139)">
+</text><text class="terminal-2636785142-r2" x="0" y="3436" textLength="976" clip-path="url(#terminal-2636785142-line-140)">&#160;&#160;Verifying&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;:&#160;python3-setuptools-53.0.0-15.el9.noarch&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;3/5&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="3436" textLength="12.2" clip-path="url(#terminal-2636785142-line-140)">
+</text><text class="terminal-2636785142-r2" x="0" y="3460.4" textLength="976" clip-path="url(#terminal-2636785142-line-141)">&#160;&#160;Verifying&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;:&#160;python3-pygments-2.7.4-4.el9.noarch&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;4/5&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="3460.4" textLength="12.2" clip-path="url(#terminal-2636785142-line-141)">
+</text><text class="terminal-2636785142-r2" x="0" y="3484.8" textLength="976" clip-path="url(#terminal-2636785142-line-142)">&#160;&#160;Verifying&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;:&#160;ipa-diagnose-0.1.0-1.el9.el9.noarch&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;5/5&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="3484.8" textLength="12.2" clip-path="url(#terminal-2636785142-line-142)">
+</text><text class="terminal-2636785142-r2" x="1268.8" y="3509.2" textLength="12.2" clip-path="url(#terminal-2636785142-line-143)">
+</text><text class="terminal-2636785142-r2" x="0" y="3533.6" textLength="122" clip-path="url(#terminal-2636785142-line-144)">Installed:</text><text class="terminal-2636785142-r2" x="1268.8" y="3533.6" textLength="12.2" clip-path="url(#terminal-2636785142-line-144)">
+</text><text class="terminal-2636785142-r2" x="0" y="3558" textLength="963.8" clip-path="url(#terminal-2636785142-line-145)">&#160;&#160;ipa-diagnose-0.1.0-1.el9.el9.noarch&#160;&#160;&#160;&#160;&#160;python3-CommonMark-0.9.1-8.el9.noarch</text><text class="terminal-2636785142-r2" x="1268.8" y="3558" textLength="12.2" clip-path="url(#terminal-2636785142-line-145)">
+</text><text class="terminal-2636785142-r2" x="0" y="3582.4" textLength="963.8" clip-path="url(#terminal-2636785142-line-146)">&#160;&#160;python3-pygments-2.7.4-4.el9.noarch&#160;&#160;&#160;&#160;&#160;python3-rich-13.1.0-1.el9.noarch&#160;&#160;&#160;&#160;&#160;</text><text class="terminal-2636785142-r2" x="1268.8" y="3582.4" textLength="12.2" clip-path="url(#terminal-2636785142-line-146)">
+</text><text class="terminal-2636785142-r2" x="0" y="3606.8" textLength="500.2" clip-path="url(#terminal-2636785142-line-147)">&#160;&#160;python3-setuptools-53.0.0-15.el9.noarch</text><text class="terminal-2636785142-r2" x="1268.8" y="3606.8" textLength="12.2" clip-path="url(#terminal-2636785142-line-147)">
+</text><text class="terminal-2636785142-r2" x="1268.8" y="3631.2" textLength="12.2" clip-path="url(#terminal-2636785142-line-148)">
+</text><text class="terminal-2636785142-r2" x="0" y="3655.6" textLength="109.8" clip-path="url(#terminal-2636785142-line-149)">Complete!</text><text class="terminal-2636785142-r2" x="1268.8" y="3655.6" textLength="12.2" clip-path="url(#terminal-2636785142-line-149)">
+</text>
+    </g>
+    </g>
+</svg>

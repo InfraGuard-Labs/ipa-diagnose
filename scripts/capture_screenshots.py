@@ -468,6 +468,140 @@ def scenario_real_freeipa_capture():
     )
 
 
+def scenario_stale_ruv():
+    bundle = _bundle("replication/stale-ruv-removed-replica")
+    report = run_diagnosis(bundle)
+    console = _console()
+    console.print(
+        "[dim]$ ipa-diagnose --replay tests/fixtures/replication/stale-ruv-removed-replica "
+        "--details diagnose[/dim]\n"
+    )
+    render_report(report, console, details=True)
+    _save(
+        console,
+        "21_stale_ruv_degraded",
+        "Stale-RUV regression fixture: a decommissioned replica left a stale RUV entry with no other "
+        "visible replication symptoms",
+        "replication/stale-ruv-removed-replica",
+        "Overall: DEGRADED (never HEALTHY) - replication.stale-ruv PRIMARY, "
+        "UNKNOWN_INSUFFICIENT_EVIDENCE, with a safe next diagnostic step",
+    )
+
+
+def scenario_environment_metadata():
+    bundle = _bundle("replication/healthy-with-environment")
+    report = run_diagnosis(bundle)
+    console = _console()
+    console.print(
+        "[dim]$ ipa-diagnose --replay tests/fixtures/replication/healthy-with-environment "
+        "--details diagnose[/dim]\n"
+    )
+    render_report(report, console, details=True)
+    _save(
+        console,
+        "22_details_environment_metadata",
+        "--details output including populated environment/version metadata",
+        "replication/healthy-with-environment",
+        "Environment (replayed): OS, Python, FreeIPA, ipa-healthcheck, and 389-ds versions all shown",
+    )
+
+
+def scenario_json_output():
+    import json
+
+    bundle = _bundle("replication/stale-ruv-removed-replica")
+    report = run_diagnosis(bundle)
+    payload = json.dumps(report_to_dict(report), indent=2)
+
+    console = _console()
+    console.print(
+        "[dim]$ ipa-diagnose --replay tests/fixtures/replication/stale-ruv-removed-replica "
+        "--json diagnose[/dim]\n"
+    )
+    # This is exactly cli.py's own `print(json.dumps(report_to_dict(report, explanations),
+    # indent=2))` call, run through the same recorded Console so the terminal capture is
+    # pixel-for-pixel what a real invocation would print - markup=False so the JSON's own
+    # square brackets are never misread as rich markup tags.
+    console.print(payload, markup=False)
+    _save(
+        console,
+        "23_json_output",
+        "--json pretty-printed output for a diagnosed scenario",
+        "replication/stale-ruv-removed-replica",
+        "Same DEGRADED / stale-ruv diagnosis as scenario 21, serialized as the exact `--json` "
+        "machine-readable structure (unmodified report_to_dict output)",
+    )
+
+
+def scenario_el9_rpm_install():
+    log_path = REPO_ROOT / "artifacts" / "el9_install_output.txt"
+    if not log_path.exists():
+        print("skipping EL9 RPM install screenshot: artifacts/el9_install_output.txt not found "
+              "(run the EL9 install capture in a fresh rockylinux:9.3 container first)")
+        return
+    full_text = log_path.read_text(encoding="utf-8")
+
+    console = _console()
+    console.print("[dim]$ dnf install -y ./ipa-diagnose-0.1.0-1.el9.noarch.rpm[/dim]  "
+                  "[dim](Rocky Linux 9.3, EPEL enabled for python3-rich)[/dim]\n")
+    section = _extract_section(full_text, "=== 1. Fresh install", "=== 2.")
+    console.print(section.split("\n", 1)[1], markup=False)
+    _save(
+        console,
+        "24_el9_rpm_install",
+        "Real `dnf install` of the locally-built EL9 RPM on a fresh Rocky Linux 9.3 container",
+        "packaging/rpm/el9/ (build-rpm.sh output, captured verbatim)",
+        "Package + python3-rich/pygments/CommonMark/setuptools install cleanly via plain dnf once "
+        "EPEL *and* CRB are both enabled (matches docs/compatibility.md's EL9 row)",
+    )
+
+    console = _console()
+    console.print("[dim]$ ipa-diagnose --version[/dim]  [dim](immediately after RPM install)[/dim]\n")
+    section = _extract_section(full_text, "=== 2. First real run", "=== 3.")
+    console.print(section.split("\n", 1)[1], markup=False)
+    _save(
+        console,
+        "25_el9_first_run",
+        "First real `ipa-diagnose --version` / run immediately after the EL9 RPM install",
+        "packaging/rpm/el9/ (build-rpm.sh output, captured verbatim)",
+        "Reports its version and degrades gracefully with no FreeIPA installed on this host yet",
+    )
+
+
+def scenario_pypi_pipx_install():
+    log_path = REPO_ROOT / "artifacts" / "pipx_install_output.txt"
+    if not log_path.exists():
+        print("skipping pipx/PyPI install screenshot: artifacts/pipx_install_output.txt not found "
+              "(run the pipx install capture in a fresh python:3.11-slim container first)")
+        return
+    full_text = log_path.read_text(encoding="utf-8")
+
+    console = _console()
+    console.print("[dim]$ pipx install ipa-diagnose[/dim]  "
+                  "[dim](real, live PyPI - ipa-diagnose 0.1.0 is genuinely published there)[/dim]\n")
+    section = _extract_section(full_text, "=== 2. pipx install from real PyPI", "=== 3.")
+    console.print(section.split("\n", 1)[1], markup=False)
+    _save(
+        console,
+        "26_pypi_pipx_install",
+        "Real `pipx install ipa-diagnose` from live PyPI on a fresh, unmodified container",
+        "live PyPI (pipx install capture, captured verbatim)",
+        "pipx resolves and installs ipa-diagnose 0.1.0 and its dependencies cleanly",
+    )
+
+    console = _console()
+    console.print("[dim]$ ipa-diagnose --version[/dim]  [dim](immediately after pipx install)[/dim]\n")
+    section = _extract_section(full_text, "=== 3. First real run", "=== 4.")
+    console.print(section.split("\n", 1)[1], markup=False)
+    _save(
+        console,
+        "27_pypi_first_run",
+        "First real `ipa-diagnose --version` / run immediately after the pipx/PyPI install",
+        "live PyPI (pipx install capture, captured verbatim)",
+        "Reports its version and degrades gracefully with no FreeIPA installed on this host yet",
+    )
+
+
 def write_index():
     lines = [
         "# Screenshot index",
@@ -521,6 +655,11 @@ def main():
     scenario_malformed_input()
     scenario_rpm_install()
     scenario_real_freeipa_capture()
+    scenario_stale_ruv()
+    scenario_environment_metadata()
+    scenario_json_output()
+    scenario_el9_rpm_install()
+    scenario_pypi_pipx_install()
     write_index()
 
 

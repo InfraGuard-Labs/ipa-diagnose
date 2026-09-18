@@ -1,0 +1,106 @@
+<svg class="rich-terminal" viewBox="0 0 1287 342.79999999999995" xmlns="http://www.w3.org/2000/svg">
+    <!-- Generated with Rich https://www.textualize.io -->
+    <style>
+
+    @font-face {
+        font-family: "Fira Code";
+        src: local("FiraCode-Regular"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff2/FiraCode-Regular.woff2") format("woff2"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff/FiraCode-Regular.woff") format("woff");
+        font-style: normal;
+        font-weight: 400;
+    }
+    @font-face {
+        font-family: "Fira Code";
+        src: local("FiraCode-Bold"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff2/FiraCode-Bold.woff2") format("woff2"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff/FiraCode-Bold.woff") format("woff");
+        font-style: bold;
+        font-weight: 700;
+    }
+
+    .terminal-1351095922-matrix {
+        font-family: Fira Code, monospace;
+        font-size: 20px;
+        line-height: 24.4px;
+        font-variant-east-asian: full-width;
+    }
+
+    .terminal-1351095922-title {
+        font-size: 18px;
+        font-weight: bold;
+        font-family: arial;
+    }
+
+    .terminal-1351095922-r1 { fill: #868887 }
+.terminal-1351095922-r2 { fill: #c5c8c6 }
+.terminal-1351095922-r3 { fill: #68a0b3 }
+.terminal-1351095922-r4 { fill: #c5c8c6;font-weight: bold }
+.terminal-1351095922-r5 { fill: #98a84b;font-weight: bold }
+    </style>
+
+    <defs>
+    <clipPath id="terminal-1351095922-clip-terminal">
+      <rect x="0" y="0" width="1267.8" height="291.79999999999995" />
+    </clipPath>
+    <clipPath id="terminal-1351095922-line-0">
+    <rect x="0" y="1.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-1351095922-line-1">
+    <rect x="0" y="25.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-1351095922-line-2">
+    <rect x="0" y="50.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-1351095922-line-3">
+    <rect x="0" y="74.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-1351095922-line-4">
+    <rect x="0" y="99.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-1351095922-line-5">
+    <rect x="0" y="123.5" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-1351095922-line-6">
+    <rect x="0" y="147.9" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-1351095922-line-7">
+    <rect x="0" y="172.3" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-1351095922-line-8">
+    <rect x="0" y="196.7" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-1351095922-line-9">
+    <rect x="0" y="221.1" width="1268.8" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-1351095922-line-10">
+    <rect x="0" y="245.5" width="1268.8" height="24.65"/>
+            </clipPath>
+    </defs>
+
+    <rect fill="#292929" stroke="rgba(255,255,255,0.35)" stroke-width="1" x="1" y="1" width="1285" height="340.8" rx="8"/><text class="terminal-1351095922-title" fill="#c5c8c6" text-anchor="middle" x="642" y="27">ipa-diagnose</text>
+            <g transform="translate(26,22)">
+            <circle cx="0" cy="0" r="7" fill="#ff5f57"/>
+            <circle cx="22" cy="0" r="7" fill="#febc2e"/>
+            <circle cx="44" cy="0" r="7" fill="#28c840"/>
+            </g>
+        
+    <g transform="translate(9, 41)" clip-path="url(#terminal-1351095922-clip-terminal)">
+    
+    <g class="terminal-1351095922-matrix">
+    <text class="terminal-1351095922-r1" x="0" y="20" textLength="1146.8" clip-path="url(#terminal-1351095922-line-0)">$&#160;ipa-diagnose&#160;--replay&#160;tests/fixtures/replication/healthy-with-environment&#160;--details&#160;diagnose</text><text class="terminal-1351095922-r2" x="1268.8" y="20" textLength="12.2" clip-path="url(#terminal-1351095922-line-0)">
+</text><text class="terminal-1351095922-r2" x="1268.8" y="44.4" textLength="12.2" clip-path="url(#terminal-1351095922-line-1)">
+</text><text class="terminal-1351095922-r3" x="0" y="68.8" textLength="524.6" clip-path="url(#terminal-1351095922-line-2)">──────────────────────────────────────────&#160;</text><text class="terminal-1351095922-r2" x="524.6" y="68.8" textLength="207.4" clip-path="url(#terminal-1351095922-line-2)">FreeIPA&#160;Diagnosis</text><text class="terminal-1351095922-r3" x="732" y="68.8" textLength="536.8" clip-path="url(#terminal-1351095922-line-2)">&#160;───────────────────────────────────────────</text><text class="terminal-1351095922-r2" x="1268.8" y="68.8" textLength="12.2" clip-path="url(#terminal-1351095922-line-2)">
+</text><text class="terminal-1351095922-r2" x="0" y="93.2" textLength="719.8" clip-path="url(#terminal-1351095922-line-3)">Host:&#160;ipa01.example.test&#160;&#160;&#160;&#160;Generated:&#160;2026-09-17T23:56:13Z</text><text class="terminal-1351095922-r2" x="1268.8" y="93.2" textLength="12.2" clip-path="url(#terminal-1351095922-line-3)">
+</text><text class="terminal-1351095922-r1" x="0" y="117.6" textLength="1012.6" clip-path="url(#terminal-1351095922-line-4)">(replayed&#160;from&#160;fixtures:&#160;/work/tests/fixtures/replication/healthy-with-environment)</text><text class="terminal-1351095922-r2" x="1268.8" y="117.6" textLength="12.2" clip-path="url(#terminal-1351095922-line-4)">
+</text><text class="terminal-1351095922-r4" x="0" y="142" textLength="109.8" clip-path="url(#terminal-1351095922-line-5)">Overall:&#160;</text><text class="terminal-1351095922-r5" x="109.8" y="142" textLength="85.4" clip-path="url(#terminal-1351095922-line-5)">HEALTHY</text><text class="terminal-1351095922-r2" x="1268.8" y="142" textLength="12.2" clip-path="url(#terminal-1351095922-line-5)">
+</text><text class="terminal-1351095922-r2" x="1268.8" y="166.4" textLength="12.2" clip-path="url(#terminal-1351095922-line-6)">
+</text><text class="terminal-1351095922-r5" x="0" y="190.8" textLength="256.2" clip-path="url(#terminal-1351095922-line-7)">No&#160;problems&#160;detected.</text><text class="terminal-1351095922-r2" x="256.2" y="190.8" textLength="353.8" clip-path="url(#terminal-1351095922-line-7)">&#160;All&#160;evaluated&#160;checks&#160;passed.</text><text class="terminal-1351095922-r2" x="1268.8" y="190.8" textLength="12.2" clip-path="url(#terminal-1351095922-line-7)">
+</text><text class="terminal-1351095922-r1" x="0" y="215.2" textLength="1268.8" clip-path="url(#terminal-1351095922-line-8)">────────────────────────────────────────────────────────────────────────────────────────────────────────</text><text class="terminal-1351095922-r2" x="1268.8" y="215.2" textLength="12.2" clip-path="url(#terminal-1351095922-line-8)">
+</text><text class="terminal-1351095922-r1" x="0" y="239.6" textLength="1049.2" clip-path="url(#terminal-1351095922-line-9)">Diagnostic&#160;packs&#160;evaluated:&#160;directory-server,&#160;dns,&#160;kerberos,&#160;replication,&#160;certificates</text><text class="terminal-1351095922-r2" x="1268.8" y="239.6" textLength="12.2" clip-path="url(#terminal-1351095922-line-9)">
+</text><text class="terminal-1351095922-r1" x="0" y="264" textLength="1195.6" clip-path="url(#terminal-1351095922-line-10)">Environment&#160;(replayed):&#160;OS:&#160;rocky&#160;9.3&#160;|&#160;Python:&#160;3.9.18&#160;|&#160;FreeIPA:&#160;4.12.2-2.el9&#160;|&#160;ipa-healthcheck:&#160;</text><text class="terminal-1351095922-r2" x="1268.8" y="264" textLength="12.2" clip-path="url(#terminal-1351095922-line-10)">
+</text><text class="terminal-1351095922-r1" x="0" y="288.4" textLength="390.4" clip-path="url(#terminal-1351095922-line-11)">0.19-1.el9&#160;|&#160;389-ds:&#160;2.4.5-4.el9</text><text class="terminal-1351095922-r2" x="1268.8" y="288.4" textLength="12.2" clip-path="url(#terminal-1351095922-line-11)">
+</text>
+    </g>
+    </g>
+</svg>

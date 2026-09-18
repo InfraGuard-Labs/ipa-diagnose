@@ -1,0 +1,15 @@
+{
+  "hostname": "ipa01.example.test",
+  "scenario": "identical to replication/healthy, but with a populated meta.json \"environment\" block, so --details has real distro/interpreter/component version metadata to render instead of nothing (a fixture with no environment block shows nothing there by design - see evidence/environment.py and render/console.py's `if details and report.environment`/`if parts:` guards).",
+  "expected_overall_status": "HEALTHY",
+  "expected_diagnoses": [],
+  "environment": {
+    "distro": "rocky",
+    "distro_version": "9.3",
+    "python_version": "3.9.18",
+    "freeipa_version": "4.12.2-2.el9",
+    "ipa_healthcheck_version": "0.19-1.el9",
+    "directory_server_version": "2.4.5-4.el9"
+  },
+  "notes": "Built specifically for the --details environment-metadata screenshot; not a regression fixture."
+}
