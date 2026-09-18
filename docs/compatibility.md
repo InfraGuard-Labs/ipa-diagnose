@@ -17,7 +17,7 @@ AlmaLinux test, and is labeled as such rather than as "RHEL tested."
 | Rocky Linux 9 | 3.9 (system) | Supported | Works | Same `.el9.` RPM, independently installed and tested on Rocky9 | CONTAINER TESTED |
 | Rocky Linux 10 | - | - | - | - | **NOT TESTED** - no `rockylinux:10` image exists on Docker Hub (only `rockylinux/rockylinux:10` exists and was used for a secondary EL10 cross-distro install check, not full independent validation) |
 | AlmaLinux 8 | 3.6.8 (system); `python39` = 3.9.25 | Supported | Works via `python39` (Alma8's `python3.12` package works fine, unlike Rocky8's) | Same `.el8.` RPM, independently installed and tested on Alma8 | CONTAINER TESTED |
-| AlmaLinux 9 | 3.9 (system) | Supported | Works | Same `.el9.` RPM, independently installed and tested on Alma9. **Note:** Alma9's AppStream ships `ipa-server-common` by default, so the RPM's `Recommends:` pulls the full ~500-package IdM server stack here; Rocky9 does not, and stays a ~5-package install | CONTAINER TESTED |
+| AlmaLinux 9 | 3.9 (system) | Supported | Works | Same `.el9.` RPM, independently installed and tested on Alma9 - a 5-package install (`ipa-diagnose` + `rich`/`pygments`/`CommonMark`/`setuptools`), clean uninstall | CONTAINER TESTED |
 | AlmaLinux 10 | 3.12 (system) | Supported | Works | Same `.el10.` RPM, independently installed and tested on Alma10 | CONTAINER TESTED |
 | Fedora (current stable, pinned to an exact tag - see `packaging/rpm/fedora/`) | 3.14 (current stable's default) | Supported | Works, no EPEL needed | `.fc44.` RPM, no dependency workarounds needed (Fedora's own toolchain is current) | RPM INSTALL TESTED + PYPI INSTALL TESTED |
 
@@ -26,6 +26,22 @@ behavior with no FreeIPA present, `--replay` against the project's own
 fixtures (including the `stale-ruv-removed-replica` regression fixture,
 correctly showing `Overall: DEGRADED`, never `HEALTHY`), uninstall, and
 reinstall.
+
+**A note on the EL9/EL10 RPMs' lack of a `Recommends:` for `ipa-healthcheck`/
+`ipa-server-common`** (the Fedora RPM still has one): fresh-user testing
+found that on EL9 and EL10, resolving either package by name - even
+`ipa-healthcheck` alone - pulls 300+ packages (the full 389-DS/Dogtag/
+httpd/tomcat IdM server stack) via their own transitive weak dependencies,
+reproduced on both Rocky and AlmaLinux, not an AlmaLinux-only quirk as
+first suspected. Worse, it was also found to leave `dnf remove
+ipa-diagnose` in a broken transaction state trying to clean up the
+now-orphaned chain afterward. Since ipa-diagnose already degrades
+gracefully with a clear message when `ipa-healthcheck` is genuinely
+absent, and its real users already have FreeIPA/IdM installed as a
+precondition of using the tool at all, these Recommends were removed from
+the EL9/EL10 specs entirely rather than accept that risk. Fedora's
+equivalent packages were independently confirmed to stay lean (11 packages
+total) and keep their Recommends.
 
 ## Python interpreter support
 

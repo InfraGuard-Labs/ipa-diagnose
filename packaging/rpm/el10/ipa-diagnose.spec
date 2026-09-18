@@ -15,12 +15,25 @@ BuildRequires:  python3-devel
 BuildRequires:  pyproject-rpm-macros
 BuildRequires:  python3dist(pytest)
 
-# Not build-required, but strongly recommended at runtime - ipa-diagnose
-# shells out to these rather than importing them, so they are Suggests, not
-# hard Requires: the tool must remain installable (and partially useful, e.g.
-# `--replay` against fixtures) even on a host that isn't a FreeIPA server yet.
-Recommends:     freeipa-healthcheck
-Recommends:     freeipa-server-common
+# DELIBERATELY NO Recommends here, unlike the Fedora spec - found via
+# fresh-user testing, not theorized: on AlmaLinux 10, `ipa-healthcheck`
+# alone (confirmed directly: 318 packages, 594 MB) and this same
+# freeipa-healthcheck/freeipa-server-common Recommends pair both resolve
+# (via a compatibility Provides) and pull the full IdM/389-DS/Dogtag/
+# httpd/tomcat stack - over 100 packages from a plain `dnf install
+# ipa-diagnose`. Worse than the footprint itself: a fresh-user test found
+# `dnf remove ipa-diagnose` afterward can leave the system in a BROKEN
+# state (a failed transaction trying to autoremove the now-unneeded
+# `ipa-server` weak-dependency chain, reporting packages "needed by
+# (installed) ipa-server" that were themselves already removed). A
+# package recommendation must never risk leaving a host's package database
+# inconsistent on a plain uninstall. Since ipa-diagnose already degrades
+# gracefully with a clear message when `ipa-healthcheck` genuinely isn't
+# installed (verified repeatedly in testing), and its real target audience
+# already has FreeIPA/IdM installed as a precondition of using this tool
+# at all, the Recommends' practical benefit does not justify this risk on
+# EL10 - omitted here, present only on Fedora, where the same packages are
+# confirmed to stay lean (11 packages).
 
 %global _description %{expand:
 ipa-diagnose sits on top of ipa-healthcheck and targeted, read-only system

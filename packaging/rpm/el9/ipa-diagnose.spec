@@ -108,32 +108,27 @@ BuildRequires:  python3-pytest
 # rich-based CLI/render code, matching what %%install declares below.
 BuildRequires:  python3-rich >= 13.1
 
-# Not build-required, but strongly recommended at runtime - ipa-diagnose
-# shells out to these rather than importing them, so they are Recommends,
-# not hard Requires: the tool must remain installable (and partially
-# useful, e.g. `--replay` against fixtures) even on a host that isn't a
-# FreeIPA server yet.
-#
-# NOTE (EL9-specific, confirmed in Docker): unlike Fedora, where the
-# upstream project names these packages `freeipa-healthcheck` /
-# `freeipa-server-common`, RHEL9/Rocky9/AlmaLinux9 rebrand FreeIPA as
-# "IdM" and ship them as `ipa-healthcheck` / `ipa-server-common` instead -
-# the `freeipa-*` names used unmodified would NOT be a simple no-op
-# across EL9 clones: on Rocky 9 they are genuinely unresolvable (dnf
-# silently drops the unsatisfiable Recommends), but AlmaLinux 9 carries a
-# compatibility Provides that resolves them anyway - pulling in the
-# *entire* IdM server stack (ipa-server, 389-ds-base, idm-pki/dogtag,
-# java-17-openjdk, tomcat, httpd - 500+ packages) as a default `dnf
-# install ipa-diagnose`, which directly undermines the "must remain
-# installable on a non-FreeIPA host" goal above. Using the correct EL9
-# names below is still a Recommends (skippable via
-# `--setopt=install_weak_deps=False`), and is expected to resolve/pull
-# ipa-server-common's large closure on a real IdM server - which is this
-# tool's primary target audience - while a genuinely non-IdM host is
-# unaffected either way (ipa-healthcheck/ipa-server-common simply aren't
-# relevant there, same as on Fedora).
-Recommends:     ipa-healthcheck
-Recommends:     ipa-server-common
+# DELIBERATELY NO Recommends here, unlike the Fedora spec - found via
+# fresh-user testing, not theorized: on EL9, BOTH `ipa-healthcheck` alone
+# AND `ipa-healthcheck` + `ipa-server-common` together pull 300+ packages
+# (the full IdM/389-DS/Dogtag/httpd/tomcat stack) via transitive weak
+# dependencies of their own - confirmed on Rocky 9 (340 packages) AND
+# AlmaLinux 9 (353 packages), so this is not an AlmaLinux-only quirk as
+# first suspected; it reproduces identically on both EL9 clones once the
+# EL9-correct package names (`ipa-healthcheck`/`ipa-server-common`, not
+# Fedora's `freeipa-*` names) are used. Worse than the install footprint
+# itself: a fresh-user test found `dnf remove ipa-diagnose` afterward can
+# leave the system in a BROKEN state (a failed transaction trying to
+# autoremove the now-unneeded `ipa-server` weak-dependency chain, reporting
+# packages "needed by (installed) ipa-server" that were themselves already
+# removed). A package recommendation must never risk leaving a host's
+# package database inconsistent on a plain uninstall. Since ipa-diagnose
+# already degrades gracefully with a clear message when `ipa-healthcheck`
+# genuinely isn't installed (verified repeatedly in testing), and its real
+# target audience already has FreeIPA/IdM installed as a precondition of
+# using this tool at all, the Recommends' practical benefit does not
+# justify this risk on EL9 - omitted here, present only on Fedora, where
+# the same packages are confirmed to stay lean (11 packages).
 
 %global _description %{expand:
 ipa-diagnose sits on top of ipa-healthcheck and targeted, read-only system
