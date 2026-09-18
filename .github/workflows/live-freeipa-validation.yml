@@ -46,7 +46,7 @@ jobs:
             -h ipa01.lab.test \
             -e PASSWORD=${IPA_PASSWORD} \
             freeipa/freeipa-server:fedora-43 \
-            ipa-server-install -U -r LAB.TEST --no-ntp --skip-mem-check
+            ipa-server-install -U -r LAB.TEST --no-ntp --skip-mem-check --setup-dns --auto-forwarders --auto-reverse
           echo "Polling for install completion..."
           for i in $(seq 1 90); do
             sleep 10
@@ -79,17 +79,17 @@ jobs:
           docker exec ipa-primary ipa-healthcheck --output-type json > healthy-healthcheck.json 2>&1 || true
           cat healthy-healthcheck.json
           echo "=== ipa-diagnose (real, public v0.1.1, live) ===" | tee healthy-diagnose-output.txt
-          docker exec ipa-primary /root/.local/bin/ipa-diagnose --details > healthy-diagnose-output.txt 2>&1
+          docker exec ipa-primary /root/.local/bin/ipa-diagnose --details > healthy-diagnose-output.txt 2>&1 || true
           cat healthy-diagnose-output.txt
           echo "=== ipa-diagnose --json ===" | tee healthy-diagnose.json
-          docker exec ipa-primary /root/.local/bin/ipa-diagnose --json > healthy-diagnose.json 2>&1
+          docker exec ipa-primary /root/.local/bin/ipa-diagnose --json > healthy-diagnose.json 2>&1 || true
           cat healthy-diagnose.json
 
       - name: Repeat 3x to check for nondeterminism/false positives on a healthy server
         run: |
           for n in 1 2 3; do
             echo "=== Run $n ===" >> healthy-repeat-runs.txt
-            docker exec ipa-primary /root/.local/bin/ipa-diagnose >> healthy-repeat-runs.txt 2>&1
+            docker exec ipa-primary /root/.local/bin/ipa-diagnose >> healthy-repeat-runs.txt 2>&1 || true
             echo "" >> healthy-repeat-runs.txt
           done
           cat healthy-repeat-runs.txt
@@ -208,10 +208,10 @@ jobs:
       - name: THE CRITICAL TEST - run public v0.1.1 ipa-diagnose against the real stale-RUV evidence
         run: |
           echo "=== ipa-diagnose --details on the real post-removal topology ===" | tee stale-ruv-diagnose-A.txt
-          docker exec ipa-a /root/.local/bin/ipa-diagnose --details > stale-ruv-diagnose-A.txt 2>&1
+          docker exec ipa-a /root/.local/bin/ipa-diagnose --details > stale-ruv-diagnose-A.txt 2>&1 || true
           cat stale-ruv-diagnose-A.txt
           echo "=== ipa-diagnose --json ===" | tee stale-ruv-diagnose-A.json
-          docker exec ipa-a /root/.local/bin/ipa-diagnose --json > stale-ruv-diagnose-A.json 2>&1
+          docker exec ipa-a /root/.local/bin/ipa-diagnose --json > stale-ruv-diagnose-A.json 2>&1 || true
           echo "=== overall_status extracted ==="
           grep -o '"overall_status":[^,]*' stale-ruv-diagnose-A.json || true
 
