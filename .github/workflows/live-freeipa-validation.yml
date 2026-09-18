@@ -50,12 +50,13 @@ jobs:
           echo "Polling for install completion..."
           for i in $(seq 1 90); do
             sleep 10
-            if docker exec ipa-primary systemctl is-active ipa.service 2>/dev/null | grep -q active; then
-              echo "IPA service active after ~$((i*10))s"; break
+            if docker exec ipa-primary systemctl is-active ipa.service 2>/dev/null | grep -qx active; then
+              echo "IPA service active after ~$((i*10))s - waiting 20s extra settle time"; sleep 20; break
             fi
             if [ $i -eq 90 ]; then echo "TIMEOUT waiting for install"; fi
           done
-          docker exec ipa-primary cat /var/log/ipaserver-install.log | tail -30
+          docker exec ipa-primary cat /var/log/ipaserver-install.log > baseline-ipaserver-install.log 2>&1 || true
+          tail -30 baseline-ipaserver-install.log
 
       - name: Record exact software versions
         run: |
@@ -104,6 +105,7 @@ jobs:
           name: baseline-healthy-evidence
           path: |
             env-report.txt
+            baseline-ipaserver-install.log
             healthy-healthcheck.json
             healthy-diagnose-output.txt
             healthy-diagnose.json
@@ -137,8 +139,9 @@ jobs:
           echo "Polling Server A install..."
           for i in $(seq 1 90); do
             sleep 10
-            if docker exec ipa-a systemctl is-active ipa.service 2>/dev/null | grep -q active; then echo "A ready after ~$((i*10))s"; break; fi
+            if docker exec ipa-a systemctl is-active ipa.service 2>/dev/null | grep -qx active; then echo "A ready after ~$((i*10))s - waiting 20s extra settle time"; sleep 20; break; fi
           done
+          docker exec ipa-a cat /var/log/ipaserver-install.log > server-a-install.log 2>&1 || true
 
       - name: Boot replica (Server B) and join to Server A
         run: |
@@ -155,9 +158,10 @@ jobs:
           echo "Polling Server B install..."
           for i in $(seq 1 120); do
             sleep 10
-            if docker exec ipa-b systemctl is-active ipa.service 2>/dev/null | grep -q active; then echo "B ready after ~$((i*10))s"; break; fi
+            if docker exec ipa-b systemctl is-active ipa.service 2>/dev/null | grep -qx active; then echo "B ready after ~$((i*10))s - waiting 20s extra settle time"; sleep 20; break; fi
           done
-          docker exec ipa-b cat /var/log/ipareplica-install.log 2>&1 | tail -40
+          docker exec ipa-b cat /var/log/ipareplica-install.log > server-b-install.log 2>&1 || true
+          tail -40 server-b-install.log
 
       - name: Prove healthy replication BEFORE injecting any failure
         run: |
@@ -228,6 +232,8 @@ jobs:
         with:
           name: stale-ruv-live-evidence
           path: |
+            server-a-install.log
+            server-b-install.log
             healthy-topology-*.txt
             healthy-topology-*.json
             stale-ruv-*.txt
