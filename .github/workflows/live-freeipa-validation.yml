@@ -14,7 +14,12 @@ name: Live FreeIPA validation lab
 # fixtures. Nothing here writes to any real/production FreeIPA
 # infrastructure - every server is created and destroyed within the job.
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      install_source:
+        description: "Where to install ipa-diagnose from: 'pypi' (public artifact, default, per the public-artifact-first rule) or 'source' (this exact checked-out commit - only for retesting a not-yet-released fix before it's published)"
+        required: false
+        default: "pypi"
 
 env:
   IPA_PASSWORD: LiveLabSecret123
@@ -211,13 +216,19 @@ jobs:
           docker exec ipa-a bash -c "
             set -e
             for attempt in 1 2 3; do
-              dnf install -y python3-pip && break
+              dnf install -y python3-pip git && break
               echo \"dnf install python3-pip attempt \$attempt failed, retrying in 15s...\"
               sleep 15
             done
             python3 -m pip install pipx
-            python3 -m pipx install ipa-diagnose
           "
+          if [ "${{ inputs.install_source }}" = "source" ]; then
+            echo "Installing ipa-diagnose from THIS checked-out commit (${{ github.sha }}) - NOT the public PyPI artifact. Only for retesting a not-yet-released fix."
+            docker cp "$GITHUB_WORKSPACE" ipa-a:/ipa-diagnose-source
+            docker exec ipa-a bash -c "python3 -m pipx install /ipa-diagnose-source"
+          else
+            docker exec ipa-a bash -c "python3 -m pipx install ipa-diagnose"
+          fi
           # Restore Server A's own DNS resolver immediately - every step
           # after this one needs to resolve ipa-a.ruvlab.test/ipa-b.ruvlab.test
           # via IPA's own DNS, not public resolvers (confirmed in an
