@@ -183,6 +183,18 @@ jobs:
 
       - name: Install public v0.1.1 on Server A and confirm HEALTHY on the healthy topology
         run: |
+          # Server A's own just-installed DNS (--setup-dns) is now this
+          # container's resolver, and its upstream forwarding is not
+          # reliably resolving public names on this custom Docker network
+          # (confirmed: "Temporary failure in name resolution" installing
+          # from PyPI/Fedora mirrors, right after a topology install that
+          # worked fine on the single-server/default-network baseline job).
+          # This step only needs to reach PyPI/Fedora's own mirrors, not
+          # resolve anything IPA-specific, so it temporarily points
+          # resolution at a public resolver rather than fighting with
+          # FreeIPA's own DNS setup - the actual test scenario later in
+          # this job never depends on this container's public DNS working.
+          docker exec ipa-a bash -c "echo 'nameserver 1.1.1.1' > /etc/resolv.conf; echo 'nameserver 8.8.8.8' >> /etc/resolv.conf"
           docker exec ipa-a bash -c "
             set -e
             for attempt in 1 2 3; do
