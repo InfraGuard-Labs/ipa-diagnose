@@ -1,0 +1,60 @@
+name: Live FreeIPA lab - environment proof of concept
+
+# Manually triggered only - never runs on push/PR. Purpose: prove whether a
+# GitHub-hosted runner can actually boot systemd inside a
+# freeipa/freeipa-server container before building a full live-validation
+# lab around that assumption. Docker Desktop on the developer's own machine
+# was already tried twice and failed - both times a real, distinct
+# cgroup v1/systemd incompatibility (confirmed at the systemd-exec level,
+# not a config mistake) - so this checks a genuinely different environment
+# rather than repeating that.
+#
+# GitHub-hosted runners are free for public repositories, are disposable
+# (destroyed after each run), and are real Ubuntu VMs (not a nested-
+# virtualization/WSL2 Docker Desktop backend), which is why cgroup v2 /
+# systemd-in-Docker support is expected to differ here.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  poc:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Report host cgroup/systemd environment
+        run: |
+          echo "--- docker info ---"
+          docker info 2>&1 | grep -iE "cgroup|storage driver" || true
+          echo "--- host systemd ---"
+          systemctl --version || true
+          echo "--- kernel ---"
+          uname -a
+          cat /sys/fs/cgroup/cgroup.controllers 2>/dev/null && echo "(cgroup v2 unified hierarchy present)" || echo "(no unified cgroup.controllers file - likely cgroup v1)"
+
+      - name: Attempt to boot freeipa/freeipa-server with real systemd
+        run: |
+          docker pull freeipa/freeipa-server:fedora-43
+          docker run -d --name poc-ipa \
+            --privileged \
+            --cgroupns=host \
+            -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
+            -h ipa.poc.test \
+            freeipa/freeipa-server:fedora-43 /usr/lib/systemd/systemd --system
+          sleep 20
+          echo "--- container status ---"
+          docker ps -a --filter "name=poc-ipa"
+          echo "--- systemd process check (this is the key signal) ---"
+          docker exec poc-ipa systemctl is-system-running || true
+          docker exec poc-ipa ps aux | head -20
+          echo "--- logs ---"
+          docker logs poc-ipa --tail 100
+
+      - name: Result
+        if: always()
+        run: |
+          if docker exec poc-ipa systemctl is-system-running 2>/dev/null | grep -qE "running|degraded"; then
+            echo "RESULT: systemd IS running inside the container on this runner - lab environment is viable."
+          else
+            echo "RESULT: systemd did NOT come up successfully - see logs above."
+          fi
+          docker rm -f poc-ipa 2>/dev/null || true
