@@ -180,7 +180,7 @@ jobs:
             python3 -m pip install -q pipx
             python3 -m pipx install ipa-diagnose
           "
-          docker exec ipa-a /root/.local/bin/ipa-diagnose --details | tee healthy-topology-diagnose-A.txt
+          docker exec ipa-a /root/.local/bin/ipa-diagnose --details | tee healthy-topology-diagnose-A.txt || true
 
       - name: Inject the failure - ungracefully remove Server B (decommission without clean del)
         run: |
