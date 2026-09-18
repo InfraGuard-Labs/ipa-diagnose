@@ -88,14 +88,28 @@ sudo ipa-diagnose
 ```
 
 **RHEL/Rocky/AlmaLinux 8** - EL8's default Python (3.6) is too old for this
-project and is never touched; the RPM depends on the `python39` module
-stream instead, installed alongside system Python, not replacing it:
+project; the RPM depends on the `python39` module stream instead, installed
+alongside it, not replacing it:
 
 ```bash
 sudo dnf install -y python39
 sudo dnf install ./ipa-diagnose-<version>.el8.noarch.rpm
 sudo ipa-diagnose
 ```
+
+**What "not replacing it" precisely means (tested on both Rocky and
+AlmaLinux 8, confirmed to differ):** `platform-python`
+(`/usr/libexec/platform-python`), the interpreter `dnf`/`rpm`/`yum`
+themselves actually depend on, is never touched on either distro - verified
+with `rpm -V platform-python` showing zero drift before/after install,
+uninstall, and reinstall. The *visible* `/usr/bin/python3` symlink's
+behavior differs by distro, though: on Rocky Linux 8 a pre-existing
+`python3.6` alternative keeps `python3 --version` pinned at 3.6 even after
+installing `python39`; on a minimal AlmaLinux 8 host with no `python3`
+symlink registered at all yet, installing `python39` is what *creates* it,
+pointing at 3.9 - which can look like a change on AlmaLinux where there
+wasn't one to begin with on Rocky. Either way, nothing your system
+tooling depends on is affected.
 
 (The `rich` runtime dependency is vendored into the EL8 package itself,
 since no EL8-compatible `python39-rich` package exists anywhere to depend

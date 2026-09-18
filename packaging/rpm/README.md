@@ -40,6 +40,26 @@ reference implementation each per-target build was adapted from.
 | `build-rpm.sh` | Runs inside the container: tars the working tree, runs `rpmbuild -ba`. Supports `BUILD_VERSION`/`BUILD_RELEASE` env vars to build a bumped release without touching the tracked `pyproject.toml` (used for the upgrade test below). |
 | `Dockerfile.install-test` + `install-test.sh` | A **separate, clean** Fedora container - `ipa-diagnose` is never baked into this image. The RPM is installed at container run time from a mounted file, exactly like a real `dnf install ./ipa-diagnose-*.rpm`, then the script verifies install, dependency resolution, CLI behavior (including graceful degradation with no FreeIPA present), a `--replay` demo run, upgrade to a newer build, and uninstall. |
 
+## Building a specific target (EL8 / EL9 / EL10 / Fedora)
+
+The commands below build the Fedora/reference target specifically. For any
+other target, the same three steps apply with the directory name swapped
+in - e.g. for EL8:
+
+```bash
+docker build -f packaging/rpm/el8/Dockerfile.build -t ipa-diagnose-rpmbuild-el8:local .
+mkdir -p packaging/rpm/el8/rpmbuild
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "$(pwd)/packaging/rpm/el8/rpmbuild:/rpmbuild" \
+  ipa-diagnose-rpmbuild-el8:local
+```
+
+and identically for `el9`/`el10` (swap `el8` for `el9`/`el10` throughout;
+each target's own `Dockerfile.build` and `build-rpm.sh` live in its own
+directory). Each target's install-test Dockerfile, where one exists
+(`el8/Dockerfile.install-test`), follows the same substitution against
+step 4 below.
+
 ## Building and verifying locally (Docker only)
 
 ```bash
