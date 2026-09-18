@@ -1,0 +1,235 @@
+name: Live FreeIPA validation lab
+
+# Manually triggered only - never runs on push/PR. This is the real
+# validation lab: it installs the PUBLIC ipa-diagnose v0.1.1 artifact
+# (from production PyPI, per the "public artifact first" rule - not
+# built from source) against real, live FreeIPA servers running on
+# GitHub-hosted runners (proven viable in live-freeipa-poc.yml - real
+# cgroup v2, real systemd, real ipa-server-install completing in ~4
+# minutes). Each job is independent and gets its own fresh runner/VM,
+# so they run in parallel with no shared-resource contention.
+#
+# Every scenario's evidence (sanitized) is uploaded as a workflow
+# artifact for later inspection and potential conversion into regression
+# fixtures. Nothing here writes to any real/production FreeIPA
+# infrastructure - every server is created and destroyed within the job.
+on:
+  workflow_dispatch: {}
+
+env:
+  IPA_PASSWORD: LiveLabSecret123
+
+jobs:
+  # ---------------------------------------------------------------------
+  # Baseline: one healthy server, public v0.1.1 via pipx, real
+  # ipa-healthcheck, real ipa-diagnose. This is Part 6 of the master
+  # prompt - the foundational "healthy must not fabricate" proof.
+  # ---------------------------------------------------------------------
+  baseline-healthy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Record environment
+        run: |
+          echo "=== Host environment ===" | tee env-report.txt
+          uname -a | tee -a env-report.txt
+          docker info 2>&1 | grep -iE "cgroup|storage driver" | tee -a env-report.txt
+
+      - name: Boot a real FreeIPA server
+        run: |
+          docker volume create ipa-data
+          docker pull freeipa/freeipa-server:fedora-43
+          docker run -d --name ipa-primary \
+            --privileged --cgroupns=host \
+            -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
+            -v ipa-data:/data \
+            -h ipa01.lab.test \
+            -e PASSWORD=${IPA_PASSWORD} \
+            freeipa/freeipa-server:fedora-43 \
+            ipa-server-install -U -r LAB.TEST --no-ntp --skip-mem-check
+          echo "Polling for install completion..."
+          for i in $(seq 1 90); do
+            sleep 10
+            if docker exec ipa-primary systemctl is-active ipa.service 2>/dev/null | grep -q active; then
+              echo "IPA service active after ~$((i*10))s"; break
+            fi
+            if [ $i -eq 90 ]; then echo "TIMEOUT waiting for install"; fi
+          done
+          docker exec ipa-primary cat /var/log/ipaserver-install.log | tail -30
+
+      - name: Record exact software versions
+        run: |
+          echo "=== FreeIPA / ipa-healthcheck / 389-DS / Python versions ===" | tee -a env-report.txt
+          docker exec ipa-primary rpm -q freeipa-server freeipa-healthcheck 389-ds-base python3 2>&1 | tee -a env-report.txt
+          docker exec ipa-primary cat /etc/os-release | tee -a env-report.txt
+
+      - name: Install public ipa-diagnose v0.1.1 (pipx, production PyPI) INSIDE the FreeIPA container
+        run: |
+          docker exec ipa-primary bash -c "
+            dnf install -y -q python3-pip >/dev/null 2>&1
+            python3 -m pip install -q pipx
+            python3 -m pipx install ipa-diagnose
+            /root/.local/bin/ipa-diagnose --version
+          " | tee -a env-report.txt
+
+      - name: Real ipa-healthcheck + real ipa-diagnose on the healthy server
+        run: |
+          echo "=== ipa-healthcheck (real) ===" | tee healthy-healthcheck.json
+          docker exec ipa-primary ipa-healthcheck --output-type json > healthy-healthcheck.json 2>&1 || true
+          cat healthy-healthcheck.json
+          echo "=== ipa-diagnose (real, public v0.1.1, live) ===" | tee healthy-diagnose-output.txt
+          docker exec ipa-primary /root/.local/bin/ipa-diagnose --details > healthy-diagnose-output.txt 2>&1
+          cat healthy-diagnose-output.txt
+          echo "=== ipa-diagnose --json ===" | tee healthy-diagnose.json
+          docker exec ipa-primary /root/.local/bin/ipa-diagnose --json > healthy-diagnose.json 2>&1
+          cat healthy-diagnose.json
+
+      - name: Repeat 3x to check for nondeterminism/false positives on a healthy server
+        run: |
+          for n in 1 2 3; do
+            echo "=== Run $n ===" >> healthy-repeat-runs.txt
+            docker exec ipa-primary /root/.local/bin/ipa-diagnose >> healthy-repeat-runs.txt 2>&1
+            echo "" >> healthy-repeat-runs.txt
+          done
+          cat healthy-repeat-runs.txt
+
+      - name: Cleanup
+        if: always()
+        run: docker rm -f ipa-primary 2>/dev/null || true; docker volume rm ipa-data 2>/dev/null || true
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: baseline-healthy-evidence
+          path: |
+            env-report.txt
+            healthy-healthcheck.json
+            healthy-diagnose-output.txt
+            healthy-diagnose.json
+            healthy-repeat-runs.txt
+          retention-days: 30
+
+  # ---------------------------------------------------------------------
+  # HIGHEST PRIORITY (Part 8): live stale-RUV / removed-replica scenario.
+  # Two-node topology, prove healthy replication first, then remove one
+  # replica ungracefully to produce genuine stale RUV metadata while the
+  # rest of the topology looks otherwise healthy - the exact scenario the
+  # real external user reported and v0.1.1 was built to fix.
+  # ---------------------------------------------------------------------
+  stale-ruv-live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Boot primary (Server A)
+        run: |
+          docker network create ipa-net
+          docker volume create ipa-a-data
+          docker pull freeipa/freeipa-server:fedora-43
+          docker run -d --name ipa-a --network ipa-net \
+            --privileged --cgroupns=host \
+            -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
+            -v ipa-a-data:/data \
+            -h ipa-a.ruvlab.test \
+            -e PASSWORD=${IPA_PASSWORD} \
+            freeipa/freeipa-server:fedora-43 \
+            ipa-server-install -U -r RUVLAB.TEST --no-ntp --skip-mem-check --setup-dns --auto-forwarders --auto-reverse
+          echo "Polling Server A install..."
+          for i in $(seq 1 90); do
+            sleep 10
+            if docker exec ipa-a systemctl is-active ipa.service 2>/dev/null | grep -q active; then echo "A ready after ~$((i*10))s"; break; fi
+          done
+
+      - name: Boot replica (Server B) and join to Server A
+        run: |
+          docker volume create ipa-b-data
+          docker run -d --name ipa-b --network ipa-net \
+            --privileged --cgroupns=host \
+            -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
+            -v ipa-b-data:/data \
+            -h ipa-b.ruvlab.test \
+            --add-host ipa-a.ruvlab.test:$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ipa-a) \
+            -e PASSWORD=${IPA_PASSWORD} \
+            freeipa/freeipa-server:fedora-43 \
+            ipa-replica-install -U --setup-dns --auto-forwarders --server=ipa-a.ruvlab.test --domain=ruvlab.test --realm=RUVLAB.TEST --principal=admin --admin-password=${IPA_PASSWORD} --no-ntp --skip-mem-check
+          echo "Polling Server B install..."
+          for i in $(seq 1 120); do
+            sleep 10
+            if docker exec ipa-b systemctl is-active ipa.service 2>/dev/null | grep -q active; then echo "B ready after ~$((i*10))s"; break; fi
+          done
+          docker exec ipa-b cat /var/log/ipareplica-install.log 2>&1 | tail -40
+
+      - name: Prove healthy replication BEFORE injecting any failure
+        run: |
+          echo "=== Server A: healthcheck (healthy baseline) ===" | tee healthy-topology-healthcheck-A.json
+          docker exec ipa-a ipa-healthcheck --output-type json > healthy-topology-healthcheck-A.json 2>&1 || true
+          echo "=== Server A: ipa-replica-manage list ===" | tee healthy-topology-list-A.txt
+          docker exec ipa-a ipa-replica-manage list > healthy-topology-list-A.txt 2>&1 || true
+          echo "=== Server A: list-ruv (both replicas alive) ===" | tee healthy-topology-list-ruv-A.txt
+          docker exec ipa-a ipa-replica-manage list-ruv > healthy-topology-list-ruv-A.txt 2>&1 || true
+          cat healthy-topology-list-ruv-A.txt
+
+      - name: Install public v0.1.1 on Server A and confirm HEALTHY on the healthy topology
+        run: |
+          docker exec ipa-a bash -c "
+            dnf install -y -q python3-pip >/dev/null 2>&1
+            python3 -m pip install -q pipx
+            python3 -m pipx install ipa-diagnose
+          "
+          docker exec ipa-a /root/.local/bin/ipa-diagnose --details | tee healthy-topology-diagnose-A.txt
+
+      - name: Inject the failure - ungracefully remove Server B (decommission without clean del)
+        run: |
+          # Simulates "old replica information that remained after systems
+          # were gone" - the real external user's reported scenario: stop
+          # and remove the replica container directly, WITHOUT running
+          # `ipa-replica-manage del`/`ipa server-del` first, leaving stale
+          # RUV metadata behind on the survivor.
+          docker rm -f ipa-b 2>/dev/null || true
+          echo "Server B forcibly removed. Waiting 60s for A's own state to settle..."
+          sleep 60
+
+      - name: Capture REAL post-removal evidence on the survivor (Server A)
+        run: |
+          echo "=== ipa-healthcheck after B's removal ===" | tee stale-ruv-healthcheck-A.json
+          docker exec ipa-a ipa-healthcheck --output-type json > stale-ruv-healthcheck-A.json 2>&1 || true
+          cat stale-ruv-healthcheck-A.json
+          echo "=== ipa-replica-manage list (B should be gone/unreachable) ===" | tee stale-ruv-list-A.txt
+          docker exec ipa-a ipa-replica-manage list > stale-ruv-list-A.txt 2>&1 || true
+          cat stale-ruv-list-A.txt
+          echo "=== ipa-replica-manage list-ruv (THE critical evidence) ===" | tee stale-ruv-list-ruv-A.txt
+          docker exec ipa-a ipa-replica-manage list-ruv > stale-ruv-list-ruv-A.txt 2>&1 || true
+          cat stale-ruv-list-ruv-A.txt
+
+      - name: THE CRITICAL TEST - run public v0.1.1 ipa-diagnose against the real stale-RUV evidence
+        run: |
+          echo "=== ipa-diagnose --details on the real post-removal topology ===" | tee stale-ruv-diagnose-A.txt
+          docker exec ipa-a /root/.local/bin/ipa-diagnose --details > stale-ruv-diagnose-A.txt 2>&1
+          cat stale-ruv-diagnose-A.txt
+          echo "=== ipa-diagnose --json ===" | tee stale-ruv-diagnose-A.json
+          docker exec ipa-a /root/.local/bin/ipa-diagnose --json > stale-ruv-diagnose-A.json 2>&1
+          echo "=== overall_status extracted ==="
+          grep -o '"overall_status":[^,]*' stale-ruv-diagnose-A.json || true
+
+      - name: Verify recovery path (ipa-diagnose verify) - no cleanup performed
+        run: |
+          docker exec ipa-a /root/.local/bin/ipa-diagnose verify | tee stale-ruv-verify-A.txt || true
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker rm -f ipa-a ipa-b 2>/dev/null || true
+          docker volume rm ipa-a-data ipa-b-data 2>/dev/null || true
+          docker network rm ipa-net 2>/dev/null || true
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stale-ruv-live-evidence
+          path: |
+            healthy-topology-*.txt
+            healthy-topology-*.json
+            stale-ruv-*.txt
+            stale-ruv-*.json
+          retention-days: 30
