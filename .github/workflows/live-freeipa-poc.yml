@@ -36,20 +36,25 @@ jobs:
             -e DEBUG_TRACE=1 \
             -e DEBUG_NO_EXIT=1 \
             freeipa/freeipa-server:fedora-43 \
-            ipa-server-install -U -r POC.TEST --no-ntp
+            ipa-server-install -U -r POC.TEST --no-ntp --skip-mem-check
           echo "Container started, polling for install completion (up to 12 minutes)..."
           for i in $(seq 1 72); do
             sleep 10
-            STATUS=$(docker inspect -f '{{.State.Status}}' poc-ipa 2>/dev/null || echo "gone")
-            if docker logs poc-ipa 2>&1 | grep -q "The ipa-server-install command was successful"; then
+            LOGS=$(docker logs poc-ipa 2>&1)
+            if echo "$LOGS" | grep -q "The ipa-server-install command was successful"; then
               echo "INSTALL SUCCEEDED after ~$((i*10))s"
               break
             fi
-            if [ "$STATUS" = "exited" ]; then
-              echo "Container exited after ~$((i*10))s (status=$STATUS) - install likely failed"
+            if echo "$LOGS" | grep -q "FreeIPA server configuration failed"; then
+              echo "INSTALL FAILED after ~$((i*10))s (see log below)"
               break
             fi
-            echo "  [$((i*10))s] container status: $STATUS"
+            STATUS=$(docker inspect -f '{{.State.Status}}' poc-ipa 2>/dev/null || echo "gone")
+            if [ "$STATUS" != "running" ]; then
+              echo "Container status changed to '$STATUS' after ~$((i*10))s"
+              break
+            fi
+            echo "  [$((i*10))s] still installing (container running)"
           done
 
       - name: Check final state
