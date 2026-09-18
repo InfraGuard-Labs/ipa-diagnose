@@ -48,10 +48,11 @@ And when the evidence genuinely isn't enough to tell two causes apart,
 ![Unknown result](artifacts/screenshots/06_unknown_insufficient_evidence.png)
 
 See [artifacts/screenshots/index.md](artifacts/screenshots/index.md) for all
-19 captured scenarios (healthy, degraded, multiple independent problems,
-`--details`, CAUTION/HIGH-RISK actions, `verify`, all three AI providers,
-AI-failure fallback, the `ai-preview` redaction view, malformed input, and
-the real RPM install) - every one of them is real recorded output from the
+27 captured scenarios (healthy, degraded, multiple independent problems,
+`--details` including environment metadata, `--json`, CAUTION/HIGH-RISK
+actions, `verify`, all three AI providers, AI-failure fallback, the
+`ai-preview` redaction view, malformed input, the stale-RUV fix, and real
+RPM/PyPI installs) - every one of them is real recorded output from the
 actual application, not a mockup.
 
 ## Installation

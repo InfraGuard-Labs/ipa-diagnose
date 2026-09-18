@@ -47,8 +47,16 @@ total) and keep their Recommends.
 
 The **core deterministic product** (no AI) installs and passes its full
 test suite identically on Python 3.9, 3.10, 3.11, 3.12, 3.13, and 3.14 -
-zero version-sensitive behavior found across that range, PYTHON MATRIX
-TESTED. `requires-python = ">=3.9"` in `pyproject.toml` is accurate.
+zero version-sensitive behavior found across that range. This was verified
+directly, ad hoc, in `python:<version>-slim` Docker containers during this
+compatibility round; `requires-python = ">=3.9"` in `pyproject.toml` is
+accurate. **Note on reproducibility:** only 3.9 (EL8/EL9 RPM `%check`),
+3.11 (the project's own dev/CI Docker image), and 3.12/3.14 (EL10/Fedora
+RPM `%check`) are exercised by anything currently checked into this repo -
+3.10 and 3.13 were verified this round but are not yet wired into any
+committed script or CI job, so a future contributor cannot reproduce those
+two without repeating the same manual Docker check. Adding that automation
+is a reasonable follow-up, not done as part of this round.
 
 **Optional AI extras** (`openai`, `anthropic`, `boto3`/bedrock) install
 cleanly on the same 3.9-3.14 range - no extra imposes a stricter floor than
