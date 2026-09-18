@@ -150,5 +150,11 @@ def _collect_staged(bundle: EvidenceBundle, *, fixture_path: Optional[pathlib.Pa
             bundle.collection_errors.append(
                 CollectionError(collector=name, message=str(e), permission_related=e.permission_related)
             )
+            # A collector that makes more than one independent sub-call may
+            # have partially succeeded even though it's reporting failure
+            # overall (see CollectorError.partial_items) - don't discard
+            # evidence that was genuinely collected just because a sibling
+            # sub-call failed.
+            bundle.items.extend(e.partial_items)
             continue
         bundle.items.extend(items)

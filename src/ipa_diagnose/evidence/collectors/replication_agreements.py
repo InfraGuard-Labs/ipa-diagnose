@@ -103,8 +103,7 @@ class ReplicationAgreementsCollector(Collector):
         # failure in `list` prevented `list-ruv` from ever running at all,
         # which meant a transient/permission failure in agreement listing
         # silently hid RUV evidence too. They're now collected independently
-        # so a problem with one never blocks the other; a total failure of
-        # both is still surfaced as a CollectorError (see below).
+        # so a problem with one never blocks the other.
         agreements, list_error = self._try_run_list(hostname)
         items.extend(agreements)
 
@@ -116,8 +115,21 @@ class ReplicationAgreementsCollector(Collector):
         ruv_items, ruv_error = self._try_run_list_ruv(known_hosts, hosts_known_complete=list_error is None)
         items.extend(ruv_items)
 
-        if list_error is not None and ruv_error is not None:
-            raise CollectorError(f"{list_error}; {ruv_error}", permission_related=True)
+        # Found in live testing against a real FreeIPA server:
+        # `ipa-replica-manage list-ruv` (and clean-ruv/abort-clean-ruv)
+        # require the Directory Manager password specifically - a valid
+        # admin Kerberos ticket is NOT sufficient, unlike `list`. This is a
+        # real, common state: an administrator running ipa-diagnose with an
+        # ordinary admin ticket (not the DM password, which this tool must
+        # never ask for or store) will have `list` succeed while
+        # `list-ruv` fails. That must never be silent - stale-RUV
+        # detection depends entirely on `list-ruv`, so ANY failure in it is
+        # reported, not just a total failure of both sub-calls. Whatever
+        # WAS collected (e.g. agreements from a successful `list`) is
+        # preserved via partial_items, not discarded.
+        if list_error is not None or ruv_error is not None:
+            message = "; ".join(m for m in (list_error, ruv_error) if m)
+            raise CollectorError(message, permission_related=True, partial_items=items)
         return items
 
     def _try_run_list(self, hostname: str) -> "tuple[List[EvidenceItem], Optional[str]]":

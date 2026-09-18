@@ -28,11 +28,28 @@ from ipa_diagnose.evidence.model import EvidenceItem
 
 class CollectorError(Exception):
     """Raised by a collector when it cannot run; the caller turns this into a
-    CollectionError on the bundle rather than letting the whole run crash."""
+    CollectionError on the bundle rather than letting the whole run crash.
 
-    def __init__(self, message: str, *, permission_related: bool = False):
+    ``partial_items`` lets a collector that makes more than one independent
+    sub-call (e.g. ``list`` and ``list-ruv``) still surface whatever it DID
+    successfully collect even when reporting that one sub-call failed -
+    found in live testing against a real FreeIPA server: a partial failure
+    (one sub-call succeeds, the other doesn't) was previously invisible
+    whenever at least one sub-call succeeded, since only a TOTAL failure of
+    every sub-call raised at all. A partial RUV-collection failure must be
+    visible - "unknown is better than wrong" applies to collection gaps,
+    not just to diagnoses."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        permission_related: bool = False,
+        partial_items: "list[EvidenceItem] | None" = None,
+    ):
         super().__init__(message)
         self.permission_related = permission_related
+        self.partial_items = partial_items or []
 
 
 class Collector(abc.ABC):

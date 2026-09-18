@@ -125,7 +125,15 @@ def test_agreement_list_failure_does_not_block_ruv_collection(monkeypatch):
     """The core decoupling fix: `list <host>` failing (e.g. a transient
     permission issue) must not prevent `list-ruv` from running at all - RUV
     evidence is independently valuable and was previously lost entirely
-    whenever the agreement listing failed for any reason."""
+    whenever the agreement listing failed for any reason.
+
+    Found in live testing against a real FreeIPA server: a partial failure
+    like this one must still be VISIBLE (raised, with whatever was
+    collected preserved via partial_items) rather than silently returned
+    as if nothing went wrong - the mirror case (list succeeds, list-ruv
+    fails, e.g. because list-ruv specifically requires the Directory
+    Manager password that an ordinary admin ticket doesn't satisfy) was
+    previously completely silent, discarding real evidence with no trace."""
 
     collector = ReplicationAgreementsCollector()
     calls = []
@@ -142,12 +150,49 @@ def test_agreement_list_failure_does_not_block_ruv_collection(monkeypatch):
     monkeypatch.setattr("shutil.which", lambda name: "/usr/sbin/" + name)
     monkeypatch.setattr("socket.gethostname", lambda: "ipa01.example.test")
 
-    items = collector.collect_live()
+    with pytest.raises(CollectorError) as excinfo:
+        collector.collect_live()
+    items = excinfo.value.partial_items
     ruv_items = [i for i in items if i.kind == "replication_ruv"]
     assert len(ruv_items) == 1
     # agreement listing failed, so known_hosts is incomplete for anything
     # other than self - but ipa01 (self) is still confidently alive.
     assert ruv_items[0].data["alive"] is True
+
+
+def test_list_ruv_failure_alone_is_visible_even_when_list_succeeds(monkeypatch):
+    """Found live against a real FreeIPA server: `ipa-replica-manage
+    list-ruv` (unlike `list`) requires the Directory Manager password
+    specifically - a valid admin Kerberos ticket is not sufficient. This
+    is a normal operational state (an administrator running ipa-diagnose
+    with an ordinary admin ticket, not the DM password, which this tool
+    must never ask for or store), so `list` succeeding while `list-ruv`
+    fails is not an edge case. Before this fix, this exact combination
+    was completely silent: no collection error, no diagnosis, RUV
+    evidence just vanished with no trace - confirmed live, this is the
+    reason a genuinely stale RUV was not detected in one live test run
+    even though the collector "succeeded"."""
+
+    collector = ReplicationAgreementsCollector()
+
+    def fake_run(args, **kwargs):
+        if args[:2] == ["ipa-replica-manage", "list"]:
+            return _FakeProc(0, stdout="ipa02.example.test\n  last update status: Error (0) OK\n")
+        if args[:2] == ["ipa-replica-manage", "list-ruv"]:
+            return _FakeProc(1, stderr="Directory Manager password required")
+        raise AssertionError(f"unexpected command {args}")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr("shutil.which", lambda name: "/usr/sbin/" + name)
+    monkeypatch.setattr("socket.gethostname", lambda: "ipa01.example.test")
+
+    with pytest.raises(CollectorError) as excinfo:
+        collector.collect_live()
+    assert "Directory Manager password required" in str(excinfo.value)
+    # The successfully-collected agreement item must not be discarded just
+    # because the sibling list-ruv call failed.
+    agreement_items = [i for i in excinfo.value.partial_items if i.kind == "replication_agreement"]
+    assert len(agreement_items) == 1
 
 
 def test_both_commands_failing_raises_collector_error(monkeypatch):
