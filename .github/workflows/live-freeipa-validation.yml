@@ -168,6 +168,18 @@ jobs:
           docker exec ipa-b cat /var/log/ipareplica-install.log > server-b-install.log 2>&1 || true
           tail -40 server-b-install.log
 
+      - name: Authenticate as admin (ipa-replica-manage needs a real ticket, not just root)
+        run: |
+          # Without an active Kerberos ticket, ipa-replica-manage falls
+          # back to interactively prompting for the Directory Manager
+          # password, which fails headlessly here ("Directory Manager
+          # password required", confirmed in an earlier run of this same
+          # job). A real admin ticket is what a real administrator would
+          # actually have when running these commands, so this matches
+          # real usage, not a workaround.
+          docker exec ipa-a bash -c "echo '${IPA_PASSWORD}' | kinit admin"
+          docker exec ipa-a klist
+
       - name: Prove healthy replication BEFORE injecting any failure
         run: |
           echo "=== Server A: healthcheck (healthy baseline) ===" | tee healthy-topology-healthcheck-A.json
@@ -194,6 +206,7 @@ jobs:
           # resolution at a public resolver rather than fighting with
           # FreeIPA's own DNS setup - the actual test scenario later in
           # this job never depends on this container's public DNS working.
+          docker exec ipa-a cp /etc/resolv.conf /etc/resolv.conf.ipa-backup
           docker exec ipa-a bash -c "echo 'nameserver 1.1.1.1' > /etc/resolv.conf; echo 'nameserver 8.8.8.8' >> /etc/resolv.conf"
           docker exec ipa-a bash -c "
             set -e
@@ -205,6 +218,13 @@ jobs:
             python3 -m pip install pipx
             python3 -m pipx install ipa-diagnose
           "
+          # Restore Server A's own DNS resolver immediately - every step
+          # after this one needs to resolve ipa-a.ruvlab.test/ipa-b.ruvlab.test
+          # via IPA's own DNS, not public resolvers (confirmed in an
+          # earlier run: leaving the public-resolver override in place
+          # broke `ipa-replica-manage`'s own hostname resolution for the
+          # rest of the job).
+          docker exec ipa-a cp /etc/resolv.conf.ipa-backup /etc/resolv.conf
           docker exec ipa-a /root/.local/bin/ipa-diagnose --details | tee healthy-topology-diagnose-A.txt || true
 
       - name: Inject the failure - ungracefully remove Server B (decommission without clean del)
