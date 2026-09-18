@@ -1,66 +1,83 @@
 name: Live FreeIPA lab - environment proof of concept
 
 # Manually triggered only - never runs on push/PR. Purpose: prove whether a
-# GitHub-hosted runner can actually boot systemd inside a
-# freeipa/freeipa-server container before building a full live-validation
-# lab around that assumption. Docker Desktop on the developer's own machine
-# was already tried twice and failed - both times a real, distinct
-# cgroup v1/systemd incompatibility (confirmed at the systemd-exec level,
-# not a config mistake) - so this checks a genuinely different environment
-# rather than repeating that.
-#
-# GitHub-hosted runners are free for public repositories, are disposable
-# (destroyed after each run), and are real Ubuntu VMs (not a nested-
-# virtualization/WSL2 Docker Desktop backend), which is why cgroup v2 /
-# systemd-in-Docker support is expected to differ here.
+# GitHub-hosted runner can actually boot systemd AND complete a real
+# ipa-server-install inside a freeipa/freeipa-server container, before
+# building a full live-validation lab around that assumption. Docker
+# Desktop on the developer's own machine was already tried twice and
+# failed on cgroup v1/systemd itself. This runner environment has cgroup
+# v2 (confirmed in an earlier PoC run) - this run tests the full,
+# correctly-configured install per the upstream freeipa-container project's
+# own documented invocation (https://github.com/freeipa/freeipa-container).
 on:
   workflow_dispatch: {}
 
 jobs:
   poc:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Report host cgroup/systemd environment
         run: |
-          echo "--- docker info ---"
           docker info 2>&1 | grep -iE "cgroup|storage driver" || true
-          echo "--- host systemd ---"
           systemctl --version || true
-          echo "--- kernel ---"
-          uname -a
-          cat /sys/fs/cgroup/cgroup.controllers 2>/dev/null && echo "(cgroup v2 unified hierarchy present)" || echo "(no unified cgroup.controllers file - likely cgroup v1)"
 
-      - name: Attempt to boot freeipa/freeipa-server with real systemd
+      - name: Boot a real FreeIPA server (unattended install)
         run: |
+          docker volume create ipa-poc-data
           docker pull freeipa/freeipa-server:fedora-43
-          # No command override: the image's own entrypoint
-          # (/usr/local/sbin/init) has an allowlist and rejects any
-          # overridden command (confirmed separately: even `cat` was
-          # rejected with "Invocation error: command [cat] not supported") -
-          # it expects to be run exactly like this, with just -h/env flags,
-          # and handles the systemd bootstrap internally.
           docker run -d --name poc-ipa \
             --privileged \
             --cgroupns=host \
             -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
-            -h ipa.poc.test \
-            freeipa/freeipa-server:fedora-43
-          sleep 30
-          echo "--- container status ---"
-          docker ps -a --filter "name=poc-ipa"
-          echo "--- systemd process check (this is the key signal) ---"
-          docker exec poc-ipa systemctl is-system-running || true
-          docker exec poc-ipa ps aux | head -20
-          echo "--- logs ---"
-          docker logs poc-ipa --tail 150
+            -v ipa-poc-data:/data \
+            -h ipa01.poc.test \
+            -e PASSWORD=PocLabSecret123 \
+            -e DEBUG_TRACE=1 \
+            -e DEBUG_NO_EXIT=1 \
+            freeipa/freeipa-server:fedora-43 \
+            ipa-server-install -U -r POC.TEST --no-ntp
+          echo "Container started, polling for install completion (up to 12 minutes)..."
+          for i in $(seq 1 72); do
+            sleep 10
+            STATUS=$(docker inspect -f '{{.State.Status}}' poc-ipa 2>/dev/null || echo "gone")
+            if docker logs poc-ipa 2>&1 | grep -q "The ipa-server-install command was successful"; then
+              echo "INSTALL SUCCEEDED after ~$((i*10))s"
+              break
+            fi
+            if [ "$STATUS" = "exited" ]; then
+              echo "Container exited after ~$((i*10))s (status=$STATUS) - install likely failed"
+              break
+            fi
+            echo "  [$((i*10))s] container status: $STATUS"
+          done
 
-      - name: Result
+      - name: Check final state
         if: always()
         run: |
-          if docker exec poc-ipa systemctl is-system-running 2>/dev/null | grep -qE "running|degraded"; then
-            echo "RESULT: systemd IS running inside the container on this runner - lab environment is viable."
+          echo "--- container status ---"
+          docker ps -a --filter "name=poc-ipa"
+          echo "--- systemd status (if still running) ---"
+          docker exec poc-ipa systemctl is-system-running 2>&1 || true
+          echo "--- last 200 lines of container output ---"
+          docker logs poc-ipa --tail 200 2>&1
+          echo "--- ipa-server-install.log tail (if present) ---"
+          docker exec poc-ipa tail -100 /var/log/ipaserver-install.log 2>&1 || echo "(log not accessible)"
+
+      - name: Live ipa-healthcheck test (only if install succeeded)
+        if: always()
+        run: |
+          if docker logs poc-ipa 2>&1 | grep -q "The ipa-server-install command was successful"; then
+            echo "Running real ipa-healthcheck on the live server..."
+            docker exec poc-ipa ipa-healthcheck --output-type json > /tmp/healthcheck.json 2>&1 || true
+            echo "--- healthcheck output (first 100 lines) ---"
+            head -100 /tmp/healthcheck.json
           else
-            echo "RESULT: systemd did NOT come up successfully - see logs above."
+            echo "Skipping - install did not succeed."
           fi
+
+      - name: Cleanup
+        if: always()
+        run: |
           docker rm -f poc-ipa 2>/dev/null || true
+          docker volume rm ipa-poc-data 2>/dev/null || true
