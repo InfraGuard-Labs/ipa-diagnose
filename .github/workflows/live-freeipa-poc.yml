@@ -34,20 +34,26 @@ jobs:
       - name: Attempt to boot freeipa/freeipa-server with real systemd
         run: |
           docker pull freeipa/freeipa-server:fedora-43
+          # No command override: the image's own entrypoint
+          # (/usr/local/sbin/init) has an allowlist and rejects any
+          # overridden command (confirmed separately: even `cat` was
+          # rejected with "Invocation error: command [cat] not supported") -
+          # it expects to be run exactly like this, with just -h/env flags,
+          # and handles the systemd bootstrap internally.
           docker run -d --name poc-ipa \
             --privileged \
             --cgroupns=host \
             -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
             -h ipa.poc.test \
-            freeipa/freeipa-server:fedora-43 /usr/lib/systemd/systemd --system
-          sleep 20
+            freeipa/freeipa-server:fedora-43
+          sleep 30
           echo "--- container status ---"
           docker ps -a --filter "name=poc-ipa"
           echo "--- systemd process check (this is the key signal) ---"
           docker exec poc-ipa systemctl is-system-running || true
           docker exec poc-ipa ps aux | head -20
           echo "--- logs ---"
-          docker logs poc-ipa --tail 100
+          docker logs poc-ipa --tail 150
 
       - name: Result
         if: always()
