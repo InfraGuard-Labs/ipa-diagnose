@@ -160,7 +160,8 @@ def test_partial_replication_failure_end_to_end_via_collect(monkeypatch):
 
     def fake_run(args, **kwargs):
         if args[:1] == ["ipa-healthcheck"]:
-            return subprocess.CompletedProcess(args, 0, stdout="[]", stderr="")
+            ok = [{"source": "ipahealthcheck.meta.services", "check": "dirsrv", "result": "SUCCESS", "uuid": "u", "kw": {}}]
+            return subprocess.CompletedProcess(args, 0, stdout=json.dumps(ok), stderr="")
         if args[:2] == ["ipa-replica-manage", "list"]:
             return subprocess.CompletedProcess(args, 0, stdout="ipa02.example.test\n", stderr="")
         if args[:2] == ["ipa-replica-manage", "list-ruv"]:
@@ -213,7 +214,7 @@ def test_verify_banner_and_exit_are_not_clean_when_evidence_incomplete(monkeypat
     buf = io.StringIO()
     args = cli.build_parser().parse_args(["verify"])
     code = cli.cmd_verify(args, Console(file=buf, width=120, highlight=False))
-    assert code == 4
+    assert code == 3  # no baseline: the fresh run is UNKNOWN, exactly what a plain diagnose returns
 
 
 def test_ai_preview_with_incomplete_evidence_is_not_a_green_all_clear(monkeypatch):
