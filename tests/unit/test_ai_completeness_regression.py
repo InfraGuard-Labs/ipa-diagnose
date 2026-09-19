@@ -31,7 +31,7 @@ PROVIDERS = ["openai", "anthropic", "bedrock"]
 
 
 class RecordingProvider(AIProvider):
-    def __init__(self, name, reply="The service is not running, so dependent functions are unavailable."):
+    def __init__(self, name, reply="The Directory Server is stopped, so lookups and logins that depend on it will fail."):
         self.provider_name = name
         self.reply = reply
         self.requests = []

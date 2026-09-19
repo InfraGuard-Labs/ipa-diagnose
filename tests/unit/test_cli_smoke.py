@@ -41,6 +41,9 @@ def test_ai_preview_with_no_problems(capsys, tmp_path, monkeypatch):
 def test_missing_fixture_dir_reports_collection_error_not_crash(capsys, tmp_path, monkeypatch):
     monkeypatch.setenv("IPA_DIAGNOSE_STATE_DIR", str(tmp_path / "state"))
     exit_code = main(["--replay", str(tmp_path / "does-not-exist"), "diagnose", "--json"])
-    assert exit_code == 0
+    # A --replay of a directory that does not exist must never look healthy:
+    # it is a visible collection error and UNKNOWN (exit 3), not a crash.
+    assert exit_code == 3
     data = json.loads(capsys.readouterr().out)
-    assert data["overall_status"] == "HEALTHY"  # no healthcheck.json found -> no findings, not a crash
+    assert data["overall_status"] == "UNKNOWN"
+    assert any("replay directory not found" in e for e in data["collection_errors"])
