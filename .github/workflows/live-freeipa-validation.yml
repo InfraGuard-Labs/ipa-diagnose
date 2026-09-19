@@ -117,6 +117,12 @@ jobs:
           docker exec ipa-primary ldapsearch -LLL -Y EXTERNAL -H ldapi://%2Frun%2Fslapd-LAB-TEST.socket -b "dc=lab,dc=test" "(&(nsuniqueid=ffffffff-ffffffff-ffffffff-ffffffff)(objectclass=nstombstone))" nsds50ruv >> ruv-probe.txt 2>&1 || true
           echo "=== (2b) same search over GSSAPI with the admin ticket ===" | tee -a ruv-probe.txt
           docker exec ipa-primary ldapsearch -LLL -Y GSSAPI -H ldap://ipa01.lab.test -b "dc=lab,dc=test" "(&(nsuniqueid=ffffffff-ffffffff-ffffffff-ffffffff)(objectclass=nstombstone))" nsds50ruv >> ruv-probe.txt 2>&1 || true
+          echo "=== (2c) LDAPI whoami as root (which identity does EXTERNAL map to?) ===" | tee -a ruv-probe.txt
+          docker exec ipa-primary ldapwhoami -Y EXTERNAL -H ldapi://%2Frun%2Fslapd-LAB-TEST.socket >> ruv-probe.txt 2>&1 || true
+          echo "=== (2d) CONTROL: same tombstone search bound as cn=Directory Manager (lab-owned throwaway credential; proves the RUV entry exists and what the filter should return) ===" | tee -a ruv-probe.txt
+          docker exec ipa-primary ldapsearch -LLL -x -D "cn=Directory Manager" -w "${IPA_PASSWORD}" -H ldap://ipa01.lab.test -b "dc=lab,dc=test" "(&(nsuniqueid=ffffffff-ffffffff-ffffffff-ffffffff)(objectclass=nstombstone))" nsds50ruv >> ruv-probe.txt 2>&1 || true
+          echo "=== (2e) root EXTERNAL, broader filter incl. tombstones ===" | tee -a ruv-probe.txt
+          docker exec ipa-primary ldapsearch -LLL -Y EXTERNAL -H ldapi://%2Frun%2Fslapd-LAB-TEST.socket -b "dc=lab,dc=test" -s one "(objectclass=nstombstone)" dn nsds50ruv >> ruv-probe.txt 2>&1 || true
           echo "=== (3) ipa server-find ===" | tee -a ruv-probe.txt
           docker exec ipa-primary ipa server-find >> ruv-probe.txt 2>&1 || true
           cat ruv-probe.txt
@@ -181,6 +187,11 @@ jobs:
           # ipa-b.ruvlab.test does not provide DNS' - the replica must be
           # able to resolve itself and the realm via the IPA DNS on A.
           docker exec ipa-a bash -c "echo '${IPA_PASSWORD}' | kinit admin && ipa dnsrecord-add ruvlab.test ipa-b --a-rec 172.30.0.11"
+          # Root cause (real ipareplica-install.log): ipa-replica-conncheck makes
+          # Server A connect back to the replica and A could not resolve
+          # ipa-b.ruvlab.test (A uses Docker's resolver, not IPA DNS).
+          docker exec ipa-a bash -c "echo '172.30.0.11 ipa-b.ruvlab.test ipa-b' >> /etc/hosts"
+          docker exec ipa-a getent hosts ipa-b.ruvlab.test
           docker volume create ipa-b-data
           docker run -d --name ipa-b --network ipa-net --ip 172.30.0.11 --dns 172.30.0.10 \
             --privileged --cgroupns=host \
