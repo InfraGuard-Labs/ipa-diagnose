@@ -172,8 +172,16 @@ jobs:
           echo "Polling Server B install..."
           for i in $(seq 1 120); do
             sleep 10
-            if docker exec ipa-b systemctl is-active ipa.service 2>/dev/null | grep -qx active; then echo "B ready after ~$((i*10))s - waiting 20s extra settle time"; sleep 20; break; fi
+            if [ "$(docker inspect -f '{{.State.Running}}' ipa-b 2>/dev/null)" != "true" ]; then
+              echo "::error::Server B container exited during replica install - capturing why"
+              docker logs ipa-b > server-b-container.log 2>&1 || true
+              tail -60 server-b-container.log
+              docker cp ipa-b:/var/log/ipareplica-install.log server-b-install.log 2>/dev/null || true
+              exit 1
+            fi
+            if docker exec ipa-b systemctl is-active ipa.service 2>/dev/null | grep -qx active; then echo "B ready after ~$((i*10))s - waiting 20s extra settle time"; sleep 20; READY=1; break; fi
           done
+          if [ "${READY:-0}" != "1" ]; then echo "::error::Server B never became ready"; docker logs ipa-b > server-b-container.log 2>&1 || true; tail -60 server-b-container.log; exit 1; fi
           docker exec ipa-b cat /var/log/ipareplica-install.log > server-b-install.log 2>&1 || true
           tail -40 server-b-install.log
 
@@ -294,6 +302,7 @@ jobs:
           path: |
             server-a-install.log
             server-b-install.log
+            server-b-container.log
             healthy-topology-*.txt
             healthy-topology-*.json
             stale-ruv-*.txt
