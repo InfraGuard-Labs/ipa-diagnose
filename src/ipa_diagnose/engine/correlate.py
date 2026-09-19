@@ -36,6 +36,7 @@ from ipa_diagnose.engine.model import (
     PriorityBucket,
 )
 from ipa_diagnose.evidence.model import EvidenceBundle, Severity
+from ipa_diagnose.textsafe import sanitize_text
 
 STATUS_WEIGHT: Dict[DiagnosisStatus, float] = {
     DiagnosisStatus.DIAGNOSED: 1.0,
@@ -144,20 +145,9 @@ _MAX_ERROR_LEN = 300
 
 
 def sanitize_error_text(text: str) -> str:
-    """Collector error text comes from subprocess stderr, i.e. untrusted:
-    strip terminal escape sequences / control characters and bound the
-    length so it can be shown or serialized safely."""
+    """Collector error text comes from subprocess stderr, i.e. untrusted."""
 
-    import re
-
-    text = text[:4096]  # bound the work before any regex runs
-    text = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", text)  # CSI sequences
-    text = re.sub(r"\x1b\][^\x07\x1b]*(\x07|\x1b\\)?", "", text)  # OSC sequences
-    text = re.sub(r"\x1b[P^_X][^\x1b]*(\x1b\\)?", "", text)  # DCS/PM/APC/SOS strings
-    text = re.sub(r"\x1b[@-Z\\-_]", "", text)  # other 2-char ESC sequences
-    text = "".join(ch if (ch == " " or ch.isprintable()) else " " for ch in text)
-    text = " ".join(text.split())
-    return text[:_MAX_ERROR_LEN]
+    return sanitize_text(text, _MAX_ERROR_LEN)
 
 
 def _assess_completeness(bundle: EvidenceBundle) -> EvidenceCompleteness:

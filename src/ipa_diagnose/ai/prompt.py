@@ -47,7 +47,9 @@ _MAX_EXPLANATION_CHARS = 4000
 
 def _looks_approved(candidate: str, approved_commands: set) -> bool:
     candidate = candidate.strip()
-    return any(candidate in cmd or cmd in candidate for cmd in approved_commands)
+    # The span must be (part of) an approved command - never an approved
+    # command with extra text appended.
+    return any(candidate in cmd for cmd in approved_commands)
 
 
 def sanitize_explanation(text: str, diagnosis: Diagnosis) -> Optional[str]:

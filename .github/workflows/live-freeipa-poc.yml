@@ -9,6 +9,9 @@ name: Live FreeIPA lab - environment proof of concept
 # v2 (confirmed in an earlier PoC run) - this run tests the full,
 # correctly-configured install per the upstream freeipa-container project's
 # own documented invocation (https://github.com/freeipa/freeipa-container).
+permissions:
+  contents: read
+
 on:
   workflow_dispatch: {}
 

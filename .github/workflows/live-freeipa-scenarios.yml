@@ -7,6 +7,9 @@ name: Live FreeIPA failure scenarios
 # LIVE CAPTURE evidence uploaded as an artifact. ipa-diagnose itself never
 # changes anything; only this lab script stops/starts services on the
 # throwaway server.
+permissions:
+  contents: read
+
 on:
   workflow_dispatch:
     inputs:
@@ -17,6 +20,7 @@ on:
         type: string
 
 env:
+  INSTALL_SOURCE: ${{ inputs.install_source }}
   IPA_PASSWORD: LiveLabSecret123
 
 jobs:
@@ -46,7 +50,7 @@ jobs:
           set +e
           docker exec ipa-s bash -c 'cp /etc/resolv.conf /etc/resolv.conf.bak; printf "nameserver 1.1.1.1\nnameserver 8.8.8.8\n" > /etc/resolv.conf'
           docker exec ipa-s bash -c 'for a in 1 2 3; do dnf install -y python3-pip git && break; sleep 15; done; python3 -m pip install pipx'
-          if [ "${{ inputs.install_source }}" = "pypi" ]; then
+          if [ "$INSTALL_SOURCE" = "pypi" ]; then
             docker exec ipa-s bash -c "python3 -m pipx install ipa-diagnose"
           else
             docker cp "$GITHUB_WORKSPACE" ipa-s:/ipa-diagnose-source

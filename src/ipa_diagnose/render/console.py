@@ -91,21 +91,21 @@ def render_report(
                 relation = f"  (related to: {', '.join(d.related_to_titles)})"
             else:
                 relation = ""
-            console.print(f"  • {d.title}[dim]{relation}[/dim]")
+            console.print(f"  • {escape(d.title)}[dim]{escape(relation)}[/dim]")
             if details:
-                console.print(f"    [dim]{_first_line(d.why)}[/dim]")
+                console.print(f"    [dim]{escape(_first_line(d.why))}[/dim]")
         console.print()
 
     if warnings:
         console.print(Rule("WARNINGS", style="dim"))
         for d in warnings:
-            console.print(f"  ⚠ {d.title}")
+            console.print(f"  ⚠ {escape(d.title)}")
         console.print()
 
     if details and info:
         console.print(Rule("INFORMATIONAL", style="dim"))
         for d in info:
-            console.print(f"  ℹ {d.title}")
+            console.print(f"  ℹ {escape(d.title)}")
         console.print()
 
     _print_coverage(report, console, details=details)
@@ -128,7 +128,7 @@ def _render_primary_block(
         console.print("Unable to determine safely.\n")
 
     console.print(Text("WHY", style="bold underline"))
-    console.print((ai_explanation or d.why).strip())
+    console.print(escape((ai_explanation or d.why).strip()))
     if ai_explanation:
         console.print("[dim](explanation simplified by AI from the deterministic diagnosis above)[/dim]")
     console.print()
@@ -136,20 +136,20 @@ def _render_primary_block(
     if d.evidence_for:
         console.print(Text("EVIDENCE", style="bold underline"))
         for ref in d.evidence_for:
-            console.print(f"  ✓ {ref.why_relevant}")
+            console.print(f"  ✓ {escape(ref.why_relevant)}")
         if d.evidence_against:
             for ref in d.evidence_against:
-                console.print(f"  [yellow]✗ (contradicts) {ref.why_relevant}[/yellow]")
+                console.print(f"  [yellow]✗ (contradicts) {escape(ref.why_relevant)}[/yellow]")
         console.print()
 
     if d.impact:
         console.print(Text("IMPACT", style="bold underline"))
-        console.print(d.impact)
+        console.print(escape(d.impact))
         console.print()
 
     if d.status != DiagnosisStatus.DIAGNOSED and d.next_diagnostic_step:
         console.print(Text("DO THIS NEXT", style="bold underline"))
-        console.print(d.next_diagnostic_step)
+        console.print(escape(d.next_diagnostic_step))
         # next_diagnostic_step is always a safe, read-only disambiguation
         # step by contract (see Diagnosis.next_diagnostic_step's docstring)
         # - labeled explicitly so the safety signal is consistent with the
@@ -160,9 +160,9 @@ def _render_primary_block(
     elif d.actions:
         first = d.actions[0]
         console.print(Text("DO THIS FIRST", style="bold underline"))
-        console.print(first.description)
+        console.print(escape(first.description))
         if first.command:
-            console.print(f"\n    [bold cyan]{first.command}[/bold cyan]\n")
+            console.print(f"\n    [bold cyan]{escape(first.command)}[/bold cyan]\n")
         style, label = _RISK_STYLE[first.risk]
         console.print(f"Safety: [{style}]{label}[/{style}]")
         if len(d.actions) > 1 and not compact:
@@ -173,19 +173,19 @@ def _render_primary_block(
         console.print(Text("ADDITIONAL ACTIONS", style="bold underline"))
         for a in d.actions[1:]:
             style, label = _RISK_STYLE[a.risk]
-            console.print(f"  - {a.description}")
+            console.print(f"  - {escape(a.description)}")
             if a.command:
-                console.print(f"      [cyan]{a.command}[/cyan]")
+                console.print(f"      [cyan]{escape(a.command)}[/cyan]")
             console.print(f"    Safety: [{style}]{label}[/{style}]")
         console.print()
 
     if details:
         console.print(Text("CONFIDENCE", style="bold underline"))
-        console.print(f"{d.confidence.level.value}: {d.confidence.rationale}")
+        console.print(escape(f"{d.confidence.level.value}: {d.confidence.rationale}"))
         console.print()
         if d.limitations:
             console.print(Text("LIMITATIONS", style="bold underline"))
-            console.print(d.limitations)
+            console.print(escape(d.limitations))
             console.print()
 
     if d.verification:
@@ -194,7 +194,7 @@ def _render_primary_block(
         console.print("    [bold]sudo ipa-diagnose verify[/bold]\n")
         if details:
             for v in d.verification:
-                console.print(f"  - {v.description}")
+                console.print(f"  - {escape(v.description)}")
         console.print()
 
 
@@ -231,14 +231,14 @@ def render_verify(result, console: Console) -> None:
 
     for item in result.items:
         style, mark = _VERIFY_STYLE[item.outcome.value]
-        console.print(f"[{style}]{mark} {item.outcome.value}[/{style}]  {item.title}")
-        console.print(f"    {item.detail}")
+        console.print(f"[{style}]{mark} {item.outcome.value}[/{style}]  {escape(item.title)}")
+        console.print(f"    {escape(item.detail)}")
     console.print()
 
     if result.new_conditions:
         console.print(Rule("NEW CONDITION SINCE LAST RUN", style="yellow"))
         for d in result.new_conditions:
-            console.print(f"  ⚠ {d.title}")
+            console.print(f"  ⚠ {escape(d.title)}")
         console.print("[dim]Run `sudo ipa-diagnose` for full detail on this.[/dim]")
 
 

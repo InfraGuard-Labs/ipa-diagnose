@@ -13,6 +13,9 @@ name: Live FreeIPA validation lab
 # artifact for later inspection and potential conversion into regression
 # fixtures. Nothing here writes to any real/production FreeIPA
 # infrastructure - every server is created and destroyed within the job.
+permissions:
+  contents: read
+
 on:
   workflow_dispatch:
     inputs:
@@ -22,6 +25,7 @@ on:
         default: "pypi"
 
 env:
+  INSTALL_SOURCE: ${{ inputs.install_source }}
   IPA_PASSWORD: LiveLabSecret123
 
 jobs:
@@ -278,7 +282,7 @@ jobs:
             done
             python3 -m pip install pipx
           "
-          if [ "${{ inputs.install_source }}" = "source" ]; then
+          if [ "$INSTALL_SOURCE" = "source" ]; then
             echo "Installing ipa-diagnose from THIS checked-out commit (${{ github.sha }}) - NOT the public PyPI artifact. Only for retesting a not-yet-released fix."
             docker cp "$GITHUB_WORKSPACE" ipa-a:/ipa-diagnose-source
             docker exec ipa-a bash -c "python3 -m pipx install /ipa-diagnose-source"

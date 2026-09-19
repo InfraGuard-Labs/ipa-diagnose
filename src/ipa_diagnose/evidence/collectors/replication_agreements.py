@@ -151,6 +151,7 @@ class ReplicationAgreementsCollector(Collector):
             proc = subprocess.run(
                 ["ipa-replica-manage", "list", "-v", hostname],
                 capture_output=True,
+                stdin=subprocess.DEVNULL,
                 text=True,
                 timeout=self.timeout_seconds,
                 check=False,
@@ -168,6 +169,7 @@ class ReplicationAgreementsCollector(Collector):
             proc = subprocess.run(
                 ["ipa-replica-manage", "list-ruv"],
                 capture_output=True,
+                stdin=subprocess.DEVNULL,
                 text=True,
                 timeout=self.timeout_seconds,
                 check=False,
@@ -549,7 +551,12 @@ def _ldapi_identity_is_directory_manager(uri: str, timeout: float) -> bool:
         return False
     try:
         proc = subprocess.run(
-            ["ldapwhoami", "-Y", "EXTERNAL", "-H", uri], capture_output=True, text=True, timeout=timeout, check=False
+            ["ldapwhoami", "-Y", "EXTERNAL", "-H", uri],
+            capture_output=True,
+            stdin=subprocess.DEVNULL,
+            text=True,
+            timeout=timeout,
+            check=False,
         )
     except (OSError, subprocess.SubprocessError):
         return False
@@ -582,7 +589,9 @@ def _ldapi_read_ruv(
         argv = ["ldapsearch", "-LLL", "-Y", "EXTERNAL", "-H", uri, "-b", base, "-s", "sub", search_filter, "nsds50ruv"]
         command = " ".join(argv)
         try:
-            proc = subprocess.run(argv, capture_output=True, text=True, timeout=timeout, check=False)
+            proc = subprocess.run(
+                argv, capture_output=True, stdin=subprocess.DEVNULL, text=True, timeout=timeout, check=False
+            )
         except (OSError, subprocess.SubprocessError) as e:
             if required:
                 errors.append(f"ldapsearch failed: {e}")

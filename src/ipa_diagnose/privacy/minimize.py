@@ -137,12 +137,19 @@ def build_ai_payload(bundle: EvidenceBundle, diagnosis: Diagnosis) -> AIPayload:
     )
     actions_lines = "\n".join(f"- ({a.risk.value}) {a.description}" for a in diagnosis.actions) or "(none)"
 
-    user_prompt = f"""DIAGNOSIS: {diagnosis.title}
+    # Diagnosis text can embed raw ipa-healthcheck messages (paths, hosts, IPs):
+    # it goes through the same redaction as the evidence lines.
+    def _redacted(text: str) -> str:
+        r = redact_text(text)
+        redaction_matches.extend(r.matches)
+        return r.redacted_text
+
+    user_prompt = f"""DIAGNOSIS: {_redacted(diagnosis.title)}
 STATUS: {diagnosis.status.value}
-CONFIDENCE: {diagnosis.confidence.level.value} ({diagnosis.confidence.rationale})
-WHY (already determined, do not contradict): {diagnosis.why}
-IMPACT (already determined): {diagnosis.impact}
-LIMITATIONS: {diagnosis.limitations or "(none noted)"}
+CONFIDENCE: {diagnosis.confidence.level.value} ({_redacted(diagnosis.confidence.rationale)})
+WHY (already determined, do not contradict): {_redacted(diagnosis.why)}
+IMPACT (already determined): {_redacted(diagnosis.impact)}
+LIMITATIONS: {_redacted(diagnosis.limitations) if diagnosis.limitations else "(none noted)"}
 
 SUPPORTING EVIDENCE:
 {evidence_lines or "(none selected)"}

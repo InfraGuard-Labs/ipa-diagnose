@@ -33,10 +33,15 @@ from ipa_diagnose.engine.model import (
     RiskLevel,
 )
 from ipa_diagnose.evidence.model import EvidenceBundle, Finding, Severity
+from ipa_diagnose.textsafe import sanitize_text
 
 PACK_ID = "healthcheck"
 
-_NOT_RUNNING_RE = re.compile(r"^\s*([\w@.-]+):\s*not running\s*$", re.IGNORECASE)
+_NOT_RUNNING_RE = re.compile(r"^\s*([A-Za-z0-9_][A-Za-z0-9_.@-]*):\s*not running\s*$", re.IGNORECASE)
+# ipa-healthcheck source/check identifiers are interpolated into a DISPLAYED
+# read-only command: only plain identifiers are ever accepted (untrusted input).
+_SOURCE_RE = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.]*$")
+_CHECK_RE = re.compile(r"^[A-Za-z0-9_]+$")
 _CORE_SERVICES = {"dirsrv", "krb5kdc", "kadmin", "httpd", "named", "named-pkcs11", "pki-tomcatd"}
 _MAX_GROUPED = 6
 
@@ -49,8 +54,8 @@ def _claimed_ids(diagnoses: Iterable[Diagnosis]) -> Set[str]:
     return claimed
 
 
-def _short(text: str, limit: int = 160) -> str:
-    return " ".join(str(text).split())[:limit]
+def _short(text: object, limit: int = 160) -> str:
+    return sanitize_text(text, limit)
 
 
 def _service_diagnosis(f: Finding, service: str) -> Diagnosis:
@@ -61,7 +66,7 @@ def _service_diagnosis(f: Finding, service: str) -> Diagnosis:
         status=DiagnosisStatus.DIAGNOSED,
         title=f"Required service '{service}' is not running",
         why=(
-            f"ipa-healthcheck ({f.qualified_check}) directly reports: {_short(f.message)}. "
+            f"ipa-healthcheck ({_short(f.qualified_check, 80)}) directly reports: {_short(f.message)}. "
             "This is the check's own statement, not an inference. Why the service is not running is "
             "NOT determined by this finding."
         ),
@@ -86,7 +91,7 @@ def _service_diagnosis(f: Finding, service: str) -> Diagnosis:
             Action(
                 description="Check why the service is not running before starting it.",
                 risk=RiskLevel.SAFE,
-                command=f"systemctl status {service} --no-pager; journalctl -u {service} --no-pager -n 50",
+                command=f"systemctl status --no-pager -- {service}; journalctl --no-pager -n 50 -u {service}",
                 rationale="Read-only: shows the unit state and its most recent log lines.",
             )
         ],
@@ -97,9 +102,17 @@ def _service_diagnosis(f: Finding, service: str) -> Diagnosis:
 def _grouped_unknown(findings: List[Finding]) -> Diagnosis:
     worst = max((f.severity for f in findings), key=lambda s: s.rank)
     shown = findings[:_MAX_GROUPED]
-    lines = "; ".join(f"{f.qualified_check} [{f.severity.value}]: {_short(f.message or f.keywords, 110)}" for f in shown)
+    lines = "; ".join(
+        f"{_short(f.qualified_check, 80)} ({f.severity.value}): {_short(f.message or f.keywords, 110)}" for f in shown
+    )
     more = f" (+{len(findings) - len(shown)} more)" if len(findings) > len(shown) else ""
     first = shown[0]
+    safe_target = bool(_SOURCE_RE.match(first.source) and _CHECK_RE.match(first.check))
+    recheck = (
+        f"ipa-healthcheck --source {first.source} --check {first.check} --failures-only"
+        if safe_target
+        else "ipa-healthcheck --failures-only"
+    )
     return Diagnosis(
         pack_id=PACK_ID,
         rule_id="unexplained-findings",
@@ -121,14 +134,12 @@ def _grouped_unknown(findings: List[Finding]) -> Diagnosis:
             for f in shown
         ],
         impact="Unknown - depends on what the underlying checks were verifying.",
-        next_diagnostic_step=(
-            f"ipa-healthcheck --source {first.source} --check {first.check} --failures-only"
-        ),
+        next_diagnostic_step=recheck,
         actions=[
             Action(
                 description="Re-run the specific failing check for full detail.",
                 risk=RiskLevel.SAFE,
-                command=f"ipa-healthcheck --source {first.source} --check {first.check} --failures-only",
+                command=recheck,
                 rationale="Read-only.",
             )
         ],
