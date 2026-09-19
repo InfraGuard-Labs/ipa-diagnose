@@ -68,6 +68,24 @@ def _environment_to_dict(env) -> Dict[str, Any] | None:
     }
 
 
+def _completeness_to_dict(c) -> Dict[str, Any]:
+    return {
+        "level": c.level,
+        "healthcheck_collected": c.healthcheck_collected,
+        "ruv_state": c.ruv_state,
+        "ruv_reason": c.ruv_reason,
+        "unverified": [
+            {
+                "capability": u.capability,
+                "collector": u.collector,
+                "reason": u.reason,
+                "permission_related": u.permission_related,
+            }
+            for u in c.unverified
+        ],
+    }
+
+
 def report_to_dict(report: DiagnosisReport, ai_explanations: Dict[str, str] = None) -> Dict[str, Any]:
     ai_explanations = ai_explanations or {}
     return {
@@ -76,6 +94,7 @@ def report_to_dict(report: DiagnosisReport, ai_explanations: Dict[str, str] = No
         "overall_status": report.overall_status.value,
         "packs_evaluated": report.packs_evaluated,
         "collection_errors": report.collection_errors,
+        "evidence_completeness": _completeness_to_dict(report.evidence_completeness),
         "replay_source": report.replay_source,
         "environment": _environment_to_dict(report.environment),
         "unknown_severity_findings": report.unknown_severity_findings,

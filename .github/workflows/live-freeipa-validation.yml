@@ -104,6 +104,23 @@ jobs:
           done
           cat healthy-repeat-runs.txt
 
+      - name: Probe least-privilege RUV evidence (root LDAPI EXTERNAL - no Directory Manager password)
+        run: |
+          # Research question: can stale-RUV evidence be read WITHOUT the DM
+          # password? Compare (1) ipa-replica-manage list-ruv with an admin
+          # ticket, (2) a read-only LDAPI EXTERNAL search as root (the
+          # mechanism ipa-healthcheck's RUV check uses), (3) ipa server-find.
+          docker exec ipa-primary bash -c "echo '${IPA_PASSWORD}' | kinit admin" || true
+          echo "=== (1) ipa-replica-manage list-ruv with admin ticket ===" | tee ruv-probe.txt
+          docker exec ipa-primary bash -c "ipa-replica-manage list-ruv < /dev/null" >> ruv-probe.txt 2>&1 || true
+          echo "=== (2) LDAPI EXTERNAL read-only search of the RUV tombstone as root ===" | tee -a ruv-probe.txt
+          docker exec ipa-primary ldapsearch -LLL -Y EXTERNAL -H ldapi://%2Frun%2Fslapd-LAB-TEST.socket -b "dc=lab,dc=test" "(&(nsuniqueid=ffffffff-ffffffff-ffffffff-ffffffff)(objectclass=nstombstone))" nsds50ruv >> ruv-probe.txt 2>&1 || true
+          echo "=== (2b) same search over GSSAPI with the admin ticket ===" | tee -a ruv-probe.txt
+          docker exec ipa-primary ldapsearch -LLL -Y GSSAPI -H ldap://ipa01.lab.test -b "dc=lab,dc=test" "(&(nsuniqueid=ffffffff-ffffffff-ffffffff-ffffffff)(objectclass=nstombstone))" nsds50ruv >> ruv-probe.txt 2>&1 || true
+          echo "=== (3) ipa server-find ===" | tee -a ruv-probe.txt
+          docker exec ipa-primary ipa server-find >> ruv-probe.txt 2>&1 || true
+          cat ruv-probe.txt
+
       - name: Cleanup
         if: always()
         run: docker rm -f ipa-primary 2>/dev/null || true; docker volume rm ipa-data 2>/dev/null || true
@@ -120,6 +137,7 @@ jobs:
             healthy-diagnose-output.txt
             healthy-diagnose.json
             healthy-repeat-runs.txt
+            ruv-probe.txt
           retention-days: 30
 
   # ---------------------------------------------------------------------
@@ -180,7 +198,12 @@ jobs:
               echo "::error::Server B container exited during replica install - capturing why"
               docker logs ipa-b > server-b-container.log 2>&1 || true
               tail -60 server-b-container.log
-              docker cp ipa-b:/var/log/ipareplica-install.log server-b-install.log 2>/dev/null || true
+              # The real installer log lives on the /data volume of the exited container.
+              docker run --rm -v ipa-b-data:/data alpine sh -c 'cat /data/var/log/ipareplica-install.log 2>/dev/null || find /data -name "ipareplica-install.log" 2>/dev/null' > server-b-install.log 2>&1 || true
+              echo "=== first ERROR/Traceback lines in the replica install log ==="
+              grep -n -i -m 15 "ERROR\|Traceback\|ScriptError\|CalledProcessError\|cannot\|failed" server-b-install.log | cut -c1-300 || true
+              echo "=== last 40 lines ==="
+              tail -40 server-b-install.log | cut -c1-300
               exit 1
             fi
             if docker exec ipa-b systemctl is-active ipa.service 2>/dev/null | grep -qx active; then echo "B ready after ~$((i*10))s - waiting 20s extra settle time"; sleep 20; READY=1; break; fi

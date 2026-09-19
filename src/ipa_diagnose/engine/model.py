@@ -173,6 +173,39 @@ class OverallStatus(enum.Enum):
     DEGRADED = "DEGRADED"
     CRITICAL = "CRITICAL"
     UNKNOWN = "UNKNOWN"
+    NOT_FULLY_VERIFIED = "NOT_FULLY_VERIFIED"
+    """No problem was found in the evidence that WAS collected, but some
+    relevant evidence could not be collected, so health is not established.
+    Deliberately distinct from HEALTHY: "could not verify" is never
+    "healthy" (see EvidenceCompleteness)."""
+
+
+@dataclasses.dataclass
+class UnverifiedCapability:
+    """One thing ipa-diagnose could not check this run, and why."""
+
+    capability: str
+    collector: str
+    reason: str
+    permission_related: bool = False
+
+
+@dataclasses.dataclass
+class EvidenceCompleteness:
+    """How much of the relevant evidence was actually collected.
+
+    level: "complete" (everything relevant collected), "partial" (something
+    relevant is unverified), or "insufficient" (ipa-healthcheck itself, the
+    base evidence, could not be collected - nothing can be claimed healthy).
+    ruv_state: "VERIFIED", "NOT_VERIFIED" (collection failed) or
+    "NOT_COLLECTED" (not attempted / no data, e.g. replayed fixture without
+    RUV evidence). A NOT_VERIFIED RUV is never itself a stale-RUV claim."""
+
+    level: str = "complete"
+    healthcheck_collected: bool = True
+    unverified: List[UnverifiedCapability] = dataclasses.field(default_factory=list)
+    ruv_state: str = "NOT_COLLECTED"
+    ruv_reason: Optional[str] = None
 
 
 @dataclasses.dataclass
@@ -187,6 +220,7 @@ class DiagnosisReport:
     packs_evaluated: List[str] = dataclasses.field(default_factory=list)
     replay_source: Optional[str] = None
     environment: Optional[EnvironmentInfo] = None
+    evidence_completeness: EvidenceCompleteness = dataclasses.field(default_factory=EvidenceCompleteness)
     unknown_severity_findings: List[str] = dataclasses.field(default_factory=list)
     """Human-readable notes for any Finding whose raw ipa-healthcheck
     ``result`` value did not match a known severity (see Severity.UNKNOWN) -

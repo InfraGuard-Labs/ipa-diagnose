@@ -157,6 +157,7 @@ def _exit_code_for(report: DiagnosisReport) -> int:
         OverallStatus.DEGRADED: 1,
         OverallStatus.CRITICAL: 2,
         OverallStatus.UNKNOWN: 3,
+        OverallStatus.NOT_FULLY_VERIFIED: 4,
     }[report.overall_status]
 
 

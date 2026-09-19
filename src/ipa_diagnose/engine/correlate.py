@@ -30,7 +30,9 @@ from ipa_diagnose.engine.model import (
     Diagnosis,
     DiagnosisReport,
     DiagnosisStatus,
+    EvidenceCompleteness,
     OverallStatus,
+    UnverifiedCapability,
     PriorityBucket,
 )
 from ipa_diagnose.evidence.model import EvidenceBundle, Severity
@@ -116,19 +118,94 @@ def build_report(
     for idx, d in enumerate(root_candidates):
         d.priority = PriorityBucket.PRIMARY if idx == 0 else PriorityBucket.SECONDARY_INDEPENDENT
 
-    overall = _overall_status(diagnoses)
+    completeness = _assess_completeness(bundle)
+    overall = _apply_completeness(_overall_status(diagnoses), completeness)
 
     return DiagnosisReport(
         generated_at=EvidenceBundle.now(),
         hostname=bundle.hostname,
         overall_status=overall,
         diagnoses=sorted(diagnoses, key=_priority_sort_key),
-        collection_errors=[f"{e.collector}: {e.message}" for e in bundle.collection_errors],
+        collection_errors=[f"{e.collector}: {sanitize_error_text(e.message)}" for e in bundle.collection_errors],
+        evidence_completeness=completeness,
         packs_evaluated=packs_evaluated,
         replay_source=bundle.replay_source,
         environment=bundle.environment,
         unknown_severity_findings=_unknown_severity_notes(bundle),
     )
+
+
+_CAPABILITY_LABELS = {
+    "ipa-healthcheck": "ipa-healthcheck (base health evidence)",
+    "replication_agreements": "Replication agreements / RUV",
+}
+
+_MAX_ERROR_LEN = 300
+
+
+def sanitize_error_text(text: str) -> str:
+    """Collector error text comes from subprocess stderr, i.e. untrusted:
+    strip terminal escape sequences / control characters and bound the
+    length so it can be shown or serialized safely."""
+
+    import re
+
+    text = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", text)  # CSI sequences
+    text = re.sub(r"\x1b\][^\x07\x1b]*(\x07|\x1b\\)?", "", text)  # OSC sequences
+    text = re.sub(r"\x1b[@-Z\\-_]", "", text)  # other 2-char ESC sequences
+    text = "".join(ch if (ch == " " or ch.isprintable()) else " " for ch in text)
+    text = " ".join(text.split())
+    return text[:_MAX_ERROR_LEN]
+
+
+def _assess_completeness(bundle: EvidenceBundle) -> EvidenceCompleteness:
+    unverified = [
+        UnverifiedCapability(
+            capability=_CAPABILITY_LABELS.get(e.collector, e.collector),
+            collector=e.collector,
+            reason=sanitize_error_text(e.message),
+            permission_related=e.permission_related,
+        )
+        for e in bundle.collection_errors
+    ]
+    healthcheck_ok = not any(e.collector == "ipa-healthcheck" for e in bundle.collection_errors)
+
+    ruv_error = next((e for e in bundle.collection_errors if e.collector == "replication_agreements"), None)
+    has_ruv_items = any(i.kind == "replication_ruv" for i in bundle.items)
+    if ruv_error is not None:
+        ruv_state, ruv_reason = "NOT_VERIFIED", sanitize_error_text(ruv_error.message)
+    elif has_ruv_items:
+        ruv_state, ruv_reason = "VERIFIED", None
+    else:
+        ruv_state, ruv_reason = "NOT_COLLECTED", None
+
+    if not healthcheck_ok:
+        level = "insufficient"
+    elif unverified:
+        level = "partial"
+    else:
+        level = "complete"
+    return EvidenceCompleteness(
+        level=level,
+        healthcheck_collected=healthcheck_ok,
+        unverified=unverified,
+        ruv_state=ruv_state,
+        ruv_reason=ruv_reason,
+    )
+
+
+def _apply_completeness(status: OverallStatus, completeness: EvidenceCompleteness) -> OverallStatus:
+    """HEALTHY is only ever reported when the evidence needed to say so was
+    collected. A found problem always wins (a collection gap must never hide
+    a real diagnosis); only the *absence* of problems is downgraded."""
+
+    if status != OverallStatus.HEALTHY:
+        return status
+    if completeness.level == "insufficient":
+        return OverallStatus.UNKNOWN
+    if completeness.level == "partial":
+        return OverallStatus.NOT_FULLY_VERIFIED
+    return OverallStatus.HEALTHY
 
 
 def _unknown_severity_notes(bundle: EvidenceBundle) -> List[str]:

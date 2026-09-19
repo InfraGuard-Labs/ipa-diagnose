@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import Dict, Optional
 
 from rich.console import Console
+from rich.markup import escape
 from rich.rule import Rule
 from rich.text import Text
 
@@ -29,6 +30,7 @@ _STATUS_STYLE = {
     OverallStatus.DEGRADED: "bold yellow",
     OverallStatus.CRITICAL: "bold red",
     OverallStatus.UNKNOWN: "bold magenta",
+    OverallStatus.NOT_FULLY_VERIFIED: "bold yellow",
 }
 
 _RISK_STYLE = {
@@ -53,10 +55,17 @@ def render_report(
         console.print(f"[dim](replayed from fixtures: {report.replay_source})[/dim]")
     status_style = _STATUS_STYLE[report.overall_status]
     console.print(Text.assemble(("Overall: ", "bold"), (report.overall_status.value, status_style)))
+    _print_evidence_banner(report, console)
     console.print()
 
     if not report.diagnoses:
-        console.print("[bold green]No problems detected.[/bold green] All evaluated checks passed.")
+        if report.evidence_completeness.level == "complete":
+            console.print("[bold green]No problems detected.[/bold green] All evaluated checks passed.")
+        else:
+            console.print(
+                "[bold yellow]No problem was observed, but health could NOT be fully verified[/bold yellow] "
+                "- see the evidence gaps above."
+            )
         _print_coverage(report, console, details=details)
         return
 
@@ -224,13 +233,33 @@ def render_verify(result, console: Console) -> None:
         console.print("[dim]Run `sudo ipa-diagnose` for full detail on this.[/dim]")
 
 
+def _print_evidence_banner(report: DiagnosisReport, console: Console) -> None:
+    """Material evidence gaps are shown up front, not buried in a footer."""
+
+    c = report.evidence_completeness
+    if c.level == "complete" and c.ruv_state != "NOT_VERIFIED":
+        return
+    console.print(Text.assemble(("Evidence: ", "bold"), (c.level.upper(), "bold yellow")))
+    if not c.healthcheck_collected:
+        console.print("  [yellow]ipa-healthcheck evidence could not be collected - nothing can be reported healthy.[/yellow]")
+    if c.ruv_state == "NOT_VERIFIED":
+        console.print(
+            f"  [yellow]RUV state: NOT VERIFIED[/yellow] - {escape(c.ruv_reason or 'unknown reason')} "
+            "(this is NOT a stale-RUV finding; stale replica metadata could not be checked)"
+        )
+    for u in c.unverified:
+        if u.collector == "replication_agreements" and c.ruv_state == "NOT_VERIFIED":
+            continue
+        console.print(f"  [yellow]NOT VERIFIED: {escape(u.capability)}[/yellow] - {escape(u.reason)}")
+
+
 def _print_coverage(report: DiagnosisReport, console: Console, *, details: bool = False) -> None:
     console.print(Rule(style="dim"))
     console.print(f"[dim]Diagnostic packs evaluated: {', '.join(report.packs_evaluated)}[/dim]")
     if report.collection_errors:
         console.print(f"[yellow]Evidence collection issues ({len(report.collection_errors)}):[/yellow]")
         for err in report.collection_errors:
-            console.print(f"  [yellow]- {err}[/yellow]")
+            console.print(f"  [yellow]- {escape(err)}[/yellow]")
     if report.unknown_severity_findings:
         console.print(f"[yellow]Unrecognized severity value(s) ({len(report.unknown_severity_findings)}):[/yellow]")
         for note in report.unknown_severity_findings:
