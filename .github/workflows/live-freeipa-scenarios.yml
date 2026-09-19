@@ -63,6 +63,7 @@ jobs:
           mkdir -p out
           docker exec ipa-s /root/.local/bin/ipa-diagnose --details > out/s0-healthy.txt 2>&1; echo "exit=$?" >> out/s0-healthy.txt || true
           docker exec ipa-s /root/.local/bin/ipa-diagnose --json > out/s0-healthy.json 2>/dev/null || true
+          docker exec ipa-s ipa-healthcheck --failures-only --output-type json > out/s0-healthy-healthcheck-failures.json 2>&1 || true
           head -20 out/s0-healthy.txt
 
       - name: S1 dependency failures (ipa-healthcheck missing; ldapsearch missing)
@@ -71,11 +72,13 @@ jobs:
           docker exec ipa-s mv /usr/bin/ipa-healthcheck /usr/bin/ipa-healthcheck.off || true
           docker exec ipa-s /root/.local/bin/ipa-diagnose --details > out/s1-no-healthcheck.txt 2>&1; echo "exit=$?" >> out/s1-no-healthcheck.txt || true
           docker exec ipa-s /root/.local/bin/ipa-diagnose --json > out/s1-no-healthcheck.json 2>/dev/null || true
+          docker exec ipa-s ipa-healthcheck --failures-only --output-type json > out/s1-no-healthcheck-healthcheck-failures.json 2>&1 || true
           docker exec ipa-s mv /usr/bin/ipa-healthcheck.off /usr/bin/ipa-healthcheck || true
           which_ldapsearch=$(docker exec ipa-s which ldapsearch || true)
           docker exec ipa-s mv "$which_ldapsearch" "$which_ldapsearch.off" || true
           docker exec ipa-s /root/.local/bin/ipa-diagnose --details > out/s1-no-ldapsearch.txt 2>&1; echo "exit=$?" >> out/s1-no-ldapsearch.txt || true
           docker exec ipa-s /root/.local/bin/ipa-diagnose --json > out/s1-no-ldapsearch.json 2>/dev/null || true
+          docker exec ipa-s ipa-healthcheck --failures-only --output-type json > out/s1-no-ldapsearch-healthcheck-failures.json 2>&1 || true
           docker exec ipa-s mv "$which_ldapsearch.off" "$which_ldapsearch" || true
           head -12 out/s1-no-healthcheck.txt; head -12 out/s1-no-ldapsearch.txt
 
@@ -93,6 +96,7 @@ jobs:
           sleep 5
           docker exec ipa-s /root/.local/bin/ipa-diagnose --details > out/s3-dirsrv-down.txt 2>&1; echo "exit=$?" >> out/s3-dirsrv-down.txt || true
           docker exec ipa-s /root/.local/bin/ipa-diagnose --json > out/s3-dirsrv-down.json 2>/dev/null || true
+          docker exec ipa-s ipa-healthcheck --failures-only --output-type json > out/s3-dirsrv-down-healthcheck-failures.json 2>&1 || true
           docker exec ipa-s systemctl start dirsrv@LAB-TEST.service || true
           sleep 30; docker exec ipa-s ipactl status > out/s3-ipactl-after.txt 2>&1 || true
           docker exec ipa-s /root/.local/bin/ipa-diagnose verify > out/s3-verify.txt 2>&1; echo "exit=$?" >> out/s3-verify.txt || true
@@ -108,6 +112,7 @@ jobs:
           sleep 5
           docker exec ipa-s /root/.local/bin/ipa-diagnose --details > out/s4-dns-down.txt 2>&1; echo "exit=$?" >> out/s4-dns-down.txt || true
           docker exec ipa-s /root/.local/bin/ipa-diagnose --json > out/s4-dns-down.json 2>/dev/null || true
+          docker exec ipa-s ipa-healthcheck --failures-only --output-type json > out/s4-dns-down-healthcheck-failures.json 2>&1 || true
           docker exec ipa-s systemctl start "$NAMED" || true
           sleep 20
           docker exec ipa-s /root/.local/bin/ipa-diagnose verify > out/s4-verify.txt 2>&1; echo "exit=$?" >> out/s4-verify.txt || true
@@ -120,6 +125,7 @@ jobs:
           sleep 5
           docker exec ipa-s /root/.local/bin/ipa-diagnose --details > out/s5-kdc-down.txt 2>&1; echo "exit=$?" >> out/s5-kdc-down.txt || true
           docker exec ipa-s /root/.local/bin/ipa-diagnose --json > out/s5-kdc-down.json 2>/dev/null || true
+          docker exec ipa-s ipa-healthcheck --failures-only --output-type json > out/s5-kdc-down-healthcheck-failures.json 2>&1 || true
           docker exec ipa-s systemctl start krb5kdc.service || true
           sleep 15
           docker exec ipa-s /root/.local/bin/ipa-diagnose verify > out/s5-verify.txt 2>&1; echo "exit=$?" >> out/s5-verify.txt || true
@@ -133,6 +139,7 @@ jobs:
           sleep 5
           docker exec ipa-s /root/.local/bin/ipa-diagnose --details > out/s6-certmonger-down.txt 2>&1; echo "exit=$?" >> out/s6-certmonger-down.txt || true
           docker exec ipa-s /root/.local/bin/ipa-diagnose --json > out/s6-certmonger-down.json 2>/dev/null || true
+          docker exec ipa-s ipa-healthcheck --failures-only --output-type json > out/s6-certmonger-down-healthcheck-failures.json 2>&1 || true
           docker exec ipa-s systemctl start certmonger.service || true
           sleep 15
           docker exec ipa-s /root/.local/bin/ipa-diagnose verify > out/s6-verify.txt 2>&1; echo "exit=$?" >> out/s6-verify.txt || true
@@ -146,6 +153,7 @@ jobs:
           sleep 5
           docker exec ipa-s /root/.local/bin/ipa-diagnose --details > out/s7-multi.txt 2>&1; echo "exit=$?" >> out/s7-multi.txt || true
           docker exec ipa-s /root/.local/bin/ipa-diagnose --json > out/s7-multi.json 2>/dev/null || true
+          docker exec ipa-s ipa-healthcheck --failures-only --output-type json > out/s7-multi-healthcheck-failures.json 2>&1 || true
           docker exec ipa-s systemctl start "$NAMED" krb5kdc.service || true
           sleep 20
           docker exec ipa-s /root/.local/bin/ipa-diagnose verify > out/s7-verify.txt 2>&1; echo "exit=$?" >> out/s7-verify.txt || true

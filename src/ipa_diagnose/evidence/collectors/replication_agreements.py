@@ -117,6 +117,13 @@ class ReplicationAgreementsCollector(Collector):
         ruv_items, ruv_error = self._try_run_list_ruv(known_hosts, hosts_known_complete=list_error is None)
         items.extend(ruv_items)
 
+        # A single-server deployment has no RUV and no agreements. When the
+        # authoritative LDAPI read proved that, an agreement-listing failure
+        # (e.g. `list` needing a Kerberos ticket) is moot - there is nothing to
+        # list - so it must not keep a healthy single server "unverified".
+        if any(i.kind == "replication_topology" and i.data.get("state") == "no_replication_configured" for i in ruv_items):
+            list_error = None
+
         # Found in live testing against a real FreeIPA server:
         # `ipa-replica-manage list-ruv` (and clean-ruv/abort-clean-ruv)
         # require the Directory Manager password specifically - a valid
@@ -196,6 +203,12 @@ class ReplicationAgreementsCollector(Collector):
         items, fallback_error = _ldapi_read_ruv(known_hosts, hosts_known_complete, timeout=self.timeout_seconds)
         if items:
             return items, None
+        if fallback_error is None:
+            # The search SUCCEEDED as cn=Directory Manager (identity confirmed)
+            # and no replica update vector exists: replication is not
+            # configured (a single-server deployment). That is a verified
+            # fact, not a gap - see _ldapi_read_ruv.
+            return [_no_replication_item()], None
         return [], f"{primary_error}; read-only LDAPI fallback unavailable: {fallback_error}"
 
     def collect_replay(self, fixture_dir: pathlib.Path) -> List[EvidenceItem]:
@@ -515,6 +528,34 @@ def _parse_ldapi_ruv_ldif(stdout: str, *, known_hosts: "set[str]", hosts_known_c
     return items
 
 
+def _no_replication_item() -> EvidenceItem:
+    return EvidenceItem(
+        item_id="replication-topology:none",
+        kind="replication_topology",
+        summary="No replica update vector exists: replication is not configured (single-server deployment)",
+        data={"state": "no_replication_configured", "identity": "cn=Directory Manager", "method": "ldapi-external-read-only"},
+        provenance=Provenance(source="collector:replication_agreements", command="ldapsearch -Y EXTERNAL (ldapi)", live=True),
+    )
+
+
+def _ldapi_identity_is_directory_manager(uri: str, timeout: float) -> bool:
+    """`ldapwhoami -Y EXTERNAL` (read-only). Only an authenticated
+    cn=Directory Manager identity can be trusted to see every entry, so an
+    EMPTY search result is only ever treated as "no RUV exists" when this
+    holds - an ACL-restricted identity returns an empty result for entries it
+    is merely not allowed to see (observed live: admin over GSSAPI)."""
+
+    if shutil.which("ldapwhoami") is None:
+        return False
+    try:
+        proc = subprocess.run(
+            ["ldapwhoami", "-Y", "EXTERNAL", "-H", uri], capture_output=True, text=True, timeout=timeout, check=False
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return proc.returncode == 0 and "cn=directory manager" in proc.stdout.lower()
+
+
 def _ldapi_read_ruv(
     known_hosts: "set[str]", hosts_known_complete: bool, *, timeout: float
 ) -> "tuple[List[EvidenceItem], Optional[str]]":
@@ -556,7 +597,9 @@ def _ldapi_read_ruv(
             )
         )
     if not all_items and not errors:
-        errors.append("the RUV entry was not returned (no readable nsds50ruv)")
+        if _ldapi_identity_is_directory_manager(uri, timeout):
+            return [], None  # authoritative: nothing exists to be read
+        errors.append("no RUV entry was returned and the LDAPI identity could not be confirmed as able to see it")
     return all_items, "; ".join(errors) if errors else None
 
 

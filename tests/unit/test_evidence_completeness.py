@@ -259,3 +259,16 @@ def test_json_has_fully_verified_flag():
     partial = report_to_dict(run_diagnosis(_bundle(errors=[CollectionError(collector="x", message="y")])))
     assert complete["fully_verified"] is True
     assert partial["fully_verified"] is False
+
+
+def test_no_replication_configured_is_verified_healthy_single_server():
+    item = EvidenceItem(
+        item_id="replication-topology:none",
+        kind="replication_topology",
+        summary="none",
+        data={"state": "no_replication_configured"},
+    )
+    report = run_diagnosis(_bundle(items=[item]))
+    assert report.evidence_completeness.ruv_state == "NONE_CONFIGURED"
+    assert report.overall_status == OverallStatus.HEALTHY
+    assert report.evidence_completeness.level == "complete"

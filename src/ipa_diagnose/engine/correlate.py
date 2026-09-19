@@ -174,7 +174,14 @@ def _assess_completeness(bundle: EvidenceBundle) -> EvidenceCompleteness:
 
     ruv_error = next((e for e in bundle.collection_errors if e.collector == "replication_agreements"), None)
     has_ruv_items = any(i.kind == "replication_ruv" for i in bundle.items)
-    if has_ruv_items:
+    no_replication = any(
+        i.kind == "replication_topology" and i.data.get("state") == "no_replication_configured" for i in bundle.items
+    )
+    if no_replication and not has_ruv_items:
+        # Read as cn=Directory Manager over LDAPI and no RUV exists: replication
+        # is not configured (single-server). Verified, not a gap.
+        ruv_state, ruv_reason = "NONE_CONFIGURED", None
+    elif has_ruv_items:
         # RUV entries WERE read (even if a sibling `list` call failed and the
         # error is still recorded separately as an unverified capability).
         ruv_state, ruv_reason = "VERIFIED", None

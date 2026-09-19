@@ -378,3 +378,49 @@ def test_collector_runs_list_with_verbose_flag(monkeypatch):
     monkeypatch.setattr("socket.gethostname", lambda: "ipa-a.ruvlab.test")
     ReplicationAgreementsCollector().collect_live()
     assert ["ipa-replica-manage", "list", "-v", "ipa-a.ruvlab.test"] in seen
+
+
+def _single_node_env(monkeypatch, mod, *, whoami_dn):
+    def fake_run(args, **kwargs):
+        if args[:2] == ["ipa-replica-manage", "list"]:
+            return _FakeProc(1, stderr="Directory Manager password required")
+        if args[:2] == ["ipa-replica-manage", "list-ruv"]:
+            return _FakeProc(1, stderr="Directory Manager password required")
+        if args[0] == "ldapsearch":
+            return _FakeProc(0, stdout="")  # real single-node capture: search succeeds, returns nothing
+        if args[0] == "ldapwhoami":
+            return _FakeProc(0, stdout=f"dn: {whoami_dn}\n")
+        raise AssertionError(f"unexpected command {args}")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr("shutil.which", lambda name: "/usr/bin/" + name)
+    monkeypatch.setattr("socket.gethostname", lambda: "ipa01.lab.test")
+    monkeypatch.setattr(mod.os, "geteuid", lambda: 0, raising=False)
+    monkeypatch.setattr(mod, "_read_ipa_conf", lambda: ("LAB.TEST", "dc=lab,dc=test"))
+    monkeypatch.setattr(mod.os.path, "exists", lambda p: True)
+
+
+def test_single_node_empty_ruv_as_directory_manager_is_verified_not_a_gap(monkeypatch):
+    """Real single-node FreeIPA 4.13.3: no replica configured => the LDAPI
+    search succeeds and returns nothing. Confirmed as cn=Directory Manager,
+    that is a verified 'no replication configured', not an evidence gap -
+    otherwise a healthy single server could never be fully verified."""
+
+    from ipa_diagnose.evidence.collectors import replication_agreements as mod
+
+    _single_node_env(monkeypatch, mod, whoami_dn="cn=Directory Manager")
+    items = ReplicationAgreementsCollector().collect_live()  # must NOT raise
+    assert [i.kind for i in items] == ["replication_topology"]
+    assert items[0].data["state"] == "no_replication_configured"
+
+
+def test_empty_ruv_with_unconfirmed_identity_stays_not_verified(monkeypatch):
+    """An ACL-restricted identity also gets an empty result (observed live
+    with admin over GSSAPI) - that must never be read as 'no RUV exists'."""
+
+    from ipa_diagnose.evidence.collectors import replication_agreements as mod
+
+    _single_node_env(monkeypatch, mod, whoami_dn="uid=someone,cn=users,cn=accounts,dc=lab,dc=test")
+    with pytest.raises(CollectorError) as excinfo:
+        ReplicationAgreementsCollector().collect_live()
+    assert "could not be confirmed" in str(excinfo.value)
