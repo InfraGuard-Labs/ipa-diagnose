@@ -72,11 +72,13 @@ JSON in an existing fixture file *is* treated as a genuine error.
 from __future__ import annotations
 
 import json
+import os
 import pathlib
 import re
 import shutil
 import socket
 import subprocess
+import urllib.parse
 from typing import Any, Dict, List, Optional
 
 from ipa_diagnose.evidence.collectors.base import Collector, CollectorError
@@ -164,9 +166,13 @@ class ReplicationAgreementsCollector(Collector):
                 check=False,
             )
         except (OSError, subprocess.SubprocessError) as e:
-            return [], f"{LIST_RUV_COMMAND} failed: {e}"
+            return self._ldapi_fallback(known_hosts, hosts_known_complete, f"{LIST_RUV_COMMAND} failed: {e}")
         if proc.returncode != 0:
-            return [], f"{LIST_RUV_COMMAND} exited {proc.returncode}: {proc.stderr.strip()[:300]}"
+            return self._ldapi_fallback(
+                known_hosts,
+                hosts_known_complete,
+                f"{LIST_RUV_COMMAND} exited {proc.returncode}: {proc.stderr.strip()[:300]}",
+            )
         items = _parse_list_ruv_output(
             proc.stdout,
             known_hosts=known_hosts,
@@ -174,6 +180,23 @@ class ReplicationAgreementsCollector(Collector):
             command=LIST_RUV_COMMAND,
         )
         return items, None
+
+    def _ldapi_fallback(
+        self, known_hosts: "set[str]", hosts_known_complete: bool, primary_error: str
+    ) -> "tuple[List[EvidenceItem], Optional[str]]":
+        """`ipa-replica-manage list-ruv` insists on the Directory Manager
+        password (tool policy - observed live on FreeIPA 4.13.3 even with a
+        valid admin ticket), which this tool must never ask for or store.
+        The same RUV data is readable, read-only, over the local LDAPI
+        socket via SASL EXTERNAL when running as root (the same mechanism
+        ipa-healthcheck's own RUV check uses) - no password of any kind is
+        involved. If that is also unavailable the original error is kept,
+        so the gap stays visible ("RUV state: NOT VERIFIED")."""
+
+        items, fallback_error = _ldapi_read_ruv(known_hosts, hosts_known_complete, timeout=self.timeout_seconds)
+        if items:
+            return items, None
+        return [], f"{primary_error}; read-only LDAPI fallback unavailable: {fallback_error}"
 
     def collect_replay(self, fixture_dir: pathlib.Path) -> List[EvidenceItem]:
         fixture_file = fixture_dir / "replication_agreements.json"
@@ -386,6 +409,133 @@ def _parse_list_ruv_output(
             )
         )
     return items
+
+
+IPA_DEFAULT_CONF = "/etc/ipa/default.conf"
+_NSDS50RUV_RE = re.compile(r"\{replica\s+(\d+)\s+ldap://([\w.-]+):(\d+)\}\s*(\S*)")
+
+
+def _read_ipa_conf() -> "tuple[Optional[str], Optional[str]]":
+    """(realm, basedn) from /etc/ipa/default.conf - a plain, world-readable
+    config file; returns (None, None) if it cannot be read."""
+
+    realm = basedn = None
+    try:
+        with open(IPA_DEFAULT_CONF, encoding="utf-8") as fh:
+            for line in fh:
+                key, _, value = line.partition("=")
+                key = key.strip().lower()
+                if key == "realm" and realm is None:
+                    realm = value.strip()
+                elif key == "basedn" and basedn is None:
+                    basedn = value.strip()
+    except OSError:
+        return None, None
+    return realm, basedn
+
+
+def _ldif_unfold(text: str) -> List[str]:
+    lines: List[str] = []
+    for raw in text.splitlines():
+        if raw.startswith(" ") and lines:
+            lines[-1] += raw[1:]
+        else:
+            lines.append(raw)
+    return lines
+
+
+def _parse_ldapi_ruv_ldif(stdout: str, *, known_hosts: "set[str]", hosts_known_complete: bool, command: str) -> List[EvidenceItem]:
+    """Parses `ldapsearch -LLL` LDIF containing ``nsds50ruv`` values such as
+    ``{replica 3 ldap://ipa-b.example.test:389} <csn> <csn>`` (captured from a
+    real FreeIPA 4.13.3 two-node topology). ``{replicageneration}`` and any
+    other value shape are ignored, never misread as a replica."""
+
+    provenance = Provenance(source="collector:replication_agreements", command=command, live=True)
+    items: List[EvidenceItem] = []
+    seen: "set[tuple[str, int]]" = set()
+    suffix = "domain"
+    for line in _ldif_unfold(stdout):
+        if line.lower().startswith("dn:"):
+            suffix = "ca" if "ipaca" in line.lower() else "domain"
+            continue
+        if not line.lower().startswith("nsds50ruv:"):
+            continue
+        match = _NSDS50RUV_RE.search(line)
+        if not match:
+            continue
+        replica_id, host, port, csn = int(match.group(1)), match.group(2), match.group(3), match.group(4)
+        if (suffix, replica_id) in seen:
+            continue
+        seen.add((suffix, replica_id))
+        if host in known_hosts:
+            alive: Optional[bool] = True
+        elif hosts_known_complete:
+            alive = False
+        else:
+            alive = None
+        ldap_url = f"{host}:{port}"
+        items.append(
+            EvidenceItem(
+                item_id=f"replication-ruv:{suffix}:{replica_id}",
+                kind="replication_ruv",
+                summary=f"RUV entry replica_id={replica_id} ({ldap_url}, {suffix}): {_alive_label(alive)}",
+                data={
+                    "replica_id": replica_id,
+                    "ldap_url": ldap_url,
+                    "suffix": suffix,
+                    "csn": csn or None,
+                    "alive": alive,
+                    "method": "ldapi-external-read-only",
+                },
+                provenance=provenance,
+            )
+        )
+    return items
+
+
+def _ldapi_read_ruv(
+    known_hosts: "set[str]", hosts_known_complete: bool, *, timeout: float
+) -> "tuple[List[EvidenceItem], Optional[str]]":
+    """Read-only SASL EXTERNAL search over the local LDAPI socket. Requires
+    root (the socket peer-credential identity); never passes or prompts for
+    any password, and never writes."""
+
+    if os.name == "nt" or os.geteuid() != 0:
+        return [], "not running as root (LDAPI EXTERNAL identity is the local uid)"
+    if shutil.which("ldapsearch") is None:
+        return [], "ldapsearch is not installed"
+    realm, basedn = _read_ipa_conf()
+    if not realm or not basedn:
+        return [], f"could not read realm/basedn from {IPA_DEFAULT_CONF}"
+    socket_path = f"/run/slapd-{realm.replace('.', '-')}.socket"
+    if not os.path.exists(socket_path):
+        return [], f"directory server LDAPI socket {socket_path} not found"
+
+    uri = "ldapi://" + urllib.parse.quote(socket_path, safe="")
+    search_filter = "(&(nsuniqueid=ffffffff-ffffffff-ffffffff-ffffffff)(objectClass=nsTombstone))"
+    all_items: List[EvidenceItem] = []
+    errors: List[str] = []
+    for base, required in ((basedn, True), ("o=ipaca", False)):
+        argv = ["ldapsearch", "-LLL", "-Y", "EXTERNAL", "-H", uri, "-b", base, "-s", "sub", search_filter, "nsds50ruv"]
+        command = " ".join(argv)
+        try:
+            proc = subprocess.run(argv, capture_output=True, text=True, timeout=timeout, check=False)
+        except (OSError, subprocess.SubprocessError) as e:
+            if required:
+                errors.append(f"ldapsearch failed: {e}")
+            continue
+        if proc.returncode != 0:
+            if required:
+                errors.append(f"ldapsearch exited {proc.returncode}: {proc.stderr.strip()[:200]}")
+            continue
+        all_items.extend(
+            _parse_ldapi_ruv_ldif(
+                proc.stdout, known_hosts=known_hosts, hosts_known_complete=hosts_known_complete, command=command
+            )
+        )
+    if not all_items and not errors:
+        errors.append("the RUV entry was not returned (no readable nsds50ruv)")
+    return all_items, "; ".join(errors) if errors else None
 
 
 register(ReplicationAgreementsCollector())

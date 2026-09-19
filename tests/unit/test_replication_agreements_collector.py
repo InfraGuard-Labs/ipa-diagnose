@@ -218,3 +218,102 @@ def test_agreement_list_parser_still_works_unchanged():
     assert len(items) == 1
     assert items[0].data["peer"] == "ipa02.example.test"
     assert items[0].data["status"] == "green"
+
+
+# ---- read-only LDAPI EXTERNAL fallback (no Directory Manager password) -------
+
+# Captured verbatim (LDIF-folded lines included) from a REAL FreeIPA 4.13.3
+# two-node lab (Fedora 43) via `ldapsearch -LLL -Y EXTERNAL -H ldapi://...`.
+REAL_LDAPI_RUV_LDIF = """dn: cn=replica,cn=dc\3Druvlab\2Cdc\3Dtest,cn=mapping tree,cn=config
+nsds50ruv: {replicageneration} 6aaeef39000000040000
+nsds50ruv: {replica 4 ldap://ipa-a.ruvlab.test:389} 6aaeef39000100040000 6aaee
+ f94000500040000
+nsds50ruv: {replica 3 ldap://ipa-b.ruvlab.test:389} 6aaeef47000100030000 6aaee
+ f9e000200030000
+"""
+
+
+def test_real_ldapi_ldif_parses_both_replicas_and_ignores_replicageneration():
+    from ipa_diagnose.evidence.collectors.replication_agreements import _parse_ldapi_ruv_ldif
+
+    items = _parse_ldapi_ruv_ldif(
+        REAL_LDAPI_RUV_LDIF, known_hosts={"ipa-a.ruvlab.test"}, hosts_known_complete=True, command="test"
+    )
+    by_id = {i.data["replica_id"]: i for i in items}
+    assert set(by_id) == {3, 4}
+    assert by_id[4].data["alive"] is True
+    # ipa-b is in the RUV but not among the currently-known hosts: a stale-RUV candidate.
+    assert by_id[3].data["alive"] is False
+    assert by_id[3].data["ldap_url"] == "ipa-b.ruvlab.test:389"
+    assert by_id[3].data["method"] == "ldapi-external-read-only"
+
+
+def test_ldapi_incomplete_host_list_never_manufactures_stale():
+    from ipa_diagnose.evidence.collectors.replication_agreements import _parse_ldapi_ruv_ldif
+
+    items = _parse_ldapi_ruv_ldif(
+        REAL_LDAPI_RUV_LDIF, known_hosts={"ipa-a.ruvlab.test"}, hosts_known_complete=False, command="test"
+    )
+    assert next(i for i in items if i.data["replica_id"] == 3).data["alive"] is None
+
+
+def test_ldapi_garbage_ldif_yields_nothing():
+    from ipa_diagnose.evidence.collectors.replication_agreements import _parse_ldapi_ruv_ldif
+
+    assert _parse_ldapi_ruv_ldif("nsds50ruv: junk\nfoo: bar\n", known_hosts=set(), hosts_known_complete=True, command="t") == []
+
+
+def test_list_ruv_needing_dm_falls_back_to_ldapi_without_any_password(monkeypatch):
+    """The real-lab situation: list-ruv wants the DM password; the read-only
+    LDAPI EXTERNAL search as root returns the RUV. The collector must succeed
+    (no error) and must never pass a password anywhere."""
+
+    from ipa_diagnose.evidence.collectors import replication_agreements as mod
+
+    seen_argv = []
+
+    def fake_run(args, **kwargs):
+        seen_argv.append(list(args))
+        if args[:2] == ["ipa-replica-manage", "list"]:
+            return _FakeProc(0, stdout="ipa-b.ruvlab.test\n  last update status: Error (0) OK\n")
+        if args[:2] == ["ipa-replica-manage", "list-ruv"]:
+            return _FakeProc(1, stderr="Directory Manager password required")
+        if args[0] == "ldapsearch":
+            return _FakeProc(0, stdout=REAL_LDAPI_RUV_LDIF if args[args.index("-b") + 1] != "o=ipaca" else "")
+        raise AssertionError(f"unexpected command {args}")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr("shutil.which", lambda name: "/usr/bin/" + name)
+    monkeypatch.setattr("socket.gethostname", lambda: "ipa-a.ruvlab.test")
+    monkeypatch.setattr(mod.os, "geteuid", lambda: 0, raising=False)
+    monkeypatch.setattr(mod, "_read_ipa_conf", lambda: ("RUVLAB.TEST", "dc=ruvlab,dc=test"))
+    monkeypatch.setattr(mod.os.path, "exists", lambda p: True)
+
+    items = ReplicationAgreementsCollector().collect_live()
+    ruv = [i for i in items if i.kind == "replication_ruv"]
+    assert {i.data["replica_id"] for i in ruv} == {3, 4}
+    ldap_calls = [a for a in seen_argv if a[0] == "ldapsearch"]
+    assert ldap_calls
+    for argv in ldap_calls:
+        assert "-Y" in argv and "EXTERNAL" in argv
+        assert not any(flag in argv for flag in ("-w", "-W", "-y", "-D"))  # no password / bind DN, ever
+        assert not any(op in " ".join(argv) for op in ("ldapmodify", "ldapadd", "ldapdelete"))
+
+
+def test_ldapi_fallback_unavailable_keeps_the_ruv_gap_visible(monkeypatch):
+    from ipa_diagnose.evidence.collectors import replication_agreements as mod
+
+    def fake_run(args, **kwargs):
+        if args[:2] == ["ipa-replica-manage", "list"]:
+            return _FakeProc(0, stdout="ipa-b.ruvlab.test\n")
+        return _FakeProc(1, stderr="Directory Manager password required")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr("shutil.which", lambda name: "/usr/bin/" + name)
+    monkeypatch.setattr("socket.gethostname", lambda: "ipa-a.ruvlab.test")
+    monkeypatch.setattr(mod.os, "geteuid", lambda: 1000, raising=False)  # not root
+
+    with pytest.raises(CollectorError) as excinfo:
+        ReplicationAgreementsCollector().collect_live()
+    assert "Directory Manager password required" in str(excinfo.value)
+    assert "LDAPI fallback unavailable" in str(excinfo.value)
