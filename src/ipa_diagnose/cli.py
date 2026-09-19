@@ -133,6 +133,12 @@ def cmd_verify(args: argparse.Namespace, console: Console) -> int:
         render_verify(result, console)
 
     save_report(default_state_path(), report)
+    from ipa_diagnose.verify import VerifyOutcome
+
+    if any(i.outcome == VerifyOutcome.UNABLE_TO_VERIFY for i in result.items) or (
+        report.evidence_completeness.level != "complete"
+    ):
+        return 4  # verification is incomplete: never a clean 0
     return 0
 
 
@@ -140,6 +146,13 @@ def cmd_ai_preview(args: argparse.Namespace, console: Console) -> int:
     bundle, report = _collect_and_diagnose(args)
     explainable = [d for d in report.diagnoses if d.priority in _EXPLAINABLE_PRIORITIES]
     if not explainable:
+        if report.evidence_completeness.level != "complete":
+            console.print(
+                "[yellow]No problem to explain, but evidence is incomplete (health NOT verified):[/yellow]"
+            )
+            for u in report.evidence_completeness.unverified:
+                console.print(f"  - {u.capability}: {u.reason}", markup=False)
+            return _exit_code_for(report)
         console.print("[green]No primary or independent problems to explain right now.[/green]")
         return 0
     for d in explainable:

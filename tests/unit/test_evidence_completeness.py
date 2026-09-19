@@ -173,3 +173,89 @@ def test_partial_replication_failure_end_to_end_via_collect(monkeypatch):
     report = run_diagnosis(collect.collect_evidence())
     assert report.overall_status == OverallStatus.NOT_FULLY_VERIFIED
     assert report.evidence_completeness.ruv_state == "NOT_VERIFIED"
+
+
+# ---- regressions from the independent review ------------------------------
+
+
+def test_verify_never_reports_resolved_when_healthcheck_could_not_run():
+    from ipa_diagnose.verify import VerifyOutcome, compare
+
+    previous = {
+        "generated_at": "2026-01-01T00:00:00Z",
+        "diagnoses": [{"diagnosis_id": "certificates.x", "pack_id": "certificates", "title": "cert problem"}],
+    }
+    current = run_diagnosis(_bundle(errors=[CollectionError(collector="ipa-healthcheck", message="exited 3")]))
+    result = compare(previous, current)
+    assert [i.outcome for i in result.items] == [VerifyOutcome.UNABLE_TO_VERIFY]
+
+
+def test_verify_maps_failed_collector_to_its_pack_not_by_substring():
+    from ipa_diagnose.verify import VerifyOutcome, compare
+
+    previous = {
+        "generated_at": "2026-01-01T00:00:00Z",
+        "diagnoses": [
+            {"diagnosis_id": "directory-server.x", "pack_id": "directory-server", "title": "ds problem"},
+        ],
+    }
+    current = run_diagnosis(_bundle(errors=[CollectionError(collector="journal_dirsrv", message="timeout")]))
+    result = compare(previous, current)
+    assert result.items[0].outcome == VerifyOutcome.UNABLE_TO_VERIFY
+
+
+def test_verify_banner_and_exit_are_not_clean_when_evidence_incomplete(monkeypatch, tmp_path):
+    from ipa_diagnose import cli
+
+    b = _bundle(errors=[CollectionError(collector="ipa-healthcheck", message="missing")])
+    monkeypatch.setattr(cli, "_collect_and_diagnose", lambda args: (b, run_diagnosis(b)))
+    monkeypatch.setattr(cli, "default_state_path", lambda: tmp_path / "state.json")
+    buf = io.StringIO()
+    args = cli.build_parser().parse_args(["verify"])
+    code = cli.cmd_verify(args, Console(file=buf, width=120, highlight=False))
+    assert code == 4
+
+
+def test_ai_preview_with_incomplete_evidence_is_not_a_green_all_clear(monkeypatch):
+    from ipa_diagnose import cli
+
+    b = _bundle(errors=[CollectionError(collector="ipa-healthcheck", message="missing")])
+    monkeypatch.setattr(cli, "_collect_and_diagnose", lambda args: (b, run_diagnosis(b)))
+    buf = io.StringIO()
+    args = cli.build_parser().parse_args(["ai-preview"])
+    code = cli.cmd_ai_preview(args, Console(file=buf, width=120, highlight=False))
+    assert code == 3
+    assert "No primary or independent problems" not in buf.getvalue()
+
+
+def test_ruv_state_is_verified_when_only_the_agreement_listing_failed():
+    b = _bundle(
+        errors=[CollectionError(collector="replication_agreements", message="ipa-replica-manage list exited 1: boom")],
+        items=[_ruv_item()],
+    )
+    report = run_diagnosis(b)
+    assert report.evidence_completeness.ruv_state == "VERIFIED"
+    assert report.evidence_completeness.level == "partial"  # the agreement gap is still surfaced
+
+
+def test_unregistered_collector_is_a_visible_gap(monkeypatch):
+    from ipa_diagnose.evidence import collect as collect_mod
+
+    monkeypatch.setattr(collect_mod, "get_collector", lambda name: None)
+    monkeypatch.setattr("shutil.which", lambda name: None)
+    bundle = collect_mod.collect_evidence()
+    assert any("not registered" in e.message for e in bundle.collection_errors)
+
+
+def test_sanitizer_handles_dcs_c1_length_and_bidi():
+    text = correlate.sanitize_error_text("a\x1bPq;secret\x1b\b \x9b31m c ‮ rtl " + "Z" * 10000)
+    assert "secret" not in text
+    assert "\x9b" not in text and "‮" not in text
+    assert len(text) <= 300
+
+
+def test_json_has_fully_verified_flag():
+    complete = report_to_dict(run_diagnosis(_bundle(items=[_ruv_item()])))
+    partial = report_to_dict(run_diagnosis(_bundle(errors=[CollectionError(collector="x", message="y")])))
+    assert complete["fully_verified"] is True
+    assert partial["fully_verified"] is False

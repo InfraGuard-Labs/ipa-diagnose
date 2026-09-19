@@ -129,7 +129,11 @@ class ReplicationAgreementsCollector(Collector):
         # preserved via partial_items, not discarded.
         if list_error is not None or ruv_error is not None:
             message = "; ".join(m for m in (list_error, ruv_error) if m)
-            raise CollectorError(message, permission_related=True, partial_items=items)
+            lowered = message.lower()
+            permission_related = any(
+                w in lowered for w in ("permission", "password", "insufficient access", "not allowed", "denied", "root")
+            )
+            raise CollectorError(message, permission_related=permission_related, partial_items=items)
         return items
 
     def _try_run_list(self, hostname: str) -> "tuple[List[EvidenceItem], Optional[str]]":

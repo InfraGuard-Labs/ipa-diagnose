@@ -150,8 +150,10 @@ def sanitize_error_text(text: str) -> str:
 
     import re
 
+    text = text[:4096]  # bound the work before any regex runs
     text = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", text)  # CSI sequences
     text = re.sub(r"\x1b\][^\x07\x1b]*(\x07|\x1b\\)?", "", text)  # OSC sequences
+    text = re.sub(r"\x1b[P^_X][^\x1b]*(\x1b\\)?", "", text)  # DCS/PM/APC/SOS strings
     text = re.sub(r"\x1b[@-Z\\-_]", "", text)  # other 2-char ESC sequences
     text = "".join(ch if (ch == " " or ch.isprintable()) else " " for ch in text)
     text = " ".join(text.split())
@@ -172,10 +174,12 @@ def _assess_completeness(bundle: EvidenceBundle) -> EvidenceCompleteness:
 
     ruv_error = next((e for e in bundle.collection_errors if e.collector == "replication_agreements"), None)
     has_ruv_items = any(i.kind == "replication_ruv" for i in bundle.items)
-    if ruv_error is not None:
-        ruv_state, ruv_reason = "NOT_VERIFIED", sanitize_error_text(ruv_error.message)
-    elif has_ruv_items:
+    if has_ruv_items:
+        # RUV entries WERE read (even if a sibling `list` call failed and the
+        # error is still recorded separately as an unverified capability).
         ruv_state, ruv_reason = "VERIFIED", None
+    elif ruv_error is not None:
+        ruv_state, ruv_reason = "NOT_VERIFIED", sanitize_error_text(ruv_error.message)
     else:
         ruv_state, ruv_reason = "NOT_COLLECTED", None
 

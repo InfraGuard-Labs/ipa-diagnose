@@ -30,7 +30,7 @@ _STATUS_STYLE = {
     OverallStatus.DEGRADED: "bold yellow",
     OverallStatus.CRITICAL: "bold red",
     OverallStatus.UNKNOWN: "bold magenta",
-    OverallStatus.NOT_FULLY_VERIFIED: "bold yellow",
+    OverallStatus.NOT_FULLY_VERIFIED: "bold orange3",
 }
 
 _RISK_STYLE = {
@@ -215,9 +215,18 @@ def render_verify(result, console: Console) -> None:
         )
         return
 
-    console.print(f"[dim]Comparing against diagnosis from {result.previous_generated_at}[/dim]\n")
+    console.print(f"[dim]Comparing against diagnosis from {result.previous_generated_at}[/dim]")
+    if result.current_report is not None:
+        _print_evidence_banner(result.current_report, console)
+    console.print()
     if not result.items:
-        console.print("[green]The previous run found no problems, so there is nothing to verify.[/green]")
+        if result.current_report is not None and result.current_report.evidence_completeness.level != "complete":
+            console.print(
+                "[yellow]The previous run found no problems, but fresh evidence is incomplete "
+                "- health is NOT verified.[/yellow]"
+            )
+        else:
+            console.print("[green]The previous run found no problems, so there is nothing to verify.[/green]")
         return
 
     for item in result.items:

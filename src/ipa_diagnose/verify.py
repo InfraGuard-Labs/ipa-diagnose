@@ -91,17 +91,34 @@ def compare(previous: Optional[Dict[str, Any]], current: DiagnosisReport) -> Ver
     affected_packs_with_errors = {
         err.split(":", 1)[0].strip() for err in current.collection_errors
     }
+    # Explicit collector -> pack mapping (from the packs' own declarations),
+    # so a failed collector marks the right pack UNABLE_TO_VERIFY instead of
+    # relying on a substring match between pack ids and collector names.
+    from ipa_diagnose.engine.registry import all_packs
+
+    pack_collectors = {
+        p.pack_id: set(p.additional_collectors) | set(p.unconditional_collectors) for p in all_packs()
+    }
+    healthcheck_missing = not current.evidence_completeness.healthcheck_collected
 
     items: List[VerifyItem] = []
     for diag_id, prev_d in prev_by_id.items():
         pack_id = prev_d.get("pack_id", "")
-        if pack_id and any(pack_id in err_source for err_source in affected_packs_with_errors):
+        pack_gap = pack_id and (
+            any(pack_id in err_source for err_source in affected_packs_with_errors)
+            or bool(pack_collectors.get(pack_id, set()) & affected_packs_with_errors)
+        )
+        if healthcheck_missing or pack_gap:
             items.append(
                 VerifyItem(
                     diagnosis_id=diag_id,
                     title=prev_d.get("title", diag_id),
                     outcome=VerifyOutcome.UNABLE_TO_VERIFY,
-                    detail="Fresh evidence for this pack could not be collected this run.",
+                    detail=(
+                        "ipa-healthcheck could not run this time, so nothing can be confirmed resolved."
+                        if healthcheck_missing
+                        else "Fresh evidence for this pack could not be collected this run."
+                    ),
                 )
             )
             continue

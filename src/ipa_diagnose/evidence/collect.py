@@ -143,6 +143,9 @@ def _collect_staged(bundle: EvidenceBundle, *, fixture_path: Optional[pathlib.Pa
     for name in dict.fromkeys(collector_names):
         collector = get_collector(name)
         if collector is None:
+            bundle.collection_errors.append(
+                CollectionError(collector=name, message="collector is not registered (internal configuration error)")
+            )
             continue
         try:
             items = run_collector(collector, replay_dir=fixture_path)
