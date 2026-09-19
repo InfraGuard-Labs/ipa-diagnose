@@ -1,0 +1,5 @@
+{
+  "hostname": "ipa01.lab.test",
+  "provenance": "REAL LIVE CAPTURE",
+  "notes": "ipa-healthcheck --failures-only output from a real FreeIPA 4.13.3 (Fedora 43) server with dirsrv@LAB-TEST stopped via systemctl (GitHub Actions lab run 35473793615); tracebacks trimmed."
+}

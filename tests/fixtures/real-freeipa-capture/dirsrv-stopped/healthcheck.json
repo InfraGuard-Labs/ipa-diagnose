@@ -1,0 +1,42 @@
+[
+  {
+    "source": "ipahealthcheck.meta.services",
+    "check": "dirsrv",
+    "result": "ERROR",
+    "uuid": "dbe018f2-4ef7-4e83-be1a-b4f5a27bbed0",
+    "when": "20260919224219Z",
+    "duration": "0.004493",
+    "kw": {
+      "status": false,
+      "msg": "dirsrv: not running"
+    }
+  },
+  {
+    "source": "ipahealthcheck.ipa.files",
+    "check": "TomcatFileCheck",
+    "result": "WARNING",
+    "uuid": "5dafce13-c637-4d09-b54d-45a372770495",
+    "when": "20260919224220Z",
+    "duration": "0.000573",
+    "kw": {
+      "key": "_var_lib_pki_pki-tomcat_conf_ca_CS.cfg_mode",
+      "path": "/var/lib/pki/pki-tomcat/conf/ca/CS.cfg",
+      "type": "mode",
+      "expected": "0660",
+      "got": "0664",
+      "msg": "Permissions of /var/lib/pki/pki-tomcat/conf/ca/CS.cfg are too permissive: 0664 and should be 0660"
+    }
+  },
+  {
+    "source": "ipahealthcheck.ipa.trust",
+    "check": "IPAauthzdatapacCheck",
+    "result": "CRITICAL",
+    "uuid": "fc42ea7a-907d-45af-a331-8353d0ecd075",
+    "when": "20260919224220Z",
+    "duration": "0.006983",
+    "kw": {
+      "exception": "ldap2 is not connected (ldap2_140261934246144 in MainThread)",
+      "traceback": "redacted-for-fixture"
+    }
+  }
+]
