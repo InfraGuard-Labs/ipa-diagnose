@@ -1,0 +1,49 @@
+name: Python matrix and build
+
+# Manually triggered: full unit-test suite on every supported Python, plus
+# wheel/sdist build and a clean-venv install smoke test. Runs on free GitHub
+# runners only (nothing installed locally).
+on:
+  workflow_dispatch:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          allow-prereleases: true
+      - name: Install and run the full suite
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e . pytest
+          python -m pytest -q
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build wheel and sdist
+        run: |
+          python -m pip install build twine
+          python -m build
+          twine check dist/*
+          ls -la dist
+      - name: Fresh-venv install smoke test (wheel)
+        run: |
+          python -m venv /tmp/v && /tmp/v/bin/pip install dist/*.whl
+          /tmp/v/bin/ipa-diagnose --version
+          /tmp/v/bin/ipa-diagnose --replay tests/fixtures/real-freeipa-capture/dirsrv-stopped --details | head -30; echo "exit=${PIPESTATUS[0]}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
