@@ -117,6 +117,12 @@ jobs:
           docker exec ipa-primary ldapsearch -LLL -Y EXTERNAL -H ldapi://%2Frun%2Fslapd-LAB-TEST.socket -b "dc=lab,dc=test" "(&(nsuniqueid=ffffffff-ffffffff-ffffffff-ffffffff)(objectclass=nstombstone))" nsds50ruv >> ruv-probe.txt 2>&1 || true
           echo "=== (2b) same search over GSSAPI with the admin ticket ===" | tee -a ruv-probe.txt
           docker exec ipa-primary ldapsearch -LLL -Y GSSAPI -H ldap://ipa01.lab.test -b "dc=lab,dc=test" "(&(nsuniqueid=ffffffff-ffffffff-ffffffff-ffffffff)(objectclass=nstombstone))" nsds50ruv >> ruv-probe.txt 2>&1 || true
+          echo "--- ipa-primary: (a) root LDAPI EXTERNAL, base-scoped read of the RUV tombstone entry ---" | tee -a ruv-probe.txt
+          docker exec ipa-primary ldapsearch -LLL -Y EXTERNAL -H ldapi://%2Frun%2Fslapd-LAB-TEST.socket -b "nsuniqueid=ffffffff-ffffffff-ffffffff-ffffffff,dc=lab,dc=test" -s base "(objectclass=*)" nsds50ruv >> ruv-probe.txt 2>&1 || true
+          echo "--- ipa-primary: (b) root LDAPI EXTERNAL, subtree search with the nsTombstone filter ---" | tee -a ruv-probe.txt
+          docker exec ipa-primary ldapsearch -LLL -Y EXTERNAL -H ldapi://%2Frun%2Fslapd-LAB-TEST.socket -b "dc=lab,dc=test" -s sub "(&(nsuniqueid=ffffffff-ffffffff-ffffffff-ffffffff)(objectClass=nsTombstone))" nsds50ruv >> ruv-probe.txt 2>&1 || true
+          echo "--- ipa-primary: (c) GSSAPI as admin, base-scoped read ---" | tee -a ruv-probe.txt
+          docker exec ipa-primary ldapsearch -LLL -Y GSSAPI -H ldap://$(docker exec ipa-primary hostname -f) -b "nsuniqueid=ffffffff-ffffffff-ffffffff-ffffffff,dc=lab,dc=test" -s base "(objectclass=*)" nsds50ruv >> ruv-probe.txt 2>&1 || true
           echo "=== (2c) LDAPI whoami as root (which identity does EXTERNAL map to?) ===" | tee -a ruv-probe.txt
           docker exec ipa-primary ldapwhoami -Y EXTERNAL -H ldapi://%2Frun%2Fslapd-LAB-TEST.socket >> ruv-probe.txt 2>&1 || true
           echo "=== (2d) CONTROL: same tombstone search bound as cn=Directory Manager (lab-owned throwaway credential; proves the RUV entry exists and what the filter should return) ===" | tee -a ruv-probe.txt
@@ -288,6 +294,17 @@ jobs:
           docker exec ipa-a cp /etc/resolv.conf.ipa-backup /etc/resolv.conf
           docker exec ipa-a /root/.local/bin/ipa-diagnose --details | tee healthy-topology-diagnose-A.txt || true
 
+      - name: Probe RUV read access on the real two-node topology (BEFORE failure)
+        run: |
+          echo "=== BEFORE removal ===" | tee ruv-ldapi-probe-before.txt
+          echo "--- ipa-a: (a) root LDAPI EXTERNAL, base-scoped read of the RUV tombstone entry ---" | tee -a ruv-ldapi-probe-before.txt
+          docker exec ipa-a ldapsearch -LLL -Y EXTERNAL -H ldapi://%2Frun%2Fslapd-RUVLAB-TEST.socket -b "nsuniqueid=ffffffff-ffffffff-ffffffff-ffffffff,dc=ruvlab,dc=test" -s base "(objectclass=*)" nsds50ruv >> ruv-ldapi-probe-before.txt 2>&1 || true
+          echo "--- ipa-a: (b) root LDAPI EXTERNAL, subtree search with the nsTombstone filter ---" | tee -a ruv-ldapi-probe-before.txt
+          docker exec ipa-a ldapsearch -LLL -Y EXTERNAL -H ldapi://%2Frun%2Fslapd-RUVLAB-TEST.socket -b "dc=ruvlab,dc=test" -s sub "(&(nsuniqueid=ffffffff-ffffffff-ffffffff-ffffffff)(objectClass=nsTombstone))" nsds50ruv >> ruv-ldapi-probe-before.txt 2>&1 || true
+          echo "--- ipa-a: (c) GSSAPI as admin, base-scoped read ---" | tee -a ruv-ldapi-probe-before.txt
+          docker exec ipa-a ldapsearch -LLL -Y GSSAPI -H ldap://$(docker exec ipa-a hostname -f) -b "nsuniqueid=ffffffff-ffffffff-ffffffff-ffffffff,dc=ruvlab,dc=test" -s base "(objectclass=*)" nsds50ruv >> ruv-ldapi-probe-before.txt 2>&1 || true
+          cat ruv-ldapi-probe-before.txt
+
       - name: Inject the failure - ungracefully remove Server B (decommission without clean del)
         run: |
           # Simulates "old replica information that remained after systems
@@ -310,6 +327,17 @@ jobs:
           echo "=== ipa-replica-manage list-ruv (THE critical evidence) ===" | tee stale-ruv-list-ruv-A.txt
           docker exec ipa-a ipa-replica-manage list-ruv > stale-ruv-list-ruv-A.txt 2>&1 || true
           cat stale-ruv-list-ruv-A.txt
+
+      - name: Probe RUV read access AFTER Server B's ungraceful removal (stale metadata present)
+        run: |
+          echo "=== AFTER removal ===" | tee ruv-ldapi-probe-after.txt
+          echo "--- ipa-a: (a) root LDAPI EXTERNAL, base-scoped read of the RUV tombstone entry ---" | tee -a ruv-ldapi-probe-after.txt
+          docker exec ipa-a ldapsearch -LLL -Y EXTERNAL -H ldapi://%2Frun%2Fslapd-RUVLAB-TEST.socket -b "nsuniqueid=ffffffff-ffffffff-ffffffff-ffffffff,dc=ruvlab,dc=test" -s base "(objectclass=*)" nsds50ruv >> ruv-ldapi-probe-after.txt 2>&1 || true
+          echo "--- ipa-a: (b) root LDAPI EXTERNAL, subtree search with the nsTombstone filter ---" | tee -a ruv-ldapi-probe-after.txt
+          docker exec ipa-a ldapsearch -LLL -Y EXTERNAL -H ldapi://%2Frun%2Fslapd-RUVLAB-TEST.socket -b "dc=ruvlab,dc=test" -s sub "(&(nsuniqueid=ffffffff-ffffffff-ffffffff-ffffffff)(objectClass=nsTombstone))" nsds50ruv >> ruv-ldapi-probe-after.txt 2>&1 || true
+          echo "--- ipa-a: (c) GSSAPI as admin, base-scoped read ---" | tee -a ruv-ldapi-probe-after.txt
+          docker exec ipa-a ldapsearch -LLL -Y GSSAPI -H ldap://$(docker exec ipa-a hostname -f) -b "nsuniqueid=ffffffff-ffffffff-ffffffff-ffffffff,dc=ruvlab,dc=test" -s base "(objectclass=*)" nsds50ruv >> ruv-ldapi-probe-after.txt 2>&1 || true
+          cat ruv-ldapi-probe-after.txt
 
       - name: THE CRITICAL TEST - run public v0.1.1 ipa-diagnose against the real stale-RUV evidence
         run: |
@@ -345,4 +373,5 @@ jobs:
             healthy-topology-*.json
             stale-ruv-*.txt
             stale-ruv-*.json
+            ruv-ldapi-probe-*.txt
           retention-days: 30
