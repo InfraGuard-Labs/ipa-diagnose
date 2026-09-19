@@ -90,7 +90,7 @@ def test_healthcheck_ok_but_ruv_not_collected_is_not_fully_verified():
     out = _render(report)
     # The RUV gap is in the header block, before any footer.
     assert out.index("RUV state: NOT VERIFIED") < out.index("No problem was observed")
-    assert "NOT a stale-RUV finding" in out
+    assert "NOT a stale-RUV finding" in " ".join(out.split())
     assert "No problems detected" not in out
 
 
