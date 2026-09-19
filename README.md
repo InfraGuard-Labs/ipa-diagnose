@@ -310,6 +310,13 @@ malformed/oversized input. See [docs/limitations.md](docs/limitations.md)
 for what's fixture-validated vs. container-integration-tested vs. genuinely
 real-FreeIPA-validated - this project does not overclaim which is which.
 
+## Exit codes and evidence completeness
+
+`0` HEALTHY, `1` DEGRADED, `2` CRITICAL, `3` UNKNOWN, `4` NOT_FULLY_VERIFIED
+(no problem found, but relevant evidence could not be collected). "Could not
+verify" is never reported as healthy - see
+[docs/evidence-completeness.md](docs/evidence-completeness.md).
+
 ## Limitations
 
 - **Single-host by design**, same as `ipa-healthcheck` itself - some

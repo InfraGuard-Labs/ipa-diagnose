@@ -86,6 +86,25 @@ contributor without redesigning anything.
   computed - it cannot add insight the engine didn't already have, and
   isn't meant to.
 
+## Live validation limits (real FreeIPA lab)
+
+- **Live detection of a genuine stale RUV is NOT validated.** On FreeIPA 4.13
+  the topology plugin cleans a removed server's RUV automatically (`ipa
+  server-del`, and direct removal of its topology segments and master
+  registration were both tried), so a stale RUV could not be created in a
+  two-node lab. The stale-RUV rule is exercised by fixtures only. What *is*
+  validated live: the RUV is read without any password, a healthy two-node
+  topology produces no false stale-RUV, and an unreadable RUV is shown as
+  `NOT_VERIFIED`, never as healthy. See
+  [evidence-completeness.md](evidence-completeness.md).
+- **A dead-but-still-registered replica** was not flagged within ~90 seconds
+  of being killed: the real `ipa-healthcheck` itself reported nothing for it
+  yet, so there was no evidence for `ipa-diagnose` to act on.
+- **Replay mode** (`--replay`) with no `healthcheck.json` still reports
+  `HEALTHY`; replay is a fixture mode, not a live claim.
+- **Older (EL8-era) FreeIPA, Trust/AD, CA-less and multi-replica (3+)
+  topologies were not exercised live.**
+
 ## What was not fabricated
 
 No adoption numbers, user counts, stars, downloads, testimonials, or
