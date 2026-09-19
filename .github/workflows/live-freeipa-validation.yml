@@ -133,6 +133,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
+      # Only needed for install_source=source (retesting an unreleased fix);
+      # the default pypi path never touches the checkout.
+      - uses: actions/checkout@v4
+
       - name: Boot primary (Server A)
         run: |
           docker network create ipa-net
