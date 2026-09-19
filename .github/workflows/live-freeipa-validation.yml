@@ -168,7 +168,7 @@ jobs:
             --add-host ipa-a.ruvlab.test:$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ipa-a) \
             -e PASSWORD=${IPA_PASSWORD} \
             freeipa/freeipa-server:fedora-43 \
-            ipa-replica-install -U --setup-dns --auto-forwarders --server=ipa-a.ruvlab.test --domain=ruvlab.test --realm=RUVLAB.TEST --principal=admin --admin-password=${IPA_PASSWORD} --no-ntp --skip-mem-check
+            ipa-replica-install -U --no-host-dns --server=ipa-a.ruvlab.test --domain=ruvlab.test --realm=RUVLAB.TEST --principal=admin --admin-password=${IPA_PASSWORD} --no-ntp --skip-mem-check
           echo "Polling Server B install..."
           for i in $(seq 1 120); do
             sleep 10
