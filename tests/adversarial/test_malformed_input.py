@@ -34,9 +34,18 @@ def test_unknown_future_check_id_is_ignored_not_crashed():
 
     bundle = EvidenceBundle(hostname="h", collected_at=EvidenceBundle.now(), findings=findings)
     report = run_diagnosis(bundle)
-    # No pack claims this source, so it must produce zero diagnoses - not a
-    # crash, and definitely not a guessed diagnosis from an unrelated pack.
-    assert report.diagnoses == []
+    # No pack claims this source: no crash and definitely no guessed
+    # diagnosis from an unrelated pack. But a CRITICAL finding must never
+    # VANISH either (live-discovered: a stopped Directory Server's ERROR/
+    # CRITICAL findings were dropped) - it surfaces as ONE honest UNKNOWN
+    # that quotes the raw finding and claims no root cause.
+    from ipa_diagnose.engine.model import DiagnosisStatus
+
+    assert [d.rule_id for d in report.diagnoses] == ["unexplained-findings"]
+    only = report.diagnoses[0]
+    assert only.pack_id == "healthcheck"
+    assert only.status == DiagnosisStatus.UNKNOWN_INSUFFICIENT_EVIDENCE
+    assert "QuantumEntanglementCheck" in only.why
 
 
 def test_huge_healthcheck_output_does_not_crash_or_hang(tmp_path):
