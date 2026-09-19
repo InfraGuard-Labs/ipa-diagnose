@@ -85,7 +85,7 @@ from ipa_diagnose.evidence.collectors.base import Collector, CollectorError
 from ipa_diagnose.evidence.collectors.registry import register
 from ipa_diagnose.evidence.model import EvidenceItem, Provenance
 
-LIST_COMMAND_TEMPLATE = "ipa-replica-manage list {host}"
+LIST_COMMAND_TEMPLATE = "ipa-replica-manage list -v {host}"
 LIST_RUV_COMMAND = "ipa-replica-manage list-ruv"
 
 
@@ -142,7 +142,7 @@ class ReplicationAgreementsCollector(Collector):
         command = LIST_COMMAND_TEMPLATE.format(host=hostname)
         try:
             proc = subprocess.run(
-                ["ipa-replica-manage", "list", hostname],
+                ["ipa-replica-manage", "list", "-v", hostname],
                 capture_output=True,
                 text=True,
                 timeout=self.timeout_seconds,
@@ -304,7 +304,12 @@ def _parse_list_output(stdout: str, *, command: str) -> List[EvidenceItem]:
         if current_peer is None:
             return
         last_update_status = attrs.get("last update status", "")
-        status = "red" if "error" in last_update_status.lower() and "error (0)" not in last_update_status.lower() else "green"
+        if not last_update_status:
+            status = "unknown"  # no health information in this output shape - never claimed green
+        elif "error" in last_update_status.lower() and "error (0)" not in last_update_status.lower():
+            status = "red"
+        else:
+            status = "green"
         items.append(
             EvidenceItem(
                 item_id=f"replication-agreement:{current_peer}",
@@ -325,21 +330,13 @@ def _parse_list_output(stdout: str, *, command: str) -> List[EvidenceItem]:
             continue
         role_match = _ROLE_LINE_RE.match(raw_line)
         if role_match:
+            # Real `ipa-replica-manage list -v <host>` output (captured from a
+            # FreeIPA 4.13.3 lab) is `host: replica` followed by indented
+            # "last update status: ..." attribute lines. Plain `list` (no -v)
+            # is just the `host: role` line. Either way this line STARTS a block.
             flush()
-            current_peer = None
+            current_peer = role_match.group(1)
             attrs = {}
-            peer = role_match.group(1)
-            items.append(
-                EvidenceItem(
-                    item_id=f"replication-agreement:{peer}",
-                    kind="replication_agreement",
-                    # No health information exists in this output shape, so the
-                    # status is "unknown" - never claimed green.
-                    summary=f"Replication peer {peer} ({role_match.group(2).lower()}): agreement health not reported by this output",
-                    data={"peer": peer, "status": "unknown", "last_update_status": "", "last_update_ended": None},
-                    provenance=provenance,
-                )
-            )
             continue
         kv_match = _KV_RE.match(raw_line)
         if kv_match:

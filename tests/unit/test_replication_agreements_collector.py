@@ -336,3 +336,45 @@ def test_real_role_line_output_yields_clean_peer_name_and_no_false_stale():
 
     ruv = _parse_ldapi_ruv_ldif(REAL_LDAPI_RUV_LDIF, known_hosts=known, hosts_known_complete=True, command="test")
     assert {i.data["replica_id"]: i.data["alive"] for i in ruv} == {3: True, 4: True}
+
+
+# Captured verbatim from a REAL FreeIPA 4.13.3 lab: `ipa-replica-manage list -v <host>`.
+REAL_LIST_V_OUTPUT = """ipa-b.ruvlab.test: replica
+  last init status: Error (0) Total update succeeded
+  last init ended: 2026-09-19 21:14:31+00:00
+  last update status: Error (0) Replica acquired successfully: Incremental update succeeded
+  last update ended: 2026-09-19 21:16:01+00:00
+"""
+
+
+def test_real_list_v_output_gives_real_agreement_health():
+    items = _parse_list_output(REAL_LIST_V_OUTPUT, command="test")
+    assert len(items) == 1
+    assert items[0].data["peer"] == "ipa-b.ruvlab.test"
+    assert items[0].data["status"] == "green"
+    assert "Incremental update succeeded" in items[0].data["last_update_status"]
+    assert items[0].data["last_update_ended"].startswith("2026-09-19")
+
+
+def test_real_list_v_failing_agreement_is_red():
+    out = REAL_LIST_V_OUTPUT.replace(
+        "Error (0) Replica acquired successfully: Incremental update succeeded",
+        "Error (-1) Can't contact LDAP server",
+    )
+    assert _parse_list_output(out, command="test")[0].data["status"] == "red"
+
+
+def test_collector_runs_list_with_verbose_flag(monkeypatch):
+    seen = []
+
+    def fake_run(args, **kwargs):
+        seen.append(list(args))
+        if args[:2] == ["ipa-replica-manage", "list"]:
+            return _FakeProc(0, stdout=REAL_LIST_V_OUTPUT)
+        return _FakeProc(0, stdout="Replica Update Vectors:\nipa-b.ruvlab.test:389: 3\n")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr("shutil.which", lambda name: "/usr/sbin/" + name)
+    monkeypatch.setattr("socket.gethostname", lambda: "ipa-a.ruvlab.test")
+    ReplicationAgreementsCollector().collect_live()
+    assert ["ipa-replica-manage", "list", "-v", "ipa-a.ruvlab.test"] in seen
