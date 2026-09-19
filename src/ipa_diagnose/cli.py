@@ -135,6 +135,13 @@ def cmd_verify(args: argparse.Namespace, console: Console) -> int:
     save_report(default_state_path(), report)
     from ipa_diagnose.verify import VerifyOutcome
 
+    fresh = _exit_code_for(report)
+    if result.previous_generated_at is None:
+        return fresh  # no baseline: exactly what a plain diagnose would return
+    if any(i.outcome in (VerifyOutcome.STILL_PRESENT, VerifyOutcome.PARTIALLY_RESOLVED) for i in result.items) or (
+        result.new_conditions
+    ):
+        return fresh if fresh in (1, 2, 3) else 1  # a problem remains: never a clean 0
     if any(i.outcome == VerifyOutcome.UNABLE_TO_VERIFY for i in result.items) or (
         report.evidence_completeness.level != "complete"
     ):
@@ -152,6 +159,12 @@ def cmd_ai_preview(args: argparse.Namespace, console: Console) -> int:
             )
             for u in report.evidence_completeness.unverified:
                 console.print(f"  - {u.capability}: {u.reason}", markup=False)
+            return _exit_code_for(report)
+        if report.overall_status.value != "HEALTHY":
+            console.print(
+                f"[yellow]No primary or independent problem to explain, but overall status is "
+                f"{report.overall_status.value}.[/yellow]"
+            )
             return _exit_code_for(report)
         console.print("[green]No primary or independent problems to explain right now.[/green]")
         return 0
@@ -182,10 +195,12 @@ def main(argv: Optional[list] = None) -> int:
     # (e.g. a log message), which reads as noise, not signal, in this UI -
     # all intentional styling here is explicit markup, not auto-detected.
     console = Console(highlight=False)
+    # Warnings go to STDERR so `--json` on stdout is always pure JSON.
+    err_console = Console(stderr=True, highlight=False)
 
     command = args.command or "diagnose"
     if os.name != "nt" and command in ("diagnose", "verify") and args.replay is None and os.geteuid() != 0:
-        console.print(
+        err_console.print(
             "[yellow]Warning: not running as root - live evidence collection (ipa-healthcheck, "
             "journalctl, certmonger) will likely fail or be incomplete.[/yellow]\n"
         )

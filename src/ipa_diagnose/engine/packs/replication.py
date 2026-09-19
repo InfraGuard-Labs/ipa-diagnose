@@ -558,18 +558,24 @@ class StaleRuvRule(DiagnosticRule):
 
     def evaluate(self, bundle: EvidenceBundle) -> Optional[Diagnosis]:
         ruv_items = bundle.items_by_kind("replication_ruv")
-        # alive=False ("no corresponding live server") and alive=None
-        # ("could not be determined" - e.g. agreement listing failed) are
-        # both candidates worth surfacing; only alive=True is excluded.
-        candidate_items = [i for i in ruv_items if i.data.get("alive") is not True]
-        if not candidate_items:
-            return None
-
         explicit_findings = [
             f
             for f in bundle.findings
             if f.source.startswith("ipahealthcheck.ds.ruv") and f.severity.rank >= Severity.ERROR.rank
         ]
+        # alive=False ("no corresponding live server") is a candidate.
+        # alive=None ("could not be determined", e.g. the topology could not be
+        # listed) is only a candidate when ipa-healthcheck's own RUV check
+        # raised an ERROR: on its own, "we could not tell" must never surface
+        # as a stale-RUV alarm on a healthy topology (live false-alarm found
+        # by the false-reassurance review). alive=True is never a candidate.
+        candidate_items = [
+            i
+            for i in ruv_items
+            if i.data.get("alive") is False or (i.data.get("alive") is None and explicit_findings)
+        ]
+        if not candidate_items:
+            return None
 
         # Scope each explicit finding to a specific replica ID where
         # possible - found in adversarial review: blanket-crediting EVERY

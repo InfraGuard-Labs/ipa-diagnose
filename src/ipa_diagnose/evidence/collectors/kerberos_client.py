@@ -93,6 +93,7 @@ class KerberosClientCollector(Collector):
 
         items: List[EvidenceItem] = []
         prov = Provenance(source="kerberos_client", live=True)
+        self._failures: List[str] = []
 
         klist_item = self._collect_klist(prov)
         if klist_item is not None:
@@ -108,6 +109,10 @@ class KerberosClientCollector(Collector):
         if clock_item is not None:
             items.append(clock_item)
 
+        if self._failures:
+            # Some sub-checks could not run (timeout / OS error): keep the
+            # evidence that WAS collected but never present it as complete.
+            raise CollectorError("; ".join(self._failures), partial_items=items)
         return items
 
     def _run(self, args: List[str]) -> "subprocess.CompletedProcess[str]":
@@ -118,7 +123,8 @@ class KerberosClientCollector(Collector):
     def _collect_klist(self, prov: Provenance) -> Optional[EvidenceItem]:
         try:
             proc = self._run(["klist"])
-        except (OSError, subprocess.SubprocessError):
+        except (OSError, subprocess.SubprocessError) as e:
+            self._failures.append(f"klist failed: {type(e).__name__}")
             return None
         # A non-zero exit here typically just means "no ticket cache found",
         # which is itself informative (not an error worth raising).
@@ -143,7 +149,8 @@ class KerberosClientCollector(Collector):
     def _read_keytab_entries(self) -> List[Tuple[str, int]]:
         try:
             proc = self._run(["klist", "-kte", "/etc/krb5.keytab"])
-        except (OSError, subprocess.SubprocessError):
+        except (OSError, subprocess.SubprocessError) as e:
+            self._failures.append(f"keytab listing failed: {type(e).__name__}")
             return []
         if proc.returncode != 0:
             return []
@@ -223,7 +230,8 @@ class KerberosClientCollector(Collector):
         # the local time, not a real offset - documented limitation.
         try:
             proc = self._run(["date", "-u"])
-        except (OSError, subprocess.SubprocessError):
+        except (OSError, subprocess.SubprocessError) as e:
+            self._failures.append(f"clock reading failed: {type(e).__name__}")
             return None
         raw = (proc.stdout or "").strip()
         return EvidenceItem(

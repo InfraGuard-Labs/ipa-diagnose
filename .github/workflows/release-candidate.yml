@@ -70,7 +70,7 @@ jobs:
             echo "############ $img ############"
             docker run --rm --name lc \
               -e EXPECT_VERSION="$VERSION" -e PLATFORM="${{ matrix.name }} on $img" \
-              -v "$PWD/cand/v1:/rpms/v1:ro" -v "$PWD/cand/v2:/rpms/v2:ro" \
+              -v "$PWD/cand/v1:/rpms/v1:ro" -v "$PWD/cand/v2:/rpms/v2:ro" -v "$PWD/cand/srpm:/rpms/srpm:ro" \
               -v "$PWD/cand/SHA256SUMS:/rpms/SHA256SUMS:ro" \
               -v "$PWD/tests/fixtures:/fixtures:ro" \
               -v "$PWD/packaging/rpm/lifecycle-test.sh:/lifecycle-test.sh:ro" \

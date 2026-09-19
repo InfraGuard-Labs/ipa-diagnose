@@ -110,3 +110,13 @@ contributor without redesigning anything.
 No adoption numbers, user counts, stars, downloads, testimonials, or
 benchmark comparisons appear anywhere in this project's documentation -
 none exist yet, and none are claimed.
+
+## Known limitations of the completeness checks
+
+- An `ipa-healthcheck` **WARNING** from a check that no diagnostic rule covers
+  does not change the overall status. Such warnings (for example the
+  container-only "missing /proc/sys/crypto/fips_enabled") are common on healthy
+  systems; ERROR/CRITICAL findings are never dropped.
+- When the topology cannot be listed at all (not root, no Kerberos ticket) the
+  RUV liveness of other servers is reported as undetermined and the run is
+  `NOT_FULLY_VERIFIED`; it never produces a stale-RUV claim on its own.

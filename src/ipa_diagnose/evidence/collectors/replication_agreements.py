@@ -113,8 +113,14 @@ class ReplicationAgreementsCollector(Collector):
         # _parse_list_ruv_output classify every non-self RUV entry as
         # "cannot determine" (alive=None) rather than "not alive" (False) -
         # an incomplete peer list must never manufacture a false stale RUV.
-        known_hosts = {hostname} | {a.data["peer"] for a in agreements}
-        ruv_items, ruv_error = self._try_run_list_ruv(known_hosts, hosts_known_complete=list_error is None)
+        # The authoritative list of servers in the topology (not just THIS
+        # host's own agreements): in a 3+ server line topology a healthy peer
+        # reachable only through another peer has no agreement with this host,
+        # and must not look like a stale RUV entry.
+        masters = _ldapi_masters(self.timeout_seconds) or self._try_list_masters()
+        known_hosts = {hostname} | {a.data["peer"] for a in agreements} | (masters or set())
+        hosts_complete = list_error is None or masters is not None
+        ruv_items, ruv_error = self._try_run_list_ruv(known_hosts, hosts_known_complete=hosts_complete)
         items.extend(ruv_items)
 
         # A single-server deployment has no RUV and no agreements. When the
@@ -188,7 +194,33 @@ class ReplicationAgreementsCollector(Collector):
             hosts_known_complete=hosts_known_complete,
             command=LIST_RUV_COMMAND,
         )
+        if not items:
+            # Exit 0 but nothing parseable (changed/localised wording, empty
+            # output): NOT a verified RUV - fall through to the LDAPI read.
+            return self._ldapi_fallback(
+                known_hosts, hosts_known_complete, f"{LIST_RUV_COMMAND} returned no parseable RUV entries"
+            )
         return items, None
+
+    def _try_list_masters(self) -> "Optional[set]":
+        """`ipa-replica-manage list` (no host) = every server in the topology
+        (`host: master` lines). Needs a Kerberos ticket; None if unavailable."""
+
+        try:
+            proc = subprocess.run(
+                ["ipa-replica-manage", "list"],
+                capture_output=True,
+                stdin=subprocess.DEVNULL,
+                text=True,
+                timeout=self.timeout_seconds,
+                check=False,
+            )
+        except (OSError, ValueError, subprocess.SubprocessError):
+            return None
+        if proc.returncode != 0:
+            return None
+        hosts = {m.group(1) for line in (proc.stdout or "").splitlines() if (m := _ROLE_LINE_RE.match(line))}
+        return hosts or None
 
     def _ldapi_fallback(
         self, known_hosts: "set[str]", hosts_known_complete: bool, primary_error: str
@@ -558,9 +590,53 @@ def _ldapi_identity_is_directory_manager(uri: str, timeout: float) -> bool:
             timeout=timeout,
             check=False,
         )
-    except (OSError, subprocess.SubprocessError):
+    except (OSError, ValueError, subprocess.SubprocessError):
         return False
     return proc.returncode == 0 and "cn=directory manager" in proc.stdout.lower()
+
+
+def _ldapi_context() -> "tuple[Optional[str], Optional[str], Optional[str]]":
+    """(ldapi uri, basedn, error). Read-only LDAPI needs root (the socket
+    peer-credential identity is the local uid)."""
+
+    if os.name == "nt" or os.geteuid() != 0:
+        return None, None, "not running as root (LDAPI EXTERNAL identity is the local uid)"
+    if shutil.which("ldapsearch") is None:
+        return None, None, "ldapsearch is not installed"
+    realm, basedn = _read_ipa_conf()
+    if not realm or not basedn:
+        return None, None, f"could not read realm/basedn from {IPA_DEFAULT_CONF}"
+    socket_path = f"/run/slapd-{realm.replace('.', '-')}.socket"
+    if not os.path.exists(socket_path):
+        return None, None, f"directory server LDAPI socket {socket_path} not found"
+    return "ldapi://" + urllib.parse.quote(socket_path, safe=""), basedn, None
+
+
+def _ldapsearch(uri: str, base: str, scope: str, search_filter: str, attrs: "list[str]", timeout: float):
+    argv = ["ldapsearch", "-LLL", "-Y", "EXTERNAL", "-H", uri, "-b", base, "-s", scope, search_filter, *attrs]
+    proc = subprocess.run(
+        argv, capture_output=True, stdin=subprocess.DEVNULL, text=True, errors="replace", timeout=timeout, check=False
+    )
+    return argv, proc
+
+
+_MASTER_DN_RE = re.compile(r"(?im)^dn:\s*cn=([A-Za-z0-9.-]+),cn=masters,")
+
+
+def _ldapi_masters(timeout: float) -> "Optional[set]":
+    """Every server registered in the topology (cn=masters), read-only over
+    LDAPI as root; None when unavailable."""
+
+    uri, basedn, err = _ldapi_context()
+    if err:
+        return None
+    try:
+        _, proc = _ldapsearch(uri, f"cn=masters,cn=ipa,cn=etc,{basedn}", "one", "(objectClass=*)", ["dn"], timeout)
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return None
+    if proc.returncode != 0:
+        return None
+    return set(_MASTER_DN_RE.findall(proc.stdout or "")) or None
 
 
 def _ldapi_read_ruv(
@@ -570,29 +646,16 @@ def _ldapi_read_ruv(
     root (the socket peer-credential identity); never passes or prompts for
     any password, and never writes."""
 
-    if os.name == "nt" or os.geteuid() != 0:
-        return [], "not running as root (LDAPI EXTERNAL identity is the local uid)"
-    if shutil.which("ldapsearch") is None:
-        return [], "ldapsearch is not installed"
-    realm, basedn = _read_ipa_conf()
-    if not realm or not basedn:
-        return [], f"could not read realm/basedn from {IPA_DEFAULT_CONF}"
-    socket_path = f"/run/slapd-{realm.replace('.', '-')}.socket"
-    if not os.path.exists(socket_path):
-        return [], f"directory server LDAPI socket {socket_path} not found"
-
-    uri = "ldapi://" + urllib.parse.quote(socket_path, safe="")
+    uri, basedn, err = _ldapi_context()
+    if err:
+        return [], err
     search_filter = "(&(nsuniqueid=ffffffff-ffffffff-ffffffff-ffffffff)(objectClass=nsTombstone))"
     all_items: List[EvidenceItem] = []
     errors: List[str] = []
     for base, required in ((basedn, True), ("o=ipaca", False)):
-        argv = ["ldapsearch", "-LLL", "-Y", "EXTERNAL", "-H", uri, "-b", base, "-s", "sub", search_filter, "nsds50ruv"]
-        command = " ".join(argv)
         try:
-            proc = subprocess.run(
-                argv, capture_output=True, stdin=subprocess.DEVNULL, text=True, timeout=timeout, check=False
-            )
-        except (OSError, subprocess.SubprocessError) as e:
+            argv, proc = _ldapsearch(uri, base, "sub", search_filter, ["nsds50ruv"], timeout)
+        except (OSError, ValueError, subprocess.SubprocessError) as e:
             if required:
                 errors.append(f"ldapsearch failed: {e}")
             continue
@@ -600,16 +663,21 @@ def _ldapi_read_ruv(
             if required:
                 errors.append(f"ldapsearch exited {proc.returncode}: {proc.stderr.strip()[:200]}")
             continue
-        all_items.extend(
-            _parse_ldapi_ruv_ldif(
-                proc.stdout, known_hosts=known_hosts, hosts_known_complete=hosts_known_complete, command=command
-            )
+        parsed = _parse_ldapi_ruv_ldif(
+            proc.stdout, known_hosts=known_hosts, hosts_known_complete=hosts_known_complete, command=" ".join(argv)
         )
-    if not all_items and not errors:
+        if required and not parsed and "nsds50ruv:" in (proc.stdout or "").lower():
+            errors.append("RUV entries were returned but could not be parsed")
+        all_items.extend(parsed)
+    if errors:
+        # A failed/unparseable read of the domain RUV is never masked by a
+        # successful CA read: report the gap, discard the partial result.
+        return [], "; ".join(errors)
+    if not all_items:
         if _ldapi_identity_is_directory_manager(uri, timeout):
             return [], None  # authoritative: nothing exists to be read
-        errors.append("no RUV entry was returned and the LDAPI identity could not be confirmed as able to see it")
-    return all_items, "; ".join(errors) if errors else None
+        return [], "no RUV entry was returned and the LDAPI identity could not be confirmed as able to see it"
+    return all_items, None
 
 
 register(ReplicationAgreementsCollector())

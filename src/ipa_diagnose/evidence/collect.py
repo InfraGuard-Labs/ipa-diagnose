@@ -47,6 +47,12 @@ def collect_evidence(*, replay_dir: Optional[str] = None) -> EvidenceBundle:
     # must never prevent diagnosis from running.
     bundle.environment = detect_environment(fixture_path=fixture_path)
 
+    if fixture_path is not None and not fixture_path.is_dir():
+        # A --replay of a directory that does not exist must never look healthy.
+        bundle.collection_errors.append(
+            CollectionError(collector="ipa-healthcheck", message=f"replay directory not found: {fixture_path}")
+        )
+
     _collect_healthcheck(bundle, live=live, fixture_path=fixture_path)
     _collect_staged(bundle, fixture_path=fixture_path)
     return bundle
@@ -78,9 +84,15 @@ def _collect_healthcheck(bundle: EvidenceBundle, *, live: bool, fixture_path: Op
             return
         try:
             proc = subprocess.run(
-                HEALTHCHECK_COMMAND, capture_output=True, text=True, timeout=120, check=False
+                HEALTHCHECK_COMMAND,
+                capture_output=True,
+                stdin=subprocess.DEVNULL,
+                text=True,
+                errors="replace",
+                timeout=120,
+                check=False,
             )
-        except (OSError, subprocess.SubprocessError) as e:
+        except (OSError, ValueError, subprocess.SubprocessError) as e:
             bundle.collection_errors.append(CollectionError(collector="ipa-healthcheck", message=str(e)))
             return
         if proc.returncode not in (0, 1):
@@ -100,6 +112,22 @@ def _collect_healthcheck(bundle: EvidenceBundle, *, live: bool, fixture_path: Op
                 CollectionError(collector="ipa-healthcheck", message=f"could not parse output: {e}")
             )
             return
+        # Zero usable results means NO check actually ran: that is not health.
+        # (A real run always contains many SUCCESS entries.) Skipped entries
+        # are recorded too, so a partly unreadable output is never "complete".
+        usable = [r for r in raw_results if isinstance(r, dict)]
+        if not usable:
+            bundle.collection_errors.append(
+                CollectionError(collector="ipa-healthcheck", message="ipa-healthcheck returned no usable results")
+            )
+            return
+        if len(usable) != len(raw_results):
+            bundle.collection_errors.append(
+                CollectionError(
+                    collector="ipa-healthcheck",
+                    message=f"{len(raw_results) - len(usable)} ipa-healthcheck result entries could not be read",
+                )
+            )
         bundle.findings.extend(
             parse_healthcheck_results(
                 raw_results, command=" ".join(HEALTHCHECK_COMMAND), live=True, host=bundle.hostname
@@ -159,5 +187,10 @@ def _collect_staged(bundle: EvidenceBundle, *, fixture_path: Optional[pathlib.Pa
             # evidence that was genuinely collected just because a sibling
             # sub-call failed.
             bundle.items.extend(e.partial_items)
+            continue
+        except Exception as e:  # noqa: BLE001 - any collector bug must degrade visibly, never crash the run
+            bundle.collection_errors.append(
+                CollectionError(collector=name, message=f"unexpected {type(e).__name__} while collecting evidence")
+            )
             continue
         bundle.items.extend(items)

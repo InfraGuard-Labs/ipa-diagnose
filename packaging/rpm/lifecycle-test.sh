@@ -55,7 +55,8 @@ ipa-diagnose --details; rc=$?; echo "exit=${rc}"
 check "no-healthcheck host exits 3 (UNKNOWN)" test "${rc}" -eq 3
 check "output says UNKNOWN and why" bash -c "ipa-diagnose | grep -q 'Overall: UNKNOWN' && ipa-diagnose | grep -q 'could not be collected'"
 check "never claims healthy" bash -c "! ipa-diagnose | grep -q 'Overall: HEALTHY'"
-ipa-diagnose --json | python3 -c "import json,sys; d=json.load(sys.stdin); assert d['overall_status']=='UNKNOWN' and d['fully_verified'] is False and d['evidence_completeness']['level']=='insufficient'"
+ipa-diagnose --json > /tmp/j2.json 2>/dev/null
+python3 -c "import json; d=json.load(open('/tmp/j2.json')); assert d['overall_status']=='UNKNOWN' and d['fully_verified'] is False and d['evidence_completeness']['level']=='insufficient'"
 check "json: UNKNOWN / fully_verified false / insufficient" test $? -eq 0
 
 step "7. Uninstall, verify removal"
