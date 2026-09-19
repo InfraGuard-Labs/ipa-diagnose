@@ -316,6 +316,28 @@ jobs:
           echo "Server B forcibly removed. Waiting 60s for A's own state to settle..."
           sleep 60
 
+      - name: Capture the dead-but-still-registered state (B unreachable, still in topology)
+        run: |
+          docker exec ipa-a ipa-replica-manage list > stale-ruv-registered-list-A.txt 2>&1 || true
+          docker exec ipa-a ipa-healthcheck --output-type json > stale-ruv-registered-healthcheck-A.json 2>&1 || true
+          docker exec ipa-a /root/.local/bin/ipa-diagnose --details > stale-ruv-registered-diagnose-A.txt 2>&1 || true
+          docker exec ipa-a /root/.local/bin/ipa-diagnose --json > stale-ruv-registered-diagnose-A.json 2>&1 || true
+          cat stale-ruv-registered-list-A.txt; head -30 stale-ruv-registered-diagnose-A.txt
+
+      - name: Decommission B from the topology WITHOUT cleaning its RUV (lab-only, admin ticket)
+        run: |
+          # Lab-only mutation on a throwaway server: remove ipa-b from the
+          # topology/masters so that its RUV element (if it survives) has NO
+          # corresponding live server = a genuine stale RUV. ipa-diagnose
+          # itself never performs any of this.
+          docker exec ipa-a bash -c "echo '${IPA_PASSWORD}' | kinit admin" || true
+          docker exec ipa-a ipa server-del ipa-b.ruvlab.test --force --ignore-topology-disconnect --ignore-last-of-role > stale-ruv-server-del.txt 2>&1 || true
+          cat stale-ruv-server-del.txt
+          sleep 30
+          echo "=== list after server-del ===" | tee stale-ruv-list-after-del.txt
+          docker exec ipa-a ipa-replica-manage list >> stale-ruv-list-after-del.txt 2>&1 || true
+          cat stale-ruv-list-after-del.txt
+
       - name: Capture REAL post-removal evidence on the survivor (Server A)
         run: |
           echo "=== ipa-healthcheck after B's removal ===" | tee stale-ruv-healthcheck-A.json
@@ -374,4 +396,7 @@ jobs:
             stale-ruv-*.txt
             stale-ruv-*.json
             ruv-ldapi-probe-*.txt
+            stale-ruv-registered-*
+            stale-ruv-server-del.txt
+            stale-ruv-list-after-del.txt
           retention-days: 30
