@@ -331,7 +331,25 @@ jobs:
           # corresponding live server = a genuine stale RUV. ipa-diagnose
           # itself never performs any of this.
           docker exec ipa-a bash -c "echo '${IPA_PASSWORD}' | kinit admin" || true
-          docker exec ipa-a ipa server-del ipa-b.ruvlab.test --force --ignore-topology-disconnect --ignore-last-of-role > stale-ruv-server-del.txt 2>&1 || true
+          # Real output shapes of the commands the collector runs:
+          docker exec ipa-a ipa-replica-manage list ipa-a.ruvlab.test > stale-ruv-list-host-shape.txt 2>&1 || true
+          docker exec ipa-a ipa-replica-manage list -v ipa-a.ruvlab.test >> stale-ruv-list-host-shape.txt 2>&1 || true
+          cat stale-ruv-list-host-shape.txt
+          # `ipa server-del` was proven (real lab run) to clean the RUV itself,
+          # so it cannot create a stale RUV. Engineer the state an unclean
+          # decommission leaves behind: remove ipa-b's master registration and
+          # topology segments directly (lab-only, root LDAPI) but leave the
+          # replica update vector element alone.
+          SOCK='ldapi://%2Frun%2Fslapd-RUVLAB-TEST.socket'
+          BASE='dc=ruvlab,dc=test'
+          {
+            echo "--- segments mentioning ipa-b ---"
+            docker exec ipa-a ldapsearch -LLL -Y EXTERNAL -H "$SOCK" -b "cn=topology,cn=ipa,cn=etc,$BASE" "(|(ipaReplTopoSegmentLeftNode=ipa-b.ruvlab.test)(ipaReplTopoSegmentRightNode=ipa-b.ruvlab.test))" dn 2>&1 | grep -i '^dn:' | sed 's/^dn: //' > /tmp/segs.txt || true
+            cat /tmp/segs.txt
+            while read -r dn; do [ -n "$dn" ] && docker exec ipa-a ldapdelete -Y EXTERNAL -H "$SOCK" "$dn" 2>&1; done < /tmp/segs.txt || true
+            echo "--- delete master registration (recursive) ---"
+            docker exec ipa-a ldapdelete -r -Y EXTERNAL -H "$SOCK" "cn=ipa-b.ruvlab.test,cn=masters,cn=ipa,cn=etc,$BASE" 2>&1 || true
+          } > stale-ruv-server-del.txt 2>&1
           cat stale-ruv-server-del.txt
           sleep 30
           echo "=== list after server-del ===" | tee stale-ruv-list-after-del.txt
@@ -398,5 +416,6 @@ jobs:
             ruv-ldapi-probe-*.txt
             stale-ruv-registered-*
             stale-ruv-server-del.txt
+            stale-ruv-list-host-shape.txt
             stale-ruv-list-after-del.txt
           retention-days: 30

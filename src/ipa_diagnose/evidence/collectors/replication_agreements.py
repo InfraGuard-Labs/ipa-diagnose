@@ -268,6 +268,13 @@ def _alive_label(alive: Optional[bool]) -> str:
 
 
 _BLOCK_HEADER_RE = re.compile(r"^(\S[^:\s].*?):?\s*$")
+# Real non-verbose `ipa-replica-manage list [host]` output is one line per
+# server, `host: role` (captured from a real FreeIPA 4.13.3 two-node lab:
+# `ipa-b.ruvlab.test: master`). Found live: without this, the generic block
+# header regex swallowed the whole line as the peer NAME
+# ("ipa-b.ruvlab.test: master"), so a healthy peer never matched its RUV
+# host and was wrongly presented as a stale-RUV candidate.
+_ROLE_LINE_RE = re.compile(r"^([A-Za-z0-9][A-Za-z0-9.-]*):\s*(master|replica|hidden replica|hidden master)\s*$", re.IGNORECASE)
 _KV_RE = re.compile(r"^\s+([\w ]+?):\s*(.*)$")
 
 
@@ -315,6 +322,24 @@ def _parse_list_output(stdout: str, *, command: str) -> List[EvidenceItem]:
 
     for raw_line in stdout.splitlines():
         if not raw_line.strip():
+            continue
+        role_match = _ROLE_LINE_RE.match(raw_line)
+        if role_match:
+            flush()
+            current_peer = None
+            attrs = {}
+            peer = role_match.group(1)
+            items.append(
+                EvidenceItem(
+                    item_id=f"replication-agreement:{peer}",
+                    kind="replication_agreement",
+                    # No health information exists in this output shape, so the
+                    # status is "unknown" - never claimed green.
+                    summary=f"Replication peer {peer} ({role_match.group(2).lower()}): agreement health not reported by this output",
+                    data={"peer": peer, "status": "unknown", "last_update_status": "", "last_update_ended": None},
+                    provenance=provenance,
+                )
+            )
             continue
         kv_match = _KV_RE.match(raw_line)
         if kv_match:

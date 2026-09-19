@@ -317,3 +317,22 @@ def test_ldapi_fallback_unavailable_keeps_the_ruv_gap_visible(monkeypatch):
         ReplicationAgreementsCollector().collect_live()
     assert "Directory Manager password required" in str(excinfo.value)
     assert "LDAPI fallback unavailable" in str(excinfo.value)
+
+
+def test_real_role_line_output_yields_clean_peer_name_and_no_false_stale():
+    """Live-discovered defect (real FreeIPA 4.13.3 two-node lab): the
+    non-verbose `ipa-replica-manage list` output is `host: master`. The
+    parser used to keep the whole line as the peer NAME, so a healthy peer
+    never matched its RUV host and produced a false "Possible stale/orphaned
+    RUV entry" on a HEALTHY topology."""
+
+    real = "ipa-a.ruvlab.test: master\nipa-b.ruvlab.test: master\n"
+    agreements = _parse_list_output(real, command="test")
+    assert [a.data["peer"] for a in agreements] == ["ipa-a.ruvlab.test", "ipa-b.ruvlab.test"]
+    assert all(a.data["status"] == "unknown" for a in agreements)  # never claimed green
+    known = {"ipa-a.ruvlab.test"} | {a.data["peer"] for a in agreements}
+
+    from ipa_diagnose.evidence.collectors.replication_agreements import _parse_ldapi_ruv_ldif
+
+    ruv = _parse_ldapi_ruv_ldif(REAL_LDAPI_RUV_LDIF, known_hosts=known, hosts_known_complete=True, command="test")
+    assert {i.data["replica_id"]: i.data["alive"] for i in ruv} == {3: True, 4: True}
