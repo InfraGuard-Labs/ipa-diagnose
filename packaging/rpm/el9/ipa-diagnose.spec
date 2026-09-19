@@ -226,6 +226,11 @@ python3.11 -m pip wheel --no-build-isolation --no-deps --wheel-dir %{_pyproject_
 %{_bindir}/ipa-diagnose
 
 %changelog
+* Sat Sep 19 2026 Azeem Siddiqui <azeemsidd509@gmail.com> - 0.1.2-1
+- 0.1.2: evidence completeness (UNKNOWN / NOT_FULLY_VERIFIED, exit code 4),
+  explicit RUV state with a read-only LDAPI read (no Directory Manager password),
+  stopped-service findings no longer dropped, verify never reports RESOLVED
+  without evidence. See docs/evidence-completeness.md.
 * Thu Sep 17 2026 ipa-diagnose contributors <noreply@example.invalid> - 0.1.0-1
 - EL9 spec: build with python3.11 (bootstrap only, for setuptools/PEP 621
   support EL9's default python3.9 lacks), install/ship against python3.9

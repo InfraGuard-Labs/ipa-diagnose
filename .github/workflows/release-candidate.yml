@@ -1,0 +1,127 @@
+name: Release candidate (build + lifecycle)
+
+# Builds the exact candidate artifacts (wheel, sdist, RPMs for EL8/EL9/EL10/
+# Fedora, matching SRPMs, SHA256SUMS) and runs each RPM through a full
+# lifecycle in a CLEAN matching-distro container (checksum, dnf install,
+# dependency resolution, version, help, replay, json, no-healthcheck UNKNOWN,
+# uninstall, reinstall, upgrade). Also installs the wheel with pipx. Nothing
+# is published by this workflow. RHEL claims are proxy (Rocky/Alma) - see docs.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build wheel + sdist and verify
+        run: |
+          python -m pip install build twine
+          python -m build
+          twine check dist/*
+          cd dist && sha256sum * | tee SHA256SUMS-python
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python-dist
+          path: dist/
+
+  rpm:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {name: el8,      dockerfile: packaging/rpm/el8/Dockerfile.build,          images: "rockylinux:8 almalinux:8"}
+          - {name: el9,      dockerfile: packaging/rpm/el9/Dockerfile.build,          images: "rockylinux:9.3 almalinux:9"}
+          - {name: el10,     dockerfile: packaging/rpm/el10/Dockerfile.build,         images: "almalinux:10"}
+          - {name: fedora44, dockerfile: packaging/rpm/fedora/Dockerfile.build,       images: "fedora:44"}
+          - {name: fedora43, dockerfile: packaging/rpm/fedora/Dockerfile.build.f43,   images: "fedora:43"}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read version
+        run: echo "VERSION=$(grep -m1 '^version' pyproject.toml | sed -E 's/version = "(.*)"/\1/')" >> "$GITHUB_ENV"
+      - name: Build builder image
+        run: docker build -f ${{ matrix.dockerfile }} -t builder-${{ matrix.name }} .
+      - name: Build release 1 (candidate) and release 2 (upgrade test) RPMs + SRPMs
+        run: |
+          mkdir -p out/v1 out/v2
+          docker run --rm -e BUILD_RELEASE=1 -v "$PWD/out/v1:/rpmbuild" builder-${{ matrix.name }}
+          docker run --rm -e BUILD_RELEASE=2 -v "$PWD/out/v2:/rpmbuild" builder-${{ matrix.name }}
+          mkdir -p cand/v1 cand/v2 cand/srpm
+          cp out/v1/RPMS/noarch/*.rpm cand/v1/; cp out/v2/RPMS/noarch/*.rpm cand/v2/
+          cp out/v1/SRPMS/*.src.rpm cand/srpm/
+          ls -la cand/v1 cand/v2 cand/srpm
+          ( cd cand && sha256sum v1/*.rpm v2/*.rpm srpm/*.src.rpm > SHA256SUMS && cat SHA256SUMS )
+          # Also emit a per-artifact SHA256SUMS fragment (flat names) for the release
+          ( cd cand/v1 && sha256sum *.rpm > ../SHA256SUMS-${{ matrix.name }}.txt )
+          ( cd cand/srpm && sha256sum *.src.rpm >> ../SHA256SUMS-${{ matrix.name }}.txt )
+      - name: RPM lifecycle in CLEAN matching containers
+        run: |
+          mkdir -p logs
+          rc_all=0
+          for img in ${{ matrix.images }}; do
+            tag=$(echo "$img" | tr ':/' '__')
+            echo "############ $img ############"
+            docker run --rm --name lc \
+              -e EXPECT_VERSION="$VERSION" -e PLATFORM="${{ matrix.name }} on $img" \
+              -v "$PWD/cand/v1:/rpms/v1:ro" -v "$PWD/cand/v2:/rpms/v2:ro" \
+              -v "$PWD/cand/SHA256SUMS:/rpms/SHA256SUMS:ro" \
+              -v "$PWD/tests/fixtures:/fixtures:ro" \
+              -v "$PWD/packaging/rpm/lifecycle-test.sh:/lifecycle-test.sh:ro" \
+              "$img" bash /lifecycle-test.sh 2>&1 | tee "logs/lifecycle-${{ matrix.name }}-$tag.log" || true
+            grep -q "0 failed" "logs/lifecycle-${{ matrix.name }}-$tag.log" || rc_all=1
+          done
+          exit $rc_all
+      - name: Upload candidate RPMs + logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpm-${{ matrix.name }}
+          path: |
+            cand/v1/
+            cand/srpm/
+            cand/SHA256SUMS
+            cand/SHA256SUMS-${{ matrix.name }}.txt
+            logs/
+          retention-days: 30
+
+  pipx-path:
+    needs: python
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {name: el8,      image: "rockylinux:8",   prep: "dnf install -y python39 && python3.9 -m pip install --user pipx && export PATH=$HOME/.local/bin:$PATH"}
+          - {name: el9,      image: "rockylinux:9.3", prep: "dnf install -y epel-release && dnf install -y pipx"}
+          - {name: el10,     image: "almalinux:10",   prep: "dnf install -y epel-release && dnf install -y pipx"}
+          - {name: fedora44, image: "fedora:44",      prep: "dnf install -y pipx"}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: python-dist
+          path: dist
+      - name: Install the candidate wheel with pipx (README path) in a clean container
+        run: |
+          mkdir -p logs
+          docker run --rm -v "$PWD/dist:/dist:ro" -v "$PWD/tests/fixtures:/fixtures:ro" "${{ matrix.image }}" bash -c '
+            set -x
+            ${{ matrix.prep }}
+            export PATH=$HOME/.local/bin:$PATH
+            pipx install /dist/*.whl
+            ipa-diagnose --version
+            ipa-diagnose --replay /fixtures/replication/healthy | head -12
+            ipa-diagnose; echo "exit(no healthcheck)=$?"
+          ' 2>&1 | tee "logs/pipx-${{ matrix.name }}.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pipx-${{ matrix.name }}
+          path: logs/

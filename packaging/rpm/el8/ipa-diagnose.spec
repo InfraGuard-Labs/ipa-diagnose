@@ -215,5 +215,10 @@ PYTHONPATH=src:%{buildroot}%{python3_sitelib} %{__python3} -m pytest tests/unit 
 %{python3_sitelib}/mdurl-*.dist-info/
 
 %changelog
+* Sat Sep 19 2026 Azeem Siddiqui <azeemsidd509@gmail.com> - 0.1.2-1
+- 0.1.2: evidence completeness (UNKNOWN / NOT_FULLY_VERIFIED, exit code 4),
+  explicit RUV state with a read-only LDAPI read (no Directory Manager password),
+  stopped-service findings no longer dropped, verify never reports RESOLVED
+  without evidence. See docs/evidence-completeness.md.
 * Thu Sep 17 2026 ipa-diagnose contributors <noreply@example.invalid> - 0.1.0-1
 - Initial EL8 (python39 AppStream module) package.

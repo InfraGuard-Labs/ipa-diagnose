@@ -95,6 +95,11 @@ sed -i -E 's/^license = "Apache-2\.0"/license = {text = "Apache-2.0"}/' pyprojec
 %{_bindir}/ipa-diagnose
 
 %changelog
+* Sat Sep 19 2026 Azeem Siddiqui <azeemsidd509@gmail.com> - 0.1.2-1
+- 0.1.2: evidence completeness (UNKNOWN / NOT_FULLY_VERIFIED, exit code 4),
+  explicit RUV state with a read-only LDAPI read (no Directory Manager password),
+  stopped-service findings no longer dropped, verify never reports RESOLVED
+  without evidence. See docs/evidence-completeness.md.
 * Tue Sep 15 2026 ipa-diagnose contributors <noreply@example.invalid> - 0.1.0-1
 - Initial EL10 package (AlmaLinux/Rocky/RHEL 10). Patches the vendored
   pyproject.toml at build time only to match EL10's setuptools 69.0.3

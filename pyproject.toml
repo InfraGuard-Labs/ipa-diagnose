@@ -9,7 +9,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ipa-diagnose"
-version = "0.1.1"
+version = "0.1.2"
 description = "Evidence-grounded diagnostic and correlation engine for FreeIPA / Red Hat IdM administrators"
 readme = "README.md"
 license = "Apache-2.0"
