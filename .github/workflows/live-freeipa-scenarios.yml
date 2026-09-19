@@ -1,0 +1,180 @@
+name: Live FreeIPA failure scenarios
+
+# Manually triggered only. One real single-node FreeIPA server (throwaway,
+# created and destroyed inside the job), then controlled, reversible faults
+# (stop a service -> ipa-diagnose -> restore -> ipa-diagnose verify) plus
+# missing-dependency / missing-privilege scenarios. Every output is REAL
+# LIVE CAPTURE evidence uploaded as an artifact. ipa-diagnose itself never
+# changes anything; only this lab script stops/starts services on the
+# throwaway server.
+on:
+  workflow_dispatch:
+    inputs:
+      install_source:
+        description: "'source' (this checked-out commit, default) or 'pypi' (public artifact)"
+        required: false
+        default: "source"
+        type: string
+
+env:
+  IPA_PASSWORD: LiveLabSecret123
+
+jobs:
+  scenarios:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Boot a real FreeIPA server (integrated DNS + CA)
+        run: |
+          set +e
+          docker volume create ipa-data
+          docker run -d --name ipa-s --privileged --cgroupns=host \
+            -v /sys/fs/cgroup:/sys/fs/cgroup:rw -v ipa-data:/data \
+            -h ipa01.lab.test -e PASSWORD=${IPA_PASSWORD} \
+            freeipa/freeipa-server:fedora-43 \
+            ipa-server-install -U -r LAB.TEST --no-ntp --skip-mem-check --setup-dns --auto-forwarders --auto-reverse
+          for i in $(seq 1 90); do
+            sleep 10
+            if docker exec ipa-s systemctl is-active ipa.service 2>/dev/null | grep -qx active; then echo "active after ~$((i*10))s"; sleep 20; break; fi
+          done
+          docker exec ipa-s ipactl status || true
+
+      - name: Install ipa-diagnose
+        run: |
+          set +e
+          docker exec ipa-s bash -c 'cp /etc/resolv.conf /etc/resolv.conf.bak; printf "nameserver 1.1.1.1\nnameserver 8.8.8.8\n" > /etc/resolv.conf'
+          docker exec ipa-s bash -c 'for a in 1 2 3; do dnf install -y python3-pip git && break; sleep 15; done; python3 -m pip install pipx'
+          if [ "${{ inputs.install_source }}" = "pypi" ]; then
+            docker exec ipa-s bash -c "python3 -m pipx install ipa-diagnose"
+          else
+            docker cp "$GITHUB_WORKSPACE" ipa-s:/ipa-diagnose-source
+            docker exec ipa-s bash -c "python3 -m pipx install /ipa-diagnose-source"
+          fi
+          docker exec ipa-s cp /etc/resolv.conf.bak /etc/resolv.conf
+          docker exec ipa-s /root/.local/bin/ipa-diagnose --version | tee env.txt
+          docker exec ipa-s rpm -q freeipa-server freeipa-healthcheck 389-ds-base python3 | tee -a env.txt
+          docker exec ipa-s cat /etc/os-release | tee -a env.txt
+
+      - name: S0 healthy baseline (reference)
+        run: |
+          set +e
+          mkdir -p out
+          docker exec ipa-s /root/.local/bin/ipa-diagnose --details > out/s0-healthy.txt 2>&1; echo "exit=$?" >> out/s0-healthy.txt || true
+          docker exec ipa-s /root/.local/bin/ipa-diagnose --json > out/s0-healthy.json 2>/dev/null || true
+          head -20 out/s0-healthy.txt
+
+      - name: S1 dependency failures (ipa-healthcheck missing; ldapsearch missing)
+        run: |
+          set +e
+          docker exec ipa-s mv /usr/bin/ipa-healthcheck /usr/bin/ipa-healthcheck.off || true
+          docker exec ipa-s /root/.local/bin/ipa-diagnose --details > out/s1-no-healthcheck.txt 2>&1; echo "exit=$?" >> out/s1-no-healthcheck.txt || true
+          docker exec ipa-s /root/.local/bin/ipa-diagnose --json > out/s1-no-healthcheck.json 2>/dev/null || true
+          docker exec ipa-s mv /usr/bin/ipa-healthcheck.off /usr/bin/ipa-healthcheck || true
+          which_ldapsearch=$(docker exec ipa-s which ldapsearch || true)
+          docker exec ipa-s mv "$which_ldapsearch" "$which_ldapsearch.off" || true
+          docker exec ipa-s /root/.local/bin/ipa-diagnose --details > out/s1-no-ldapsearch.txt 2>&1; echo "exit=$?" >> out/s1-no-ldapsearch.txt || true
+          docker exec ipa-s /root/.local/bin/ipa-diagnose --json > out/s1-no-ldapsearch.json 2>/dev/null || true
+          docker exec ipa-s mv "$which_ldapsearch.off" "$which_ldapsearch" || true
+          head -12 out/s1-no-healthcheck.txt; head -12 out/s1-no-ldapsearch.txt
+
+      - name: S2 unprivileged run (non-root user)
+        run: |
+          set +e
+          docker exec ipa-s bash -c 'chmod -R a+rX /root/.local /root/.local/pipx 2>/dev/null; chmod a+x /root' || true
+          docker exec -u nobody ipa-s /root/.local/bin/ipa-diagnose --details > out/s2-nonroot.txt 2>&1; echo "exit=$?" >> out/s2-nonroot.txt || true
+          head -25 out/s2-nonroot.txt
+
+      - name: S3 Directory Server stopped -> diagnose -> restore -> verify
+        run: |
+          set +e
+          docker exec ipa-s systemctl stop dirsrv@LAB-TEST.service || true
+          sleep 5
+          docker exec ipa-s /root/.local/bin/ipa-diagnose --details > out/s3-dirsrv-down.txt 2>&1; echo "exit=$?" >> out/s3-dirsrv-down.txt || true
+          docker exec ipa-s /root/.local/bin/ipa-diagnose --json > out/s3-dirsrv-down.json 2>/dev/null || true
+          docker exec ipa-s systemctl start dirsrv@LAB-TEST.service || true
+          sleep 30; docker exec ipa-s ipactl status > out/s3-ipactl-after.txt 2>&1 || true
+          docker exec ipa-s /root/.local/bin/ipa-diagnose verify > out/s3-verify.txt 2>&1; echo "exit=$?" >> out/s3-verify.txt || true
+          head -25 out/s3-dirsrv-down.txt; cat out/s3-verify.txt | head -15
+
+      - name: S4 DNS (named) stopped -> diagnose -> restore -> verify
+        run: |
+          set +e
+          docker exec ipa-s systemctl list-units --all --no-legend 'named*' > out/s4-named-units.txt 2>&1 || true
+          NAMED=$(docker exec ipa-s systemctl list-units --all --no-legend 'named*' | awk '{print $1}' | head -1)
+          echo "named unit: $NAMED"
+          docker exec ipa-s systemctl stop "$NAMED" || true
+          sleep 5
+          docker exec ipa-s /root/.local/bin/ipa-diagnose --details > out/s4-dns-down.txt 2>&1; echo "exit=$?" >> out/s4-dns-down.txt || true
+          docker exec ipa-s /root/.local/bin/ipa-diagnose --json > out/s4-dns-down.json 2>/dev/null || true
+          docker exec ipa-s systemctl start "$NAMED" || true
+          sleep 20
+          docker exec ipa-s /root/.local/bin/ipa-diagnose verify > out/s4-verify.txt 2>&1; echo "exit=$?" >> out/s4-verify.txt || true
+          head -25 out/s4-dns-down.txt; head -15 out/s4-verify.txt
+
+      - name: S5 Kerberos KDC stopped -> diagnose -> restore -> verify
+        run: |
+          set +e
+          docker exec ipa-s systemctl stop krb5kdc.service || true
+          sleep 5
+          docker exec ipa-s /root/.local/bin/ipa-diagnose --details > out/s5-kdc-down.txt 2>&1; echo "exit=$?" >> out/s5-kdc-down.txt || true
+          docker exec ipa-s /root/.local/bin/ipa-diagnose --json > out/s5-kdc-down.json 2>/dev/null || true
+          docker exec ipa-s systemctl start krb5kdc.service || true
+          sleep 15
+          docker exec ipa-s /root/.local/bin/ipa-diagnose verify > out/s5-verify.txt 2>&1; echo "exit=$?" >> out/s5-verify.txt || true
+          head -25 out/s5-kdc-down.txt; head -15 out/s5-verify.txt
+
+      - name: S6 certmonger real capture + certmonger stopped -> diagnose -> restore
+        run: |
+          set +e
+          docker exec ipa-s getcert list > out/s6-getcert-list.txt 2>&1 || true
+          docker exec ipa-s systemctl stop certmonger.service || true
+          sleep 5
+          docker exec ipa-s /root/.local/bin/ipa-diagnose --details > out/s6-certmonger-down.txt 2>&1; echo "exit=$?" >> out/s6-certmonger-down.txt || true
+          docker exec ipa-s /root/.local/bin/ipa-diagnose --json > out/s6-certmonger-down.json 2>/dev/null || true
+          docker exec ipa-s systemctl start certmonger.service || true
+          sleep 15
+          docker exec ipa-s /root/.local/bin/ipa-diagnose verify > out/s6-verify.txt 2>&1; echo "exit=$?" >> out/s6-verify.txt || true
+          head -30 out/s6-getcert-list.txt; head -25 out/s6-certmonger-down.txt
+
+      - name: S7 multiple simultaneous failures (DNS + KDC) -> diagnose -> restore
+        run: |
+          set +e
+          NAMED=$(docker exec ipa-s systemctl list-units --all --no-legend 'named*' | awk '{print $1}' | head -1)
+          docker exec ipa-s systemctl stop "$NAMED" krb5kdc.service || true
+          sleep 5
+          docker exec ipa-s /root/.local/bin/ipa-diagnose --details > out/s7-multi.txt 2>&1; echo "exit=$?" >> out/s7-multi.txt || true
+          docker exec ipa-s /root/.local/bin/ipa-diagnose --json > out/s7-multi.json 2>/dev/null || true
+          docker exec ipa-s systemctl start "$NAMED" krb5kdc.service || true
+          sleep 20
+          docker exec ipa-s /root/.local/bin/ipa-diagnose verify > out/s7-verify.txt 2>&1; echo "exit=$?" >> out/s7-verify.txt || true
+          head -30 out/s7-multi.txt
+
+      - name: S8 ai-preview on real evidence (redaction, no provider call)
+        run: |
+          set +e
+          docker exec ipa-s /root/.local/bin/ipa-diagnose ai-preview > out/s8-ai-preview.txt 2>&1; echo "exit=$?" >> out/s8-ai-preview.txt || true
+          head -40 out/s8-ai-preview.txt
+
+      - name: S9 timing (performance) - 3 timed runs
+        run: |
+          set +e
+          for n in 1 2 3; do
+            /usr/bin/time -f "run $n: %e s wall" docker exec ipa-s /root/.local/bin/ipa-diagnose > /dev/null 2>> out/s9-timing.txt || true
+          done
+          cat out/s9-timing.txt
+
+      - name: Cleanup
+        if: always()
+        run: docker rm -f ipa-s 2>/dev/null || true; docker volume rm ipa-data 2>/dev/null || true
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-scenarios-evidence
+          path: |
+            env.txt
+            out/
+          retention-days: 30
