@@ -139,10 +139,10 @@ jobs:
 
       - name: Boot primary (Server A)
         run: |
-          docker network create ipa-net
+          docker network create --subnet 172.30.0.0/24 ipa-net
           docker volume create ipa-a-data
           docker pull freeipa/freeipa-server:fedora-43
-          docker run -d --name ipa-a --network ipa-net \
+          docker run -d --name ipa-a --network ipa-net --ip 172.30.0.10 \
             --privileged --cgroupns=host \
             -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
             -v ipa-a-data:/data \
@@ -159,8 +159,12 @@ jobs:
 
       - name: Boot replica (Server B) and join to Server A
         run: |
+          # Root cause of earlier Server B rollbacks: 'Preferred host
+          # ipa-b.ruvlab.test does not provide DNS' - the replica must be
+          # able to resolve itself and the realm via the IPA DNS on A.
+          docker exec ipa-a bash -c "echo '${IPA_PASSWORD}' | kinit admin && ipa dnsrecord-add ruvlab.test ipa-b --a-rec 172.30.0.11"
           docker volume create ipa-b-data
-          docker run -d --name ipa-b --network ipa-net \
+          docker run -d --name ipa-b --network ipa-net --ip 172.30.0.11 --dns 172.30.0.10 \
             --privileged --cgroupns=host \
             -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
             -v ipa-b-data:/data \
