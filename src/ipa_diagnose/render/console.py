@@ -72,9 +72,9 @@ def render_report(
         if report.evidence_completeness.level == "complete":
             if report.undiagnosed_findings or report.unclaimed_warnings:
                 console.print(
-                    "[bold green]No problems detected by any diagnostic rule[/bold green] and all expected evidence "
-                    "was collected. Note: ipa-healthcheck reported findings that no ipa-diagnose rule explains "
-                    "(listed below) - they are NOT confirmed healthy."
+                    "No problem was diagnosed by any rule and all expected evidence was collected, [bold yellow]but "
+                    "ipa-healthcheck reported findings that no ipa-diagnose rule can explain[/bold yellow] "
+                    "(listed below). They are not confirmed harmless - review them."
                 )
             else:
                 console.print(
@@ -292,6 +292,7 @@ def _print_evidence_banner(report: DiagnosisReport, console: Console) -> None:
 
 
 _UNDIAGNOSED_DEFAULT_LIMIT = 8
+_UNDIAGNOSED_DETAILS_LIMIT = 200
 
 
 def _print_undiagnosed(report: DiagnosisReport, console: Console, *, details: bool = False) -> None:
@@ -302,19 +303,21 @@ def _print_undiagnosed(report: DiagnosisReport, console: Console, *, details: bo
         return
     console.print(Rule("UNDIAGNOSED ipa-healthcheck FINDINGS", style="yellow"))
     console.print(
-        "[dim]ipa-diagnose has no deterministic rule for these. That does not mean they are harmless - "
-        "review them with ipa-healthcheck. No cause is claimed.[/dim]"
+        f"[dim]{len(items)} finding(s) not explained by any ipa-diagnose rule. That does not mean they are "
+        "harmless - review them with ipa-healthcheck. No cause is claimed.[/dim]"
     )
-    shown = items if details else items[:_UNDIAGNOSED_DEFAULT_LIMIT]
+    shown = items[: _UNDIAGNOSED_DETAILS_LIMIT if details else _UNDIAGNOSED_DEFAULT_LIMIT]
     for u in shown:
         crash = " [check crashed]" if u.crashed else ""
-        console.print(f"  • [{escape(u.severity)}] {escape(u.source)}.{escape(u.check)}{escape(crash)}: {escape(u.message)}")
+        keyed = f" - {u.key}" if u.key and u.key not in u.message else ""
+        console.print(f"  • \[{escape(u.severity)}] {escape(u.source)}.{escape(u.check)}{escape(crash)}: {escape(u.message)}{escape(keyed)}")
         if details:
-            since = f"known upstream since ipa-healthcheck {u.check_known_since}" if u.check_known_since else "not in this build's upstream check catalog"
+            since = f"check available since ipa-healthcheck {u.check_known_since}" if u.check_known_since else "not in this build's upstream check catalog"
             ver = f"; installed ipa-healthcheck {u.ipa_healthcheck_version}" if u.ipa_healthcheck_version else ""
-            console.print(f"    [dim]{escape(u.reason)} ({escape(since)}{escape(ver)})[/dim]")
+            console.print(f"    [dim]{escape(since)}{escape(ver)}[/dim]" if not (u.crashed or not u.check_known_since) else f"    [dim]{escape(u.reason)} ({escape(since)}{escape(ver)})[/dim]")
     if len(shown) < len(items):
-        console.print(f"  [dim]... and {len(items) - len(shown)} more (use --details or --json for all)[/dim]")
+        hint = "use --json for all" if details else "use --details or --json for all"
+        console.print(f"  [dim]... and {len(items) - len(shown)} more ({hint})[/dim]")
     console.print()
 
 

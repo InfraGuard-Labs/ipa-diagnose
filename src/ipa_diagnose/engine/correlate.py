@@ -165,6 +165,31 @@ def build_report(
     )
 
 
+class _KeepUnknown(dict):
+    def __missing__(self, k):
+        return "{" + k + "}"
+
+
+def _display_message(f) -> str:
+    """The finding's message with upstream's own {placeholders} filled from its keywords. A result with
+    no message shows only which fields it carries, never a raw dict dump."""
+
+    kw = f.keywords if isinstance(f.keywords, dict) else {}
+    text = f.message or ""
+    if not text:
+        names = ", ".join(sanitize_text(k, 40) for k in list(kw)[:8])
+        return f"(no message; fields: {names})" if names else "(no message)"
+    if "{" in text:
+        try:
+            text = text.format_map(_KeepUnknown({str(k): sanitize_text(v, 80) for k, v in kw.items()}))
+        except (ValueError, IndexError, KeyError, AttributeError):
+            pass
+    # Local output may be pasted into tickets: mask secret-looking text (same patterns as the AI path).
+    from ipa_diagnose.privacy.redact import redact_text
+
+    return redact_text(sanitize_text(text, 300)).redacted_text
+
+
 def _undiagnosed_findings(bundle: EvidenceBundle, diagnoses: List[Diagnosis]) -> List[UndiagnosedFinding]:
     """Every WARNING-or-worse (or unrecognized-severity) finding that no diagnosis cites as
     evidence. A finding whose id is shared with another finding is ambiguous and never counts
@@ -175,7 +200,8 @@ def _undiagnosed_findings(bundle: EvidenceBundle, diagnoses: List[Diagnosis]) ->
     id_counts: Dict[str, int] = {}
     for f in bundle.findings:
         id_counts[f.finding_id] = id_counts.get(f.finding_id, 0) + 1
-    claimed = {r.evidence_id for d in diagnoses for r in list(d.evidence_for) + list(d.evidence_against)}
+    # Only positive citations count: a finding cited merely as counter-evidence is still unexplained.
+    claimed = {r.evidence_id for d in diagnoses for r in d.evidence_for}
     version = bundle.environment.ipa_healthcheck_version if bundle.environment else None
     out: List[UndiagnosedFinding] = []
     for f in bundle.findings:
@@ -191,12 +217,16 @@ def _undiagnosed_findings(bundle: EvidenceBundle, diagnoses: List[Diagnosis]) ->
             reason = "ipa-diagnose has no rule for this check, and it is not in this build's catalog of upstream checks (possibly newer or custom)."
         else:
             reason = "ipa-diagnose has no rule that explains this finding; it may or may not matter."
+        kw = f.keywords if isinstance(f.keywords, dict) else {}
+        key = kw.get("key")
+        key_text = sanitize_text(key, 160) if isinstance(key, (str, int)) and str(key) != f.check else None
         out.append(
             UndiagnosedFinding(
                 source=sanitize_text(f.source, 120),
                 check=sanitize_text(f.check, 120),
                 severity=f.severity.value,
-                message=sanitize_text(f.message or f.keywords or "", 300),
+                message=_display_message(f),
+                key=key_text,
                 reason=reason,
                 crashed=crashed,
                 check_known_since=known[0] if known else None,

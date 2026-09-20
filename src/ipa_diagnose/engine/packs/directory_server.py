@@ -502,7 +502,7 @@ def _ds_cert_expiry_findings(bundle: EvidenceBundle) -> List[Finding]:
 
 
 def _recheck_nss(bundle: EvidenceBundle) -> bool:
-    if False:  # ipa-healthcheck has no NSS DB-format check (see _DS_CERT_SOURCE); journal evidence only
+    if False:  # noqa: SIM223 - deliberately inert: ipa-healthcheck has no NSS DB-format check; journal evidence only
         return False
     if _items_by_category(bundle, "dirsrv_journal_line", "nss_tls"):
         return False
@@ -817,7 +817,7 @@ class DsCertificateExpiryRule(DiagnosticRule):
                 rationale="Direct report from ipa-healthcheck's Directory Server certificate check (DSCERTLE0001/0002).",
                 corroborating_evidence_count=len(relevant),
             ),
-            severity=Severity.ERROR if any_expired else Severity.WARNING,
+            severity=worst.severity if worst.severity.rank >= Severity.WARNING.rank else Severity.ERROR,
             evidence_for=[_ref_f(f, f"{f.qualified_check} reports: {f.message}") for f in relevant],
             impact=(
                 "TLS/LDAPS connections to this Directory Server can fail or be refused by clients once the certificate "

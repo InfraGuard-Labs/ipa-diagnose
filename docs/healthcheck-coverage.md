@@ -25,9 +25,9 @@ An UNDIAGNOSED finding is **not** a statement that it is harmless.
 ## Where it appears
 
 * Console: a short *UNDIAGNOSED ipa-healthcheck FINDINGS* section (first 8 by default);
-  `--details` lists all, with the reason, the upstream release the check first appeared in, and
+  `--details` lists all, with the reason, the upstream ipa-healthcheck release the check became available in, and
   the installed ipa-healthcheck version.
-* JSON: `undiagnosed_findings` — a list of `{source, check, severity, message, reason,
+* JSON: `undiagnosed_findings` — a list of `{source, check, severity, message, key, reason,
   check_crashed, check_known_since_ipa_healthcheck, ipa_healthcheck_version}`. All text is
   sanitised (terminal escapes removed, length bounded) and is never executed. The older
   `unclaimed_warnings` count is kept unchanged.

@@ -96,12 +96,15 @@ def report_to_dict(report: DiagnosisReport, ai_explanations: Dict[str, str] = No
         "packs_evaluated": report.packs_evaluated,
         "collection_errors": report.collection_errors,
         "unclaimed_warnings": report.unclaimed_warnings,
+        "has_undiagnosed_findings": bool(report.undiagnosed_findings),
+        "undiagnosed_count": len(report.undiagnosed_findings),
         "undiagnosed_findings": [
             {
                 "source": u.source,
                 "check": u.check,
                 "severity": u.severity,
                 "message": u.message,
+                "key": u.key,
                 "reason": u.reason,
                 "check_crashed": u.crashed,
                 "check_known_since_ipa_healthcheck": u.check_known_since,

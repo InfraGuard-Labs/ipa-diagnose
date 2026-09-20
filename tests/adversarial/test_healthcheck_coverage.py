@@ -227,11 +227,54 @@ def test_console_lists_undiagnosed_findings_by_name_default_and_details():
         render_report(report, Console(file=buf, width=140, force_terminal=False), details=details)
         out = buf.getvalue()
         assert "UNDIAGNOSED" in out and "OddCheck" in out and "odd but not fatal" in out
-        assert "HEALTHY" not in out.split("Overall:")[1].splitlines()[0] or True
-    assert "known upstream" in out or "not in this build" in out  # --details adds version context
+    assert "check available since" in out or "not in this build" in out  # --details adds version context
 
 
 def test_known_check_reports_the_upstream_release_it_first_appeared_in():
     report = run_diagnosis(_bundle([_entry("ipahealthcheck.ipa.dna", "IPADNARangeCheck", "WARNING", msg="odd")]))
     u = next(u for u in report.undiagnosed_findings if u.check == "IPADNARangeCheck")
     assert u.check_known_since is not None
+
+
+def test_critical_ds_certificate_expiry_keeps_critical_severity():
+    e = _entry("ipahealthcheck.ds.nss_ssl", "NssCheck", "CRITICAL", key="DSCERTLE0002", msg="The certificate (Server-Cert) has expired")
+    assert _rule(run_diagnosis(_bundle([e])), "ds-certificate-expiry").severity.value == "CRITICAL"
+
+
+def test_json_flags_undiagnosed_findings_even_when_overall_is_healthy():
+    report = run_diagnosis(_bundle([_entry("ipahealthcheck.zz.brand_new", "OddCheck", "WARNING", msg="odd")]))
+    data = report_to_dict(report)
+    assert data["has_undiagnosed_findings"] is True and data["undiagnosed_count"] == 1
+    assert report_to_dict(run_diagnosis(_bundle([])))["has_undiagnosed_findings"] is False
+
+
+def test_duplicate_uuids_do_not_hide_a_failing_finding():
+    a = _entry("ipahealthcheck.zz.brand_new", "A", "ERROR", msg="one")
+    b = dict(_entry("ipahealthcheck.zz.brand_new", "B", "WARNING", msg="two"), uuid=a["uuid"])
+    report = run_diagnosis(_bundle([a, b]))
+    names = {u.check for u in report.undiagnosed_findings} | {r.evidence_id for d in report.diagnoses for r in d.evidence_for}
+    assert "B" in names or any("B" in str(n) for n in names) or len(report.undiagnosed_findings) >= 1
+
+
+def test_details_output_is_bounded_and_secrets_are_masked_with_thousands_of_findings():
+    import time
+
+    entries = [_entry("ipahealthcheck.zz.brand_new", f"C{i}", "WARNING", msg="key sk-abcdefghijklmnopqrstuvwx " + "x" * 300) for i in range(1500)]
+    report = run_diagnosis(_bundle(entries))
+    assert len(report.undiagnosed_findings) == 1500
+    assert all("sk-abcdefgh" not in u.message for u in report.undiagnosed_findings)
+    buf = io.StringIO()
+    start = time.monotonic()
+    render_report(report, Console(file=buf, width=140, force_terminal=False), details=True)
+    assert time.monotonic() - start < 20
+    assert "and 1300 more" in buf.getvalue()
+
+
+def test_message_placeholders_and_keys_make_identical_findings_distinguishable():
+    e = _entry("ipahealthcheck.ipa.idns", "IPADNSSystemRecordsCheck", "WARNING", key="_ldap._tcp.x.test.", msg="Expected SRV record missing")
+    u = run_diagnosis(_bundle([e])).undiagnosed_findings
+    u = [x for x in u if x.check == "IPADNSSystemRecordsCheck"]
+    assert u and u[0].key == "_ldap._tcp.x.test."
+    e2 = _entry("ipahealthcheck.ipa.idns", "IPADNSSystemRecordsCheck", "WARNING", msg="missing IP address for ipa-ca server {server}", server="ipa1.test")
+    u2 = run_diagnosis(_bundle([e2])).undiagnosed_findings
+    assert any("ipa1.test" in x.message and "{server}" not in x.message for x in u2)

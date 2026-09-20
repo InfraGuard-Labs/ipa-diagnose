@@ -228,6 +228,8 @@ class UndiagnosedFinding:
     """First upstream ipa-healthcheck release this check appears in (None = unknown to this build)."""
     ipa_healthcheck_version: Optional[str] = None
     finding_id: str = ""
+    key: Optional[str] = None
+    """ipa-healthcheck's own ``kw.key`` (e.g. the DNS record name), which tells apart findings with identical text."""
 
 
 @dataclasses.dataclass
