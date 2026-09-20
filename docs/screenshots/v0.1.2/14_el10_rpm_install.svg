@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1363" height="1147" viewBox="0 0 1363 1147" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" font-size="13.5">
+<rect width="1363" height="1147" rx="8" fill="#0d1117"/>
+<rect width="1363" height="34" rx="8" fill="#161b22"/>
+<circle cx="18" cy="17" r="5" fill="#ff5f56"/><circle cx="36" cy="17" r="5" fill="#ffbd2e"/><circle cx="54" cy="17" r="5" fill="#27c93f"/>
+<text x="76" y="22" fill="#8b949e">dnf install ./ipa-diagnose-0.1.2-1.el10.el10.noarch.rpm  (clean AlmaLinux 10 container)</text>
+<rect x="18" y="44" width="1327" height="22" rx="4" fill="#12261e"/>
+<text x="26" y="60" fill="#3fb950" font-weight="bold">REAL CONTAINER CAPTURE - AlmaLinux 10 clean container (RHEL 10 stand-in, NOT RHEL) - RPM lifecycle 20/20 - GitHub Actions run 35495086719 (source bdac609)</text>
+<text x="18" y="89" fill="#c9d1d9" xml:space="preserve">=== 2. Fresh install from the candidate RPM (dnf install ./file) ===</text>
+<text x="18" y="106" fill="#c9d1d9" xml:space="preserve">AlmaLinux 10 - CRB                               52 kB/s | 3.8 kB     00:00    </text>
+<text x="18" y="123" fill="#c9d1d9" xml:space="preserve">Extra Packages for Enterprise Linux 10 - x86_64 1.2 MB/s | 6.7 MB     00:05    </text>
+<text x="18" y="140" fill="#3fb950" xml:space="preserve">Dependencies resolved.</text>
+<text x="18" y="157" fill="#c9d1d9" xml:space="preserve">================================================================================</text>
+<text x="18" y="174" fill="#c9d1d9" xml:space="preserve"> Package                   Arch      Version              Repository       Size</text>
+<text x="18" y="191" fill="#c9d1d9" xml:space="preserve">================================================================================</text>
+<text x="18" y="208" fill="#c9d1d9" xml:space="preserve">Installing:</text>
+<text x="18" y="225" fill="#c9d1d9" xml:space="preserve"> ipa-diagnose              noarch    0.1.2-1.el10.el10    @commandline    257 k</text>
+<text x="18" y="242" fill="#c9d1d9" xml:space="preserve">Installing dependencies:</text>
+<text x="18" y="259" fill="#c9d1d9" xml:space="preserve"> python3-markdown-it-py    noarch    3.0.0-7.el10_0       epel            164 k</text>
+<text x="18" y="276" fill="#c9d1d9" xml:space="preserve"> python3-mdurl             noarch    0.1.2-8.el10_0       epel             26 k</text>
+<text x="18" y="293" fill="#c9d1d9" xml:space="preserve"> python3-pygments          noarch    2.18.0-1.el10        crb             2.1 M</text>
+<text x="18" y="310" fill="#c9d1d9" xml:space="preserve"> python3-rich              noarch    14.3.0-1.el10_2      epel            569 k</text>
+<text x="18" y="327" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="344" fill="#c9d1d9" xml:space="preserve">Transaction Summary</text>
+<text x="18" y="361" fill="#c9d1d9" xml:space="preserve">================================================================================</text>
+<text x="18" y="378" fill="#c9d1d9" xml:space="preserve">Install  5 Packages</text>
+<text x="18" y="395" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="412" fill="#c9d1d9" xml:space="preserve">Total size: 3.1 M</text>
+<text x="18" y="429" fill="#c9d1d9" xml:space="preserve">Total download size: 2.9 M</text>
+<text x="18" y="446" fill="#c9d1d9" xml:space="preserve">Installed size: 12 M</text>
+<text x="18" y="463" fill="#c9d1d9" xml:space="preserve">Downloading Packages:</text>
+<text x="18" y="480" fill="#c9d1d9" xml:space="preserve">(1/4): python3-pygments-2.18.0-1.el10.noarch.rp  29 MB/s | 2.1 MB     00:00    </text>
+<text x="18" y="497" fill="#c9d1d9" xml:space="preserve">(2/4): python3-mdurl-0.1.2-8.el10_0.noarch.rpm  341 kB/s |  26 kB     00:00    </text>
+<text x="18" y="514" fill="#c9d1d9" xml:space="preserve">(3/4): python3-markdown-it-py-3.0.0-7.el10_0.no 1.2 MB/s | 164 kB     00:00    </text>
+<text x="18" y="531" fill="#c9d1d9" xml:space="preserve">(4/4): python3-rich-14.3.0-1.el10_2.noarch.rpm  4.1 MB/s | 569 kB     00:00    </text>
+<text x="18" y="548" fill="#c9d1d9" xml:space="preserve">--------------------------------------------------------------------------------</text>
+<text x="18" y="565" fill="#c9d1d9" xml:space="preserve">Total                                           6.9 MB/s | 2.9 MB     00:00     </text>
+<text x="18" y="582" fill="#c9d1d9" xml:space="preserve">Extra Packages for Enterprise Linux 10 - x86_64 1.6 MB/s | 1.6 kB     00:00    </text>
+<text x="18" y="599" fill="#c9d1d9" xml:space="preserve">Importing GPG key 0xE37ED158:</text>
+<text x="18" y="616" fill="#c9d1d9" xml:space="preserve"> Userid     : &quot;Fedora (epel10) &lt;epel@fedoraproject.org&gt;&quot;</text>
+<text x="18" y="633" fill="#c9d1d9" xml:space="preserve"> Fingerprint: 7D8D 15CB FC4E 6268 8591 FB26 33D9 8517 E37E D158</text>
+<text x="18" y="650" fill="#c9d1d9" xml:space="preserve"> From       : /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-10</text>
+<text x="18" y="667" fill="#c9d1d9" xml:space="preserve">Key imported successfully</text>
+<text x="18" y="684" fill="#c9d1d9" xml:space="preserve">Running transaction check</text>
+<text x="18" y="701" fill="#c9d1d9" xml:space="preserve">Transaction check succeeded.</text>
+<text x="18" y="718" fill="#c9d1d9" xml:space="preserve">Running transaction test</text>
+<text x="18" y="735" fill="#c9d1d9" xml:space="preserve">Transaction test succeeded.</text>
+<text x="18" y="752" fill="#c9d1d9" xml:space="preserve">Running transaction</text>
+<text x="18" y="769" fill="#c9d1d9" xml:space="preserve">  Preparing        :                                                        1/1 </text>
+<text x="18" y="786" fill="#c9d1d9" xml:space="preserve">  Installing       : python3-mdurl-0.1.2-8.el10_0.noarch                    1/5 </text>
+<text x="18" y="803" fill="#c9d1d9" xml:space="preserve">  Installing       : python3-markdown-it-py-3.0.0-7.el10_0.noarch           2/5 </text>
+<text x="18" y="820" fill="#c9d1d9" xml:space="preserve">  Installing       : python3-pygments-2.18.0-1.el10.noarch                  3/5 </text>
+<text x="18" y="837" fill="#c9d1d9" xml:space="preserve">  Installing       : python3-rich-14.3.0-1.el10_2.noarch                    4/5 </text>
+<text x="18" y="854" fill="#c9d1d9" xml:space="preserve">  Installing       : ipa-diagnose-0.1.2-1.el10.el10.noarch                  5/5 </text>
+<text x="18" y="871" fill="#c9d1d9" xml:space="preserve">  Running scriptlet: ipa-diagnose-0.1.2-1.el10.el10.noarch                  5/5 </text>
+<text x="18" y="888" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="905" fill="#c9d1d9" xml:space="preserve">Installed:</text>
+<text x="18" y="922" fill="#c9d1d9" xml:space="preserve">  ipa-diagnose-0.1.2-1.el10.el10.noarch                                         </text>
+<text x="18" y="939" fill="#c9d1d9" xml:space="preserve">  python3-markdown-it-py-3.0.0-7.el10_0.noarch                                  </text>
+<text x="18" y="956" fill="#c9d1d9" xml:space="preserve">  python3-mdurl-0.1.2-8.el10_0.noarch                                           </text>
+<text x="18" y="973" fill="#c9d1d9" xml:space="preserve">  python3-pygments-2.18.0-1.el10.noarch                                         </text>
+<text x="18" y="990" fill="#c9d1d9" xml:space="preserve">  python3-rich-14.3.0-1.el10_2.noarch                                           </text>
+<text x="18" y="1007" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="1024" fill="#c9d1d9" xml:space="preserve">Complete!</text>
+<text x="18" y="1041" fill="#c9d1d9" xml:space="preserve">ipa-diagnose-0.1.2-1.el10.el10.noarch</text>
+<text x="18" y="1058" fill="#3fb950" xml:space="preserve">PASS: package registered</text>
+<text x="18" y="1137" fill="#6e7681" font-size="11">lines 16-73 of 417 of the captured output</text>
+</svg>

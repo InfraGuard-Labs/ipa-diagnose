@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1170" height="382" viewBox="0 0 1170 382" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" font-size="13.5">
+<rect width="1170" height="382" rx="8" fill="#0d1117"/>
+<rect width="1170" height="34" rx="8" fill="#161b22"/>
+<circle cx="18" cy="17" r="5" fill="#ff5f56"/><circle cx="36" cy="17" r="5" fill="#ffbd2e"/><circle cx="54" cy="17" r="5" fill="#27c93f"/>
+<text x="76" y="22" fill="#8b949e">sudo ipa-diagnose --details  (healthy server)</text>
+<rect x="18" y="44" width="1134" height="22" rx="4" fill="#12261e"/>
+<text x="26" y="60" fill="#3fb950" font-weight="bold">REAL LIVE CAPTURE - FreeIPA 4.13.3, Fedora 43, ipa-healthcheck 0.19, 389-ds 3.1.4 - GitHub Actions run 35495088918 (source bdac609)</text>
+<text x="18" y="89" fill="#c9d1d9" xml:space="preserve">────────────────────────────── FreeIPA Diagnosis ───────────────────────────────</text>
+<text x="18" y="106" fill="#c9d1d9" xml:space="preserve">Host: ipa01.lab.test    Generated: 2026-09-20T06:52:05Z</text>
+<text x="18" y="123" fill="#3fb950" xml:space="preserve">Overall: HEALTHY</text>
+<text x="18" y="140" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="157" fill="#c9d1d9" xml:space="preserve">No problems detected by any diagnostic rule and all expected evidence was </text>
+<text x="18" y="174" fill="#c9d1d9" xml:space="preserve">collected. Note: ipa-healthcheck reported 1 warning(s) that no rule covers (run </text>
+<text x="18" y="191" fill="#c9d1d9" xml:space="preserve">`ipa-healthcheck` to see them).</text>
+<text x="18" y="208" fill="#c9d1d9" xml:space="preserve">────────────────────────────────────────────────────────────────────────────────</text>
+<text x="18" y="225" fill="#c9d1d9" xml:space="preserve">Diagnostic packs evaluated: directory-server, dns, kerberos, replication, </text>
+<text x="18" y="242" fill="#c9d1d9" xml:space="preserve">certificates</text>
+<text x="18" y="259" fill="#c9d1d9" xml:space="preserve">Environment (live): OS: fedora 43 | Python: 3.14.7 | FreeIPA: 4.13.3-2.fc43 | </text>
+<text x="18" y="276" fill="#c9d1d9" xml:space="preserve">ipa-healthcheck: 0.19-2.fc43 | 389-ds: 3.1.4-9.fc43</text>
+<text x="18" y="293" fill="#c9d1d9" xml:space="preserve">exit=0</text>
+<text x="18" y="372" fill="#6e7681" font-size="11">13 lines, complete</text>
+</svg>

@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1094" height="1147" viewBox="0 0 1094 1147" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" font-size="13.5">
+<rect width="1094" height="1147" rx="8" fill="#0d1117"/>
+<rect width="1094" height="34" rx="8" fill="#161b22"/>
+<circle cx="18" cy="17" r="5" fill="#ff5f56"/><circle cx="36" cy="17" r="5" fill="#ffbd2e"/><circle cx="54" cy="17" r="5" fill="#27c93f"/>
+<text x="76" y="22" fill="#8b949e">dnf install ./ipa-diagnose-0.1.2-1.fc44.fc44.noarch.rpm  (clean Fedora 44 container)</text>
+<rect x="18" y="44" width="1058" height="22" rx="4" fill="#12261e"/>
+<text x="26" y="60" fill="#3fb950" font-weight="bold">REAL CONTAINER CAPTURE - Fedora 44 clean container - RPM lifecycle 20/20 - GitHub Actions run 35495086719 (source bdac609)</text>
+<text x="18" y="89" fill="#c9d1d9" xml:space="preserve">=== 2. Fresh install from the candidate RPM (dnf install ./file) ===</text>
+<text x="18" y="106" fill="#c9d1d9" xml:space="preserve">Updating and loading repositories:</text>
+<text x="18" y="123" fill="#c9d1d9" xml:space="preserve">Repositories loaded.</text>
+<text x="18" y="140" fill="#c9d1d9" xml:space="preserve">Package                 Arch   Version             Repository        Size</text>
+<text x="18" y="157" fill="#c9d1d9" xml:space="preserve">Installing:</text>
+<text x="18" y="174" fill="#c9d1d9" xml:space="preserve"> ipa-diagnose           noarch 0:0.1.2-1.fc44.fc44 @commandline   1.0 MiB</text>
+<text x="18" y="191" fill="#c9d1d9" xml:space="preserve">Installing dependencies:</text>
+<text x="18" y="208" fill="#c9d1d9" xml:space="preserve"> python3-markdown-it-py noarch 0:3.0.0-14.fc44     fedora       541.5 KiB</text>
+<text x="18" y="225" fill="#c9d1d9" xml:space="preserve"> python3-mdurl          noarch 0:0.1.2-14.fc44     fedora        44.0 KiB</text>
+<text x="18" y="242" fill="#c9d1d9" xml:space="preserve"> python3-pygments       noarch 0:2.19.1-9.fc44     fedora        11.3 MiB</text>
+<text x="18" y="259" fill="#c9d1d9" xml:space="preserve"> python3-rich           noarch 0:14.3.2-1.fc44     fedora         3.4 MiB</text>
+<text x="18" y="276" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="293" fill="#c9d1d9" xml:space="preserve">Transaction Summary:</text>
+<text x="18" y="310" fill="#c9d1d9" xml:space="preserve"> Installing:         5 packages</text>
+<text x="18" y="327" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="344" fill="#c9d1d9" xml:space="preserve">Total size of inbound packages is 4 MiB. Need to download 4 MiB.</text>
+<text x="18" y="361" fill="#c9d1d9" xml:space="preserve">After this operation, 16 MiB extra will be used (install 16 MiB, remove 0 B).</text>
+<text x="18" y="378" fill="#c9d1d9" xml:space="preserve">[1/4] python3-markdown-it-py-0:3.0.0-14 100% | 571.7 KiB/s | 205.2 KiB |  00m00s</text>
+<text x="18" y="395" fill="#c9d1d9" xml:space="preserve">[2/4] python3-mdurl-0:0.1.2-14.fc44.noa 100% | 729.5 KiB/s |  31.4 KiB |  00m00s</text>
+<text x="18" y="412" fill="#c9d1d9" xml:space="preserve">[3/4] python3-rich-0:14.3.2-1.fc44.noar 100% |   1.4 MiB/s | 663.8 KiB |  00m00s</text>
+<text x="18" y="429" fill="#c9d1d9" xml:space="preserve">[4/4] python3-pygments-0:2.19.1-9.fc44. 100% |   4.4 MiB/s |   2.7 MiB |  00m01s</text>
+<text x="18" y="446" fill="#c9d1d9" xml:space="preserve">--------------------------------------------------------------------------------</text>
+<text x="18" y="463" fill="#c9d1d9" xml:space="preserve">[4/4] Total                             100% |   4.9 MiB/s |   3.5 MiB |  00m01s</text>
+<text x="18" y="480" fill="#c9d1d9" xml:space="preserve">Running transaction</text>
+<text x="18" y="497" fill="#c9d1d9" xml:space="preserve">[1/7] Verify package files              100% | 357.0   B/s |   5.0   B |  00m00s</text>
+<text x="18" y="514" fill="#c9d1d9" xml:space="preserve">[2/7] Prepare transaction               100% | 200.0   B/s |   5.0   B |  00m00s</text>
+<text x="18" y="531" fill="#c9d1d9" xml:space="preserve">[3/7] Installing python3-mdurl-0:0.1.2- 100% |   8.0 MiB/s |  49.4 KiB |  00m00s</text>
+<text x="18" y="548" fill="#c9d1d9" xml:space="preserve">[4/7] Installing python3-markdown-it-py 100% |  14.7 MiB/s | 585.7 KiB |  00m00s</text>
+<text x="18" y="565" fill="#c9d1d9" xml:space="preserve">[5/7] Installing python3-pygments-0:2.1 100% |  77.6 MiB/s |  11.5 MiB |  00m00s</text>
+<text x="18" y="582" fill="#c9d1d9" xml:space="preserve">[6/7] Installing python3-rich-0:14.3.2- 100% |  93.9 MiB/s |   3.5 MiB |  00m00s</text>
+<text x="18" y="599" fill="#c9d1d9" xml:space="preserve">[7/7] Installing ipa-diagnose-0:0.1.2-1 100% |  14.3 MiB/s |   1.0 MiB |  00m00s</text>
+<text x="18" y="616" fill="#c9d1d9" xml:space="preserve">Warning: skipped OpenPGP checks for 1 package from repository: @commandline</text>
+<text x="18" y="633" fill="#c9d1d9" xml:space="preserve">Complete!</text>
+<text x="18" y="650" fill="#c9d1d9" xml:space="preserve">ipa-diagnose-0.1.2-1.fc44.fc44.noarch</text>
+<text x="18" y="667" fill="#3fb950" xml:space="preserve">PASS: package registered</text>
+<text x="18" y="684" fill="#c9d1d9" xml:space="preserve">/usr/sbin/ipa-diagnose</text>
+<text x="18" y="701" fill="#3fb950" xml:space="preserve">PASS: ipa-diagnose on PATH</text>
+<text x="18" y="718" fill="#c9d1d9" xml:space="preserve">  requires: (python3.14dist(rich) &lt; 15~~ with python3.14dist(rich) &gt;= 13.7)</text>
+<text x="18" y="735" fill="#c9d1d9" xml:space="preserve">  requires: /usr/bin/python3</text>
+<text x="18" y="752" fill="#c9d1d9" xml:space="preserve">  requires: python(abi) = 3.14</text>
+<text x="18" y="769" fill="#c9d1d9" xml:space="preserve">  requires: rpmlib(CompressedFileNames) &lt;= 3.0.4-1</text>
+<text x="18" y="786" fill="#c9d1d9" xml:space="preserve">  requires: rpmlib(FileDigests) &lt;= 4.6.0-1</text>
+<text x="18" y="803" fill="#d29922" xml:space="preserve">  requires: rpmlib(PartialHardlinkSets) &lt;= 4.0.4-1</text>
+<text x="18" y="820" fill="#c9d1d9" xml:space="preserve">  requires: rpmlib(PayloadFilesHavePrefix) &lt;= 4.0-1</text>
+<text x="18" y="837" fill="#c9d1d9" xml:space="preserve">  requires: rpmlib(PayloadIsZstd) &lt;= 5.4.18-1</text>
+<text x="18" y="854" fill="#c9d1d9" xml:space="preserve">  requires: rpmlib(RichDependencies) &lt;= 4.12.0-1</text>
+<text x="18" y="871" fill="#c9d1d9" xml:space="preserve">  requires: rpmlib(TildeInVersions) &lt;= 4.10.0-1</text>
+<text x="18" y="888" fill="#3fb950" xml:space="preserve">PASS: --version reports 0.1.2</text>
+<text x="18" y="905" fill="#c9d1d9" xml:space="preserve">ipa-diagnose 0.1.2</text>
+<text x="18" y="922" fill="#3fb950" xml:space="preserve">PASS: --help works</text>
+<text x="18" y="939" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="956" fill="#c9d1d9" xml:space="preserve">=== 3. Replay: healthy fixture -&gt; HEALTHY, fully verified ===</text>
+<text x="18" y="973" fill="#c9d1d9" xml:space="preserve">────────────────────────────── FreeIPA Diagnosis ───────────────────────────────</text>
+<text x="18" y="990" fill="#c9d1d9" xml:space="preserve">Host: ipa01.example.test    Generated: 2026-09-20T06:47:13Z</text>
+<text x="18" y="1007" fill="#c9d1d9" xml:space="preserve">(replayed from fixtures: /fixtures/replication/healthy)</text>
+<text x="18" y="1024" fill="#3fb950" xml:space="preserve">Overall: HEALTHY</text>
+<text x="18" y="1041" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="1058" fill="#c9d1d9" xml:space="preserve">No problems detected. All ipa-healthcheck checks passed and all expected </text>
+<text x="18" y="1137" fill="#6e7681" font-size="11">lines 71-128 of 393 of the captured output</text>
+</svg>
