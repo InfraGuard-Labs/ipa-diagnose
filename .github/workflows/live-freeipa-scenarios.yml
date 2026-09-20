@@ -89,12 +89,13 @@ jobs:
           docker exec ipa-s /root/.local/bin/ipa-diagnose --json > out/s1-no-healthcheck.json 2>/dev/null || true
           docker exec ipa-s ipa-healthcheck --failures-only --output-type json > out/s1-no-healthcheck-healthcheck-failures.json 2>&1 || true
           docker exec ipa-s mv /usr/bin/ipa-healthcheck.off /usr/bin/ipa-healthcheck || true
-          which_ldapsearch=$(docker exec ipa-s which ldapsearch || true)
-          docker exec ipa-s mv "$which_ldapsearch" "$which_ldapsearch.off" || true
+          LDS=$(docker exec ipa-s bash -c 'command -v ldapsearch')
+          echo "ldapsearch at: $LDS" > out/s1-ldapsearch-path.txt
+          docker exec ipa-s mv "$LDS" "$LDS.off"
+          docker exec ipa-s bash -c 'command -v ldapsearch || echo "ldapsearch is now hidden"' >> out/s1-ldapsearch-path.txt
           docker exec ipa-s /root/.local/bin/ipa-diagnose --details > out/s1-no-ldapsearch.txt 2>&1; echo "exit=$?" >> out/s1-no-ldapsearch.txt || true
           docker exec ipa-s /root/.local/bin/ipa-diagnose --json > out/s1-no-ldapsearch.json 2>/dev/null || true
-          docker exec ipa-s ipa-healthcheck --failures-only --output-type json > out/s1-no-ldapsearch-healthcheck-failures.json 2>&1 || true
-          docker exec ipa-s mv "$which_ldapsearch.off" "$which_ldapsearch" || true
+          docker exec ipa-s mv "$LDS.off" "$LDS"
           head -12 out/s1-no-healthcheck.txt; head -12 out/s1-no-ldapsearch.txt
 
       - name: S2 unprivileged run (non-root user)
@@ -121,10 +122,10 @@ jobs:
         run: |
           set +e
           docker exec ipa-s systemctl list-units --all --no-legend 'named*' > out/s4-named-units.txt 2>&1 || true
-          NAMED=$(docker exec ipa-s systemctl list-units --all --no-legend 'named*' | awk '{print $1}' | head -1)
-          echo "named unit: $NAMED"
+          NAMED=named.service
           docker exec ipa-s systemctl stop "$NAMED" || true
           sleep 5
+          docker exec ipa-s systemctl is-active "$NAMED" > out/s4-named-state-during.txt 2>&1
           docker exec ipa-s /root/.local/bin/ipa-diagnose --details > out/s4-dns-down.txt 2>&1; echo "exit=$?" >> out/s4-dns-down.txt || true
           docker exec ipa-s /root/.local/bin/ipa-diagnose --json > out/s4-dns-down.json 2>/dev/null || true
           docker exec ipa-s ipa-healthcheck --failures-only --output-type json > out/s4-dns-down-healthcheck-failures.json 2>&1 || true
@@ -150,11 +151,14 @@ jobs:
         run: |
           set +e
           docker exec ipa-s getcert list > out/s6-getcert-list.txt 2>&1 || true
+          docker exec ipa-s systemctl mask --runtime certmonger.service || true
           docker exec ipa-s systemctl stop certmonger.service || true
           sleep 5
+          docker exec ipa-s systemctl is-active certmonger.service > out/s6-certmonger-state-during.txt 2>&1
           docker exec ipa-s /root/.local/bin/ipa-diagnose --details > out/s6-certmonger-down.txt 2>&1; echo "exit=$?" >> out/s6-certmonger-down.txt || true
           docker exec ipa-s /root/.local/bin/ipa-diagnose --json > out/s6-certmonger-down.json 2>/dev/null || true
           docker exec ipa-s ipa-healthcheck --failures-only --output-type json > out/s6-certmonger-down-healthcheck-failures.json 2>&1 || true
+          docker exec ipa-s systemctl unmask --runtime certmonger.service || true
           docker exec ipa-s systemctl start certmonger.service || true
           sleep 15
           docker exec ipa-s /root/.local/bin/ipa-diagnose verify > out/s6-verify.txt 2>&1; echo "exit=$?" >> out/s6-verify.txt || true
@@ -163,9 +167,10 @@ jobs:
       - name: S7 multiple simultaneous failures (DNS + KDC) -> diagnose -> restore
         run: |
           set +e
-          NAMED=$(docker exec ipa-s systemctl list-units --all --no-legend 'named*' | awk '{print $1}' | head -1)
+          NAMED=named.service
           docker exec ipa-s systemctl stop "$NAMED" krb5kdc.service || true
           sleep 5
+          docker exec ipa-s systemctl is-active "$NAMED" krb5kdc.service > out/s7-state-during.txt 2>&1
           docker exec ipa-s /root/.local/bin/ipa-diagnose --details > out/s7-multi.txt 2>&1; echo "exit=$?" >> out/s7-multi.txt || true
           docker exec ipa-s /root/.local/bin/ipa-diagnose --json > out/s7-multi.json 2>/dev/null || true
           docker exec ipa-s ipa-healthcheck --failures-only --output-type json > out/s7-multi-healthcheck-failures.json 2>&1 || true
