@@ -132,7 +132,10 @@ def build_report(
             d.priority = PriorityBucket.RELATED_SYMPTOM
             d.related_to_titles = [t for pack in causes for t in titles_by_pack.get(pack, [])]
             cause_note = " and ".join(causes)
-            d.why = f"{d.why}\n\nLikely a downstream symptom of the {cause_note} problem reported above."
+            if d.status == DiagnosisStatus.DIAGNOSED:
+                d.why = f"{d.why}\n\nLikely a downstream symptom of the {cause_note} problem reported above."
+            else:
+                d.why = f"{d.why}\n\nMay be a downstream symptom of the {cause_note} problem reported above (not established)."
         elif d.severity == Severity.WARNING and d.status == DiagnosisStatus.DIAGNOSED:
             d.priority = PriorityBucket.WARNING
         else:

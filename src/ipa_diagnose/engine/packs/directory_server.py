@@ -78,6 +78,9 @@ def _ref_i(i: EvidenceItem, why: str) -> EvidenceRef:
 _DISK_SOURCES: Tuple[str, ...] = ("ipahealthcheck.system.filesystemspace", "ipahealthcheck.ds.disk_space")
 
 
+_DS_STORES = {"/var/lib/dirsrv", "/dev/shm", "/var/log/dirsrv", "/var/lib/ipa/backup"}
+
+
 def _disk_findings(bundle: EvidenceBundle) -> List[Finding]:
     """DiskSpaceCheck (lib389 low-disk-space lint) and FileSystemSpaceCheck (free space
     below its threshold). FileSystemSpaceCheck also WARNs 'File system X is not mounted',
@@ -88,7 +91,10 @@ def _disk_findings(bundle: EvidenceBundle) -> List[Finding]:
     # usage reading and must not be presented as one.
     for f in _exact(bundle, "ipahealthcheck.system.filesystemspace", "FileSystemSpaceCheck"):
         kw = f.keywords if isinstance(f.keywords, dict) else {}
-        if "percent_free" in kw or "free_space" in kw:
+        store = str(kw.get("store", kw.get("key", ""))).rstrip("/")
+        # Only the file systems Directory Server itself depends on (data, logs, /dev/shm, backups); a low /tmp
+        # or /var/log/audit is not a Directory Server problem.
+        if ("percent_free" in kw or "free_space" in kw) and store in _DS_STORES:
             found.append(f)
     return [f for f in found if "not mounted" not in (f.message or "").lower()]
 

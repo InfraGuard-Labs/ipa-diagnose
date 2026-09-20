@@ -608,7 +608,12 @@ class StaleRuvRule(DiagnosticRule):
         explicit_findings = [
             f
             for f in bundle.findings
-            if f.source.startswith("ipahealthcheck.ds.ruv") and f.severity.rank >= Severity.ERROR.rank
+            if f.source.startswith("ipahealthcheck.ds.ruv")
+            and f.severity.rank >= Severity.ERROR.rank
+            # A ds.ruv ERROR only counts when it is actually worded as a stale/orphaned RUV; a bind failure or
+            # "unable to read RUV" says nothing about staleness (and ipa-healthcheck's RUV checks normally report
+            # only SUCCESS).
+            and _STALE_WORDING_RE.search(f.message or "")
         ]
         # alive=False ("no corresponding live server") is a candidate.
         # alive=None ("could not be determined", e.g. the topology could not be

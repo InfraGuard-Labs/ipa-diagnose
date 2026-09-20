@@ -437,3 +437,32 @@ def test_srv_finding_is_not_confirmed_by_a_lookup_of_a_different_record():
                          data={"rcode": "NXDOMAIN", "answers": []})
     d = next((d for d in run_diagnosis(_bundle([e], [other])).diagnoses if d.rule_id == "srv-autodiscovery"), None)
     assert d is None or d.confidence.level.value not in ("HIGH",) and not (d.status == DiagnosisStatus.DIAGNOSED and other.item_id in {r.evidence_id for r in d.evidence_for})
+
+
+def test_rid_named_ruv_error_without_stale_wording_is_not_a_stale_ruv():
+    item = EvidenceItem(item_id="ruv4", kind="replication_ruv", summary="rid 4", data={"replica_id": 4, "alive": None})
+    e = _entry("ipahealthcheck.ds.ruv", "RUVCheck", "ERROR", msg="Unable to read RUV for Replica ID 4: connection refused")
+    assert "stale-ruv" not in _diag_ids(run_diagnosis(_bundle([e], [item])))
+
+
+def test_low_space_on_a_non_directory_server_file_system_is_not_a_ds_disk_diagnosis():
+    e = _entry("ipahealthcheck.system.filesystemspace", "FileSystemSpaceCheck", "CRITICAL", key="/var/log/audit",
+               store="/var/log/audit", percent_free=1, free_space=10, msg="/var/log/audit: free space percentage under threshold: 1% < 20%")
+    r = run_diagnosis(_bundle([e]))
+    assert "disk-space-exhaustion" not in _diag_ids(r) and r.overall_status.value != "HEALTHY"
+
+
+def test_cms_connection_refused_is_not_titled_a_network_problem():
+    cm = EvidenceItem(item_id="cm2", kind="certmonger_request", summary="x",
+                      data={"nickname": "Server-Cert", "state": "CA_UNREACHABLE", "request_id": "5",
+                            "ca_error": "4301 Unable to communicate with CMS (Connection refused)"})
+    e = _entry("ipahealthcheck.ipa.certs", "IPACertTracking", "ERROR", msg="tracking problem")
+    assert "certmonger-tracking-stuck" not in _diag_ids(run_diagnosis(_bundle([e], [cm])))
+
+
+def test_unrelated_unexplained_error_is_not_confidently_called_a_downstream_symptom():
+    down = _entry("ipahealthcheck.meta.services", "named", "ERROR", msg="named: not running")
+    other = _entry("ipahealthcheck.ipa.files", "IPAFileCheck", "ERROR", type="umask", msg="Unexpected umask")
+    r = run_diagnosis(_bundle([down, other]))
+    d = next(d for d in r.diagnoses if d.rule_id == "unexplained-findings")
+    assert "Likely a downstream symptom" not in d.why

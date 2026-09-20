@@ -181,7 +181,8 @@ class CertmongerTrackingStuckRule(DiagnosticRule):
             if not err:
                 continue
             # Both are evaluated independently: text matching both families supports neither.
-            if any(h in err for h in _NETWORK_HINTS):
+            # "Unable to communicate with CMS (Connection refused)": the CA's own service refusing, not a network path.
+            if any(h in err for h in _NETWORK_HINTS) and "cms" not in err:
                 network_hit = True
                 informative_error = item.data.get("ca_error")
             if any(h in err for h in _TRUST_HINTS):
