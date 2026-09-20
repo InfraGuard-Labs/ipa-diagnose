@@ -53,7 +53,7 @@ import shutil
 import subprocess
 from typing import Any, Dict, List, Optional
 
-from ipa_diagnose.evidence.collectors.base import Collector, CollectorError
+from ipa_diagnose.evidence.collectors.base import Collector, CollectorError, raise_if_journal_limited
 from ipa_diagnose.evidence.collectors.registry import register
 from ipa_diagnose.evidence.model import EvidenceItem, Provenance, Severity
 
@@ -97,6 +97,7 @@ class JournalKrb5kdcCollector(Collector):
             )
         except (OSError, subprocess.SubprocessError) as e:
             raise CollectorError(str(e))
+        raise_if_journal_limited(proc)
         if proc.returncode != 0:
             stderr = (proc.stderr or "").lower()
             permission_related = "permission" in stderr or "root" in stderr

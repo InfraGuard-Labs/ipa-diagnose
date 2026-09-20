@@ -159,6 +159,10 @@ class DNSLookupCollector(Collector):
             result = _run_dig(qname, qtype, self.timeout_seconds)
             answered = bool(result["answers"]) and result["rcode"] == "NOERROR"
             severity = Severity.SUCCESS if answered else Severity.ERROR
+            if qtype == "AAAA" and result["rcode"] == "NOERROR" and not result["answers"]:
+                # An IPv4-only deployment legitimately has no AAAA record (and the
+                # matching freeipa-healthcheck #270 warning is known to be spurious).
+                severity = Severity.SUCCESS
             summary = (
                 f"{qname} {qtype}: {result['rcode']}, {len(result['answers'])} record(s)"
                 if result["rcode"] != "TIMEOUT"

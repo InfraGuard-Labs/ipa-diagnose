@@ -36,7 +36,7 @@ import shutil
 import subprocess
 from typing import List
 
-from ipa_diagnose.evidence.collectors.base import Collector, CollectorError
+from ipa_diagnose.evidence.collectors.base import Collector, CollectorError, raise_if_journal_limited
 from ipa_diagnose.evidence.collectors.registry import register
 from ipa_diagnose.evidence.model import EvidenceItem, Provenance, Severity
 
@@ -111,6 +111,7 @@ class JournalPkiCollector(Collector):
             )
         except (OSError, subprocess.SubprocessError) as e:
             raise CollectorError(f"failed to run journalctl: {e}") from e
+        raise_if_journal_limited(proc)
         if proc.returncode != 0:
             stderr = (proc.stderr or "").strip()
             permission_related = "permission" in stderr.lower() or "root" in stderr.lower()

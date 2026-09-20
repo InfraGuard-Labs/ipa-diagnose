@@ -72,3 +72,23 @@ def run_collector(collector: Collector, *, replay_dir: "pathlib.Path | None") ->
     if replay_dir is not None:
         return collector.collect_replay(replay_dir)
     return collector.collect_live()
+
+
+_JOURNAL_LIMITED_MARKERS = (
+    "not seeing messages from other users",
+    "insufficient permissions",
+    "no journal files were opened",
+)
+
+
+def raise_if_journal_limited(proc) -> None:
+    """journalctl run without enough privilege exits 0 with an empty/partial
+    result plus a stderr hint. An empty result under those conditions is NOT
+    evidence that nothing happened."""
+
+    stderr = (getattr(proc, "stderr", "") or "").lower()
+    if any(marker in stderr for marker in _JOURNAL_LIMITED_MARKERS):
+        raise CollectorError(
+            "journalctl output is limited by permissions (run as root or add the user to systemd-journal)",
+            permission_related=True,
+        )

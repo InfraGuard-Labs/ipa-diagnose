@@ -185,7 +185,7 @@ def cmd_ai_preview(args: argparse.Namespace, console: Console) -> int:
         payload = build_ai_payload(bundle, d)
         render_preview(payload, console)
         console.print()
-    return 0
+    return _exit_code_for(report)  # same meaning as `diagnose`: never 0 while a problem exists
 
 
 def _exit_code_for(report: DiagnosisReport) -> int:

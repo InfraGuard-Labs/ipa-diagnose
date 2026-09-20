@@ -282,7 +282,7 @@ def _print_coverage(report: DiagnosisReport, console: Console, *, details: bool 
     if report.unknown_severity_findings:
         console.print(f"[yellow]Unrecognized severity value(s) ({len(report.unknown_severity_findings)}):[/yellow]")
         for note in report.unknown_severity_findings:
-            console.print(f"  [yellow]- {note}[/yellow]")
+            console.print(f"  [yellow]- {escape(note)}[/yellow]")
     if details and report.environment:
         env = report.environment
         parts = []

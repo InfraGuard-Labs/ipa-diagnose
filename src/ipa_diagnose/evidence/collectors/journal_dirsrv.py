@@ -45,7 +45,7 @@ import shutil
 import subprocess
 from typing import Dict, List, Optional, Tuple
 
-from ipa_diagnose.evidence.collectors.base import Collector, CollectorError
+from ipa_diagnose.evidence.collectors.base import Collector, CollectorError, raise_if_journal_limited
 from ipa_diagnose.evidence.collectors.registry import register
 from ipa_diagnose.evidence.model import EvidenceItem, Provenance, Severity
 
@@ -148,6 +148,7 @@ class JournalDirsrvCollector(Collector):
             )
         except (OSError, subprocess.SubprocessError) as e:
             raise CollectorError(f"journalctl failed: {e}") from e
+        raise_if_journal_limited(proc)
         if proc.returncode != 0:
             stderr = (proc.stderr or "").lower()
             permission_related = "permission" in stderr or "root" in stderr or "access denied" in stderr

@@ -149,10 +149,15 @@ def _grouped_unknown(findings: List[Finding]) -> Diagnosis:
 
 def unexplained_finding_diagnoses(bundle: EvidenceBundle, diagnoses: List[Diagnosis]) -> List[Diagnosis]:
     claimed = _claimed_ids(diagnoses)
+    id_counts: dict = {}
+    for f in bundle.findings:
+        id_counts[f.finding_id] = id_counts.get(f.finding_id, 0) + 1
+    # An id shared by several findings is ambiguous: a rule citing the benign one
+    # must never "claim" the ERROR one, so ambiguous ids are never treated as claimed.
     unclaimed = [
         f
         for f in bundle.findings
-        if f.severity.rank >= Severity.ERROR.rank and f.finding_id not in claimed
+        if f.severity.rank >= Severity.ERROR.rank and (f.finding_id not in claimed or id_counts[f.finding_id] > 1)
     ]
     result: List[Diagnosis] = []
     others: List[Finding] = []

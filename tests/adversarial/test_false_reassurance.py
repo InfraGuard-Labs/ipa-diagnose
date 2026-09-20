@@ -399,7 +399,7 @@ def test_unclaimed_warning_alone_is_a_documented_known_limitation(monkeypatch):
     container-only 'missing /proc/sys/crypto/fips_enabled' are common on healthy systems, so
     surfacing every unclaimed WARNING would make healthy systems DEGRADED. ERROR/CRITICAL
     findings are never dropped (see the tests above)."""
-    hc = json.dumps([_entry(UNKNOWN_SRC, "C", "WARNING", "something is off")])
+    hc = json.dumps([_entry("ipahealthcheck.meta.services", "dirsrv", "SUCCESS"), _entry(UNKNOWN_SRC, "C", "WARNING", "something is off")])
     _install(monkeypatch, healthcheck=(1, hc, ""))
     report = _diagnose()
     assert report.overall_status == OverallStatus.HEALTHY

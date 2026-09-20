@@ -210,6 +210,12 @@ class ReplicationAgreementsCollector(Collector):
             hosts_known_complete=hosts_known_complete,
             command=LIST_RUV_COMMAND,
         )
+        if items and _count_unparsed_ruv_lines(proc.stdout):
+            # Some RUV-looking lines were not understood (format drift): the
+            # skipped entry could be the stale one - not a verified RUV.
+            return self._ldapi_fallback(
+                known_hosts, hosts_known_complete, f"{LIST_RUV_COMMAND} output could not be fully parsed"
+            )
         if not items:
             # Exit 0 but nothing parseable (changed/localised wording, empty
             # output): NOT a verified RUV - fall through to the LDAPI read.
@@ -423,6 +429,22 @@ _RUV_HEADER_RE = re.compile(r"^replica update vectors\s*:?\s*$", re.IGNORECASE)
 # hand-written fixture that does include one - it is not the expected real
 # shape.
 _RUV_LINE_RE = re.compile(r"^\s*(?:ldap://)?([\w.-]+):(\d+):\s*(\d+)\s*$")
+
+
+def _count_unparsed_ruv_lines(stdout: str) -> int:
+    """Lines that look like RUV entries (host:port) but matched none of the
+    known shapes."""
+
+    count = 0
+    for raw in (stdout or "").splitlines():
+        stripped = raw.strip()
+        if not stripped or _CS_RUV_HEADER_RE.match(stripped) or _RUV_HEADER_RE.match(stripped):
+            continue
+        if _RUV_LINE_RE.match(raw):
+            continue
+        if re.search(r"[\w.-]+:\d{2,5}\b", stripped):
+            count += 1
+    return count
 
 
 def _parse_list_ruv_output(
