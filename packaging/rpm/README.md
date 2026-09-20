@@ -78,7 +78,7 @@ MSYS_NO_PATHCONV=1 docker run --rm \
 
 # 3. (optional, for the upgrade test) build a second, bumped release
 mkdir -p packaging/rpm/rpmbuild/v2
-MSYS_NO_PATHCONV=1 docker run --rm -e BUILD_VERSION=0.1.1 \
+MSYS_NO_PATHCONV=1 docker run --rm -e BUILD_VERSION=0.1.3 \
   -v "$(pwd)/packaging/rpm/rpmbuild/v2:/rpmbuild" \
   ipa-diagnose-rpmbuild:local
 
@@ -159,3 +159,14 @@ COPR-distributed tool before landing in Fedora/RHEL directly).
   The package must remain installable (and partially useful via `--replay`)
   on a host that isn't a FreeIPA server yet - a hard dependency would prevent
   that and doesn't match how `ipa-healthcheck` itself is packaged.
+
+
+## Release-candidate pipeline (GitHub Actions, nothing installed locally)
+
+`.github/workflows/release-candidate.yml` builds the wheel, sdist, EL8/EL9/
+EL10/Fedora 44/Fedora 43 RPMs and SRPMs from the exact commit, writes
+`SHA256SUMS`, and runs `packaging/rpm/lifecycle-test.sh` in a clean
+matching-distro container per platform (checksum, `dnf install`, dependency
+resolution, `--version`, `--help`, `--replay`, `--json`, UNKNOWN on a host
+without `ipa-healthcheck`, uninstall, reinstall, upgrade). RHEL claims are
+proxy claims: Rocky/AlmaLinux images stand in for RHEL.

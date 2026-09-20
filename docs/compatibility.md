@@ -104,15 +104,35 @@ fallback paths handle it safely.
 - **CA-less deployments** - all fixtures and testing assume a
   certmonger/Dogtag CA is present; a CA-less install's certificate-pack
   behavior is unverified.
-- **Real live FreeIPA replication testing** for the stale-RUV fix
-  specifically was attempted but blocked by a Docker Desktop cgroup v1 /
-  systemd incompatibility on the development machine (documented, not a
-  product issue) - the fix is instead verified via a fixture built from real
-  field shapes taken from this project's own genuine FreeIPA capture, which
-  independently reproduced the same result two different ways (direct code
-  trace + fixture replay, and a second fixture built by a separate review).
-  This is HISTORICAL-FIXTURE-STYLE validation, not REAL-FREEIPA-TESTED - the
-  distinction is kept explicit rather than blurred.
+- **Live stale-RUV detection is NOT validated.** A naturally stale RUV could
+  not be reproduced live: on FreeIPA 4.13 the topology plugin removes a
+  server's RUV element automatically during supported removal (`ipa
+  server-del`, and direct removal of its topology segments and master
+  registration were both tried and both were cleaned). The stale-RUV rule has
+  deterministic fixture/regression coverage only (HISTORICAL-FIXTURE /
+  SYNTHETIC, not REAL LIVE CAPTURE). No 389-DS corruption was performed to
+  manufacture one.
+
+## Live FreeIPA validation (REAL LIVE CAPTURE)
+
+Run on free GitHub-hosted Linux runners (real systemd, cgroup v2) using the
+official `freeipa/freeipa-server:fedora-43` image: **FreeIPA 4.13.3, Fedora
+43, ipa-healthcheck 0.19, 389-ds-base 3.1.4, Python 3.14.7**. Validated live:
+
+- healthy single server and a genuine two-node topology (server + replica);
+- a stopped Directory Server and a stopped KDC each reported as the CRITICAL
+  primary problem, and `verify` after restore reporting RESOLVED;
+- `ipa-healthcheck` unavailable => UNKNOWN; `ldapsearch` unavailable => the
+  RUV shown as NOT VERIFIED (NOT_FULLY_VERIFIED);
+- the RUV read over the local LDAPI socket as root with no Directory Manager
+  password (VERIFIED on the two-node topology, NONE_CONFIGURED on a single
+  server);
+- no false stale-RUV on a healthy two-node topology.
+
+**Not tested live:** EL8-era FreeIPA (4.9 / `ipa-healthcheck` 0.12), Trust/AD,
+CA-less, 3+ replica topologies, stopped DNS/certmonger (the real
+`ipa-healthcheck` itself reported nothing for those two in the lab), and any
+genuine RHEL host (Rocky/Alma/UBI are used as proxies and labelled as such).
 
 ## A note on the EL8 `rich` vendoring
 
