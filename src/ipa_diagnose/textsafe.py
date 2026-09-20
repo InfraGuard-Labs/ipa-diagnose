@@ -21,9 +21,12 @@ def sanitize_text(text: object, limit: int = DEFAULT_LIMIT) -> str:
     text = " ".join(text.split())
     if len(text) <= limit:
         return text
-    cut = text[:limit]
+    if limit <= 3:
+        return text[:limit]
+    room = limit - 3  # the ellipsis counts toward the bound
+    cut = text[:room]
     space = cut.rfind(" ")
-    if space >= limit - 40:  # prefer a word boundary when one is close
+    if space >= room - 40:  # prefer a word boundary when one is close
         cut = cut[:space]
     return cut.rstrip(" ,;:-") + "..."
 
