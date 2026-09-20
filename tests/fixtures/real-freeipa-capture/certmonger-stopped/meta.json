@@ -1,0 +1,5 @@
+{
+  "hostname": "ipa01.lab.test",
+  "provenance": "REAL LIVE CAPTURE",
+  "notes": "ipa-healthcheck --failures-only from a real FreeIPA 4.13.3 (Fedora 43) server with certmonger stopped and masked (GitHub Actions lab run 35492524531); tracebacks trimmed."
+}

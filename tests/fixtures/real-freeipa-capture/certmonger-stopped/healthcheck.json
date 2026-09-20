@@ -1,0 +1,162 @@
+[
+  {
+    "source": "ipahealthcheck.meta.services",
+    "check": "certmonger",
+    "result": "ERROR",
+    "uuid": "ad07371b-8e45-4e46-8e17-2467c113d049",
+    "when": "20260920060615Z",
+    "duration": "0.005831",
+    "kw": {
+      "status": false,
+      "msg": "certmonger: not running"
+    }
+  },
+  {
+    "source": "ipahealthcheck.ipa.certs",
+    "check": "IPACertmongerExpirationCheck",
+    "result": "CRITICAL",
+    "uuid": "40c2931b-268f-44d1-a0c2-506d7d6d1884",
+    "when": "20260920060618Z",
+    "duration": "0.009254",
+    "kw": {
+      "exception": "CalledProcessError(Command ['/bin/systemctl', 'start', 'certmonger.service'] returned non-zero exit status 1: 'Failed to start certmonger.service: Unit certmonger.service is masked.\\n')",
+      "traceback": "trimmed-for-fixture"
+    }
+  },
+  {
+    "source": "ipahealthcheck.ipa.certs",
+    "check": "IPACertfileExpirationCheck",
+    "result": "CRITICAL",
+    "uuid": "b8f5af8e-5f77-4b5e-b474-65e1007cb9ed",
+    "when": "20260920060618Z",
+    "duration": "0.007090",
+    "kw": {
+      "exception": "CalledProcessError(Command ['/bin/systemctl', 'start', 'certmonger.service'] returned non-zero exit status 1: 'Failed to start certmonger.service: Unit certmonger.service is masked.\\n')",
+      "traceback": "trimmed-for-fixture"
+    }
+  },
+  {
+    "source": "ipahealthcheck.ipa.certs",
+    "check": "IPACertTracking",
+    "result": "CRITICAL",
+    "uuid": "97243073-6d34-42ca-91ed-977e48d97534",
+    "when": "20260920060618Z",
+    "duration": "0.299542",
+    "kw": {
+      "exception": "CalledProcessError(Command ['/bin/systemctl', 'start', 'certmonger.service'] returned non-zero exit status 1: 'Failed to start certmonger.service: Unit certmonger.service is masked.\\n')",
+      "traceback": "trimmed-for-fixture"
+    }
+  },
+  {
+    "source": "ipahealthcheck.ipa.certs",
+    "check": "IPACertDNSSAN",
+    "result": "CRITICAL",
+    "uuid": "4f518772-9ec5-41fe-95c8-9d43e21839b9",
+    "when": "20260920060619Z",
+    "duration": "0.306776",
+    "kw": {
+      "exception": "CalledProcessError(Command ['/bin/systemctl', 'start', 'certmonger.service'] returned non-zero exit status 1: 'Failed to start certmonger.service: Unit certmonger.service is masked.\\n')",
+      "traceback": "trimmed-for-fixture"
+    }
+  },
+  {
+    "source": "ipahealthcheck.ipa.certs",
+    "check": "IPACertRevocation",
+    "result": "CRITICAL",
+    "uuid": "cf703ca5-10ec-418f-b46c-19f2cbffa2f0",
+    "when": "20260920060620Z",
+    "duration": "0.303311",
+    "kw": {
+      "exception": "CalledProcessError(Command ['/bin/systemctl', 'start', 'certmonger.service'] returned non-zero exit status 1: 'Failed to start certmonger.service: Unit certmonger.service is masked.\\n')",
+      "traceback": "trimmed-for-fixture"
+    }
+  },
+  {
+    "source": "ipahealthcheck.ipa.certs",
+    "check": "IPACertmongerCA",
+    "result": "ERROR",
+    "uuid": "f60bdbbe-87ef-4516-93a4-cbab13cc629c",
+    "when": "20260920060620Z",
+    "duration": "0.004866",
+    "kw": {
+      "key": "IPA",
+      "msg": "Certmonger CA '{key}' missing"
+    }
+  },
+  {
+    "source": "ipahealthcheck.ipa.certs",
+    "check": "IPACertmongerCA",
+    "result": "ERROR",
+    "uuid": "d0c3e688-4d7e-422f-a073-26ff8e72c9a1",
+    "when": "20260920060620Z",
+    "duration": "0.009519",
+    "kw": {
+      "key": "dogtag-ipa-ca-renew-agent",
+      "msg": "Certmonger CA '{key}' missing"
+    }
+  },
+  {
+    "source": "ipahealthcheck.ipa.certs",
+    "check": "IPACertmongerCA",
+    "result": "ERROR",
+    "uuid": "414febe0-699e-48e4-8bb0-b2b2789854ff",
+    "when": "20260920060620Z",
+    "duration": "0.014115",
+    "kw": {
+      "key": "dogtag-ipa-ca-renew-agent-reuse",
+      "msg": "Certmonger CA '{key}' missing"
+    }
+  },
+  {
+    "source": "ipahealthcheck.ipa.certs",
+    "check": "CertmongerStuckCheck",
+    "result": "CRITICAL",
+    "uuid": "a5fba0b8-bc39-4058-9d97-c2640819375e",
+    "when": "20260920060620Z",
+    "duration": "0.007127",
+    "kw": {
+      "exception": "CalledProcessError(Command ['/bin/systemctl', 'start', 'certmonger.service'] returned non-zero exit status 1: 'Failed to start certmonger.service: Unit certmonger.service is masked.\\n')",
+      "traceback": "trimmed-for-fixture"
+    }
+  },
+  {
+    "source": "ipahealthcheck.ipa.certs",
+    "check": "CertmongerFIPSTokensCheck",
+    "result": "CRITICAL",
+    "uuid": "a9e0f041-c750-4039-8a77-019e17f4a975",
+    "when": "20260920060620Z",
+    "duration": "0.006695",
+    "kw": {
+      "exception": "CalledProcessError(Command ['/bin/systemctl', 'start', 'certmonger.service'] returned non-zero exit status 1: 'Failed to start certmonger.service: Unit certmonger.service is masked.\\n')",
+      "traceback": "trimmed-for-fixture"
+    }
+  },
+  {
+    "source": "ipahealthcheck.ipa.files",
+    "check": "IPAFileCheck",
+    "result": "CRITICAL",
+    "uuid": "61767eb4-67ce-42d7-9f69-43ffc8d062fb",
+    "when": "20260920060621Z",
+    "duration": "0.008400",
+    "kw": {
+      "exception": "CalledProcessError(Command ['/bin/systemctl', 'start', 'certmonger.service'] returned non-zero exit status 1: 'Failed to start certmonger.service: Unit certmonger.service is masked.\\n')",
+      "traceback": "trimmed-for-fixture"
+    }
+  },
+  {
+    "source": "ipahealthcheck.meta.core",
+    "check": "MetaCheck",
+    "result": "WARNING",
+    "uuid": "e2296d94-d361-4eed-86ee-20965870ab90",
+    "when": "20260920060623Z",
+    "duration": "1.574275",
+    "kw": {
+      "key": "meta",
+      "fqdn": "ipa01.lab.test",
+      "fips": "missing /proc/sys/crypto/fips_enabled",
+      "acme": "disabled",
+      "ipa_version": "4.13.3",
+      "ipa_api_version": "2.257"
+    }
+  }
+]

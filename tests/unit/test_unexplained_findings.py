@@ -42,7 +42,7 @@ def test_service_finding_does_not_claim_a_root_cause():
 
 def test_unexplained_critical_followon_is_shown_as_unknown_never_a_guessed_cause():
     report = _report()
-    unknown = [d for d in report.diagnoses if d.rule_id == "unexplained-findings"]
+    unknown = [d for d in report.diagnoses if d.rule_id == "healthcheck-check-failed"]
     assert len(unknown) == 1
     assert unknown[0].status == DiagnosisStatus.UNKNOWN_INSUFFICIENT_EVIDENCE
     assert "IPAauthzdatapacCheck" in unknown[0].why
@@ -127,3 +127,32 @@ def test_ai_payload_redacts_secrets_embedded_in_diagnosis_text():
     payload = build_ai_payload(bundle, d)
     assert secret not in payload.user_prompt
     assert payload.redaction_matches
+
+
+# ---- live-discovered false diagnosis: a crashed check must never read as a finding ------
+
+CERTMONGER_STOPPED = FIXTURE.parent / "certmonger-stopped"
+
+
+def test_certmonger_stopped_is_not_misdiagnosed_as_an_expired_certificate():
+    """REAL LIVE CAPTURE (FreeIPA 4.13.3, certmonger stopped+masked): the cert expiration checks
+    CRASH with 'Failed to start certmonger'. Before the fix the Certificates pack turned that into
+    a HIGH-confidence PRIMARY 'Tracked certificate has passed its expiration threshold'."""
+    report = run_diagnosis(collect_evidence(replay_dir=str(CERTMONGER_STOPPED)))
+    titles = [d.title for d in report.diagnoses]
+    assert not any("expiration threshold" in t or "expired" in t.lower() for t in titles), titles
+    assert any("'certmonger' is not running" in t for t in titles), titles
+    primary = report.by_priority(PriorityBucket.PRIMARY)[0]
+    assert "certmonger" in primary.title
+    assert any(d.rule_id == "healthcheck-check-failed" for d in report.diagnoses)
+
+
+def test_crashed_check_findings_never_reach_diagnostic_rules():
+    from ipa_diagnose.engine import unexplained
+
+    bundle = collect_evidence(replay_dir=str(CERTMONGER_STOPPED))
+    crashed = [f for f in bundle.findings if unexplained.is_check_crash(f)]
+    assert crashed
+    report = run_diagnosis(bundle)
+    cited = {r.evidence_id for d in report.diagnoses if d.pack_id != "healthcheck" for r in d.evidence_for}
+    assert not cited & {f.finding_id for f in crashed}

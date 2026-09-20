@@ -46,6 +46,60 @@ _CORE_SERVICES = {"dirsrv", "krb5kdc", "kadmin", "httpd", "named", "named-pkcs11
 _MAX_GROUPED = 6
 
 
+def is_check_crash(f: Finding) -> bool:
+    """True for an ipa-healthcheck result that is an uncaught exception inside
+    the check itself (kw.exception / kw.traceback), not a finding about the system."""
+
+    kw = f.keywords if isinstance(f.keywords, dict) else {}
+    return bool(kw.get("exception") or kw.get("traceback"))
+
+
+def _check_failed_diagnosis(findings: List[Finding]) -> Diagnosis:
+    worst = max((f.severity for f in findings), key=lambda s: s.rank)
+    shown = findings[:_MAX_GROUPED]
+    lines = "; ".join(f"{_short(f.check, 60)}: {_short(f.message or f.keywords, 90)}" for f in shown)
+    more = f" (+{len(findings) - len(shown)} more)" if len(findings) > len(shown) else ""
+    first = shown[0]
+    safe_target = bool(_SOURCE_RE.match(first.source) and _CHECK_RE.match(first.check))
+    recheck = (
+        f"ipa-healthcheck --source {first.source} --check {first.check} --failures-only"
+        if safe_target
+        else "ipa-healthcheck --failures-only"
+    )
+    return Diagnosis(
+        pack_id=PACK_ID,
+        rule_id="healthcheck-check-failed",
+        status=DiagnosisStatus.UNKNOWN_INSUFFICIENT_EVIDENCE,
+        title="One or more ipa-healthcheck checks failed to run",
+        why=(
+            f"{len(findings)} ipa-healthcheck check(s) raised an exception instead of returning a result, so "
+            f"they say nothing about the state of the system: {lines}{more}. This is most often a consequence "
+            "of another problem in this report (for example a stopped service the check needs)."
+        ),
+        confidence=Confidence(
+            level=ConfidenceLevel.INSUFFICIENT,
+            rationale="A check that crashed produced no result; it is reported so it is never silently dropped.",
+            corroborating_evidence_count=0,
+        ),
+        severity=worst,
+        evidence_for=[
+            EvidenceRef(evidence_id=f.finding_id, kind="finding", why_relevant="ipa-healthcheck check raised an exception.")
+            for f in shown
+        ],
+        impact="Health of whatever these checks cover is not established.",
+        next_diagnostic_step=recheck,
+        actions=[
+            Action(
+                description="Re-run the failing check after resolving any other problem in this report.",
+                risk=RiskLevel.SAFE,
+                command=recheck,
+                rationale="Read-only.",
+            )
+        ],
+        limitations="No conclusion about the affected subsystem can be drawn from a crashed check.",
+    )
+
+
 def _claimed_ids(diagnoses: Iterable[Diagnosis]) -> Set[str]:
     claimed: Set[str] = set()
     for d in diagnoses:
@@ -161,8 +215,12 @@ def unexplained_finding_diagnoses(bundle: EvidenceBundle, diagnoses: List[Diagno
     ]
     result: List[Diagnosis] = []
     others: List[Finding] = []
+    crashed: List[Finding] = []
     seen_services: Set[str] = set()
     for f in unclaimed:
+        if is_check_crash(f):
+            crashed.append(f)
+            continue
         m = _NOT_RUNNING_RE.match(f.message or "") if f.source.endswith("meta.services") else None
         if m:
             service = m.group(1)
@@ -173,4 +231,6 @@ def unexplained_finding_diagnoses(bundle: EvidenceBundle, diagnoses: List[Diagno
             others.append(f)
     if others:
         result.append(_grouped_unknown(others))
+    if crashed:
+        result.append(_check_failed_diagnosis(crashed))
     return result
