@@ -1,14 +1,14 @@
 [
   {
-    "source": "ipahealthcheck.ds.nss_ssl",
-    "check": "NssCheck",
+    "source": "ipahealthcheck.ds.backends",
+    "check": "BackendsCheck",
     "result": "WARNING",
     "uuid": "d4000000-0000-0000-0000-000000000001",
     "when": "20260310081500Z",
     "duration": "0.033",
     "kw": {
-      "msg": "Unable to open NSS certificate database for slapd-EXAMPLE-TEST; certificate material could not be read.",
-      "nickname": "Server-Cert"
+      "key": "DSBLE0003",
+      "msg": "Backend userroot is not initialised (constructed: only activates the pack)"
     }
   },
   {

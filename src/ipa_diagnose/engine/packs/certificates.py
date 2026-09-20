@@ -42,6 +42,7 @@ date has passed" reading isn't explained away by an upstream pack firing.
 
 from __future__ import annotations
 
+import re
 from typing import List, Optional
 
 from ipa_diagnose.engine.model import (
@@ -68,9 +69,12 @@ _RA_HEALTHCHECK_CHECKS = {"DogtagCertsConnectivityCheck", "IPARAAgent"}
 _RA_NICKNAMES = {"ipacert", "ipara"}
 # "4301" is deliberately NOT a hint: IPA error 4301 is the generic CertificateOperationError (also raised
 # when the CA is simply down), not an authorization failure. Bare "unauthorized" is any HTTP 401.
-_AUTH_HINTS = ("authorization error", "not authorized", "insufficient access")
+_AUTH_HINTS = ("authorization error", "not authorized")
 # IPARAAgent results that state the agent's certificate/description and its LDAP entry disagree.
-_RA_DESYNC_MARKERS = ("description_mismatch", "ldap_mismatch", "agent_missing_description", "not found in ldap", "mismatch")
+_RA_DESYNC_KEYS = {"description_mismatch", "ldap_mismatch", "agent_missing_description"}
+
+
+_EXPIRY_TEXT_RE = re.compile(r"\bexpires in \d+ days?\b|\bexpired on\b|\bhas expired\b|\bis expired\b")
 
 
 def _is_external_cert_message(f: Finding) -> bool:
@@ -85,7 +89,7 @@ def _is_expiry_result(f: Finding) -> bool:
     text = (f.message or "").lower()
     if _is_external_cert_message(f):
         return False  # user-provided certificate: certmonger will not renew it; different remedy
-    return bool(kw.get("expiration_date")) or "expire" in text
+    return bool(kw.get("expiration_date")) or bool(_EXPIRY_TEXT_RE.search(text))
 
 _NETWORK_HINTS = (
     "could not resolve",
@@ -549,10 +553,15 @@ class RaAgentDesyncRule(DiagnosticRule):
         ra_specific_error = any(
             f.check == "IPARAAgent"
             and f.severity.rank >= Severity.ERROR.rank
-            and any(m in f"{f.keywords.get('key', '') if isinstance(f.keywords, dict) else ''} {f.message}".lower() for m in _RA_DESYNC_MARKERS)
+            and isinstance(f.keywords, dict)
+            and str(f.keywords.get("key", "")) in _RA_DESYNC_KEYS
             for f in hc_findings
         )
-        if signal_types >= 2 or ra_cm_items or ra_specific_error:
+        # A stopped/unreachable CA produces the same connectivity errors, CA_UNREACHABLE states and generic LDAP
+        # access errors, so those are never enough. Confident only with the RA agent's own desync result, or its
+        # own ERROR corroborated by an explicit authorization failure in the journal.
+        ra_own_error = any(f.check == "IPARAAgent" and f.severity.rank >= Severity.ERROR.rank for f in hc_findings)
+        if ra_specific_error or (ra_own_error and auth_journal_items):
             confidence_level = ConfidenceLevel.HIGH if signal_types >= 2 else ConfidenceLevel.MEDIUM
             severity = Severity.ERROR
             return Diagnosis(

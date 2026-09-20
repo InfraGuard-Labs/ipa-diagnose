@@ -302,8 +302,12 @@ def _file_findings(bundle: EvidenceBundle) -> List[Finding]:
     out = []
     for f in _exact(bundle, _FILE_SOURCE, *_FILE_CHECKS):
         kw = f.keywords if isinstance(f.keywords, dict) else {}
-        text = (f.message or "").lower()
-        if str(kw.get("type", "")).lower() == "umask" or "umask" in text or "code format" in text or "unknown uid" in text or "unknown gid" in text:
+        # Allowlist: upstream's owner/group/mode results carry type, path, expected and got.
+        if str(kw.get("type", "")).lower() not in ("owner", "group", "mode"):
+            continue
+        if not all(k in kw for k in ("path", "expected", "got")):
+            continue
+        if str(kw.get("got", "")).lower().startswith("unknown "):  # 'Unknown uid 1234': no such account, not a mismatch of a known owner
             continue
         out.append(f)
     return out
@@ -521,8 +525,10 @@ class NssTlsDbFormatRule(DiagnosticRule):
 
         # A Directory Server certificate-expiry result (NssCheck) or any certs/dogtag finding contradicts a
         # pure DB-format explanation.
+        # Any Directory Server certificate-check (NssCheck) result also counts: it is a certificate signal,
+        # so a DB-format story is never asserted confidently next to it.
         cert_expiry_findings = _at_least_warning(
-            _findings(bundle, *_CERT_SOURCES) + _ds_cert_expiry_findings(bundle)
+            _findings(bundle, *_CERT_SOURCES) + _exact(bundle, _DS_CERT_SOURCE, _DS_CERT_CHECK)
         )
 
         evidence_for = [_ref_f(f, f"{f.qualified_check} reported {f.severity.value}: {f.message}") for f in nss_findings]
@@ -703,8 +709,8 @@ class IndexBackendHealthRule(DiagnosticRule):
         # backend result is left to the unexplained-findings safety net.
         relevant = [
             f
-            for f in _at_least_warning(_findings(bundle, _BACKENDS_SOURCE))
-            if "DSBLE0007" in f"{f.keywords.get('key', '')} {f.message}"
+            for f in _at_least_warning(_exact(bundle, _BACKENDS_SOURCE, "BackendsCheck"))
+            if isinstance(f.keywords, dict) and f.keywords.get("key") == "DSBLE0007"
         ]
         if not relevant:
             return None

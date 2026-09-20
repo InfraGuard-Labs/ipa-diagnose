@@ -219,7 +219,8 @@ def test_ownership_diagnosed_when_ipafilecheck_names_exact_value():
             "ipahealthcheck.ipa.files",
             "IPAFileNSSDBCheck",
             Severity.ERROR,
-            message="/etc/dirsrv/slapd-TEST/cert8.db owned by root:root, expected dirsrv:root",
+            message="Ownership of /etc/dirsrv/slapd-TEST/cert8.db is root and should be dirsrv",
+            keywords={"key": "/etc/dirsrv/slapd-TEST/cert8.db", "path": "/etc/dirsrv/slapd-TEST/cert8.db", "type": "owner", "expected": "dirsrv", "got": "root"},
         )
     ]
     bundle = _bundle(findings=findings)

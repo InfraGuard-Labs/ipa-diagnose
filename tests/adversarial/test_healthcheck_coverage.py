@@ -284,3 +284,62 @@ def test_message_placeholders_never_evaluate_format_expressions():
     e = _entry("ipahealthcheck.zz.brand_new", "Fmt", "WARNING", msg="{a.__class__} {0} {:>99999999} {server.__init__} {server}", server="ipa1")
     u = run_diagnosis(_bundle([e])).undiagnosed_findings[0]
     assert "<class" not in u.message and "ipa1" in u.message and len(u.message) <= 300
+
+
+# ---- false-diagnosis gate regressions (adversarial review of the 0.1.3 candidate) ----------------------
+
+
+def _diag_ids(report):
+    return {d.rule_id for d in report.diagnoses if d.status == DiagnosisStatus.DIAGNOSED}
+
+
+def test_ca_down_is_not_an_ra_agent_desync_even_with_ra_cm_failure_or_ldap_access_error():
+    cm = EvidenceItem(item_id="cm1", kind="certmonger_request", summary="ra",
+                      data={"nickname": "ipaCert", "state": "CA_UNREACHABLE", "request_id": "1"})
+    e = _entry("ipahealthcheck.dogtag.ca", "DogtagCertsConnectivityCheck", "ERROR", msg="CA down")
+    j = EvidenceItem(item_id="pj", kind="pki_journal_line", summary="x", data={"line": "LDAP: Insufficient access on ou=people"})
+    assert "ra-agent-desync" not in _diag_ids(run_diagnosis(_bundle([e], [cm, j])))
+
+
+def test_ra_agent_message_words_do_not_make_a_desync_only_its_keys_do():
+    e = _entry("ipahealthcheck.ipa.certs", "IPARAAgent", "ERROR", msg="Unable to connect to mismatch.example.com")
+    assert "ra-agent-desync" not in _diag_ids(run_diagnosis(_bundle([e])))
+    e2 = _entry("ipahealthcheck.ipa.certs", "IPARAAgent", "ERROR", key="description_mismatch", msg="RA agent description differs")
+    assert "ra-agent-desync" in _diag_ids(run_diagnosis(_bundle([e2])))
+
+
+def test_expiry_word_in_a_path_is_not_an_expired_certificate():
+    e = _entry("ipahealthcheck.ipa.certs", "IPACertmongerExpirationCheck", "ERROR",
+               msg="Unable to determine expiration: NSS db /etc/pki/expired-certs not readable")
+    assert "cert-expired" not in _diag_ids(run_diagnosis(_bundle([e])))
+
+
+def test_file_findings_need_owner_group_mode_shape():
+    e = _entry("ipahealthcheck.ipa.files", "IPAFileCheck", "ERROR", msg="File /etc/dirsrv/x does not exist")
+    assert "ownership-selinux-mismatch" not in _diag_ids(run_diagnosis(_bundle([e])))
+    e2 = _entry("ipahealthcheck.ipa.files", "IPAFileCheck", "ERROR", key="/etc/x", path="/etc/x", type="mode",
+                expected="0640", got="0600", msg="Permissions of /etc/x are too restrictive: 0600 and should be 0640")
+    assert "ownership-selinux-mismatch" in _diag_ids(run_diagnosis(_bundle([e2])))
+
+
+def test_missing_index_needs_the_exact_key_source_and_check():
+    e = _entry("ipahealthcheck.ds.backends", "BackendsCheck", "ERROR", key="DSBLE0003", msg="see DSBLE0007 docs")
+    e2 = _entry("ipahealthcheck.ds.backends_extra", "Foo", "ERROR", key="DSBLE0007", msg="x")
+    assert "missing-system-index" not in _diag_ids(run_diagnosis(_bundle([e, e2])))
+    e3 = _entry("ipahealthcheck.ds.backends", "BackendsCheck", "ERROR", key="DSBLE0007", msg="Missing indexes")
+    assert "missing-system-index" in _diag_ids(run_diagnosis(_bundle([e3])))
+
+
+def test_named_down_needs_the_exact_service_result():
+    e = _entry("ipahealthcheck.meta.services", "httpd", "ERROR", msg="httpd: not running", note="renamed")
+    e2 = _entry("ipahealthcheck.ipa.zz", "IPAServiceCheck", "ERROR", msg="Service unnamed failed")
+    assert "named-service-down" not in _diag_ids(run_diagnosis(_bundle([e, e2])))
+    e3 = _entry("ipahealthcheck.meta.services", "named", "ERROR", msg="named: not running")
+    assert "named-service-down" in {d.rule_id for d in run_diagnosis(_bundle([e3])).diagnoses}
+
+
+def test_other_nsscheck_result_next_to_db_journal_is_not_a_confident_db_format_diagnosis():
+    e = _entry("ipahealthcheck.ds.nss_ssl", "NssCheck", "ERROR", key="DSCERTLE0009", msg="hostname does not match")
+    j = EvidenceItem(item_id="j1", kind="dirsrv_journal_line", summary="x",
+                     data={"category": "nss_tls", "message": "SEC_ERROR_BAD_DATABASE: cert9.db"})
+    assert "nss-tls-db-format" not in _diag_ids(run_diagnosis(_bundle([e], [j])))

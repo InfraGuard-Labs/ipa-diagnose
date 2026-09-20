@@ -37,6 +37,7 @@ evidence points at a directory-server ACI regression as the true root cause.
 
 from __future__ import annotations
 
+import re
 from typing import List, Optional
 
 from ipa_diagnose.engine.model import (
@@ -139,11 +140,10 @@ def _service_down_findings(bundle: EvidenceBundle) -> List[Finding]:
     for f in bundle.findings:
         if f.severity.rank < Severity.ERROR.rank:
             continue
-        source_lower = f.source.lower()
-        check_lower = f.check.lower()
-        if "service" not in source_lower and "service" not in check_lower:
+        # Only the exact "<service>: not running" result of the service checks, for named itself.
+        if not f.source.endswith("meta.services"):
             continue
-        if "named" in f.message.lower() or "named" in str(f.keywords).lower():
+        if re.fullmatch(r"\s*named(-pkcs11)?\s*:\s*not running\s*", f.message or "", re.IGNORECASE):
             results.append(f)
     return results
 
