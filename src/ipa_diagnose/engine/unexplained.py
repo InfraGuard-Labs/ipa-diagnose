@@ -50,6 +50,8 @@ _IPACTL_SERVICES = {
 }
 _CORE_SERVICES = {"dirsrv", "krb5kdc", "kadmin", "httpd", "named", "named-pkcs11", "pki-tomcatd"}
 _MAX_GROUPED = 6
+# Packs whose stopped service can explain a pile of unexplained/crashed checks.
+_SERVICE_UPSTREAMS = ("directory-server", "kerberos", "dns", "certificates")
 
 
 def is_check_crash(f: Finding) -> bool:
@@ -66,7 +68,7 @@ def _check_failed_diagnosis(findings: List[Finding]) -> Diagnosis:
     lines = "; ".join(f"{_short(f.check, 60)}: {_short(f.message or f.keywords, 90)}" for f in shown)
     more = f" (+{len(findings) - len(shown)} more)" if len(findings) > len(shown) else ""
     first = shown[0]
-    safe_target = bool(_SOURCE_RE.match(first.source) and _CHECK_RE.match(first.check))
+    safe_target = bool(_SOURCE_RE.fullmatch(first.source) and _CHECK_RE.fullmatch(first.check))
     recheck = (
         f"ipa-healthcheck --source {first.source} --check {first.check} --failures-only"
         if safe_target
@@ -103,6 +105,7 @@ def _check_failed_diagnosis(findings: List[Finding]) -> Diagnosis:
             )
         ],
         limitations="No conclusion about the affected subsystem can be drawn from a crashed check.",
+        upstream_candidates=list(_SERVICE_UPSTREAMS),
     )
 
 
@@ -175,7 +178,7 @@ def _grouped_unknown(findings: List[Finding]) -> Diagnosis:
     )
     more = f" (+{len(findings) - len(shown)} more)" if len(findings) > len(shown) else ""
     first = shown[0]
-    safe_target = bool(_SOURCE_RE.match(first.source) and _CHECK_RE.match(first.check))
+    safe_target = bool(_SOURCE_RE.fullmatch(first.source) and _CHECK_RE.fullmatch(first.check))
     recheck = (
         f"ipa-healthcheck --source {first.source} --check {first.check} --failures-only"
         if safe_target
@@ -212,6 +215,7 @@ def _grouped_unknown(findings: List[Finding]) -> Diagnosis:
             )
         ],
         limitations="ipa-diagnose has no rule for these findings; this is a visibility safeguard, not a diagnosis.",
+        upstream_candidates=list(_SERVICE_UPSTREAMS),
     )
 
 

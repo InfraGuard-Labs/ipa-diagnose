@@ -64,6 +64,8 @@ def save_report(state_path: pathlib.Path, report: DiagnosisReport) -> None:
     # the AI-redaction pipeline, which only applies to outbound AI payloads)
     # - restricted to owner-only, not left at the default-umask 0644/0755
     # (found in security review).
+    if os.path.islink(state_path) or os.path.islink(state_path.parent):
+        return  # never follow a symlink when writing as root (best-effort state only)
     try:
         state_path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         os.chmod(state_path.parent, 0o700)
@@ -107,6 +109,7 @@ def compare(previous: Optional[Dict[str, Any]], current: DiagnosisReport) -> Ver
         p.pack_id: set(p.additional_collectors) | set(p.unconditional_collectors) for p in all_packs()
     }
     healthcheck_missing = not current.evidence_completeness.healthcheck_collected
+    crashed_checks = any(d.rule_id == "healthcheck-check-failed" for d in current.diagnoses)
 
     items: List[VerifyItem] = []
     for diag_id, prev_d in prev_by_id.items():
@@ -131,6 +134,16 @@ def compare(previous: Optional[Dict[str, Any]], current: DiagnosisReport) -> Ver
             continue
 
         curr_d = curr_by_id.get(diag_id)
+        if curr_d is None and crashed_checks:
+            items.append(
+                VerifyItem(
+                    diagnosis_id=diag_id,
+                    title=prev_d.get("title", diag_id),
+                    outcome=VerifyOutcome.UNABLE_TO_VERIFY,
+                    detail="Some ipa-healthcheck checks failed to run this time, so this cannot be confirmed resolved.",
+                )
+            )
+            continue
         if curr_d is None:
             items.append(
                 VerifyItem(

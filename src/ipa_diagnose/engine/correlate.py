@@ -76,12 +76,33 @@ def _is_real_problem(d: Diagnosis) -> bool:
     return d.severity.rank >= Severity.ERROR.rank
 
 
+_SERVICE_PACK = {
+    "dirsrv": "directory-server",
+    "krb5kdc": "kerberos",
+    "kadmin": "kerberos",
+    "named": "dns",
+    "named-pkcs11": "dns",
+    "pki-tomcatd": "certificates",
+    "certmonger": "certificates",
+}
+
+
+def _effective_pack(d: Diagnosis) -> str:
+    """A 'service X is not running' diagnosis stands for the pack that depends on X,
+    so it counts as an upstream cause of that pack's downstream symptoms."""
+
+    if d.pack_id == "healthcheck" and d.rule_id.startswith("service-not-running-"):
+        service = d.rule_id[len("service-not-running-"):].split("@")[0]
+        return _SERVICE_PACK.get(service, d.pack_id)
+    return d.pack_id
+
+
 def _demote_via_causality(diagnoses: List[Diagnosis]) -> Dict[str, List[str]]:
     """Returns {diagnosis_id: [causing_pack_ids]} for diagnoses whose declared
     upstream_candidates actually fired - as a REAL problem, not merely any
     diagnosis at all - in this same report."""
 
-    fired_packs = {d.pack_id for d in diagnoses if _is_real_problem(d)}
+    fired_packs = {_effective_pack(d) for d in diagnoses if _is_real_problem(d)}
     demotions: Dict[str, List[str]] = {}
     for d in diagnoses:
         causing = [p for p in d.upstream_candidates if p in fired_packs and p != d.pack_id]
@@ -100,7 +121,7 @@ def build_report(
     titles_by_pack: Dict[str, List[str]] = {}
     for d in diagnoses:
         if _is_real_problem(d):
-            titles_by_pack.setdefault(d.pack_id, []).append(d.title)
+            titles_by_pack.setdefault(_effective_pack(d), []).append(d.title)
 
     root_candidates: List[Diagnosis] = []
     for d in diagnoses:
@@ -120,6 +141,10 @@ def build_report(
         d.priority = PriorityBucket.PRIMARY if idx == 0 else PriorityBucket.SECONDARY_INDEPENDENT
 
     completeness = _assess_completeness(bundle)
+    claimed = {r.evidence_id for d in diagnoses for r in list(d.evidence_for) + list(d.evidence_against)}
+    unclaimed_warnings = sum(
+        1 for f in bundle.findings if f.severity == Severity.WARNING and f.finding_id not in claimed
+    )
     overall = _apply_completeness(_overall_status(diagnoses), completeness)
 
     return DiagnosisReport(
@@ -129,6 +154,7 @@ def build_report(
         diagnoses=sorted(diagnoses, key=_priority_sort_key),
         collection_errors=[f"{e.collector}: {sanitize_error_text(e.message)}" for e in bundle.collection_errors],
         evidence_completeness=completeness,
+        unclaimed_warnings=unclaimed_warnings,
         packs_evaluated=packs_evaluated,
         replay_source=bundle.replay_source,
         environment=bundle.environment,

@@ -424,7 +424,7 @@ def _parse_list_output(stdout: str, *, command: str) -> List[EvidenceItem]:
             )
         )
 
-    for raw_line in stdout.splitlines():
+    for raw_line in (ln[:512] for ln in stdout.splitlines()):
         if not raw_line.strip():
             continue
         role_match = _ROLE_LINE_RE.match(raw_line)
@@ -466,7 +466,7 @@ def _count_unparsed_ruv_lines(stdout: str) -> int:
     known shapes."""
 
     count = 0
-    for raw in (stdout or "").splitlines():
+    for raw in (ln[:512] for ln in (stdout or "").splitlines()):
         stripped = raw.strip()
         if not stripped or _CS_RUV_HEADER_RE.match(stripped) or _RUV_HEADER_RE.match(stripped):
             continue
@@ -510,7 +510,7 @@ def _parse_list_ruv_output(
     items: List[EvidenceItem] = []
     seen: "set[tuple[str, int]]" = set()
     suffix = "domain"
-    for raw_line in stdout.splitlines():
+    for raw_line in (ln[:512] for ln in stdout.splitlines()):
         stripped = raw_line.strip()
         if not stripped:
             continue
@@ -657,10 +657,19 @@ def _ldapi_identity_is_directory_manager(uri: str, timeout: float) -> bool:
             text=True,
             timeout=timeout,
             check=False,
+            cwd="/",
+            env=_ldap_env(),
         )
     except (OSError, ValueError, subprocess.SubprocessError):
         return False
     return proc.returncode == 0 and "cn=directory manager" in proc.stdout.lower()
+
+
+def _ldap_env() -> "dict[str, str]":
+    """Environment for the OpenLDAP tools: no LDAP* variables (LDAPRC, LDAPURI, ...)
+    inherited from the caller, so they cannot redirect or reconfigure the read."""
+
+    return {k: v for k, v in os.environ.items() if not k.startswith("LDAP")}
 
 
 def _ldapi_context() -> "tuple[Optional[str], Optional[str], Optional[str]]":
@@ -674,6 +683,8 @@ def _ldapi_context() -> "tuple[Optional[str], Optional[str], Optional[str]]":
     realm, basedn = _read_ipa_conf()
     if not realm or not basedn:
         return None, None, f"could not read realm/basedn from {IPA_DEFAULT_CONF}"
+    if not re.fullmatch(r"[A-Za-z0-9.-]+", realm):
+        return None, None, "realm in /etc/ipa/default.conf has an unexpected format"
     socket_path = f"/run/slapd-{realm.replace('.', '-')}.socket"
     if not os.path.exists(socket_path):
         return None, None, f"directory server LDAPI socket {socket_path} not found"
@@ -683,7 +694,15 @@ def _ldapi_context() -> "tuple[Optional[str], Optional[str], Optional[str]]":
 def _ldapsearch(uri: str, base: str, scope: str, search_filter: str, attrs: "list[str]", timeout: float):
     argv = ["ldapsearch", "-LLL", "-Y", "EXTERNAL", "-H", uri, "-b", base, "-s", scope, search_filter, *attrs]
     proc = subprocess.run(
-        argv, capture_output=True, stdin=subprocess.DEVNULL, text=True, errors="replace", timeout=timeout, check=False
+        argv,
+        capture_output=True,
+        stdin=subprocess.DEVNULL,
+        text=True,
+        errors="replace",
+        timeout=timeout,
+        check=False,
+        cwd="/",
+        env=_ldap_env(),
     )
     return argv, proc
 

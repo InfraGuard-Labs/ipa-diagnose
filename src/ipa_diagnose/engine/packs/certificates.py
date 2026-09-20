@@ -519,7 +519,13 @@ class RaAgentDesyncRule(DiagnosticRule):
         signal_types = sum([bool(hc_findings), bool(ra_cm_items), bool(auth_journal_items)])
         max_hc_severity = max((f.severity for f in hc_findings), default=Severity.WARNING)
 
-        if signal_types >= 2 or ra_cm_items or max_hc_severity.rank >= Severity.ERROR.rank:
+        # A Dogtag CONNECTIVITY/config ERROR alone looks identical to a stopped
+        # pki-tomcatd or an unreachable CA: only an RA-agent-specific ERROR, a failing
+        # RA-agent certmonger request, or two independent signals support this cause.
+        ra_specific_error = any(
+            f.check in ("IPARAAgent", "IPAKRAAgent") and f.severity.rank >= Severity.ERROR.rank for f in hc_findings
+        )
+        if signal_types >= 2 or ra_cm_items or ra_specific_error:
             confidence_level = ConfidenceLevel.HIGH if signal_types >= 2 else ConfidenceLevel.MEDIUM
             severity = Severity.ERROR
             return Diagnosis(

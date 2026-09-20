@@ -95,6 +95,7 @@ def report_to_dict(report: DiagnosisReport, ai_explanations: Dict[str, str] = No
         "overall_status": report.overall_status.value,
         "packs_evaluated": report.packs_evaluated,
         "collection_errors": report.collection_errors,
+        "unclaimed_warnings": report.unclaimed_warnings,
         "fully_verified": report.evidence_completeness.level == "complete",
         "evidence_completeness": _completeness_to_dict(report.evidence_completeness),
         "replay_source": report.replay_source,

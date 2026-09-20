@@ -473,7 +473,17 @@ class NssTlsDbFormatRule(DiagnosticRule):
             "certificate lifecycle problem."
         )
 
-        if nss_findings or (tls_journal and not cert_expiry_findings):
+        # A TLS handshake/alert line is routine (client aborts, scanners). Only an
+        # ipa-healthcheck NSS result, or a journal line that actually names the
+        # legacy/modern NSS DB files, supports a DB-format diagnosis.
+        import re as _re
+
+        db_format_journal = [
+            i
+            for i in tls_journal
+            if _re.search(r"cert8\.db|key3\.db|secmod\.db|cert9\.db|key4\.db", str(i.data.get("line", "")), _re.I)
+        ]
+        if nss_findings or (db_format_journal and not cert_expiry_findings):
             corroborated = bool(nss_findings and tls_journal)
             return Diagnosis(
                 pack_id=PACK_ID,
@@ -621,7 +631,14 @@ class IndexBackendHealthRule(DiagnosticRule):
     summary = "Missing/misconfigured system index reported by ipa-healthcheck's BackendsCheck (DSBLE0007)."
 
     def evaluate(self, bundle: EvidenceBundle) -> Optional[Diagnosis]:
-        relevant = _at_least_warning(_findings(bundle, _BACKENDS_SOURCE))
+        # BackendsCheck emits several different results; only the documented
+        # DSBLE0007 (missing system index) supports this diagnosis. Any other
+        # backend result is left to the unexplained-findings safety net.
+        relevant = [
+            f
+            for f in _at_least_warning(_findings(bundle, _BACKENDS_SOURCE))
+            if "DSBLE0007" in f"{f.keywords.get('key', '')} {f.message}"
+        ]
         if not relevant:
             return None
 

@@ -223,6 +223,8 @@ class DiagnosisReport:
     replay_source: Optional[str] = None
     environment: Optional[EnvironmentInfo] = None
     evidence_completeness: EvidenceCompleteness = dataclasses.field(default_factory=EvidenceCompleteness)
+    unclaimed_warnings: int = 0
+    """ipa-healthcheck WARNING findings that no diagnostic rule covers (never dropped silently)."""
     unknown_severity_findings: List[str] = dataclasses.field(default_factory=list)
     """Human-readable notes for any Finding whose raw ipa-healthcheck
     ``result`` value did not match a known severity (see Severity.UNKNOWN) -

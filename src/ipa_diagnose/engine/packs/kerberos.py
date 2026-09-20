@@ -118,6 +118,16 @@ class ClockSkewRule(DiagnosticRule):
         keytab_findings = [f for f in _keytab_findings(bundle) if not _is_dns_style(f.message or "")]
         if not journal_hits and not keytab_findings:
             return None
+        if not journal_hits:
+            # Local NTP being merely "unsynchronised" (common on VMs), or a few seconds
+            # of offset, says nothing about skew: Kerberos tolerates 300 s. Require a
+            # clock-shaped keytab failure or an offset at/over the real window.
+            big_offset = any(
+                isinstance(i.data.get("offset_seconds"), (int, float)) and abs(i.data["offset_seconds"]) >= 300
+                for i in desync_hits
+            )
+            if not big_offset and not any(_is_clock_style(f.message or "") for f in keytab_findings):
+                return None
         evidence_for: List[EvidenceRef] = [
             EvidenceRef(
                 f.finding_id,
@@ -406,6 +416,13 @@ class KdcDiscoveryFailureRule(DiagnosticRule):
         dns_style = [f for f in keytab_findings if _is_dns_style(f.message)]
         if not dns_style:
             return None  # no discovery/reachability-shaped error at all
+        # "Cannot contact any KDC" is exactly what kinit prints when krb5kdc itself is
+        # down: a stopped KDC service is the specific, already-reported cause.
+        if any(
+            f.source.endswith("meta.services") and (f.message or "").lower().startswith("krb5kdc:") and "not running" in (f.message or "").lower()
+            for f in bundle.findings
+        ):
+            return None
 
         # A more specific, already-diagnosable cause takes precedence over
         # this hypothesis rather than letting two rules fight over the same

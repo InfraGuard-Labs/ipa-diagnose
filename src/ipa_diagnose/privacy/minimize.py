@@ -30,6 +30,7 @@ import dataclasses
 from typing import Dict, List
 
 from ipa_diagnose.engine.model import Diagnosis
+from ipa_diagnose.textsafe import clean_multiline
 from ipa_diagnose.evidence.model import EvidenceBundle, EvidenceItem, Finding
 from ipa_diagnose.privacy.redact import redact_mapping, redact_text
 
@@ -125,6 +126,7 @@ def build_ai_payload(bundle: EvidenceBundle, diagnosis: Diagnosis) -> AIPayload:
             selected.append(_selected_from_item(item, ref.why_relevant))
 
     for s in selected:
+        s.message = clean_multiline(s.message)
         report = redact_text(s.message)
         redaction_matches.extend(report.matches)
         s.message = report.redacted_text[:_MAX_MESSAGE_CHARS]
@@ -140,7 +142,7 @@ def build_ai_payload(bundle: EvidenceBundle, diagnosis: Diagnosis) -> AIPayload:
     # Diagnosis text can embed raw ipa-healthcheck messages (paths, hosts, IPs):
     # it goes through the same redaction as the evidence lines.
     def _redacted(text: str) -> str:
-        r = redact_text(text)
+        r = redact_text(clean_multiline(text))
         redaction_matches.extend(r.matches)
         return r.redacted_text
 

@@ -70,10 +70,17 @@ def render_report(
 
     if not report.diagnoses:
         if report.evidence_completeness.level == "complete":
-            console.print(
-                "[bold green]No problems detected.[/bold green] All ipa-healthcheck checks passed and "
-                "all expected evidence was collected."
-            )
+            if report.unclaimed_warnings:
+                console.print(
+                    "[bold green]No problems detected by any diagnostic rule[/bold green] and all expected evidence "
+                    f"was collected. Note: ipa-healthcheck reported {report.unclaimed_warnings} warning(s) that no "
+                    "rule covers (run `ipa-healthcheck` to see them)."
+                )
+            else:
+                console.print(
+                    "[bold green]No problems detected.[/bold green] All ipa-healthcheck checks passed and "
+                    "all expected evidence was collected."
+                )
         else:
             console.print(
                 "[bold yellow]No problem was observed, but health could NOT be fully verified[/bold yellow] "
