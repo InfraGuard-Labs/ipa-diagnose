@@ -59,6 +59,12 @@ ipa-diagnose --json > /tmp/j2.json 2>/dev/null
 python3 -c "import json; d=json.load(open('/tmp/j2.json')); assert d['overall_status']=='UNKNOWN' and d['fully_verified'] is False and d['evidence_completeness']['level']=='insufficient'"
 check "json: UNKNOWN / fully_verified false / insufficient" test $? -eq 0
 
+step "6b. Evidence-completeness semantics of the INSTALLED package (stand-in tools)"
+if [ -f /semantics.sh ]; then
+    bash /semantics.sh > /tmp/sem.log 2>&1; tail -8 /tmp/sem.log
+    check "semantics: UNKNOWN / HEALTHY / NOT_FULLY_VERIFIED / RUV NOT VERIFIED / verified HEALTHY" grep -q "SEMANTICS: 5 passed, 0 failed" /tmp/sem.log
+fi
+
 step "7. Uninstall, verify removal"
 dnf remove -y ipa-diagnose
 check "package removed" bash -c "! rpm -q ipa-diagnose >/dev/null 2>&1"

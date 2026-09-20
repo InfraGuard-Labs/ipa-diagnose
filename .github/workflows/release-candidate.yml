@@ -68,12 +68,13 @@ jobs:
           for img in ${{ matrix.images }}; do
             tag=$(echo "$img" | tr ':/' '__')
             echo "############ $img ############"
-            docker run --rm --name lc \
+            docker run --rm --name lc -h ipa01.example.test \
               -e EXPECT_VERSION="$VERSION" -e PLATFORM="${{ matrix.name }} on $img" \
               -v "$PWD/cand/v1:/rpms/v1:ro" -v "$PWD/cand/v2:/rpms/v2:ro" -v "$PWD/cand/srpm:/rpms/srpm:ro" \
               -v "$PWD/cand/SHA256SUMS:/rpms/SHA256SUMS:ro" \
               -v "$PWD/tests/fixtures:/fixtures:ro" \
               -v "$PWD/packaging/rpm/lifecycle-test.sh:/lifecycle-test.sh:ro" \
+              -v "$PWD/packaging/rpm/postpublish-semantics.sh:/semantics.sh:ro" \
               "$img" bash /lifecycle-test.sh 2>&1 | tee "logs/lifecycle-${{ matrix.name }}-$tag.log" || true
             grep -q "0 failed" "logs/lifecycle-${{ matrix.name }}-$tag.log" || rc_all=1
           done
