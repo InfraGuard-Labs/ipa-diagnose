@@ -297,6 +297,7 @@ jobs:
           # rest of the job).
           docker exec ipa-a cp /etc/resolv.conf.ipa-backup /etc/resolv.conf
           docker exec ipa-a /root/.local/bin/ipa-diagnose --details | tee healthy-topology-diagnose-A.txt || true
+          docker exec ipa-a /root/.local/bin/ipa-diagnose --json > healthy-topology-diagnose-A.json 2>/dev/null || true
 
       - name: Probe RUV read access on the real two-node topology (BEFORE failure)
         run: |
@@ -414,6 +415,7 @@ jobs:
             server-b-install.log
             server-b-container.log
             healthy-topology-*.txt
+            healthy-topology-diagnose-A.json
             healthy-topology-*.json
             stale-ruv-*.txt
             stale-ruv-*.json

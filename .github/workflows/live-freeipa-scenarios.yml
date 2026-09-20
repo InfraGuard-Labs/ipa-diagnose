@@ -113,6 +113,7 @@ jobs:
           docker exec ipa-s /root/.local/bin/ipa-diagnose --details > out/s3-dirsrv-down.txt 2>&1; echo "exit=$?" >> out/s3-dirsrv-down.txt || true
           docker exec ipa-s /root/.local/bin/ipa-diagnose --json > out/s3-dirsrv-down.json 2>/dev/null || true
           docker exec ipa-s ipa-healthcheck --failures-only --output-type json > out/s3-dirsrv-down-healthcheck-failures.json 2>&1 || true
+          docker exec ipa-s /root/.local/bin/ipa-diagnose ai-preview > out/s3-ai-preview.txt 2>&1; echo "exit=$?" >> out/s3-ai-preview.txt || true
           docker exec ipa-s systemctl start dirsrv@LAB-TEST.service || true
           sleep 30; docker exec ipa-s ipactl status > out/s3-ipactl-after.txt 2>&1 || true
           docker exec ipa-s /root/.local/bin/ipa-diagnose verify > out/s3-verify.txt 2>&1; echo "exit=$?" >> out/s3-verify.txt || true
