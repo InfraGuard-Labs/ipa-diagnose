@@ -19,6 +19,12 @@ Provenance labels used:
   distribution (no FreeIPA present). Rocky/Alma images are **stand-ins** for RHEL;
   RHEL itself was never used.
 
+**Source used for the live captures:** commit `bdac609`. The released code differs from it by
+one guard in the NSS/TLS rule (routine TLS journal noise no longer produces a false UNKNOWN) and
+one entry removed from the service-demotion map; neither affects any scenario shown here.
+The clean-container install captures (13-17) were taken from the pre-final build of the same
+package version; the final release artifacts were re-verified with the identical lifecycle.
+
 The single-server scenario lab first corrects one known quirk of the container
 image (`CS.cfg` shipped as mode 0664, which `ipa-healthcheck` flags) to obtain the
 genuinely healthy capture (01); capture 02 is the same server *before* that
