@@ -183,9 +183,16 @@ def _collect_healthcheck(bundle: EvidenceBundle, *, live: bool, fixture_path: Op
                     message=f"{len(raw_results) - len(usable)} ipa-healthcheck result entries could not be read",
                 )
             )
-        bundle.findings.extend(
-            parse_healthcheck_results(raw_results, command=f"--replay {hc_file}", live=False, host=bundle.hostname)
-        )
+        replayed = parse_healthcheck_results(raw_results, command=f"--replay {hc_file}", live=False, host=bundle.hostname)
+        bundle.findings.extend(replayed)
+        # Same as the live path: output without the core service checks is not evidence of health.
+        if not any(f.source.endswith("meta.services") for f in replayed):
+            bundle.collection_errors.append(
+                CollectionError(
+                    collector="ipa-healthcheck",
+                    message="ipa-healthcheck did not report the core service checks (incomplete output)",
+                )
+            )
 
 
 def _collect_staged(bundle: EvidenceBundle, *, fixture_path: Optional[pathlib.Path]) -> None:

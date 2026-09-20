@@ -59,12 +59,13 @@ def test_huge_healthcheck_output_does_not_crash_or_hang(tmp_path):
         }
         for i in range(5000)
     ]
+    huge.append({"source": "ipahealthcheck.meta.services", "check": "dirsrv", "result": "SUCCESS", "uuid": "svc", "kw": {}})
     fixture_dir = tmp_path / "huge"
     fixture_dir.mkdir()
     (fixture_dir / "healthcheck.json").write_text(json.dumps(huge), encoding="utf-8")
 
     bundle = collect_evidence(replay_dir=str(fixture_dir))
-    assert len(bundle.findings) == 5000
+    assert len(bundle.findings) == 5001
     report = run_diagnosis(bundle)
     assert report.overall_status.value == "HEALTHY"
 

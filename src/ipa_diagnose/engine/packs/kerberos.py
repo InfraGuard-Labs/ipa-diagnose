@@ -440,6 +440,14 @@ class KdcDiscoveryFailureRule(DiagnosticRule):
 
         resolve_hits = [f for f in dns_style if _DNS_RESOLVE_RE.search(f.message)]
         contact_hits = [f for f in dns_style if _DNS_CONTACT_RE.search(f.message) and f not in resolve_hits]
+        # "Cannot contact any KDC" with SRV/A lookups that demonstrably work is not DNS-caused: leave it
+        # undiagnosed instead of blaming DNS.
+        if not resolve_hits and any(
+            str(i.kind).startswith("dns")
+            and (i.data.get("ok") is True or (str(i.data.get("rcode", "")).upper() == "NOERROR" and i.data.get("answers")))
+            for i in bundle.items
+        ):
+            return None
 
         if resolve_hits:
             confidence = Confidence(

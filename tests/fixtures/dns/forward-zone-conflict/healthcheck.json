@@ -10,5 +10,16 @@
       "msg": "Expected 2 AAAA records for ipa-ca, found 1 (see freeipa-healthcheck issue #270 - known false positive on healthy systems)",
       "key": "ipa-ca AAAA"
     }
+  },
+  {
+    "source": "ipahealthcheck.meta.services",
+    "check": "dirsrv",
+    "result": "SUCCESS",
+    "uuid": "00000000-0000-0000-0000-00000000c0de",
+    "when": "20260101000000Z",
+    "duration": "0.01",
+    "kw": {
+      "status": true
+    }
   }
 ]

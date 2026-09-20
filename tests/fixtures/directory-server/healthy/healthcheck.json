@@ -70,5 +70,16 @@
     "when": "20260101120000Z",
     "duration": "0.014",
     "kw": {}
+  },
+  {
+    "source": "ipahealthcheck.meta.services",
+    "check": "dirsrv",
+    "result": "SUCCESS",
+    "uuid": "00000000-0000-0000-0000-00000000c0de",
+    "when": "20260101000000Z",
+    "duration": "0.01",
+    "kw": {
+      "status": true
+    }
   }
 ]

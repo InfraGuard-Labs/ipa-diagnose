@@ -343,3 +343,30 @@ def test_other_nsscheck_result_next_to_db_journal_is_not_a_confident_db_format_d
     j = EvidenceItem(item_id="j1", kind="dirsrv_journal_line", summary="x",
                      data={"category": "nss_tls", "message": "SEC_ERROR_BAD_DATABASE: cert9.db"})
     assert "nss-tls-db-format" not in _diag_ids(run_diagnosis(_bundle([e], [j])))
+
+
+def test_unrelated_ruv_error_does_not_confirm_a_stale_ruv():
+    item = EvidenceItem(item_id="ruv5", kind="replication_ruv", summary="rid 5", data={"replica_id": 5, "alive": False})
+    for msg in ("Unable to bind to LDAP server: connection refused", "RUV check failed after 5 retries"):
+        e = _entry("ipahealthcheck.ds.ruv", "RUVCheck", "ERROR", msg=msg)
+        assert "stale-ruv" not in _diag_ids(run_diagnosis(_bundle([e], [item])))
+
+
+def test_kdc_contact_error_with_working_dns_is_not_blamed_on_dns():
+    e = _entry("ipahealthcheck.ipa.host", "IPAHostKeytab", "ERROR", msg="Failed to obtain host TGT: Cannot contact any KDC for realm 'X'")
+    ok = EvidenceItem(item_id="d1", kind="dns_srv_record", summary="srv", data={"ok": True, "rcode": "NOERROR", "answers": ["0 100 88 kdc."]})
+    assert "kdc-discovery-failure" not in _diag_ids(run_diagnosis(_bundle([e], [ok])))
+
+
+def test_not_connected_words_elsewhere_are_not_a_topology_diagnosis():
+    for msg in ("Unable to verify: topology not connected? RPC error", "Replica X is not connected to the domain suffix yet, expected ok"):
+        e = _entry("ipahealthcheck.ipa.topology", "IPATopologyDomainCheck", "ERROR", msg=msg)
+        assert "topology-disconnected" not in _diag_ids(run_diagnosis(_bundle([e])))
+
+
+def test_replay_without_core_service_checks_is_not_healthy(tmp_path):
+    from ipa_diagnose.evidence.collect import collect_evidence
+
+    (tmp_path / "healthcheck.json").write_text(
+        '[{"source":"ipahealthcheck.ipa.host","check":"IPAHostKeytab","result":"SUCCESS","uuid":"x","kw":{}}]', encoding="utf-8")
+    assert run_diagnosis(collect_evidence(replay_dir=str(tmp_path))).overall_status.value != "HEALTHY"

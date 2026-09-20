@@ -10,5 +10,16 @@
       "msg": "SRV record _ldap._tcp.example.test. required for LDAP autodiscovery could not be resolved",
       "key": "_ldap._tcp.example.test"
     }
+  },
+  {
+    "source": "ipahealthcheck.meta.services",
+    "check": "dirsrv",
+    "result": "SUCCESS",
+    "uuid": "00000000-0000-0000-0000-00000000c0de",
+    "when": "20260101000000Z",
+    "duration": "0.01",
+    "kw": {
+      "status": true
+    }
   }
 ]

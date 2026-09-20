@@ -55,6 +55,9 @@ _PEER_FROM_AGREEMENT_RE = re.compile(r"cn=meTo([\w.-]+),", re.IGNORECASE)
 _PEER_FROM_MSG_RE = re.compile(r"\breplica\s+([\w.-]+)", re.IGNORECASE)
 
 
+# A ds.ruv result with no replica ID may only confirm a stale RUV when it is actually worded that way;
+# an unrelated ds.ruv ERROR (bind failure, retries...) says nothing about staleness.
+_STALE_WORDING_RE = re.compile(r"\b(stale|orphan\w*|obsolete|no (longer )?(corresponding|matching)|not (in|part of) the topology)\b", re.IGNORECASE)
 _MEDIATED_PEER_RE = re.compile(r"\(meTo([A-Za-z0-9_.-]+)\)")
 # lib389 replication lint keys whose meaning IS "a peer is unreachable / its agreement is failing":
 # DSREPLLE0001 (agreement red) and DSREPLLE0005 (consumer not reachable). The others are different states
@@ -72,7 +75,11 @@ def _topology_disconnected(f: Finding) -> bool:
 
     text = (f.message or "").lower()
     kw_type = str(f.keywords.get("type", "")).lower() if isinstance(f.keywords, dict) else ""
-    return "not connected" in text or "can't contact servers" in text or kw_type == "connect"
+    return (
+        "can't contact servers" in text
+        or kw_type == "connect"
+        or re.match(r"\s*topology (domain|suffix)\b.*\bis not connected\b", text) is not None
+    )
 
 
 def _is_conflict_finding(f: Finding) -> bool:
@@ -658,13 +665,14 @@ class StaleRuvRule(DiagnosticRule):
                         seen_finding_ids.add(f.finding_id)
                         confirming_findings.append(f)
 
-        if not confirmed_items and unscoped_findings and len(candidate_items) == 1:
+        stale_worded = [f for f in unscoped_findings if _STALE_WORDING_RE.search(f.message or "")]
+        if not confirmed_items and stale_worded and len(candidate_items) == 1:
             # An explicit finding names no RID, but there is only one
             # candidate item in the whole bundle - nothing else it could
             # plausibly be about (mirrors the peer-correlation rule's
             # single-unambiguous-candidate exception).
             confirmed_items = list(candidate_items)
-            confirming_findings = list(unscoped_findings)
+            confirming_findings = list(stale_worded)
 
         if confirmed_items:
             # DIAGNOSED, scoped ONLY to the confirmed item(s). Any other
