@@ -70,6 +70,17 @@ jobs:
           docker exec ipa-s ipa-healthcheck --failures-only --output-type json > out/s0-healthy-healthcheck-failures.json 2>&1 || true
           head -20 out/s0-healthy.txt
 
+      - name: S0b healthy-negative gate - correct the container image's known CS.cfg mode quirk, then expect HEALTHY
+        run: |
+          set +e
+          # Lab-only environment correction (the freeipa-server container image ships CS.cfg as 0664,
+          # ipa-healthcheck's TomcatFileCheck says it should be 0660). NOT something ipa-diagnose does.
+          docker exec ipa-s chmod 0660 /var/lib/pki/pki-tomcat/conf/ca/CS.cfg
+          docker exec ipa-s /root/.local/bin/ipa-diagnose --details > out/s0b-healthy-verified.txt 2>&1; echo "exit=$?" >> out/s0b-healthy-verified.txt || true
+          docker exec ipa-s /root/.local/bin/ipa-diagnose --json > out/s0b-healthy-verified.json 2>/dev/null || true
+          docker exec ipa-s ipa-healthcheck --failures-only --output-type json > out/s0b-healthy-verified-healthcheck-failures.json 2>&1 || true
+          head -25 out/s0b-healthy-verified.txt
+
       - name: S1 dependency failures (ipa-healthcheck missing; ldapsearch missing)
         run: |
           set +e
@@ -168,6 +179,12 @@ jobs:
           set +e
           docker exec ipa-s /root/.local/bin/ipa-diagnose ai-preview > out/s8-ai-preview.txt 2>&1; echo "exit=$?" >> out/s8-ai-preview.txt || true
           head -40 out/s8-ai-preview.txt
+
+      - name: S10 --no-ai and --details on the healthy server
+        run: |
+          set +e
+          docker exec ipa-s /root/.local/bin/ipa-diagnose --no-ai > out/s10-no-ai.txt 2>&1; echo "exit=$?" >> out/s10-no-ai.txt || true
+          head -20 out/s10-no-ai.txt
 
       - name: S9 timing (performance) - 3 timed runs
         run: |
