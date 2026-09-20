@@ -1,0 +1,111 @@
+name: Post-publish check (public release, from scratch)
+
+# Run AFTER a release is published. Uses ONLY public artifacts - production PyPI and
+# the assets attached to the GitHub Release - in clean containers. No local
+# candidate files are used. Verifies: PyPI version, SHA256SUMS of the published
+# RPMs, the documented install commands per platform, and the key semantics of the
+# DISTRIBUTED packages:
+#   * ipa-healthcheck unavailable            -> UNKNOWN (exit 3)
+#   * healthy replay fixture                 -> HEALTHY (exit 0)
+#   * partial evidence (RUV unreadable)      -> NOT_FULLY_VERIFIED (exit 4)
+#   * fully verified healthy (live path)     -> HEALTHY (exit 0)
+# The "live path" cases use tiny stand-in ipa-healthcheck / ipa-replica-manage
+# scripts that print real output shapes; they test ipa-diagnose's semantics, not FreeIPA.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Released version to verify (e.g. 0.1.2)"
+        required: true
+        default: "0.1.2"
+
+permissions:
+  contents: read
+
+jobs:
+  pypi:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {name: el8,      image: "rockylinux:8",   prep: "dnf install -y python39 && python3.9 -m pip install --user pipx && export PATH=$HOME/.local/bin:$PATH"}
+          - {name: el9,      image: "rockylinux:9.3", prep: "dnf install -y epel-release && dnf install -y pipx"}
+          - {name: el10,     image: "almalinux:10",   prep: "dnf install -y epel-release && dnf install -y pipx"}
+          - {name: fedora44, image: "fedora:44",      prep: "dnf install -y pipx"}
+    steps:
+      - name: Install from PRODUCTION PyPI with pipx (README command) and check the version
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          mkdir -p logs
+          docker run --rm -e VERSION "${{ matrix.image }}" bash -c '
+            set -x
+            ${{ matrix.prep }}
+            export PATH=$HOME/.local/bin:$PATH
+            pipx install ipa-diagnose
+            ipa-diagnose --version
+            test "$(ipa-diagnose --version)" = "ipa-diagnose $VERSION"
+            ipa-diagnose; echo "exit(no ipa-healthcheck)=$?"
+          ' 2>&1 | tee "logs/pypi-${{ matrix.name }}.log"
+          grep -q "exit(no ipa-healthcheck)=3" "logs/pypi-${{ matrix.name }}.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: post-pypi-${{ matrix.name }}
+          path: logs/
+
+  rpm:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {name: el8,      image: "rockylinux:8",   tag: "el8",  prep: "dnf install -y python3 dnf-plugins-core python39"}
+          - {name: el9,      image: "rockylinux:9.3", tag: "el9",  prep: "dnf install -y epel-release dnf-plugins-core && dnf config-manager --set-enabled crb"}
+          - {name: el9-alma, image: "almalinux:9",    tag: "el9",  prep: "dnf install -y epel-release dnf-plugins-core && dnf config-manager --set-enabled crb"}
+          - {name: el10,     image: "almalinux:10",   tag: "el10", prep: "dnf install -y epel-release dnf-plugins-core && dnf config-manager --set-enabled crb"}
+          - {name: fedora44, image: "fedora:44",      tag: "fc44", prep: "dnf install -y dnf-plugins-core"}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v${{ inputs.version }}   # only for the replay fixtures; the package under test is the published RPM
+      - name: Download the PUBLISHED release assets and verify SHA256SUMS
+        env:
+          VERSION: ${{ inputs.version }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mkdir -p dl logs
+          base="https://github.com/${GH_REPO}/releases/download/v${VERSION}"
+          curl -fsSL -o dl/SHA256SUMS "$base/SHA256SUMS"
+          cat dl/SHA256SUMS
+          f=$(grep -o "ipa-diagnose-${VERSION}-[^ ]*\.${{ matrix.tag }}\.[a-z0-9]*\.noarch\.rpm" dl/SHA256SUMS | head -1)
+          test -n "$f"
+          curl -fsSL -o "dl/$f" "$base/$f"
+          ( cd dl && sha256sum -c --ignore-missing SHA256SUMS | tee ../logs/sha256-${{ matrix.name }}.txt )
+          echo "$f" > dl/RPMNAME
+      - name: Install the published RPM per the README and run the documented commands + semantics
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          cp packaging/rpm/postpublish-semantics.sh dl/postpublish-semantics.sh
+          docker run --rm -e VERSION -h ipa01.example.test \
+            -v "$PWD/dl:/dl:ro" -v "$PWD/tests/fixtures:/fixtures:ro" \
+            "${{ matrix.image }}" bash -c '
+              set -x
+              ${{ matrix.prep }}
+              dnf install -y "/dl/$(cat /dl/RPMNAME)"
+              rpm -q ipa-diagnose
+              ipa-diagnose --version
+              test "$(ipa-diagnose --version)" = "ipa-diagnose $VERSION"
+              ipa-diagnose --help > /dev/null
+              bash /dl/postpublish-semantics.sh
+              dnf remove -y ipa-diagnose
+              ! rpm -q ipa-diagnose
+            ' 2>&1 | tee "logs/rpm-${{ matrix.name }}.log"
+          grep -q "SEMANTICS: 5 passed, 0 failed" "logs/rpm-${{ matrix.name }}.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: post-rpm-${{ matrix.name }}
+          path: logs/
