@@ -79,6 +79,7 @@ import shutil
 import socket
 import subprocess
 import urllib.parse
+from os import environ as _ENVIRON  # kept separately so tests that fake `os` cannot break it
 from typing import Any, Dict, List, Optional
 
 from ipa_diagnose.evidence.collectors.base import Collector, CollectorError
@@ -669,7 +670,7 @@ def _ldap_env() -> "dict[str, str]":
     """Environment for the OpenLDAP tools: no LDAP* variables (LDAPRC, LDAPURI, ...)
     inherited from the caller, so they cannot redirect or reconfigure the read."""
 
-    return {k: v for k, v in os.environ.items() if not k.startswith("LDAP")}
+    return {k: v for k, v in _ENVIRON.items() if not k.startswith("LDAP")}
 
 
 def _ldapi_context() -> "tuple[Optional[str], Optional[str], Optional[str]]":

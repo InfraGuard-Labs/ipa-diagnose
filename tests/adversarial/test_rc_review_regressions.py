@@ -118,9 +118,9 @@ def test_pathological_replica_list_output_cannot_hang_the_parser():
 
 
 def test_ai_payload_strips_terminal_escapes_from_evidence():
-    b = _bundle([_entry("ipahealthcheck.meta.services", "dirsrv", "ERROR", "dirsrv: not running \x1b]0;pwn\x07\x1b[2J")])
+    b = _bundle([_entry("ipahealthcheck.zzz.future", "Chk", "CRITICAL", "boom \x1b]0;pwn\x07\x1b[2J")])
     report = run_diagnosis(b)
-    d = next(d for d in report.diagnoses if "dirsrv" in d.title)
+    d = next(d for d in report.diagnoses if d.rule_id == "unexplained-findings")
     payload = build_ai_payload(b, d)
     assert "\x1b" not in payload.user_prompt
     assert all("\x1b" not in s.message for s in payload.selected_evidence)
