@@ -68,6 +68,9 @@ def _keytab_findings(bundle: EvidenceBundle) -> List[Finding]:
         if f.source == _KEYTAB_SOURCE
         and f.check == _KEYTAB_CHECK
         and f.severity.rank >= Severity.WARNING.rank
+        # 0.15+: "Service host keytab <path> does not exist" is a missing FILE, not a kinit failure that
+        # can be read as an out-of-date keytab, DNS or clock problem. Left undiagnosed.
+        and "does not exist" not in (f.message or "").lower()
     ]
 
 

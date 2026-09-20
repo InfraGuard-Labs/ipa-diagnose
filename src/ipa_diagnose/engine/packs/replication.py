@@ -55,6 +55,34 @@ _PEER_FROM_AGREEMENT_RE = re.compile(r"cn=meTo([\w.-]+),", re.IGNORECASE)
 _PEER_FROM_MSG_RE = re.compile(r"\breplica\s+([\w.-]+)", re.IGNORECASE)
 
 
+_MEDIATED_PEER_RE = re.compile(r"\(meTo([A-Za-z0-9_.-]+)\)")
+# lib389 replication lint keys whose meaning IS "a peer is unreachable / its agreement is failing":
+# DSREPLLE0001 (agreement red) and DSREPLLE0005 (consumer not reachable). The others are different states
+# (0003 amber "may recover", 0004 status could not be fetched, 0006 replica not initialised).
+_PEER_BREAK_KEYS = {"DSREPLLE0001", "DSREPLLE0005"}
+_LINT_KEY_RE = re.compile(r"DSREPLLE\d{4}")  # a recognised lib389 replication lint code
+
+
+def _lib389_key(f: Finding) -> str:
+    return str(f.keywords.get("key", "")) if isinstance(f.keywords, dict) else ""
+
+
+def _topology_disconnected(f: Finding) -> bool:
+    """IPATopologyDomainCheck's real disconnected-server result is "Server X can't contact servers: ..." (type=connect)."""
+
+    text = (f.message or "").lower()
+    kw_type = str(f.keywords.get("type", "")).lower() if isinstance(f.keywords, dict) else ""
+    return "not connected" in text or "can't contact servers" in text or kw_type == "connect"
+
+
+def _is_conflict_finding(f: Finding) -> bool:
+    """Legacy ReplicationConflictCheck, or lib389's DSREPLLE0002 reported through ReplicationCheck."""
+
+    if f.source != REPLICATION_SOURCE:
+        return False
+    return f.check == "ReplicationConflictCheck" or (f.check == "ReplicationCheck" and _lib389_key(f) == "DSREPLLE0002")
+
+
 def _trigger_peer(trigger: Finding) -> "str | None":
     """Best-effort extraction of which peer a ReplicationCheck error is
     actually about, from the agreement DN or the message text. Used to make
@@ -68,6 +96,9 @@ def _trigger_peer(trigger: Finding) -> "str | None":
 
     agreement_dn = str(trigger.keywords.get("agreement", ""))
     m = _PEER_FROM_AGREEMENT_RE.search(agreement_dn)
+    if m:
+        return m.group(1).lower()
+    m = _MEDIATED_PEER_RE.search(trigger.message or "")
     if m:
         return m.group(1).lower()
     m = _PEER_FROM_MSG_RE.search(trigger.message)
@@ -94,6 +125,7 @@ class PeerConnectivityBreakRule(DiagnosticRule):
             if f.source == REPLICATION_SOURCE
             and f.check == "ReplicationCheck"
             and f.severity.rank >= Severity.ERROR.rank
+            and (not _LINT_KEY_RE.fullmatch(_lib389_key(f)) or _lib389_key(f) in _PEER_BREAK_KEYS)
         ]
         if not trigger_findings:
             return None
@@ -433,7 +465,7 @@ class ReplicationConflictsRule(DiagnosticRule):
         conflict_findings = [
             f
             for f in bundle.findings
-            if f.source == REPLICATION_SOURCE and f.check == "ReplicationConflictCheck" and f.severity.rank >= Severity.WARNING.rank
+            if _is_conflict_finding(f) and f.severity.rank >= Severity.WARNING.rank
         ]
         conflict_items = bundle.items_by_kind("replication_conflict")
 
@@ -755,7 +787,7 @@ class TopologyDisconnectedRule(DiagnosticRule):
             if f.source == TOPOLOGY_SOURCE
             and f.check == "IPATopologyDomainCheck"
             and f.severity.rank >= Severity.ERROR.rank
-            and "not connected" in f.message.lower()
+            and _topology_disconnected(f)
         ]
         if not trigger_findings:
             return None
@@ -824,7 +856,7 @@ def _recheck_replication_healthy(bundle: EvidenceBundle) -> bool:
         f.source == TOPOLOGY_SOURCE
         and f.check == "IPATopologyDomainCheck"
         and f.severity.rank >= Severity.ERROR.rank
-        and "not connected" in f.message.lower()
+        and _topology_disconnected(f)
         for f in bundle.findings
     )
     has_bind_failure = any(not i.data.get("bind_ok", True) for i in bundle.items_by_kind("keytab_bind_check"))

@@ -32,9 +32,11 @@ from ipa_diagnose.engine.model import (
     DiagnosisStatus,
     EvidenceCompleteness,
     OverallStatus,
+    UndiagnosedFinding,
     UnverifiedCapability,
     PriorityBucket,
 )
+from ipa_diagnose.evidence.healthcheck_catalog import CATALOG
 from ipa_diagnose.evidence.model import EvidenceBundle, Severity
 from ipa_diagnose.textsafe import sanitize_text
 
@@ -144,6 +146,7 @@ def build_report(
     unclaimed_warnings = sum(
         1 for f in bundle.findings if f.severity == Severity.WARNING and f.finding_id not in claimed
     )
+    undiagnosed = _undiagnosed_findings(bundle, diagnoses)
     overall = _apply_completeness(_overall_status(diagnoses), completeness)
 
     return DiagnosisReport(
@@ -154,11 +157,55 @@ def build_report(
         collection_errors=[f"{e.collector}: {sanitize_error_text(e.message)}" for e in bundle.collection_errors],
         evidence_completeness=completeness,
         unclaimed_warnings=unclaimed_warnings,
+        undiagnosed_findings=undiagnosed,
         packs_evaluated=packs_evaluated,
         replay_source=bundle.replay_source,
         environment=bundle.environment,
         unknown_severity_findings=_unknown_severity_notes(bundle),
     )
+
+
+def _undiagnosed_findings(bundle: EvidenceBundle, diagnoses: List[Diagnosis]) -> List[UndiagnosedFinding]:
+    """Every WARNING-or-worse (or unrecognized-severity) finding that no diagnosis cites as
+    evidence. A finding whose id is shared with another finding is ambiguous and never counts
+    as claimed. Only the deterministic fact "no rule explains this" is recorded - no guess."""
+
+    from ipa_diagnose.engine.unexplained import is_check_crash  # local: avoids an import cycle
+
+    id_counts: Dict[str, int] = {}
+    for f in bundle.findings:
+        id_counts[f.finding_id] = id_counts.get(f.finding_id, 0) + 1
+    claimed = {r.evidence_id for d in diagnoses for r in list(d.evidence_for) + list(d.evidence_against)}
+    version = bundle.environment.ipa_healthcheck_version if bundle.environment else None
+    out: List[UndiagnosedFinding] = []
+    for f in bundle.findings:
+        if f.severity == Severity.SUCCESS:
+            continue
+        if f.finding_id in claimed and id_counts[f.finding_id] == 1:
+            continue
+        crashed = is_check_crash(f)
+        known = CATALOG.get(f.qualified_check)
+        if crashed:
+            reason = "The check raised an exception instead of returning a result, so it says nothing about the system."
+        elif known is None:
+            reason = "ipa-diagnose has no rule for this check, and it is not in this build's catalog of upstream checks (possibly newer or custom)."
+        else:
+            reason = "ipa-diagnose has no rule that explains this finding; it may or may not matter."
+        out.append(
+            UndiagnosedFinding(
+                source=sanitize_text(f.source, 120),
+                check=sanitize_text(f.check, 120),
+                severity=f.severity.value,
+                message=sanitize_text(f.message or f.keywords or "", 300),
+                reason=reason,
+                crashed=crashed,
+                check_known_since=known[0] if known else None,
+                ipa_healthcheck_version=sanitize_text(version, 40) if version else None,
+                finding_id=sanitize_text(f.finding_id, 120),
+            )
+        )
+    out.sort(key=lambda u: (-{"CRITICAL": 4, "ERROR": 3, "UNKNOWN": 3, "WARNING": 1}.get(u.severity, 2), u.source, u.check))
+    return out
 
 
 _CAPABILITY_LABELS = {

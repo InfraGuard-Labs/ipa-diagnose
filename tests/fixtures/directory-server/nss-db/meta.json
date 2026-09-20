@@ -1,6 +1,6 @@
 {
   "hostname": "ipa04.example.test",
-  "scenario": "NssCheck failure plus a TLS/NSS-flavored journal error referencing a legacy cert8.db, with no certificate-expiry finding anywhere in the run",
+  "scenario": "CONSTRUCTED SYNTHETIC. An ipa-healthcheck ds.nss_ssl NssCheck result that no rule explains (it only activates the pack; it is NOT cited) plus a TLS/NSS-flavored journal error referencing a legacy cert8.db, with no certificate-expiry finding anywhere in the run",
   "expected_overall_status": "DEGRADED",
   "expected_diagnoses": [
     {
@@ -9,5 +9,5 @@
       "priority": "PRIMARY_PROBLEM"
     }
   ],
-  "notes": "This looks exactly like an expired/broken certificate but is actually a local NSS DB format mismatch (legacy cert8.db/key3.db vs. cert9.db/key4.db) per 389-ds-base GitHub #2100 / Pagure #49041. No ipahealthcheck.ipa.certs/dogtag.ca finding is present, so the rule diagnoses this confidently (HIGH confidence: both the NssCheck finding and the journal TLS error corroborate) rather than treating it as a certificate-lifecycle problem, and its `why`/`limitations` text explicitly tells the administrator to also check the certificates pack's output."
+  "notes": "This looks exactly like an expired/broken certificate but is actually a local NSS DB format mismatch (legacy cert8.db/key3.db vs. cert9.db/key4.db) per 389-ds-base GitHub #2100 / Pagure #49041. No ipahealthcheck.ipa.certs/dogtag.ca finding is present, so the rule diagnoses this confidently (only the journal line naming the legacy DB file supports it; ipa-healthcheck has no NSS DB-format check, and the unrelated NssCheck result is left undiagnosed rather than claimed) rather than treating it as a certificate-lifecycle problem, and its `why`/`limitations` text explicitly tells the administrator to also check the certificates pack's output."
 }

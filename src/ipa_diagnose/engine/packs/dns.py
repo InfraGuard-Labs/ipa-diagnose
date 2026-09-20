@@ -503,7 +503,13 @@ class SrvAutodiscoveryRule(DiagnosticRule):
 
     def evaluate(self, bundle: EvidenceBundle) -> Optional[Diagnosis]:
         idns_findings = [f for f in bundle.findings if f.source == _IDNS_SOURCE and f.check == _IDNS_CHECK]
-        bad = [f for f in idns_findings if f.severity.rank >= Severity.WARNING.rank]
+        # "Unexpected SRV/URI entry" and "Unexpected ipa-ca address" report EXTRA records (for example a
+        # stale replica's), not a missing/broken one - not autodiscovery breakage, so left undiagnosed.
+        bad = [
+            f
+            for f in idns_findings
+            if f.severity.rank >= Severity.WARNING.rank and not (f.message or "").lstrip().lower().startswith("unexpected")
+        ]
         if not bad:
             return None
 

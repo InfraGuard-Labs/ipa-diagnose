@@ -1,8 +1,8 @@
 [
   {
-    "source": "ipahealthcheck.ds.nss",
+    "source": "ipahealthcheck.ds.nss_ssl",
     "check": "NssCheck",
-    "result": "ERROR",
+    "result": "WARNING",
     "uuid": "d4000000-0000-0000-0000-000000000001",
     "when": "20260310081500Z",
     "duration": "0.033",

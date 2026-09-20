@@ -1,0 +1,3637 @@
+{
+ "0.12": {
+  "ipahealthcheck.dogtag.ca.DogtagCertsConfigCheck": {
+   "keys": [],
+   "kw": [
+    "configfile",
+    "directive",
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.dogtag.ca"
+  },
+  "ipahealthcheck.dogtag.ca.DogtagCertsConnectivityCheck": {
+   "keys": [
+    "cert_show_1",
+    "ipa_ca_cert_not_found",
+    "ipa_ca_crt_file_missing"
+   ],
+   "kw": [
+    "error",
+    "key",
+    "msg",
+    "path",
+    "serial",
+    "subject"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.dogtag.ca"
+  },
+  "ipahealthcheck.ds.backends.BackendsCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ds.backends"
+  },
+  "ipahealthcheck.ds.config.ConfigCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ds.config"
+  },
+  "ipahealthcheck.ds.disk_space.DiskSpaceCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ds.disk_space"
+  },
+  "ipahealthcheck.ds.ds_plugins.RIPluginCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ds.ds_plugins"
+  },
+  "ipahealthcheck.ds.dse.DSECheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ds.dse"
+  },
+  "ipahealthcheck.ds.encryption.EncryptionCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ds.encryption"
+  },
+  "ipahealthcheck.ds.fs_checks.FSCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ds.fs_checks"
+  },
+  "ipahealthcheck.ds.nss_ssl.NssCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ds.nss_ssl"
+  },
+  "ipahealthcheck.ds.replication.ReplicationChangelogCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ds.replication"
+  },
+  "ipahealthcheck.ds.replication.ReplicationCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ds.replication"
+  },
+  "ipahealthcheck.ds.ruv.KnownRUVCheck": {
+   "keys": [
+    "ruvs_o=ipaca"
+   ],
+   "kw": [
+    "key",
+    "ruvs",
+    "suffix"
+   ],
+   "levels": [
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ds.ruv"
+  },
+  "ipahealthcheck.ds.ruv.RUVCheck": {
+   "keys": [
+    "o=ipaca"
+   ],
+   "kw": [
+    "key",
+    "ruv"
+   ],
+   "levels": [
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ds.ruv"
+  },
+  "ipahealthcheck.ipa.certs.IPACAChainExpirationCheck": {
+   "keys": [],
+   "kw": [
+    "days",
+    "error",
+    "key",
+    "msg",
+    "path"
+   ],
+   "levels": [
+    "CRITICAL",
+    "ERROR",
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPACertDNSSAN": {
+   "keys": [],
+   "kw": [
+    "ca",
+    "certfile",
+    "dbdir",
+    "error",
+    "hostname",
+    "key",
+    "msg",
+    "nickname",
+    "profile",
+    "san"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPACertMatchCheck": {
+   "keys": [],
+   "kw": [
+    "certdir",
+    "dbdir",
+    "dn",
+    "error",
+    "key",
+    "msg",
+    "nickname",
+    "path",
+    "serial_number"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPACertNSSTrust": {
+   "keys": [],
+   "kw": [
+    "dbdir",
+    "expected",
+    "got",
+    "key",
+    "msg",
+    "nickname"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPACertRevocation": {
+   "keys": [],
+   "kw": [
+    "certfile",
+    "dbdir",
+    "error",
+    "key",
+    "msg",
+    "nickname",
+    "revocation_reason",
+    "serial"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPACertTracking": {
+   "keys": [],
+   "kw": [
+    "error",
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPACertfileExpirationCheck": {
+   "keys": [],
+   "kw": [
+    "certfile",
+    "days",
+    "dbdir",
+    "error",
+    "expiration_date",
+    "key",
+    "msg",
+    "nickname",
+    "store"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPACertmongerCA": {
+   "keys": [],
+   "kw": [
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPACertmongerExpirationCheck": {
+   "keys": [],
+   "kw": [
+    "days",
+    "expiration_date",
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPADogtagCertsMatchCheck": {
+   "keys": [],
+   "kw": [
+    "dbdir",
+    "error",
+    "key",
+    "msg",
+    "nickname"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPAKRAAgent": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPANSSChainValidation": {
+   "keys": [
+    "db_authenticate"
+   ],
+   "kw": [
+    "dbdir",
+    "error",
+    "key",
+    "msg",
+    "nickname",
+    "reason"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPAOpenSSLChainValidation": {
+   "keys": [],
+   "kw": [
+    "error",
+    "key",
+    "msg",
+    "reason"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPARAAgent": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.dna.IPADNARangeCheck": {
+   "keys": [
+    "no_dna_range_defined"
+   ],
+   "kw": [
+    "key",
+    "msg",
+    "next_max",
+    "next_start",
+    "range_max",
+    "range_start"
+   ],
+   "levels": [
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.dna"
+  },
+  "ipahealthcheck.ipa.files.IPAFileCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ipa.files"
+  },
+  "ipahealthcheck.ipa.files.IPAFileNSSDBCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ipa.files"
+  },
+  "ipahealthcheck.ipa.files.TomcatFileCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ipa.files"
+  },
+  "ipahealthcheck.ipa.host.IPAHostKeytab": {
+   "keys": [],
+   "kw": [
+    "msg"
+   ],
+   "levels": [
+    "ERROR"
+   ],
+   "module": "ipahealthcheck.ipa.host"
+  },
+  "ipahealthcheck.ipa.idns.IPADNSSystemRecordsCheck": {
+   "keys": [
+    "ipa_ca_check"
+   ],
+   "kw": [
+    "ipaddr",
+    "key",
+    "msg",
+    "server"
+   ],
+   "levels": [
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.idns"
+  },
+  "ipahealthcheck.ipa.kdc.KDCWorkersCheck": {
+   "keys": [],
+   "kw": [
+    "cpus",
+    "key",
+    "msg",
+    "sysconfig",
+    "workers"
+   ],
+   "levels": [
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.kdc"
+  },
+  "ipahealthcheck.ipa.meta.IPAMetaCheck": {
+   "keys": [],
+   "kw": [
+    "masters",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.meta"
+  },
+  "ipahealthcheck.ipa.nss.IPAGroupMemberCheck": {
+   "keys": [],
+   "kw": [
+    "key",
+    "member",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.nss"
+  },
+  "ipahealthcheck.ipa.proxy.IPAProxySecretCheck": {
+   "keys": [],
+   "kw": [
+    "key",
+    "msg",
+    "proxy_conf",
+    "server_xml"
+   ],
+   "levels": [
+    "CRITICAL",
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.proxy"
+  },
+  "ipahealthcheck.ipa.roles.IPACRLManagerCheck": {
+   "keys": [
+    "crl_manager"
+   ],
+   "kw": [
+    "crlgen_enabled",
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.roles"
+  },
+  "ipahealthcheck.ipa.roles.IPARenewalMasterCheck": {
+   "keys": [
+    "renewal_master"
+   ],
+   "kw": [
+    "key",
+    "master",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.roles"
+  },
+  "ipahealthcheck.ipa.topology.IPATopologyDomainCheck": {
+   "keys": [],
+   "kw": [
+    "key",
+    "msg",
+    "replicas",
+    "suffix",
+    "type"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.topology"
+  },
+  "ipahealthcheck.ipa.trust.IPADomainCheck": {
+   "keys": [
+    "domain-check"
+   ],
+   "kw": [
+    "domain",
+    "error",
+    "key",
+    "msg",
+    "option",
+    "provider"
+   ],
+   "levels": [
+    "CRITICAL",
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPATrustAgentCheck": {
+   "keys": [
+    "ipa_server_mode_false",
+    "ipa_server_mode_missing"
+   ],
+   "kw": [
+    "attr",
+    "domain",
+    "error",
+    "key",
+    "msg",
+    "sssd_config"
+   ],
+   "levels": [
+    "CRITICAL",
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPATrustAgentMemberCheck": {
+   "keys": [],
+   "kw": [
+    "error",
+    "group",
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPATrustCatalogCheck": {
+   "keys": [
+    "Domain Security Identifier",
+    "domain-status",
+    "trust-find"
+   ],
+   "kw": [
+    "domain",
+    "error",
+    "key",
+    "msg",
+    "output",
+    "sid",
+    "sssctl"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPATrustControllerAdminSIDCheck": {
+   "keys": [
+    "ipantsecurityidentifier"
+   ],
+   "kw": [
+    "error",
+    "key",
+    "msg",
+    "rid"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPATrustControllerConfCheck": {
+   "keys": [
+    "net conf list"
+   ],
+   "kw": [
+    "error",
+    "expected",
+    "got",
+    "key",
+    "msg",
+    "option",
+    "section"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPATrustControllerGroupSIDCheck": {
+   "keys": [
+    "ipantsecurityidentifier"
+   ],
+   "kw": [
+    "error",
+    "key",
+    "msg",
+    "rid"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPATrustControllerPrincipalCheck": {
+   "keys": [],
+   "kw": [
+    "error",
+    "group",
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPATrustControllerServiceCheck": {
+   "keys": [
+    "ADTRUST"
+   ],
+   "kw": [
+    "error",
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPATrustDomainsCheck": {
+   "keys": [
+    "domain-list",
+    "domain-status",
+    "domain_list_error",
+    "trust-find"
+   ],
+   "kw": [
+    "domain",
+    "error",
+    "key",
+    "msg",
+    "sssctl",
+    "sssd_domains",
+    "trust_domains"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPATrustPackageCheck": {
+   "keys": [
+    "adtrustpackage"
+   ],
+   "kw": [
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPAsidgenpluginCheck": {
+   "keys": [],
+   "kw": [
+    "attr",
+    "dn",
+    "error",
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.meta.core.MetaCheck": {
+   "keys": [
+    "meta"
+   ],
+   "kw": [
+    "acme",
+    "fips",
+    "fqdn",
+    "ipa_api_version",
+    "ipa_version",
+    "key"
+   ],
+   "levels": [],
+   "module": "ipahealthcheck.meta.core"
+  },
+  "ipahealthcheck.meta.services.certmonger": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.dirsrv": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.gssproxy": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.httpd": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.ipa_custodia": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.ipa_dnskeysyncd": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.ipa_otpd": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.kadmin": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.krb5kdc": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.named": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.pki_tomcatd": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.sssd": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.system.filesystemspace.FileSystemSpaceCheck": {
+   "keys": [],
+   "kw": [
+    "free_space",
+    "key",
+    "msg",
+    "percent_free",
+    "store",
+    "threshold"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.system.filesystemspace"
+  }
+ },
+ "0.16": {
+  "ipahealthcheck.dogtag.ca.DogtagCertsConfigCheck": {
+   "keys": [],
+   "kw": [
+    "configfile",
+    "directive",
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.dogtag.ca"
+  },
+  "ipahealthcheck.dogtag.ca.DogtagCertsConnectivityCheck": {
+   "keys": [
+    "cert_show_ra",
+    "ipa_ra_crt_file_missing"
+   ],
+   "kw": [
+    "error",
+    "key",
+    "msg",
+    "path",
+    "serial"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.dogtag.ca"
+  },
+  "ipahealthcheck.ds.backends.BackendsCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ds.backends"
+  },
+  "ipahealthcheck.ds.config.ConfigCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ds.config"
+  },
+  "ipahealthcheck.ds.disk_space.DiskSpaceCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ds.disk_space"
+  },
+  "ipahealthcheck.ds.ds_plugins.RIPluginCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ds.ds_plugins"
+  },
+  "ipahealthcheck.ds.dse.DSECheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ds.dse"
+  },
+  "ipahealthcheck.ds.encryption.EncryptionCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ds.encryption"
+  },
+  "ipahealthcheck.ds.fs_checks.FSCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ds.fs_checks"
+  },
+  "ipahealthcheck.ds.nss_ssl.NssCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ds.nss_ssl"
+  },
+  "ipahealthcheck.ds.replication.ReplicationChangelogCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ds.replication"
+  },
+  "ipahealthcheck.ds.replication.ReplicationCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ds.replication"
+  },
+  "ipahealthcheck.ds.ruv.KnownRUVCheck": {
+   "keys": [
+    "ruvs_o=ipaca"
+   ],
+   "kw": [
+    "key",
+    "ruvs",
+    "suffix"
+   ],
+   "levels": [
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ds.ruv"
+  },
+  "ipahealthcheck.ds.ruv.RUVCheck": {
+   "keys": [
+    "o=ipaca"
+   ],
+   "kw": [
+    "key",
+    "ruv"
+   ],
+   "levels": [
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ds.ruv"
+  },
+  "ipahealthcheck.ipa.certs.CertmongerStuckCheck": {
+   "keys": [
+    "no_stuck"
+   ],
+   "kw": [
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPACAChainExpirationCheck": {
+   "keys": [],
+   "kw": [
+    "days",
+    "error",
+    "key",
+    "msg",
+    "path"
+   ],
+   "levels": [
+    "CRITICAL",
+    "ERROR",
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPACertDNSSAN": {
+   "keys": [],
+   "kw": [
+    "ca",
+    "certfile",
+    "dbdir",
+    "error",
+    "hostname",
+    "key",
+    "msg",
+    "nickname",
+    "profile",
+    "san"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPACertMatchCheck": {
+   "keys": [],
+   "kw": [
+    "certdir",
+    "dbdir",
+    "dn",
+    "error",
+    "key",
+    "msg",
+    "nickname",
+    "path",
+    "serial_number"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPACertNSSTrust": {
+   "keys": [],
+   "kw": [
+    "dbdir",
+    "expected",
+    "got",
+    "key",
+    "msg",
+    "nickname"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPACertRevocation": {
+   "keys": [],
+   "kw": [
+    "certfile",
+    "dbdir",
+    "error",
+    "key",
+    "msg",
+    "nickname",
+    "revocation_reason",
+    "serial"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPACertTracking": {
+   "keys": [],
+   "kw": [
+    "error",
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPACertfileExpirationCheck": {
+   "keys": [],
+   "kw": [
+    "certfile",
+    "days",
+    "dbdir",
+    "error",
+    "expiration_date",
+    "key",
+    "msg",
+    "nickname",
+    "store"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPACertmongerCA": {
+   "keys": [],
+   "kw": [
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPACertmongerExpirationCheck": {
+   "keys": [],
+   "kw": [
+    "days",
+    "expiration_date",
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPADogtagCertsMatchCheck": {
+   "keys": [],
+   "kw": [
+    "dbdir",
+    "error",
+    "key",
+    "msg",
+    "nickname"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPAKRAAgent": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPANSSChainValidation": {
+   "keys": [
+    "db_authenticate"
+   ],
+   "kw": [
+    "dbdir",
+    "error",
+    "key",
+    "msg",
+    "nickname",
+    "reason"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPAOpenSSLChainValidation": {
+   "keys": [],
+   "kw": [
+    "error",
+    "key",
+    "msg",
+    "reason"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPARAAgent": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.dna.IPADNARangeCheck": {
+   "keys": [
+    "no_dna_range_defined"
+   ],
+   "kw": [
+    "key",
+    "msg",
+    "next_max",
+    "next_start",
+    "range_max",
+    "range_start"
+   ],
+   "levels": [
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.dna"
+  },
+  "ipahealthcheck.ipa.files.IPAFileCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ipa.files"
+  },
+  "ipahealthcheck.ipa.files.IPAFileNSSDBCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ipa.files"
+  },
+  "ipahealthcheck.ipa.files.TomcatFileCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ipa.files"
+  },
+  "ipahealthcheck.ipa.host.DNSKeytab": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ipa.host"
+  },
+  "ipahealthcheck.ipa.host.DNS_keysyncKeytab": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ipa.host"
+  },
+  "ipahealthcheck.ipa.host.DSKeytab": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ipa.host"
+  },
+  "ipahealthcheck.ipa.host.HTTPKeytab": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ipa.host"
+  },
+  "ipahealthcheck.ipa.host.IPAHostKeytab": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ipa.host"
+  },
+  "ipahealthcheck.ipa.host.ODS_EXPORTERKeytab": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ipa.host"
+  },
+  "ipahealthcheck.ipa.idns.IPADNSSystemRecordsCheck": {
+   "keys": [
+    "ipa_ca_check"
+   ],
+   "kw": [
+    "ipaddr",
+    "key",
+    "msg",
+    "server"
+   ],
+   "levels": [
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.idns"
+  },
+  "ipahealthcheck.ipa.kdc.KDCWorkersCheck": {
+   "keys": [],
+   "kw": [
+    "cpus",
+    "key",
+    "msg",
+    "sysconfig",
+    "workers"
+   ],
+   "levels": [
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.kdc"
+  },
+  "ipahealthcheck.ipa.meta.IPAMetaCheck": {
+   "keys": [],
+   "kw": [
+    "masters",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.meta"
+  },
+  "ipahealthcheck.ipa.nss.IPAGroupMemberCheck": {
+   "keys": [],
+   "kw": [
+    "key",
+    "member",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.nss"
+  },
+  "ipahealthcheck.ipa.proxy.IPAProxySecretCheck": {
+   "keys": [],
+   "kw": [
+    "key",
+    "msg",
+    "proxy_conf",
+    "server_xml"
+   ],
+   "levels": [
+    "CRITICAL",
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.proxy"
+  },
+  "ipahealthcheck.ipa.roles.IPACRLManagerCheck": {
+   "keys": [
+    "crl_manager"
+   ],
+   "kw": [
+    "crlgen_enabled",
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.roles"
+  },
+  "ipahealthcheck.ipa.roles.IPARenewalMasterCheck": {
+   "keys": [
+    "renewal_master"
+   ],
+   "kw": [
+    "key",
+    "master",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.roles"
+  },
+  "ipahealthcheck.ipa.roles.IPARenewalMasterHasKRACheck": {
+   "keys": [
+    "kra_renewal_master"
+   ],
+   "kw": [
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "CRITICAL",
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.roles"
+  },
+  "ipahealthcheck.ipa.topology.IPATopologyDomainCheck": {
+   "keys": [],
+   "kw": [
+    "key",
+    "msg",
+    "replicas",
+    "suffix",
+    "type"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.topology"
+  },
+  "ipahealthcheck.ipa.trust.IPADomainCheck": {
+   "keys": [
+    "domain-check"
+   ],
+   "kw": [
+    "domain",
+    "error",
+    "key",
+    "msg",
+    "option",
+    "provider"
+   ],
+   "levels": [
+    "CRITICAL",
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPATrustAgentCheck": {
+   "keys": [
+    "ipa_server_mode_false",
+    "ipa_server_mode_missing"
+   ],
+   "kw": [
+    "attr",
+    "domain",
+    "error",
+    "key",
+    "msg",
+    "sssd_config"
+   ],
+   "levels": [
+    "CRITICAL",
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPATrustAgentMemberCheck": {
+   "keys": [],
+   "kw": [
+    "error",
+    "group",
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPATrustCatalogCheck": {
+   "keys": [
+    "Domain Security Identifier",
+    "domain-status",
+    "getnamebysid",
+    "trust-find"
+   ],
+   "kw": [
+    "domain",
+    "error",
+    "key",
+    "msg",
+    "output",
+    "sid",
+    "sssctl",
+    "type"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPATrustControllerAdminSIDCheck": {
+   "keys": [
+    "ipantsecurityidentifier"
+   ],
+   "kw": [
+    "error",
+    "key",
+    "msg",
+    "rid"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPATrustControllerConfCheck": {
+   "keys": [
+    "net conf list"
+   ],
+   "kw": [
+    "error",
+    "expected",
+    "got",
+    "key",
+    "msg",
+    "option",
+    "section"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPATrustControllerGroupSIDCheck": {
+   "keys": [
+    "ipantsecurityidentifier"
+   ],
+   "kw": [
+    "error",
+    "key",
+    "msg",
+    "rid"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPATrustControllerPrincipalCheck": {
+   "keys": [],
+   "kw": [
+    "error",
+    "group",
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPATrustControllerServiceCheck": {
+   "keys": [
+    "ADTRUST"
+   ],
+   "kw": [
+    "error",
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPATrustDomainsCheck": {
+   "keys": [
+    "domain-list",
+    "domain-status",
+    "domain_list_error",
+    "trust-find"
+   ],
+   "kw": [
+    "domain",
+    "error",
+    "key",
+    "msg",
+    "sssctl",
+    "sssd_domains",
+    "trust_domains"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPATrustPackageCheck": {
+   "keys": [
+    "adtrustpackage"
+   ],
+   "kw": [
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPAsidgenpluginCheck": {
+   "keys": [],
+   "kw": [
+    "attr",
+    "dn",
+    "error",
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.meta.core.MetaCheck": {
+   "keys": [
+    "meta"
+   ],
+   "kw": [
+    "acme",
+    "fips",
+    "fqdn",
+    "ipa_api_version",
+    "ipa_version",
+    "key"
+   ],
+   "levels": [],
+   "module": "ipahealthcheck.meta.core"
+  },
+  "ipahealthcheck.meta.services.certmonger": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.chronyd": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.dirsrv": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.gssproxy": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.httpd": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.ipa_custodia": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.ipa_dnskeysyncd": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.ipa_ods_exporter": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.ipa_otpd": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.kadmin": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.krb5kdc": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.named": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.ods_enforcerd": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.pki_tomcatd": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.smb": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.sssd": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.winbind": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.system.filesystemspace.FileSystemSpaceCheck": {
+   "keys": [],
+   "kw": [
+    "free_space",
+    "key",
+    "msg",
+    "percent_free",
+    "store",
+    "threshold"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.system.filesystemspace"
+  }
+ },
+ "0.19": {
+  "ipahealthcheck.dogtag.ca.DogtagCertsConfigCheck": {
+   "keys": [],
+   "kw": [
+    "configfile",
+    "directive",
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "CRITICAL",
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.dogtag.ca"
+  },
+  "ipahealthcheck.dogtag.ca.DogtagCertsConnectivityCheck": {
+   "keys": [
+    "cert_show_ra",
+    "ipa_ra_crt_file_missing"
+   ],
+   "kw": [
+    "error",
+    "key",
+    "msg",
+    "path",
+    "serial"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.dogtag.ca"
+  },
+  "ipahealthcheck.ds.backends.BackendsCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ds.backends"
+  },
+  "ipahealthcheck.ds.config.ConfigCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ds.config"
+  },
+  "ipahealthcheck.ds.disk_space.DiskSpaceCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ds.disk_space"
+  },
+  "ipahealthcheck.ds.ds_plugins.RIPluginCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ds.ds_plugins"
+  },
+  "ipahealthcheck.ds.dse.DSECheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ds.dse"
+  },
+  "ipahealthcheck.ds.encryption.EncryptionCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ds.encryption"
+  },
+  "ipahealthcheck.ds.fs_checks.FSCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ds.fs_checks"
+  },
+  "ipahealthcheck.ds.nss_ssl.NssCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ds.nss_ssl"
+  },
+  "ipahealthcheck.ds.replication.ReplicationChangelogCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ds.replication"
+  },
+  "ipahealthcheck.ds.replication.ReplicationCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ds.replication"
+  },
+  "ipahealthcheck.ds.ruv.KnownRUVCheck": {
+   "keys": [
+    "ruvs_o=ipaca"
+   ],
+   "kw": [
+    "key",
+    "ruvs",
+    "suffix"
+   ],
+   "levels": [
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ds.ruv"
+  },
+  "ipahealthcheck.ds.ruv.RUVCheck": {
+   "keys": [
+    "o=ipaca"
+   ],
+   "kw": [
+    "key",
+    "ruv"
+   ],
+   "levels": [
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ds.ruv"
+  },
+  "ipahealthcheck.ipa.certs.CertmongerFIPSTokensCheck": {
+   "keys": [
+    "fipstokencheck"
+   ],
+   "kw": [
+    "expected_token",
+    "key",
+    "msg",
+    "token"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.CertmongerStuckCheck": {
+   "keys": [
+    "no_stuck"
+   ],
+   "kw": [
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPACAChainExpirationCheck": {
+   "keys": [],
+   "kw": [
+    "days",
+    "error",
+    "key",
+    "msg",
+    "path"
+   ],
+   "levels": [
+    "CRITICAL",
+    "ERROR",
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPACertDNSSAN": {
+   "keys": [],
+   "kw": [
+    "ca",
+    "certfile",
+    "dbdir",
+    "error",
+    "hostname",
+    "key",
+    "msg",
+    "nickname",
+    "profile",
+    "san"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPACertMatchCheck": {
+   "keys": [],
+   "kw": [
+    "certdir",
+    "dbdir",
+    "dn",
+    "error",
+    "key",
+    "msg",
+    "nickname",
+    "path",
+    "serial_number"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPACertNSSTrust": {
+   "keys": [],
+   "kw": [
+    "dbdir",
+    "expected",
+    "got",
+    "key",
+    "msg",
+    "nickname"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPACertRevocation": {
+   "keys": [],
+   "kw": [
+    "certfile",
+    "dbdir",
+    "error",
+    "key",
+    "msg",
+    "nickname",
+    "revocation_reason",
+    "serial"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPACertTracking": {
+   "keys": [],
+   "kw": [
+    "error",
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPACertfileExpirationCheck": {
+   "keys": [],
+   "kw": [
+    "certfile",
+    "days",
+    "dbdir",
+    "error",
+    "expiration_date",
+    "key",
+    "msg",
+    "nickname",
+    "store"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPACertmongerCA": {
+   "keys": [],
+   "kw": [
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPACertmongerExpirationCheck": {
+   "keys": [],
+   "kw": [
+    "days",
+    "expiration_date",
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPADogtagCertsMatchCheck": {
+   "keys": [],
+   "kw": [
+    "dbdir",
+    "error",
+    "key",
+    "msg",
+    "nickname"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPAKRAAgent": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPANSSChainValidation": {
+   "keys": [
+    "db_authenticate"
+   ],
+   "kw": [
+    "dbdir",
+    "error",
+    "key",
+    "msg",
+    "nickname",
+    "reason"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPAOpenSSLChainValidation": {
+   "keys": [],
+   "kw": [
+    "error",
+    "key",
+    "msg",
+    "reason"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPARAAgent": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPAUserProvidedExpirationCheck": {
+   "keys": [],
+   "kw": [
+    "certfile",
+    "days",
+    "error",
+    "expiration_date",
+    "key",
+    "location",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.config.IPAkrbLastSuccessfulAuth": {
+   "keys": [
+    "krbLastSuccessfulAuth"
+   ],
+   "kw": [
+    "configstring",
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.config"
+  },
+  "ipahealthcheck.ipa.config.SSSDAllowedUids389Check": {
+   "keys": [
+    "SSSD_allowed_uids"
+   ],
+   "kw": [
+    "error",
+    "invalid",
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "CRITICAL",
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.config"
+  },
+  "ipahealthcheck.ipa.dna.IPADNARangeCheck": {
+   "keys": [
+    "agreement_creation_error_dna",
+    "no_dna_range_defined"
+   ],
+   "kw": [
+    "error",
+    "key",
+    "msg",
+    "next_max",
+    "next_start",
+    "range_max",
+    "range_start"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.dna"
+  },
+  "ipahealthcheck.ipa.files.IPAFileCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ipa.files"
+  },
+  "ipahealthcheck.ipa.files.IPAFileNSSDBCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ipa.files"
+  },
+  "ipahealthcheck.ipa.files.TomcatFileCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ipa.files"
+  },
+  "ipahealthcheck.ipa.host.DNSKeytab": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ipa.host"
+  },
+  "ipahealthcheck.ipa.host.DNS_keysyncKeytab": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ipa.host"
+  },
+  "ipahealthcheck.ipa.host.DSKeytab": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ipa.host"
+  },
+  "ipahealthcheck.ipa.host.HTTPKeytab": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ipa.host"
+  },
+  "ipahealthcheck.ipa.host.IPAHostKeytab": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ipa.host"
+  },
+  "ipahealthcheck.ipa.host.ODS_EXPORTERKeytab": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ipa.host"
+  },
+  "ipahealthcheck.ipa.idns.IPADNSSystemRecordsCheck": {
+   "keys": [
+    "ipa_ca_check"
+   ],
+   "kw": [
+    "ipaddr",
+    "key",
+    "msg",
+    "server"
+   ],
+   "levels": [
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.idns"
+  },
+  "ipahealthcheck.ipa.kdc.KDCWorkersCheck": {
+   "keys": [],
+   "kw": [
+    "cpus",
+    "key",
+    "msg",
+    "sysconfig",
+    "workers"
+   ],
+   "levels": [
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.kdc"
+  },
+  "ipahealthcheck.ipa.meta.IPAMetaCheck": {
+   "keys": [],
+   "kw": [
+    "masters",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.meta"
+  },
+  "ipahealthcheck.ipa.nss.IPAGroupMemberCheck": {
+   "keys": [],
+   "kw": [
+    "key",
+    "member",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.nss"
+  },
+  "ipahealthcheck.ipa.proxy.IPAProxySecretCheck": {
+   "keys": [],
+   "kw": [
+    "key",
+    "msg",
+    "proxy_conf",
+    "server_xml"
+   ],
+   "levels": [
+    "CRITICAL",
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.proxy"
+  },
+  "ipahealthcheck.ipa.roles.IPACRLManagerCheck": {
+   "keys": [
+    "crl_manager"
+   ],
+   "kw": [
+    "crlgen_enabled",
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.roles"
+  },
+  "ipahealthcheck.ipa.roles.IPARenewalMasterCheck": {
+   "keys": [
+    "renewal_master"
+   ],
+   "kw": [
+    "key",
+    "master",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.roles"
+  },
+  "ipahealthcheck.ipa.roles.IPARenewalMasterHasKRACheck": {
+   "keys": [
+    "kra_renewal_master"
+   ],
+   "kw": [
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "CRITICAL",
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.roles"
+  },
+  "ipahealthcheck.ipa.topology.IPATopologyDomainCheck": {
+   "keys": [],
+   "kw": [
+    "key",
+    "msg",
+    "replicas",
+    "suffix",
+    "type"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.topology"
+  },
+  "ipahealthcheck.ipa.trust.IPADomainCheck": {
+   "keys": [
+    "domain-check"
+   ],
+   "kw": [
+    "domain",
+    "error",
+    "key",
+    "msg",
+    "option",
+    "provider"
+   ],
+   "levels": [
+    "CRITICAL",
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPATrustAgentCheck": {
+   "keys": [
+    "ipa_server_mode_false",
+    "ipa_server_mode_missing"
+   ],
+   "kw": [
+    "attr",
+    "domain",
+    "error",
+    "key",
+    "msg",
+    "sssd_config"
+   ],
+   "levels": [
+    "CRITICAL",
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPATrustAgentMemberCheck": {
+   "keys": [],
+   "kw": [
+    "error",
+    "group",
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPATrustCatalogCheck": {
+   "keys": [
+    "Domain Security Identifier",
+    "domain-status",
+    "getnamebysid",
+    "trust-find"
+   ],
+   "kw": [
+    "domain",
+    "error",
+    "key",
+    "msg",
+    "output",
+    "sid",
+    "sssctl",
+    "type"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPATrustControllerAdminSIDCheck": {
+   "keys": [
+    "ipantsecurityidentifier"
+   ],
+   "kw": [
+    "error",
+    "key",
+    "msg",
+    "rid"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPATrustControllerConfCheck": {
+   "keys": [
+    "net conf list"
+   ],
+   "kw": [
+    "error",
+    "expected",
+    "got",
+    "key",
+    "msg",
+    "option",
+    "section"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPATrustControllerGroupSIDCheck": {
+   "keys": [
+    "ipantsecurityidentifier"
+   ],
+   "kw": [
+    "error",
+    "key",
+    "msg",
+    "rid"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPATrustControllerPrincipalCheck": {
+   "keys": [],
+   "kw": [
+    "error",
+    "group",
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPATrustControllerServiceCheck": {
+   "keys": [
+    "ADTRUST"
+   ],
+   "kw": [
+    "error",
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPATrustDomainsCheck": {
+   "keys": [
+    "domain-list",
+    "domain-status",
+    "domain_list_error",
+    "trust-find"
+   ],
+   "kw": [
+    "domain",
+    "error",
+    "key",
+    "msg",
+    "sssctl",
+    "sssd_domains",
+    "trust_domains"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPATrustPackageCheck": {
+   "keys": [
+    "adtrustpackage"
+   ],
+   "kw": [
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPAauthzdatapacCheck": {
+   "keys": [
+    "MS-PAC"
+   ],
+   "kw": [
+    "error",
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPAsidgenpluginCheck": {
+   "keys": [],
+   "kw": [
+    "attr",
+    "dn",
+    "error",
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.meta.core.MetaCheck": {
+   "keys": [
+    "meta"
+   ],
+   "kw": [
+    "acme",
+    "fips",
+    "fqdn",
+    "ipa_api_version",
+    "ipa_version",
+    "key"
+   ],
+   "levels": [],
+   "module": "ipahealthcheck.meta.core"
+  },
+  "ipahealthcheck.meta.services.certmonger": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.chronyd": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.dirsrv": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.gssproxy": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.httpd": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.ipa_custodia": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.ipa_dnskeysyncd": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.ipa_otpd": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.kadmin": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.krb5kdc": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.named": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.ods_enforcerd": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.pki_tomcatd": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.smb": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.sssd": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.winbind": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.system.filesystemspace.FileSystemSpaceCheck": {
+   "keys": [],
+   "kw": [
+    "free_space",
+    "key",
+    "msg",
+    "percent_free",
+    "store",
+    "threshold"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.system.filesystemspace"
+  }
+ },
+ "master": {
+  "ipahealthcheck.dogtag.ca.DogtagCertsConfigCheck": {
+   "keys": [],
+   "kw": [
+    "configfile",
+    "directive",
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "CRITICAL",
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.dogtag.ca"
+  },
+  "ipahealthcheck.dogtag.ca.DogtagCertsConnectivityCheck": {
+   "keys": [
+    "cert_show_ra",
+    "ipa_ra_crt_file_missing"
+   ],
+   "kw": [
+    "error",
+    "key",
+    "msg",
+    "path",
+    "serial"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.dogtag.ca"
+  },
+  "ipahealthcheck.ds.backends.BackendsCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ds.backends"
+  },
+  "ipahealthcheck.ds.config.ConfigCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ds.config"
+  },
+  "ipahealthcheck.ds.disk_space.DiskSpaceCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ds.disk_space"
+  },
+  "ipahealthcheck.ds.ds_plugins.RIPluginCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ds.ds_plugins"
+  },
+  "ipahealthcheck.ds.dse.DSECheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ds.dse"
+  },
+  "ipahealthcheck.ds.encryption.EncryptionCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ds.encryption"
+  },
+  "ipahealthcheck.ds.fs_checks.FSCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ds.fs_checks"
+  },
+  "ipahealthcheck.ds.nss_ssl.NssCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ds.nss_ssl"
+  },
+  "ipahealthcheck.ds.replication.ReplicationChangelogCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ds.replication"
+  },
+  "ipahealthcheck.ds.replication.ReplicationCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ds.replication"
+  },
+  "ipahealthcheck.ds.ruv.KnownRUVCheck": {
+   "keys": [
+    "ruvs_o=ipaca"
+   ],
+   "kw": [
+    "key",
+    "ruvs",
+    "suffix"
+   ],
+   "levels": [
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ds.ruv"
+  },
+  "ipahealthcheck.ds.ruv.RUVCheck": {
+   "keys": [
+    "o=ipaca"
+   ],
+   "kw": [
+    "key",
+    "ruv"
+   ],
+   "levels": [
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ds.ruv"
+  },
+  "ipahealthcheck.ipa.certs.CertmongerFIPSTokensCheck": {
+   "keys": [
+    "fipstokencheck"
+   ],
+   "kw": [
+    "expected_token",
+    "key",
+    "msg",
+    "token"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.CertmongerStuckCheck": {
+   "keys": [
+    "no_stuck"
+   ],
+   "kw": [
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPACAChainExpirationCheck": {
+   "keys": [],
+   "kw": [
+    "days",
+    "error",
+    "key",
+    "msg",
+    "path"
+   ],
+   "levels": [
+    "CRITICAL",
+    "ERROR",
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPACertDNSSAN": {
+   "keys": [],
+   "kw": [
+    "ca",
+    "certfile",
+    "dbdir",
+    "error",
+    "hostname",
+    "key",
+    "msg",
+    "nickname",
+    "profile",
+    "san"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPACertMatchCheck": {
+   "keys": [],
+   "kw": [
+    "certdir",
+    "dbdir",
+    "dn",
+    "error",
+    "key",
+    "msg",
+    "nickname",
+    "path",
+    "serial_number"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPACertNSSTrust": {
+   "keys": [],
+   "kw": [
+    "dbdir",
+    "expected",
+    "got",
+    "key",
+    "msg",
+    "nickname"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPACertRevocation": {
+   "keys": [],
+   "kw": [
+    "certfile",
+    "dbdir",
+    "error",
+    "key",
+    "msg",
+    "nickname",
+    "revocation_reason",
+    "serial"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPACertTracking": {
+   "keys": [],
+   "kw": [
+    "error",
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPACertfileExpirationCheck": {
+   "keys": [],
+   "kw": [
+    "certfile",
+    "days",
+    "dbdir",
+    "error",
+    "expiration_date",
+    "key",
+    "msg",
+    "nickname",
+    "store"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPACertmongerCA": {
+   "keys": [],
+   "kw": [
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPACertmongerExpirationCheck": {
+   "keys": [],
+   "kw": [
+    "days",
+    "expiration_date",
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPADogtagCertsMatchCheck": {
+   "keys": [],
+   "kw": [
+    "dbdir",
+    "error",
+    "key",
+    "msg",
+    "nickname"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPAKRAAgent": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPANSSChainValidation": {
+   "keys": [
+    "db_authenticate"
+   ],
+   "kw": [
+    "dbdir",
+    "error",
+    "key",
+    "msg",
+    "nickname",
+    "reason"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPAOpenSSLChainValidation": {
+   "keys": [],
+   "kw": [
+    "error",
+    "key",
+    "msg",
+    "reason"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPARAAgent": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.certs.IPAUserProvidedExpirationCheck": {
+   "keys": [],
+   "kw": [
+    "certfile",
+    "days",
+    "error",
+    "expiration_date",
+    "key",
+    "location",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.certs"
+  },
+  "ipahealthcheck.ipa.config.IPAkrbLastSuccessfulAuth": {
+   "keys": [
+    "krbLastSuccessfulAuth"
+   ],
+   "kw": [
+    "configstring",
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.config"
+  },
+  "ipahealthcheck.ipa.config.SSSDAllowedUids389Check": {
+   "keys": [
+    "SSSD_allowed_uids"
+   ],
+   "kw": [
+    "error",
+    "invalid",
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "CRITICAL",
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.config"
+  },
+  "ipahealthcheck.ipa.dna.IPADNARangeCheck": {
+   "keys": [
+    "agreement_creation_error_dna",
+    "no_dna_range_defined"
+   ],
+   "kw": [
+    "error",
+    "key",
+    "msg",
+    "next_max",
+    "next_start",
+    "range_max",
+    "range_start"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.dna"
+  },
+  "ipahealthcheck.ipa.files.IPAFileCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ipa.files"
+  },
+  "ipahealthcheck.ipa.files.IPAFileNSSDBCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ipa.files"
+  },
+  "ipahealthcheck.ipa.files.TomcatFileCheck": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ipa.files"
+  },
+  "ipahealthcheck.ipa.host.DNSKeytab": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ipa.host"
+  },
+  "ipahealthcheck.ipa.host.DNS_keysyncKeytab": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ipa.host"
+  },
+  "ipahealthcheck.ipa.host.DSKeytab": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ipa.host"
+  },
+  "ipahealthcheck.ipa.host.HTTPKeytab": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ipa.host"
+  },
+  "ipahealthcheck.ipa.host.IPAHostKeytab": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ipa.host"
+  },
+  "ipahealthcheck.ipa.host.ODS_EXPORTERKeytab": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.ipa.host"
+  },
+  "ipahealthcheck.ipa.idns.IPADNSSystemRecordsCheck": {
+   "keys": [
+    "ipa_ca_check"
+   ],
+   "kw": [
+    "ipaddr",
+    "key",
+    "msg",
+    "server"
+   ],
+   "levels": [
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.idns"
+  },
+  "ipahealthcheck.ipa.kdc.KDCWorkersCheck": {
+   "keys": [],
+   "kw": [
+    "cpus",
+    "key",
+    "msg",
+    "sysconfig",
+    "workers"
+   ],
+   "levels": [
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.kdc"
+  },
+  "ipahealthcheck.ipa.meta.IPAMetaCheck": {
+   "keys": [],
+   "kw": [
+    "masters",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.meta"
+  },
+  "ipahealthcheck.ipa.nss.IPAGroupMemberCheck": {
+   "keys": [],
+   "kw": [
+    "key",
+    "member",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.nss"
+  },
+  "ipahealthcheck.ipa.proxy.IPAProxySecretCheck": {
+   "keys": [],
+   "kw": [
+    "key",
+    "msg",
+    "proxy_conf",
+    "server_xml"
+   ],
+   "levels": [
+    "CRITICAL",
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.proxy"
+  },
+  "ipahealthcheck.ipa.roles.IPACRLManagerCheck": {
+   "keys": [
+    "crl_manager"
+   ],
+   "kw": [
+    "crlgen_enabled",
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.roles"
+  },
+  "ipahealthcheck.ipa.roles.IPARenewalMasterCheck": {
+   "keys": [
+    "renewal_master"
+   ],
+   "kw": [
+    "key",
+    "master",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.roles"
+  },
+  "ipahealthcheck.ipa.roles.IPARenewalMasterHasKRACheck": {
+   "keys": [
+    "kra_renewal_master"
+   ],
+   "kw": [
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "CRITICAL",
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.roles"
+  },
+  "ipahealthcheck.ipa.topology.IPATopologyDomainCheck": {
+   "keys": [],
+   "kw": [
+    "key",
+    "msg",
+    "replicas",
+    "suffix",
+    "type"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.topology"
+  },
+  "ipahealthcheck.ipa.trust.IPADomainCheck": {
+   "keys": [
+    "domain-check"
+   ],
+   "kw": [
+    "domain",
+    "error",
+    "key",
+    "msg",
+    "option",
+    "provider"
+   ],
+   "levels": [
+    "CRITICAL",
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPATrustAgentCheck": {
+   "keys": [
+    "ipa_server_mode_false",
+    "ipa_server_mode_missing"
+   ],
+   "kw": [
+    "attr",
+    "domain",
+    "error",
+    "key",
+    "msg",
+    "sssd_config"
+   ],
+   "levels": [
+    "CRITICAL",
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPATrustAgentMemberCheck": {
+   "keys": [],
+   "kw": [
+    "error",
+    "group",
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPATrustCatalogCheck": {
+   "keys": [
+    "Domain Security Identifier",
+    "domain-status",
+    "getnamebysid",
+    "trust-find"
+   ],
+   "kw": [
+    "domain",
+    "error",
+    "key",
+    "msg",
+    "output",
+    "sid",
+    "sssctl",
+    "type"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPATrustControllerAdminSIDCheck": {
+   "keys": [
+    "ipantsecurityidentifier"
+   ],
+   "kw": [
+    "error",
+    "key",
+    "msg",
+    "rid"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPATrustControllerConfCheck": {
+   "keys": [
+    "net conf list"
+   ],
+   "kw": [
+    "error",
+    "expected",
+    "got",
+    "key",
+    "msg",
+    "option",
+    "section"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPATrustControllerGroupSIDCheck": {
+   "keys": [
+    "ipantsecurityidentifier"
+   ],
+   "kw": [
+    "error",
+    "key",
+    "msg",
+    "rid"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPATrustControllerPrincipalCheck": {
+   "keys": [],
+   "kw": [
+    "error",
+    "group",
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPATrustControllerServiceCheck": {
+   "keys": [
+    "ADTRUST"
+   ],
+   "kw": [
+    "error",
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPATrustDomainsCheck": {
+   "keys": [
+    "domain-list",
+    "domain-status",
+    "domain_list_error",
+    "trust-find"
+   ],
+   "kw": [
+    "domain",
+    "error",
+    "key",
+    "msg",
+    "sssctl",
+    "sssd_domains",
+    "trust_domains"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPATrustPackageCheck": {
+   "keys": [
+    "adtrustpackage"
+   ],
+   "kw": [
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPAauthzdatapacCheck": {
+   "keys": [
+    "MS-PAC"
+   ],
+   "kw": [
+    "error",
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.ipa.trust.IPAsidgenpluginCheck": {
+   "keys": [],
+   "kw": [
+    "attr",
+    "dn",
+    "error",
+    "key",
+    "msg"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS"
+   ],
+   "module": "ipahealthcheck.ipa.trust"
+  },
+  "ipahealthcheck.meta.core.MetaCheck": {
+   "keys": [
+    "meta"
+   ],
+   "kw": [
+    "acme",
+    "fips",
+    "fqdn",
+    "ipa_api_version",
+    "ipa_version",
+    "key"
+   ],
+   "levels": [],
+   "module": "ipahealthcheck.meta.core"
+  },
+  "ipahealthcheck.meta.services.certmonger": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.chronyd": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.dirsrv": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.gssproxy": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.httpd": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.ipa_custodia": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.ipa_dnskeysyncd": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.ipa_otpd": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.kadmin": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.krb5kdc": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.named": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.ods_enforcerd": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.pki_tomcatd": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.smb": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.sssd": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.meta.services.winbind": {
+   "keys": [],
+   "kw": [],
+   "levels": [],
+   "module": "ipahealthcheck.meta.services"
+  },
+  "ipahealthcheck.system.filesystemspace.FileSystemSpaceCheck": {
+   "keys": [],
+   "kw": [
+    "free_space",
+    "key",
+    "msg",
+    "percent_free",
+    "store",
+    "threshold"
+   ],
+   "levels": [
+    "ERROR",
+    "SUCCESS",
+    "WARNING"
+   ],
+   "module": "ipahealthcheck.system.filesystemspace"
+  }
+ }
+}

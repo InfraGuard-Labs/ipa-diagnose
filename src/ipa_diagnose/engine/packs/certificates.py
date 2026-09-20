@@ -61,9 +61,31 @@ PACK_ID = "certificates"
 
 FAILURE_STATES = {"CA_REJECTED", "CA_UNREACHABLE", "CA_UNCONFIGURED", "NEED_GUIDANCE"}
 _EXPIRY_CHECKS = {"IPACertmongerExpirationCheck", "IPACertfileExpirationCheck"}
-_RA_HEALTHCHECK_CHECKS = {"DogtagCertsConnectivityCheck", "DogtagCertsConfigCheck", "IPARAAgent", "IPAKRAAgent"}
+# Only the RA agent's own check and the Dogtag connectivity check (a weak, shared-cause signal) are RA-desync
+# evidence. DogtagCertsConfigCheck (CS.cfg vs NSS DB) and IPAKRAAgent (a different agent) are not, and stay
+# undiagnosed rather than being folded into an RA-agent diagnosis.
+_RA_HEALTHCHECK_CHECKS = {"DogtagCertsConnectivityCheck", "IPARAAgent"}
 _RA_NICKNAMES = {"ipacert", "ipara"}
-_AUTH_HINTS = ("4301", "authorization error", "auth error", "unauthorized")
+# "4301" is deliberately NOT a hint: IPA error 4301 is the generic CertificateOperationError (also raised
+# when the CA is simply down), not an authorization failure. Bare "unauthorized" is any HTTP 401.
+_AUTH_HINTS = ("authorization error", "not authorized", "insufficient access")
+# IPARAAgent results that state the agent's certificate/description and its LDAP entry disagree.
+_RA_DESYNC_MARKERS = ("description_mismatch", "ldap_mismatch", "agent_missing_description", "not found in ldap", "mismatch")
+
+
+def _is_external_cert_message(f: Finding) -> bool:
+    return "not an ipa-issued" in (f.message or "").lower()
+
+
+def _is_expiry_result(f: Finding) -> bool:
+    """A result that is actually about a notAfter date. The expiry checks also ERROR for 'no
+    not-valid-after date yet', unreadable NSS DB/cert file and unknown storage - not expiry."""
+
+    kw = f.keywords if isinstance(f.keywords, dict) else {}
+    text = (f.message or "").lower()
+    if _is_external_cert_message(f):
+        return False  # user-provided certificate: certmonger will not renew it; different remedy
+    return bool(kw.get("expiration_date")) or "expire" in text
 
 _NETWORK_HINTS = (
     "could not resolve",
@@ -72,8 +94,9 @@ _NETWORK_HINTS = (
     "connection refused",
     "network is unreachable",
     "could not connect",
+    "couldn't connect to server",
+    "couldn't resolve host",
     "timed out connecting",
-    "dns",
     "nodename nor servname",
 )
 _TRUST_HINTS = (
@@ -153,10 +176,11 @@ class CertmongerTrackingStuckRule(DiagnosticRule):
             err = str(item.data.get("ca_error") or "").strip().lower()
             if not err:
                 continue
+            # Both are evaluated independently: text matching both families supports neither.
             if any(h in err for h in _NETWORK_HINTS):
                 network_hit = True
                 informative_error = item.data.get("ca_error")
-            elif any(h in err for h in _TRUST_HINTS):
+            if any(h in err for h in _TRUST_HINTS):
                 trust_hit = True
                 informative_error = item.data.get("ca_error")
 
@@ -365,7 +389,7 @@ class CertificateExpiredRule(DiagnosticRule):
         findings = [
             f
             for f in _cert_findings(bundle, sources=("ipahealthcheck.ipa.certs",), checks=_EXPIRY_CHECKS)
-            if f.severity.rank >= Severity.WARNING.rank
+            if f.severity.rank >= Severity.WARNING.rank and _is_expiry_result(f)
         ]
         if not findings:
             return None
@@ -523,7 +547,10 @@ class RaAgentDesyncRule(DiagnosticRule):
         # pki-tomcatd or an unreachable CA: only an RA-agent-specific ERROR, a failing
         # RA-agent certmonger request, or two independent signals support this cause.
         ra_specific_error = any(
-            f.check in ("IPARAAgent", "IPAKRAAgent") and f.severity.rank >= Severity.ERROR.rank for f in hc_findings
+            f.check == "IPARAAgent"
+            and f.severity.rank >= Severity.ERROR.rank
+            and any(m in f"{f.keywords.get('key', '') if isinstance(f.keywords, dict) else ''} {f.message}".lower() for m in _RA_DESYNC_MARKERS)
+            for f in hc_findings
         )
         if signal_types >= 2 or ra_cm_items or ra_specific_error:
             confidence_level = ConfidenceLevel.HIGH if signal_types >= 2 else ConfidenceLevel.MEDIUM
@@ -625,7 +652,7 @@ class RenewalMasterUnreachableRule(DiagnosticRule):
         warning_findings = [
             f
             for f in _cert_findings(bundle, sources=("ipahealthcheck.ipa.certs",), checks=_EXPIRY_CHECKS)
-            if f.severity == Severity.WARNING
+            if f.severity == Severity.WARNING and _is_expiry_result(f)
         ]
         if not warning_findings:
             return None

@@ -211,6 +211,26 @@ class EvidenceCompleteness:
 
 
 @dataclasses.dataclass
+class UndiagnosedFinding:
+    """An ipa-healthcheck finding (WARNING or worse) that no ipa-diagnose rule explains.
+
+    Kept structurally so it can never silently disappear: ipa-diagnose has no
+    deterministic logic for it, which is NOT a statement that it is harmless.
+    All text is sanitized (untrusted); nothing here is ever executed."""
+
+    source: str
+    check: str
+    severity: str
+    message: str
+    reason: str
+    crashed: bool = False
+    check_known_since: Optional[str] = None
+    """First upstream ipa-healthcheck release this check appears in (None = unknown to this build)."""
+    ipa_healthcheck_version: Optional[str] = None
+    finding_id: str = ""
+
+
+@dataclasses.dataclass
 class DiagnosisReport:
     """Top-level result of one ipa-diagnose run."""
 
@@ -225,6 +245,8 @@ class DiagnosisReport:
     evidence_completeness: EvidenceCompleteness = dataclasses.field(default_factory=EvidenceCompleteness)
     unclaimed_warnings: int = 0
     """ipa-healthcheck WARNING findings that no diagnostic rule covers (never dropped silently)."""
+    undiagnosed_findings: List[UndiagnosedFinding] = dataclasses.field(default_factory=list)
+    """Every WARNING-or-worse ipa-healthcheck finding no rule explains, by name (never only a count)."""
     unknown_severity_findings: List[str] = dataclasses.field(default_factory=list)
     """Human-readable notes for any Finding whose raw ipa-healthcheck
     ``result`` value did not match a known severity (see Severity.UNKNOWN) -

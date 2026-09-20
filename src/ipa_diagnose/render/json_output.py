@@ -96,6 +96,19 @@ def report_to_dict(report: DiagnosisReport, ai_explanations: Dict[str, str] = No
         "packs_evaluated": report.packs_evaluated,
         "collection_errors": report.collection_errors,
         "unclaimed_warnings": report.unclaimed_warnings,
+        "undiagnosed_findings": [
+            {
+                "source": u.source,
+                "check": u.check,
+                "severity": u.severity,
+                "message": u.message,
+                "reason": u.reason,
+                "check_crashed": u.crashed,
+                "check_known_since_ipa_healthcheck": u.check_known_since,
+                "ipa_healthcheck_version": u.ipa_healthcheck_version,
+            }
+            for u in report.undiagnosed_findings
+        ],
         "fully_verified": report.evidence_completeness.level == "complete",
         "evidence_completeness": _completeness_to_dict(report.evidence_completeness),
         "replay_source": report.replay_source,

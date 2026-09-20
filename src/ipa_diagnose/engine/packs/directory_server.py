@@ -44,6 +44,17 @@ def _findings(bundle: EvidenceBundle, *prefixes: str) -> List[Finding]:
     return [f for f in bundle.findings if any(f.source.startswith(p) for p in prefixes)]
 
 
+def _exact(bundle: EvidenceBundle, source: str, *checks: str) -> List[Finding]:
+    """Findings from specific ipa-healthcheck CHECKS (exact source + check name).
+
+    Rules used to match a whole source by prefix, so a new/unknown check added
+    upstream under the same source - or a differently-purposed check whose source
+    name merely starts with the same text (ds.nss vs ds.nss_ssl) - was claimed and
+    misdiagnosed. An unknown check is now left to the undiagnosed-findings path."""
+
+    return [f for f in bundle.findings if f.source == source and f.check in checks]
+
+
 def _at_least_warning(findings: List[Finding]) -> List[Finding]:
     return [f for f in findings if f.severity.rank >= Severity.WARNING.rank]
 
@@ -67,8 +78,23 @@ def _ref_i(i: EvidenceItem, why: str) -> EvidenceRef:
 _DISK_SOURCES: Tuple[str, ...] = ("ipahealthcheck.system.filesystemspace", "ipahealthcheck.ds.disk_space")
 
 
+def _disk_findings(bundle: EvidenceBundle) -> List[Finding]:
+    """DiskSpaceCheck (lib389 low-disk-space lint) and FileSystemSpaceCheck (free space
+    below its threshold). FileSystemSpaceCheck also WARNs 'File system X is not mounted',
+    which is not space exhaustion."""
+
+    found = _exact(bundle, "ipahealthcheck.ds.disk_space", "DiskSpaceCheck")
+    # FileSystemSpaceCheck's space results carry percent_free/free_space; anything else it emits is not a
+    # usage reading and must not be presented as one.
+    for f in _exact(bundle, "ipahealthcheck.system.filesystemspace", "FileSystemSpaceCheck"):
+        kw = f.keywords if isinstance(f.keywords, dict) else {}
+        if "percent_free" in kw or "free_space" in kw:
+            found.append(f)
+    return [f for f in found if "not mounted" not in (f.message or "").lower()]
+
+
 def _recheck_disk_space(bundle: EvidenceBundle) -> bool:
-    findings = _findings(bundle, *_DISK_SOURCES)
+    findings = _disk_findings(bundle)
     if any(f.severity.rank >= Severity.WARNING.rank for f in findings):
         return False
     for item in bundle.items_by_kind("disk_usage"):
@@ -83,7 +109,7 @@ class DiskSpaceExhaustionRule(DiagnosticRule):
     summary = "Disk space exhaustion on a Directory Server-critical path (data, logs, /dev/shm, backups)."
 
     def evaluate(self, bundle: EvidenceBundle) -> Optional[Diagnosis]:
-        relevant = _at_least_warning(_findings(bundle, *_DISK_SOURCES))
+        relevant = _at_least_warning(_disk_findings(bundle))
         if not relevant:
             return None
 
@@ -265,10 +291,26 @@ class DiskSpaceExhaustionRule(DiagnosticRule):
 # ---------------------------------------------------------------------------
 
 _FILE_SOURCE = "ipahealthcheck.ipa.files"
+_FILE_CHECKS = ("IPAFileCheck", "IPAFileNSSDBCheck", "TomcatFileCheck")
+
+
+def _file_findings(bundle: EvidenceBundle) -> List[Finding]:
+    """Owner/group/mode results only. The same checks also report the running umask being wrong
+    (which makes upstream SKIP all mode checks), code-format and unknown uid/gid problems - none of
+    which is an ownership/mode mismatch of a specific file, so they are left undiagnosed."""
+
+    out = []
+    for f in _exact(bundle, _FILE_SOURCE, *_FILE_CHECKS):
+        kw = f.keywords if isinstance(f.keywords, dict) else {}
+        text = (f.message or "").lower()
+        if str(kw.get("type", "")).lower() == "umask" or "umask" in text or "code format" in text or "unknown uid" in text or "unknown gid" in text:
+            continue
+        out.append(f)
+    return out
 
 
 def _recheck_ownership(bundle: EvidenceBundle) -> bool:
-    if _at_least_warning(_findings(bundle, _FILE_SOURCE)):
+    if _at_least_warning(_file_findings(bundle)):
         return False
     if _items_by_category(bundle, "dirsrv_journal_line", "permission_denied"):
         return False
@@ -284,7 +326,7 @@ class OwnershipSelinuxMismatchRule(DiagnosticRule):
     def evaluate(self, bundle: EvidenceBundle) -> Optional[Diagnosis]:
         permission_journal = _items_by_category(bundle, "dirsrv_journal_line", "permission_denied")
         selinux_journal = _items_by_category(bundle, "dirsrv_journal_line", "selinux")
-        file_findings = _at_least_warning(_findings(bundle, _FILE_SOURCE))
+        file_findings = _at_least_warning(_file_findings(bundle))
 
         if not permission_journal and not selinux_journal and not file_findings:
             return None
@@ -439,11 +481,28 @@ class OwnershipSelinuxMismatchRule(DiagnosticRule):
 # ---------------------------------------------------------------------------
 
 _NSS_SOURCE = "ipahealthcheck.ds.nss"
+# ipahealthcheck.ds.nss_ssl.NssCheck is NOT an NSS-DB-format check: it reports Directory Server
+# certificate EXPIRY (lib389 DSCERTLE0001/0002). The old rule matched it by source prefix and told
+# administrators with an expired DS certificate that it was "not a certificate lifecycle problem".
+_DS_CERT_SOURCE = "ipahealthcheck.ds.nss_ssl"
+_DS_CERT_CHECK = "NssCheck"
 _CERT_SOURCES: Tuple[str, ...] = ("ipahealthcheck.ipa.certs", "ipahealthcheck.dogtag.ca")
 
 
+def _ds_cert_expiry_findings(bundle: EvidenceBundle) -> List[Finding]:
+    """NssCheck results that are the documented lib389 expiry results (DSCERTLE0001/0002)."""
+
+    out = []
+    for f in _at_least_warning(_exact(bundle, _DS_CERT_SOURCE, _DS_CERT_CHECK)):
+        key = str(f.keywords.get("key", "")) if isinstance(f.keywords, dict) else ""
+        text = (f.message or "").lower()
+        if key in ("DSCERTLE0001", "DSCERTLE0002") or "has expired" in text or "will expire" in text:
+            out.append(f)
+    return out
+
+
 def _recheck_nss(bundle: EvidenceBundle) -> bool:
-    if _at_least_warning(_findings(bundle, _NSS_SOURCE)):
+    if False:  # ipa-healthcheck has no NSS DB-format check (see _DS_CERT_SOURCE); journal evidence only
         return False
     if _items_by_category(bundle, "dirsrv_journal_line", "nss_tls"):
         return False
@@ -455,12 +514,16 @@ class NssTlsDbFormatRule(DiagnosticRule):
     summary = "NSS/TLS DB format mismatch (legacy cert8.db/key3.db vs. cert9.db/key4.db) masquerading as a certificate problem."
 
     def evaluate(self, bundle: EvidenceBundle) -> Optional[Diagnosis]:
-        nss_findings = _at_least_warning(_findings(bundle, _NSS_SOURCE))
+        nss_findings: List[Finding] = []  # no ipa-healthcheck check reports a DB-format problem
         tls_journal = _items_by_category(bundle, "dirsrv_journal_line", "nss_tls")
         if not nss_findings and not tls_journal:
             return None
 
-        cert_expiry_findings = _at_least_warning(_findings(bundle, *_CERT_SOURCES))
+        # A Directory Server certificate-expiry result (NssCheck) or any certs/dogtag finding contradicts a
+        # pure DB-format explanation.
+        cert_expiry_findings = _at_least_warning(
+            _findings(bundle, *_CERT_SOURCES) + _ds_cert_expiry_findings(bundle)
+        )
 
         evidence_for = [_ref_f(f, f"{f.qualified_check} reported {f.severity.value}: {f.message}") for f in nss_findings]
         evidence_for += [_ref_i(i, "journalctl shows a TLS/NSS-flavored failure from dirsrv") for i in tls_journal]
@@ -651,7 +714,6 @@ class IndexBackendHealthRule(DiagnosticRule):
             worst.keywords.get("attr")
             or worst.keywords.get("attribute")
             or worst.keywords.get("index")
-            or worst.keywords.get("key")
             or "the affected attribute"
         )
         evidence_for = [
@@ -687,7 +749,10 @@ class IndexBackendHealthRule(DiagnosticRule):
                     rationale="Read-only confirmation before reindexing anything.",
                 ),
                 Action(
-                    description=f"Reindex only the specific missing attribute ({attribute}) that the finding named.",
+                    description=(
+                        f"Reindex only the specific missing attribute ({attribute}); the attribute names are in the "
+                        "finding's discrepancy details."
+                    ),
                     risk=RiskLevel.CAUTION,
                     command=f"db2index.pl -Z <instance> -t {safe_token(attribute, '<attribute>')}",
                     rationale="Scoped to one attribute per port389.org guidance. db2index runs OFFLINE: plan a maintenance window for that Directory Server instance (newer 389-DS releases offer dsconf/dsctl equivalents). It does not touch replication state.",
@@ -716,6 +781,74 @@ class IndexBackendHealthRule(DiagnosticRule):
         )
 
 
+def _recheck_ds_certificate(bundle: EvidenceBundle) -> bool:
+    return not _at_least_warning(_exact(bundle, _DS_CERT_SOURCE, _DS_CERT_CHECK))
+
+
+class DsCertificateExpiryRule(DiagnosticRule):
+    rule_id = "ds-certificate-expiry"
+    summary = "A Directory Server certificate has expired or expires within 30 days (ipa-healthcheck NssCheck)."
+
+    def evaluate(self, bundle: EvidenceBundle) -> Optional[Diagnosis]:
+        # Only the documented lib389 expiry results; any other NssCheck result stays undiagnosed.
+        relevant = _ds_cert_expiry_findings(bundle)
+        if not relevant:
+            return None
+
+        def _expired(f: Finding) -> bool:
+            key = str(f.keywords.get("key", "")) if isinstance(f.keywords, dict) else ""
+            return key == "DSCERTLE0002" or "has expired" in (f.message or "").lower()
+
+        any_expired = any(_expired(f) for f in relevant)
+        worst = max(relevant, key=lambda f: f.severity.rank)
+        state = "has EXPIRED" if any_expired else "expires within 30 days"
+        return Diagnosis(
+            pack_id=PACK_ID,
+            rule_id=self.rule_id,
+            status=DiagnosisStatus.DIAGNOSED,
+            title="Directory Server certificate has expired" if any_expired else "Directory Server certificate expires within 30 days",
+            why=(
+                f"ipa-healthcheck ({worst.qualified_check}, lib389 certificate lint) directly reports that a Directory "
+                f"Server certificate {state}: {' '.join((worst.message or '').split())[:200]}. This is the check's own "
+                "statement about the certificate, not an inference."
+            ),
+            confidence=Confidence(
+                level=ConfidenceLevel.HIGH,
+                rationale="Direct report from ipa-healthcheck's Directory Server certificate check (DSCERTLE0001/0002).",
+                corroborating_evidence_count=len(relevant),
+            ),
+            severity=Severity.ERROR if any_expired else Severity.WARNING,
+            evidence_for=[_ref_f(f, f"{f.qualified_check} reports: {f.message}") for f in relevant],
+            impact=(
+                "TLS/LDAPS connections to this Directory Server can fail or be refused by clients once the certificate "
+                "is expired; replication and other services that bind over TLS may be affected."
+            ),
+            actions=[
+                Action(
+                    description="List the certificates in the Directory Server NSS database and their validity dates.",
+                    risk=RiskLevel.SAFE,
+                    command="certutil -L -d /etc/dirsrv/slapd-<INSTANCE>",
+                    rationale="Read-only: shows which certificate and its dates.",
+                ),
+                Action(
+                    description="See whether certmonger tracks the certificate and what state its renewal is in.",
+                    risk=RiskLevel.SAFE,
+                    command="getcert list",
+                    rationale="Read-only: shows tracking requests and their status/errors.",
+                ),
+            ],
+            verification=[
+                VerificationCondition(
+                    description="Re-run the Directory Server certificate check and confirm it reports SUCCESS.",
+                    recheck=_recheck_ds_certificate,
+                    healthcheck_sources=[_DS_CERT_SOURCE],
+                )
+            ],
+            limitations="This does not establish WHY the certificate was not renewed; check certmonger and the CA next.",
+            upstream_candidates=[],
+        )
+
+
 PACK = DiagnosticPack(
     pack_id=PACK_ID,
     version="1",
@@ -725,13 +858,14 @@ PACK = DiagnosticPack(
         OwnershipSelinuxMismatchRule(),
         NssTlsDbFormatRule(),
         IndexBackendHealthRule(),
+        DsCertificateExpiryRule(),
     ],
     healthcheck_sources=[
         "ipahealthcheck.ds.backends",
         "ipahealthcheck.ds.config",
         "ipahealthcheck.ds.dse",
         "ipahealthcheck.ds.encryption",
-        "ipahealthcheck.ds.nss",
+        "ipahealthcheck.ds.nss_ssl",
         "ipahealthcheck.ds.disk_space",
         "ipahealthcheck.system.filesystemspace",
         "ipahealthcheck.ipa.files",

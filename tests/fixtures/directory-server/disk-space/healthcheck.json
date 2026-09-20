@@ -7,10 +7,10 @@
     "when": "20260115090500Z",
     "duration": "0.019",
     "kw": {
-      "msg": "/var/lib/dirsrv/ is using more than 80% of the available space.",
-      "path": "/var/lib/dirsrv/",
-      "store": "dirsrv",
-      "percent": 84
+      "msg": "/var/lib/dirsrv/: free space percentage under threshold: 16% < 20%",
+      "store": "/var/lib/dirsrv/",
+      "percent_free": 16,
+      "threshold": 20
     }
   },
   {

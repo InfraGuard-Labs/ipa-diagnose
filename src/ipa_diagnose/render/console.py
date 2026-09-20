@@ -70,11 +70,11 @@ def render_report(
 
     if not report.diagnoses:
         if report.evidence_completeness.level == "complete":
-            if report.unclaimed_warnings:
+            if report.undiagnosed_findings or report.unclaimed_warnings:
                 console.print(
                     "[bold green]No problems detected by any diagnostic rule[/bold green] and all expected evidence "
-                    f"was collected. Note: ipa-healthcheck reported {report.unclaimed_warnings} warning(s) that no "
-                    "rule covers (run `ipa-healthcheck` to see them)."
+                    "was collected. Note: ipa-healthcheck reported findings that no ipa-diagnose rule explains "
+                    "(listed below) - they are NOT confirmed healthy."
                 )
             else:
                 console.print(
@@ -86,6 +86,7 @@ def render_report(
                 "[bold yellow]No problem was observed, but health could NOT be fully verified[/bold yellow] "
                 "- see the evidence gaps above."
             )
+        _print_undiagnosed(report, console, details=details)
         _print_coverage(report, console, details=details)
         return
 
@@ -128,6 +129,7 @@ def render_report(
             console.print(f"  ℹ {escape(d.title)}")
         console.print()
 
+    _print_undiagnosed(report, console, details=details)
     _print_coverage(report, console, details=details)
 
 
@@ -287,6 +289,33 @@ def _print_evidence_banner(report: DiagnosisReport, console: Console) -> None:
         console.print(f"  [yellow]NOT VERIFIED: {escape(u.capability)}[/yellow] - {escape(u.reason)}")
         if u.hint:
             console.print(f"    [cyan]What to do:[/cyan] {escape(u.hint)}")
+
+
+_UNDIAGNOSED_DEFAULT_LIMIT = 8
+
+
+def _print_undiagnosed(report: DiagnosisReport, console: Console, *, details: bool = False) -> None:
+    """ipa-healthcheck findings no rule explains: named, never only counted."""
+
+    items = report.undiagnosed_findings
+    if not items:
+        return
+    console.print(Rule("UNDIAGNOSED ipa-healthcheck FINDINGS", style="yellow"))
+    console.print(
+        "[dim]ipa-diagnose has no deterministic rule for these. That does not mean they are harmless - "
+        "review them with ipa-healthcheck. No cause is claimed.[/dim]"
+    )
+    shown = items if details else items[:_UNDIAGNOSED_DEFAULT_LIMIT]
+    for u in shown:
+        crash = " [check crashed]" if u.crashed else ""
+        console.print(f"  • [{escape(u.severity)}] {escape(u.source)}.{escape(u.check)}{escape(crash)}: {escape(u.message)}")
+        if details:
+            since = f"known upstream since ipa-healthcheck {u.check_known_since}" if u.check_known_since else "not in this build's upstream check catalog"
+            ver = f"; installed ipa-healthcheck {u.ipa_healthcheck_version}" if u.ipa_healthcheck_version else ""
+            console.print(f"    [dim]{escape(u.reason)} ({escape(since)}{escape(ver)})[/dim]")
+    if len(shown) < len(items):
+        console.print(f"  [dim]... and {len(items) - len(shown)} more (use --details or --json for all)[/dim]")
+    console.print()
 
 
 def _print_coverage(report: DiagnosisReport, console: Console, *, details: bool = False) -> None:

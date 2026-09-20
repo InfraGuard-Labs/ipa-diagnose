@@ -163,7 +163,8 @@ def test_disk_space_hard_failure_is_diagnosed_high_confidence_when_journal_corro
             "ipahealthcheck.system.filesystemspace",
             "FileSystemSpaceCheck",
             Severity.CRITICAL,
-            message="/dev/shm is critically low on space.",
+            message="/var/lib/dirsrv/: free space percentage under threshold: 4% < 20%",
+            keywords={"store": "/var/lib/dirsrv/", "percent_free": 4, "threshold": 20},
         )
     ]
     items = [_journal_item("journal-dirsrv-0", "disk_space", "No space left on device")]
