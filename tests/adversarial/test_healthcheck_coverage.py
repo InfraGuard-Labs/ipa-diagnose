@@ -370,3 +370,32 @@ def test_replay_without_core_service_checks_is_not_healthy(tmp_path):
     (tmp_path / "healthcheck.json").write_text(
         '[{"source":"ipahealthcheck.ipa.host","check":"IPAHostKeytab","result":"SUCCESS","uuid":"x","kw":{}}]', encoding="utf-8")
     assert run_diagnosis(collect_evidence(replay_dir=str(tmp_path))).overall_status.value != "HEALTHY"
+
+
+def _named_item(line):
+    return EvidenceItem(item_id="nj1", kind="named_journal_line", summary=line, data={"raw_line": line})
+
+
+def test_file_permission_denied_next_to_dyndb_ldap_is_not_an_aci_diagnosis():
+    j = _named_item("named[1]: dyndb-ldap: could not write /var/named/data/x.jnl: Permission denied")
+    e = _entry("ipahealthcheck.ipa.idns", "IPADNSSystemRecordsCheck", "WARNING", msg="Expected SRV record missing")
+    assert "named-service-down" not in _diag_ids(run_diagnosis(_bundle([e], [j])))
+
+
+def test_stale_ldap_denial_line_without_named_failure_is_not_confident():
+    j = _named_item("named[1]: ldap_search_ext_s(): Insufficient access")
+    e = _entry("ipahealthcheck.ipa.idns", "IPADNSSystemRecordsCheck", "WARNING", msg="Expected SRV record missing")
+    assert "named-service-down" not in _diag_ids(run_diagnosis(_bundle([e], [j])))
+
+
+def test_ldap_aci_denial_with_named_failing_to_start_is_still_diagnosed():
+    a = _named_item("named[1]: ldap_search_ext_s(): Insufficient access (err=50)")
+    c = _named_item("systemd: named-pkcs11.service: Failed to start named")
+    e = _entry("ipahealthcheck.ipa.idns", "IPADNSSystemRecordsCheck", "WARNING", msg="Expected SRV record missing")
+    assert "named-service-down" in _diag_ids(run_diagnosis(_bundle([e], [a, c])))
+
+
+def test_loose_zone_keywords_are_not_a_forward_zone_collision():
+    j = _named_item("named[1]: zone example/IN: forward zone skip, sync failed, not loaded; empty zone? forward")
+    e = _entry("ipahealthcheck.ipa.idns", "IPADNSSystemRecordsCheck", "WARNING", msg="Expected SRV record missing")
+    assert "forward-zone-conflict" not in _diag_ids(run_diagnosis(_bundle([e], [j])))

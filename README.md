@@ -353,6 +353,11 @@ real-FreeIPA-validated - this project does not overclaim which is which.
 | `UNKNOWN` | 3 | The base health evidence is unavailable (for example `ipa-healthcheck` is missing, timed out, or you are not root), so nothing can be said. | **Not OK - alert** |
 | `NOT_FULLY_VERIFIED` | 4 | No supported root cause was found, but something meaningful is unresolved: an `ipa-healthcheck` finding that no ipa-diagnose rule explains (listed as *undiagnosed*, no cause claimed), or relevant evidence is missing (for example the replication RUV could not be read). | **Not OK - alert or investigate** |
 
+Undiagnosed `ipa-healthcheck` findings are listed by name (8 shown by default; `--details` shows up to 200; `--json` has all of them
+in `undiagnosed_findings`). Some upstream warnings are benign on some platforms (for example DNS-record warnings on IPv4-only setups,
+a missing FIPS file, or `MetaCheck` reporting version fields) and will still give `NOT_FULLY_VERIFIED` - see
+[docs/limitations.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/docs/limitations.md).
+
 **In monitoring, alert on any non-zero exit - including 3 and 4.** A script
 that only tests for `2` will ignore "could not verify". When several things
 apply, the more severe wins (a stopped Directory Server with a partly

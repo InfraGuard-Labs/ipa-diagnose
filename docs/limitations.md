@@ -116,7 +116,7 @@ none exist yet, and none are claimed.
   diagnostic rule explains is listed as *undiagnosed* and makes the run
   `NOT_FULLY_VERIFIED` (exit 4) instead of `HEALTHY`. Some benign upstream
   warnings (for example the container-only "missing /proc/sys/crypto/fips_enabled",
-  or DNS-record warnings on IPv4-only setups) will therefore show as
+  `MetaCheck` reporting version fields, or DNS-record warnings on IPv4-only setups) will therefore show as
   `NOT_FULLY_VERIFIED` on a working server: that is deliberate (ipa-diagnose will
   not call a run healthy while a failed finding is unexplained) and it claims no
   cause. Review the listed findings with `ipa-healthcheck`.

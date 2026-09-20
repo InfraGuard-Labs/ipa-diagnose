@@ -102,8 +102,10 @@ def _dns_lookup_items(bundle: EvidenceBundle) -> List[EvidenceItem]:
 # running") but must NOT be attributed to the ACI cause without the matching
 # evidence.
 
-_ACI_ERROR_KEYWORDS = ("insufficient access", "permission denied", "no permission", "err=50")
-_ACI_CONTEXT_KEYWORDS = ("ldap", "cn=dns", "aci", "bind-dyndb-ldap")
+# An LDAP-specific denial: LDAP "Insufficient access" (err=50), or a permission denial reported BY an ldap_* call.
+# A bare "permission denied" (file permissions, SELinux) is not an ACI problem.
+_ACI_ERROR_RE = re.compile(r"insufficient access|\berr=50\b|ldap_[a-z_]+.{0,80}permission denied")
+_ACI_CONTEXT_RE = re.compile(r"ldap|\bcn=dns\b|\baci\b|bind-dyndb-ldap")
 
 _STRONG_CRASH_KEYWORDS = (
     "failed to start",
@@ -122,7 +124,7 @@ _AMBIGUOUS_NAMED_KEYWORDS = ("error", "denied", "cannot", "can't")
 
 def _is_aci_error(item: EvidenceItem) -> bool:
     text = f"{item.summary} {item.data.get('raw_line', '')}".lower()
-    return any(k in text for k in _ACI_ERROR_KEYWORDS) and any(k in text for k in _ACI_CONTEXT_KEYWORDS)
+    return bool(_ACI_ERROR_RE.search(text)) and bool(_ACI_CONTEXT_RE.search(text))
 
 
 def _is_strong_crash(item: EvidenceItem) -> bool:
@@ -156,8 +158,15 @@ class NamedServiceDownRule(DiagnosticRule):
         journal_lines = _journal_lines(bundle)
         aci_lines = [i for i in journal_lines if _is_aci_error(i)]
         crash_lines = [i for i in journal_lines if _is_strong_crash(i)]
+        service_findings_early = _service_down_findings(bundle)
+        if not crash_lines and not service_findings_early:
+            # An LDAP denial line alone (possibly stale, from a healthy named) does not show named is down or
+            # failed to start: keep it as ambiguous trouble, never a confident ACI diagnosis.
+            ambiguous_aci, aci_lines = aci_lines, []
+        else:
+            ambiguous_aci = []
         ambiguous_lines = [
-            i for i in journal_lines if i not in aci_lines and i not in crash_lines and _is_ambiguous_named_trouble(i)
+            i for i in journal_lines if i not in aci_lines and i not in crash_lines and (i in ambiguous_aci or _is_ambiguous_named_trouble(i))
         ]
         service_findings = _service_down_findings(bundle)
 
@@ -346,10 +355,15 @@ _GENERIC_FORWARDING_FAILURE_KEYWORDS = ("servfail", "timed out", "timeout", "unr
 
 def _is_zone_collision(item: EvidenceItem) -> bool:
     text = f"{item.summary} {item.data.get('raw_line', '')}".lower()
-    return (
-        any(k in text for k in _EMPTY_ZONE_KEYWORDS)
-        and any(k in text for k in _ZONE_UNLOAD_KEYWORDS)
-        and "forward" in text
+    # The empty-zone phrase, the unload verb and "forward zone" must appear together in one clause.
+    Z = r"(empty[- ]zone|auto-empty-zone)"
+    V = r"(unload\w*|skip\w*|overlap\w*|not loaded)"
+    gap = r"[^;,]{0,120}"  # one clause: no ',' or ';' between the three phrases
+    return bool(
+        re.search(
+            "forward zone" + gap + V + gap + Z + "|forward zone" + gap + Z + gap + V + "|" + Z + gap + V + gap + "forward zone",
+            text,
+        )
     )
 
 

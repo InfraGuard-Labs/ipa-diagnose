@@ -1,3 +1,5 @@
+# NOTE (0.1.3): the `healthy/` capture is a real, working FreeIPA server, but ipa-healthcheck reported a genuine CS.cfg file-mode WARNING and 13 warnings ipa-diagnose has no rule for, so it replays as DEGRADED with undiagnosed findings - not HEALTHY.
+
 # Real FreeIPA server captures
 
 Unlike every other directory under `tests/fixtures/`, the `healthcheck.json`
