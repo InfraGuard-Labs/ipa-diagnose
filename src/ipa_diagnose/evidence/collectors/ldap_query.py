@@ -129,6 +129,25 @@ class LdapQueryCollector(Collector):
         klist_ok = False
         bind_ok = False
         error: Optional[str] = None
+        # Private, throw-away credential cache: `kinit` must never overwrite the
+        # invoking user's own ticket cache (a state change in a read-only tool).
+        import os as _os
+        import tempfile as _tempfile
+
+        _tmpdir = _tempfile.mkdtemp(prefix="ipa-diagnose-cc-")
+        _env = dict(_os.environ, KRB5CCNAME=f"FILE:{_tmpdir}/cc")
+        try:
+            return self._keytab_bind_check_inner(hostname, principal, provenance, _env)
+        finally:
+            import shutil as _shutil
+
+            _shutil.rmtree(_tmpdir, ignore_errors=True)
+
+    def _keytab_bind_check_inner(self, hostname, principal, provenance, _env) -> EvidenceItem:
+        kinit_ok = False
+        klist_ok = False
+        bind_ok = False
+        error: Optional[str] = None
 
         if shutil.which("kinit") is None:
             error = "kinit not on PATH"
@@ -136,6 +155,8 @@ class LdapQueryCollector(Collector):
             try:
                 proc = subprocess.run(
                     ["kinit", "-kt", "/etc/dirsrv/ds.keytab", principal],
+                    env=_env,
+                    stdin=subprocess.DEVNULL,
                     capture_output=True,
                     text=True,
                     timeout=self.timeout_seconds,
@@ -150,7 +171,7 @@ class LdapQueryCollector(Collector):
         if kinit_ok and shutil.which("klist") is not None:
             try:
                 proc = subprocess.run(
-                    ["klist"], capture_output=True, text=True, timeout=self.timeout_seconds, check=False
+                    ["klist"], env=_env, capture_output=True, text=True, timeout=self.timeout_seconds, check=False
                 )
                 klist_ok = proc.returncode == 0 and "Valid starting" in proc.stdout
                 if not klist_ok and error is None:
@@ -163,6 +184,8 @@ class LdapQueryCollector(Collector):
             try:
                 proc = subprocess.run(
                     ["ldapsearch", "-Y", "GSSAPI", "-H", f"ldap://{hostname}", "-b", "", "-s", "base"],
+                    env=_env,
+                    stdin=subprocess.DEVNULL,
                     capture_output=True,
                     text=True,
                     timeout=self.timeout_seconds,

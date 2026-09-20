@@ -110,10 +110,11 @@ def _rpm_version(package: str) -> Optional[str]:
             ["rpm", "-q", "--qf", "%{VERSION}-%{RELEASE}", package],
             capture_output=True,
             text=True,
+            errors="replace",
             timeout=_RPM_TIMEOUT_SECONDS,
             check=False,
         )
-    except (OSError, subprocess.SubprocessError):
+    except (OSError, ValueError, subprocess.SubprocessError):
         return None
     if proc.returncode != 0:
         return None

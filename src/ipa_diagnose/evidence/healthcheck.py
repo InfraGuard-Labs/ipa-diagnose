@@ -72,6 +72,7 @@ def parse_healthcheck_results(
     host: str = "",
 ) -> List[Finding]:
     findings: List[Finding] = []
+    used_ids: set = set()
     for idx, entry in enumerate(raw_results):
         if not isinstance(entry, dict):
             continue
@@ -81,6 +82,9 @@ def parse_healthcheck_results(
         kw = entry.get("kw") or {}
         message = _extract_message(kw) if isinstance(kw, dict) else ""
         finding_id = str(entry.get("uuid") or f"{source}.{check}.{idx}")
+        if finding_id in used_ids:  # duplicate ids must never let one finding "claim" another
+            finding_id = f"{finding_id}#{idx}"
+        used_ids.add(finding_id)
         findings.append(
             Finding(
                 finding_id=finding_id,

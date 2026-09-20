@@ -107,7 +107,7 @@ def _collect_healthcheck(bundle: EvidenceBundle, *, live: bool, fixture_path: Op
             return
         try:
             raw_results = parse_healthcheck_json_text(proc.stdout)
-        except (ValueError, json.JSONDecodeError) as e:
+        except (ValueError, RecursionError, json.JSONDecodeError) as e:
             bundle.collection_errors.append(
                 CollectionError(collector="ipa-healthcheck", message=f"could not parse output: {e}")
             )
@@ -128,11 +128,19 @@ def _collect_healthcheck(bundle: EvidenceBundle, *, live: bool, fixture_path: Op
                     message=f"{len(raw_results) - len(usable)} ipa-healthcheck result entries could not be read",
                 )
             )
-        bundle.findings.extend(
-            parse_healthcheck_results(
-                raw_results, command=" ".join(HEALTHCHECK_COMMAND), live=True, host=bundle.hostname
-            )
+        parsed = parse_healthcheck_results(
+            raw_results, command=" ".join(HEALTHCHECK_COMMAND), live=True, host=bundle.hostname
         )
+        bundle.findings.extend(parsed)
+        # A real run always includes the core service checks. Output that ran
+        # only some unrelated check is not evidence of health.
+        if not any(f.source.endswith("meta.services") for f in parsed):
+            bundle.collection_errors.append(
+                CollectionError(
+                    collector="ipa-healthcheck",
+                    message="ipa-healthcheck did not report the core service checks (incomplete output)",
+                )
+            )
     else:
         hc_file = fixture_path / "healthcheck.json"
         if not hc_file.exists():

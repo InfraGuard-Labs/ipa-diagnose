@@ -20,3 +20,17 @@ def sanitize_text(text: object, limit: int = DEFAULT_LIMIT) -> str:
     text = "".join(ch if (ch == " " or ch.isprintable()) else " " for ch in text)
     text = " ".join(text.split())
     return text[:limit]
+
+
+def clean_multiline(text: object, limit: int = 20000) -> str:
+    """Like sanitize_text but keeps line structure (newlines/tabs): strips
+    terminal escape sequences, control and format characters (incl. bidi
+    overrides). Used when printing multi-paragraph diagnosis text that may
+    quote untrusted ipa-healthcheck messages."""
+
+    text = str(text)[:limit]
+    text = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", text)
+    text = re.sub(r"\x1b\][^\x07\x1b]*(\x07|\x1b\\)?", "", text)
+    text = re.sub(r"\x1b[P^_X][^\x1b]*(\x1b\\)?", "", text)
+    text = re.sub(r"\x1b[@-Z\\-_]", "", text)
+    return "".join(ch if (ch in "\n\t" or ch.isprintable()) else " " for ch in text)

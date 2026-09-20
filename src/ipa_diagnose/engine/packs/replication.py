@@ -533,12 +533,12 @@ def _explicit_ruv_finding_rid(f: Finding) -> Optional[int]:
         raw = kw.get(key)
         if raw is not None:
             try:
-                return int(raw)
+                return int(raw) if len(str(raw)) <= 9 else None
             except (TypeError, ValueError):
                 pass
     m = _RID_FROM_MSG_RE.search(f.message)
     if m:
-        return int(m.group(1))
+        return int(m.group(1)) if len(m.group(1)) <= 9 else None
     return None
 
 

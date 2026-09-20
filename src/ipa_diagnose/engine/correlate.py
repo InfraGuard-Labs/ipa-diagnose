@@ -215,7 +215,10 @@ def _unknown_severity_notes(bundle: EvidenceBundle) -> List[str]:
         if f.severity == Severity.UNKNOWN:
             raw_result = f.raw.get("result") if isinstance(f.raw, dict) else None
             notes.append(
-                f"{f.source}.{f.check}: unrecognized severity {raw_result!r} - treated as ERROR-equivalent, not dropped"
+                sanitize_text(
+                    f"{f.source}.{f.check}: unrecognized severity {raw_result!r} - treated as ERROR-equivalent, not dropped",
+                    300,
+                )
             )
     return notes
 

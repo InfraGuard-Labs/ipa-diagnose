@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import Dict, Optional
 
 from rich.console import Console
-from rich.markup import escape
+from rich.markup import escape as _rich_escape
 from rich.rule import Rule
 from rich.text import Text
 
@@ -24,6 +24,16 @@ from ipa_diagnose.engine.model import (
     PriorityBucket,
     RiskLevel,
 )
+
+from ipa_diagnose.textsafe import clean_multiline
+
+
+def escape(text) -> str:
+    """Untrusted text -> safe to print: terminal escape/control characters
+    removed AND rich markup neutralised."""
+
+    return _rich_escape(clean_multiline(text))
+
 
 _STATUS_STYLE = {
     OverallStatus.HEALTHY: "bold green",
@@ -50,9 +60,9 @@ def render_report(
     ai_explanations = ai_explanations or {}
 
     console.print(Rule("FreeIPA Diagnosis", style="cyan"))
-    console.print(f"Host: {report.hostname}    Generated: {report.generated_at}")
+    console.print(f"Host: {escape(report.hostname)}    Generated: {escape(report.generated_at)}")
     if report.replay_source:
-        console.print(f"[dim](replayed from fixtures: {report.replay_source})[/dim]")
+        console.print(f"[dim](replayed from fixtures: {escape(report.replay_source)})[/dim]")
     status_style = _STATUS_STYLE[report.overall_status]
     console.print(Text.assemble(("Overall: ", "bold"), (report.overall_status.value, status_style)))
     _print_evidence_banner(report, console)
@@ -215,7 +225,7 @@ def render_verify(result, console: Console) -> None:
         )
         return
 
-    console.print(f"[dim]Comparing against diagnosis from {result.previous_generated_at}[/dim]")
+    console.print(f"[dim]Comparing against diagnosis from {escape(result.previous_generated_at)}[/dim]")
     if result.current_report is not None:
         _print_evidence_banner(result.current_report, console)
     console.print()
@@ -287,4 +297,4 @@ def _print_coverage(report: DiagnosisReport, console: Console, *, details: bool 
         if env.directory_server_version:
             parts.append(f"389-ds: {env.directory_server_version}")
         if parts:
-            console.print(f"[dim]Environment ({'live' if env.detected_live else 'replayed'}): {' | '.join(parts)}[/dim]")
+            console.print(f"[dim]Environment ({'live' if env.detected_live else 'replayed'}): {escape(' | '.join(parts))}[/dim]")

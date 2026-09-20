@@ -123,6 +123,22 @@ class ReplicationAgreementsCollector(Collector):
         ruv_items, ruv_error = self._try_run_list_ruv(known_hosts, hosts_known_complete=hosts_complete)
         items.extend(ruv_items)
 
+        # Contradictory evidence: agreements to peers exist, yet the RUV read
+        # concluded "no replication configured". Never present that as verified.
+        if agreements and any(
+            i.kind == "replication_topology" and i.data.get("state") == "no_replication_configured" for i in ruv_items
+        ):
+            items = [i for i in items if i.kind != "replication_topology"]
+            ruv_items = []
+            ruv_error = "replication agreements exist but no RUV was found (contradictory evidence)"
+
+        # `list -v` (agreement health) is supplementary once the topology AND
+        # the RUV were both read: ipa-healthcheck's own replication check covers
+        # agreement health. It must not keep a healthy replica "unverified" just
+        # because root has no Kerberos ticket.
+        if list_error is not None and masters is not None and any(i.kind == "replication_ruv" for i in ruv_items):
+            list_error = None
+
         # A single-server deployment has no RUV and no agreements. When the
         # authoritative LDAPI read proved that, an agreement-listing failure
         # (e.g. `list` needing a Kerberos ticket) is moot - there is nothing to
@@ -656,17 +672,23 @@ def _ldapi_read_ruv(
         try:
             argv, proc = _ldapsearch(uri, base, "sub", search_filter, ["nsds50ruv"], timeout)
         except (OSError, ValueError, subprocess.SubprocessError) as e:
-            if required:
-                errors.append(f"ldapsearch failed: {e}")
+            errors.append(f"ldapsearch failed{'' if required else ' (CA suffix)'}: {type(e).__name__}")
             continue
         if proc.returncode != 0:
-            if required:
-                errors.append(f"ldapsearch exited {proc.returncode}: {proc.stderr.strip()[:200]}")
+            if not required and proc.returncode == 32:
+                continue  # no o=ipaca suffix: a CA-less deployment, nothing to read
+            errors.append(
+                f"ldapsearch exited {proc.returncode}{'' if required else ' (CA suffix)'}: {proc.stderr.strip()[:200]}"
+            )
             continue
         parsed = _parse_ldapi_ruv_ldif(
             proc.stdout, known_hosts=known_hosts, hosts_known_complete=hosts_known_complete, command=" ".join(argv)
         )
-        if required and not parsed and "nsds50ruv:" in (proc.stdout or "").lower():
+        # Every returned {replica ...} value must have been understood: a
+        # partly parsed RUV must never be presented as a complete one.
+        if len(re.findall(r"\{replica\s", proc.stdout or "")) > len(_NSDS50RUV_RE.findall(proc.stdout or "")):
+            errors.append("RUV entries were returned but could not all be parsed")
+        elif required and not parsed and "nsds50ruv:" in (proc.stdout or "").lower():
             errors.append("RUV entries were returned but could not be parsed")
         all_items.extend(parsed)
     if errors:

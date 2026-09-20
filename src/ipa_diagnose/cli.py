@@ -77,8 +77,13 @@ def _maybe_explain(
     config = _ai_config_from_args(args)
     if config.provider == "none":
         return explanations
-    provider = build_provider(config)
-    if not provider.is_configured():
+    try:
+        provider = build_provider(config)
+        configured = provider.is_configured()
+    except Exception:  # noqa: BLE001 - AI is optional; never let it abort the run
+        console.print("[dim](AI provider could not be initialised - showing local explanation)[/dim]")
+        return explanations
+    if not configured:
         console.print(
             f"[dim](AI provider '{config.provider}' is not configured - showing local explanation)[/dim]"
         )
@@ -96,6 +101,14 @@ def _maybe_explain(
     return explanations
 
 
+def _save_baseline(report: DiagnosisReport) -> None:
+    """An incomplete run (ipa-healthcheck itself unavailable) must not
+    overwrite the last good baseline that `verify` compares against."""
+
+    if report.evidence_completeness.healthcheck_collected:
+        save_report(default_state_path(), report)
+
+
 def cmd_diagnose(args: argparse.Namespace, console: Console) -> int:
     bundle, report = _collect_and_diagnose(args)
     explanations = {} if args.json else _maybe_explain(report, bundle, args, console)
@@ -105,7 +118,7 @@ def cmd_diagnose(args: argparse.Namespace, console: Console) -> int:
     else:
         render_report(report, console, details=args.details, ai_explanations=explanations)
 
-    save_report(default_state_path(), report)
+    _save_baseline(report)
     return _exit_code_for(report)
 
 
@@ -132,7 +145,7 @@ def cmd_verify(args: argparse.Namespace, console: Console) -> int:
     else:
         render_verify(result, console)
 
-    save_report(default_state_path(), report)
+    _save_baseline(report)
     from ipa_diagnose.verify import VerifyOutcome
 
     fresh = _exit_code_for(report)
@@ -146,7 +159,7 @@ def cmd_verify(args: argparse.Namespace, console: Console) -> int:
         report.evidence_completeness.level != "complete"
     ):
         return 4  # verification is incomplete: never a clean 0
-    return 0
+    return fresh  # everything previously found is resolved; a new (e.g. warning-tier) problem still counts
 
 
 def cmd_ai_preview(args: argparse.Namespace, console: Console) -> int:
@@ -213,6 +226,11 @@ def main(argv: Optional[list] = None) -> int:
         return cmd_diagnose(args, console)
     except KeyboardInterrupt:
         return 130
+    except Exception as e:  # noqa: BLE001
+        # An internal error must never look like a diagnosis: exit 70
+        # (EX_SOFTWARE), not the exit 1 that means DEGRADED.
+        err_console.print(f"ipa-diagnose: internal error ({type(e).__name__}); no diagnosis was produced.")
+        return 70
 
 
 if __name__ == "__main__":

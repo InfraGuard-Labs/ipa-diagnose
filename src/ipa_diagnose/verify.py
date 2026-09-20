@@ -77,9 +77,16 @@ def load_previous_report(state_path: pathlib.Path) -> Optional[Dict[str, Any]]:
     if not state_path.exists():
         return None
     try:
-        return json.loads(state_path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
+        data = json.loads(state_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError, ValueError, RecursionError):
         return None
+    # A corrupt/hand-edited state file must degrade to "no baseline", never crash.
+    if not isinstance(data, dict) or not isinstance(data.get("diagnoses", []), list):
+        return None
+    data["diagnoses"] = [
+        d for d in data.get("diagnoses", []) if isinstance(d, dict) and isinstance(d.get("diagnosis_id"), str)
+    ]
+    return data
 
 
 def compare(previous: Optional[Dict[str, Any]], current: DiagnosisReport) -> VerifyResult:

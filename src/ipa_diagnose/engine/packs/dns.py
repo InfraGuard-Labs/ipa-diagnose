@@ -487,6 +487,10 @@ def _looks_broken(item: EvidenceItem) -> bool:
         return True
     answers = item.data.get("answers")
     if answers is not None and len(answers) == 0:
+        # No AAAA answer is normal on an IPv4-only deployment (and is the
+        # known-spurious freeipa-healthcheck #270 shape): never "broken" alone.
+        if "aaaa" in str(item.item_id).lower() or str(item.data.get("rtype", "")).upper() == "AAAA":
+            return False
         return True
     return False
 

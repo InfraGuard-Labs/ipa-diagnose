@@ -97,4 +97,6 @@ def explain_diagnosis(diagnosis: Diagnosis, bundle: EvidenceBundle, provider: AI
         )
     except ProviderError:
         return None
+    except Exception:  # noqa: BLE001 - a misbehaving provider adapter must never abort the diagnosis
+        return None
     return sanitize_explanation(response.text, diagnosis)
