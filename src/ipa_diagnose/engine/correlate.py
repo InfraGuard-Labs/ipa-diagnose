@@ -73,7 +73,7 @@ def _is_real_problem(d: Diagnosis) -> bool:
     since "we don't know if the upstream pack has a real problem" is itself
     a real reason to hold off blaming a different pack."""
 
-    return not (d.status == DiagnosisStatus.DIAGNOSED and d.severity == Severity.WARNING)
+    return d.severity.rank >= Severity.ERROR.rank
 
 
 def _demote_via_causality(diagnoses: List[Diagnosis]) -> Dict[str, List[str]]:
@@ -220,6 +220,8 @@ def _unknown_severity_notes(bundle: EvidenceBundle) -> List[str]:
                     300,
                 )
             )
+    if len(notes) > 20:
+        notes = notes[:20] + [f"(+{len(notes) - 20} more unrecognized severity value(s) not shown)"]
     return notes
 
 

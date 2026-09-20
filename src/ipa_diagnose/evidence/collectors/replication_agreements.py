@@ -330,6 +330,36 @@ def _ruv_item(entry: Dict[str, Any], provenance: Provenance) -> EvidenceItem:
     )
 
 
+def _flag_duplicate_host_ids(items: List[EvidenceItem]) -> List[EvidenceItem]:
+    """A replica that was removed and re-installed under the same hostname
+    leaves its OLD replica id in the RUV next to the new one. Both map to a
+    live host by name, so without this the old id looked alive. The highest id
+    for a (suffix, host:port) is kept as the live one; older ids are marked
+    "no corresponding live server" (a candidate, never proof)."""
+
+    import dataclasses as _dc
+
+    groups: "dict[tuple, List[EvidenceItem]]" = {}
+    for it in items:
+        groups.setdefault((it.data.get("suffix"), it.data.get("ldap_url")), []).append(it)
+    replaced: "dict[str, EvidenceItem]" = {}
+    for grp in groups.values():
+        if len(grp) < 2:
+            continue
+        keep = max(grp, key=lambda i: i.data.get("replica_id") or 0)
+        for it in grp:
+            if it is keep:
+                continue
+            data = dict(it.data, alive=False, duplicate_host=True)
+            replaced[it.item_id] = _dc.replace(
+                it,
+                data=data,
+                summary=f"RUV entry replica_id={data.get('replica_id')} ({data.get('ldap_url')}, {data.get('suffix')}): "
+                "same host also has a newer replica id - no corresponding live server for this one",
+            )
+    return [replaced.get(i.item_id, i) for i in items]
+
+
 def _alive_label(alive: Optional[bool]) -> str:
     if alive is None:
         return "could not be determined"
@@ -515,7 +545,7 @@ def _parse_list_ruv_output(
                 provenance=provenance,
             )
         )
-    return items
+    return _flag_duplicate_host_ids(items)
 
 
 IPA_DEFAULT_CONF = "/etc/ipa/default.conf"
@@ -597,7 +627,7 @@ def _parse_ldapi_ruv_ldif(stdout: str, *, known_hosts: "set[str]", hosts_known_c
                 provenance=provenance,
             )
         )
-    return items
+    return _flag_duplicate_host_ids(items)
 
 
 def _no_replication_item() -> EvidenceItem:

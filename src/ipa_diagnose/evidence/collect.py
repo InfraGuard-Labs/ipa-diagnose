@@ -64,9 +64,9 @@ def _resolve_hostname(fixture_path: Optional[pathlib.Path]) -> str:
         if meta_file.exists():
             try:
                 meta = json.loads(meta_file.read_text(encoding="utf-8"))
-                if "hostname" in meta:
+                if isinstance(meta, dict) and "hostname" in meta:
                     return str(meta["hostname"])
-            except (json.JSONDecodeError, OSError):
+            except (json.JSONDecodeError, OSError, ValueError, RecursionError):
                 pass
         return fixture_path.name
     return socket.gethostname()

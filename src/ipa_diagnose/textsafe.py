@@ -34,3 +34,15 @@ def clean_multiline(text: object, limit: int = 20000) -> str:
     text = re.sub(r"\x1b[P^_X][^\x1b]*(\x1b\\)?", "", text)
     text = re.sub(r"\x1b[@-Z\\-_]", "", text)
     return "".join(ch if (ch in "\n\t" or ch.isprintable()) else " " for ch in text)
+
+
+_SAFE_TOKEN = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.,=-]{0,80}$")
+
+
+def safe_token(value: object, placeholder: str) -> str:
+    """A value taken from untrusted ipa-healthcheck output that is placed into a
+    suggested (display-only) command: only a plain identifier is ever used;
+    anything else becomes the placeholder."""
+
+    text = str(value).strip()
+    return text if _SAFE_TOKEN.match(text) else placeholder

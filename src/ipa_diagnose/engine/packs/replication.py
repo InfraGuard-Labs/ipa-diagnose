@@ -33,6 +33,7 @@ from __future__ import annotations
 import re
 from typing import List, Optional
 
+from ipa_diagnose.textsafe import safe_token
 from ipa_diagnose.engine.model import (
     Action,
     Confidence,
@@ -103,6 +104,7 @@ class PeerConnectivityBreakRule(DiagnosticRule):
         conflict_items = bundle.items_by_kind("replication_conflict")
 
         bind_failures = [i for i in bind_items if not i.data.get("bind_ok", True)]
+        all_bind_failures = list(bind_failures)
         agreement_failures = [i for i in agreement_items if i.data.get("status") == "red"]
 
         peer_ambiguous = False
@@ -144,7 +146,13 @@ class PeerConnectivityBreakRule(DiagnosticRule):
             )
         ]
 
-        if not bind_items and not agreement_items:
+        # A "transient blip" verdict needs a bind check that actually ran AND
+        # succeeded for THIS peer. No bind item at all (collector failed) or a
+        # failing bind that was attributed elsewhere (the live check binds to the
+        # local host) is missing/contradicting evidence, never "not contradicted".
+        no_failures = not bind_failures and not agreement_failures and not peer_ambiguous
+        bind_unreliable = not bind_items or bool(all_bind_failures and not bind_failures)
+        if (not bind_items and not agreement_items) or (no_failures and bind_unreliable):
             # additional_collectors were triggered (a WARNING+ finding from
             # this pack's healthcheck_sources is present) but produced
             # nothing - either they weren't able to run, or the fixture/host
@@ -787,12 +795,12 @@ class TopologyDisconnectedRule(DiagnosticRule):
                 Action(
                     description="List topology segments for the affected suffix.",
                     risk=RiskLevel.SAFE,
-                    command=f"ipa topologysegment-find {suffix_hint}",
+                    command=f"ipa topologysegment-find {safe_token(suffix_hint, 'domain')}",
                 ),
                 Action(
                     description="Re-verify the domain (and, if this host is a CA, the ca) suffix.",
                     risk=RiskLevel.SAFE,
-                    command=f"ipa topologysuffix-verify {suffix_hint}",
+                    command=f"ipa topologysuffix-verify {safe_token(suffix_hint, 'domain')}",
                     reference="https://access.redhat.com/articles/checking-idm-replication-using-healthcheck",
                 ),
             ],

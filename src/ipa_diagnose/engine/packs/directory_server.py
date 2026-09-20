@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from typing import List, Optional, Tuple
 
+from ipa_diagnose.textsafe import safe_token
 from ipa_diagnose.engine.model import (
     Action,
     Confidence,
@@ -667,7 +668,7 @@ class IndexBackendHealthRule(DiagnosticRule):
                 Action(
                     description=f"Reindex only the specific missing attribute ({attribute}) that the finding named.",
                     risk=RiskLevel.CAUTION,
-                    command=f"db2index.pl -Z <instance> -t {attribute}",
+                    command=f"db2index.pl -Z <instance> -t {safe_token(attribute, '<attribute>')}",
                     rationale="Scoped to one attribute per port389.org guidance - resource-intensive and causes a brief unindexed-search window for that attribute, but does not touch replication state.",
                 ),
                 Action(

@@ -72,7 +72,8 @@ from ipa_diagnose.evidence.collectors.registry import register
 from ipa_diagnose.evidence.model import EvidenceItem, Provenance, Severity
 
 _KEYTAB_ENTRY_RE = re.compile(
-    r"^\s*(?P<kvno>\d+)\s+(?P<principal>\S+@\S+)\s", re.MULTILINE
+    # Real `klist -kte` rows: "   2 05/17/2026 10:00:00 host/x@REALM (aes256-...)".
+    r"^\s*(?P<kvno>\d+)\s+(?:\d{2}/\d{2}/\d{2,4}\s+\d{2}:\d{2}:\d{2}\s+)?(?P<principal>\S+@\S+)\s", re.MULTILINE
 )
 _KVNO_RESULT_RE = re.compile(r"kvno\s*=\s*(?P<kvno>\d+)", re.IGNORECASE)
 _CHRONY_SYSTEM_TIME_RE = re.compile(

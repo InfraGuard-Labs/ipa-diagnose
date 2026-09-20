@@ -112,7 +112,12 @@ class ClockSkewRule(DiagnosticRule):
         if not journal_hits and not desync_hits:
             return None  # no clock-related evidence at all - not applicable
 
-        keytab_findings = _keytab_findings(bundle)
+        # Clock skew is only credited when it is corroborated by a keytab/KDC
+        # failure that is NOT plainly a DNS/address-resolution problem; an
+        # unsynchronised clock on its own is not a Kerberos diagnosis.
+        keytab_findings = [f for f in _keytab_findings(bundle) if not _is_dns_style(f.message or "")]
+        if not journal_hits and not keytab_findings:
+            return None
         evidence_for: List[EvidenceRef] = [
             EvidenceRef(
                 f.finding_id,
@@ -231,7 +236,9 @@ class KeytabKvnoMismatchRule(DiagnosticRule):
 
     def evaluate(self, bundle: EvidenceBundle) -> Optional[Diagnosis]:
         keytab_findings = _keytab_findings(bundle)
-        kvno_items = _kvno_items(bundle)
+        # A comparison whose result could not be determined (match=None, e.g. no
+        # ticket) is missing evidence, not "nothing wrong" - treat it as absent.
+        kvno_items = [i for i in _kvno_items(bundle) if i.data.get("match") is not None]
         if not keytab_findings and not kvno_items:
             return None  # nothing at all suggesting a keytab problem
 

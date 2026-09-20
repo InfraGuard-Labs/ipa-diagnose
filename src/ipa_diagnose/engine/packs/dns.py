@@ -480,6 +480,8 @@ class ForwardZoneConflictRule(DiagnosticRule):
 
 
 def _looks_broken(item: EvidenceItem) -> bool:
+    if str(item.data.get("rcode", "")).upper() == "TIMEOUT":
+        return False  # no response at all does not confirm a missing record
     if item.severity is not None and item.severity.rank >= Severity.ERROR.rank:
         return True
     rcode = str(item.data.get("rcode", "")).upper()
