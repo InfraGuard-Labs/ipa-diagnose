@@ -69,3 +69,10 @@ condition is no longer reported by fresh, complete evidence".
 
 An incomplete run (for example `ipa-healthcheck` unavailable) never overwrites
 the saved baseline that `verify` compares against.
+
+## Undiagnosed findings and `verify` (0.1.3)
+
+`verify` exits `0` only when everything previously found is resolved, evidence is complete **and** no failed
+ipa-healthcheck finding is left unexplained. If the old problem is gone but some other finding no rule explains
+remains, `verify` prints the resolved items and then a note that the overall status is `NOT_FULLY_VERIFIED`
+(exit `4`); run `sudo ipa-diagnose` to list those findings.

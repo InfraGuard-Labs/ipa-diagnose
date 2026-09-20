@@ -125,3 +125,18 @@ def test_replay_with_unreadable_entries_is_not_healthy(tmp_path):
     r = _replay(tmp_path, f'[{GOODJ}, "CRITICAL", 5, null]')
     assert r.overall_status in (S.UNKNOWN, S.NOT_FULLY_VERIFIED)  # same as the live path: never HEALTHY
     assert r.evidence_completeness.level != "complete"
+
+
+def test_verify_explains_exit_4_when_only_undiagnosed_findings_remain():
+    import io
+
+    from rich.console import Console
+
+    from ipa_diagnose.render.console import render_verify
+    from ipa_diagnose.verify import compare
+
+    prev = {"generated_at": "t", "diagnoses": [{"diagnosis_id": "healthcheck.service-not-running-dirsrv", "pack_id": "healthcheck", "title": "x"}]}
+    now = status([GOOD, e(FUT, "Odd", "WARNING", msg="odd")])
+    buf = io.StringIO()
+    render_verify(compare(prev, now), Console(file=buf, width=120, force_terminal=False))
+    assert "NOT_FULLY_VERIFIED (exit 4)" in buf.getvalue()

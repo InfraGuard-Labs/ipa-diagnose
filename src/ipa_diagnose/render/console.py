@@ -256,6 +256,7 @@ def render_verify(result, console: Console) -> None:
             )
         else:
             console.print("[green]The previous run found no problems, so there is nothing to verify.[/green]")
+        _print_verify_undiagnosed_note(result, console)
         return
 
     for item in result.items:
@@ -269,6 +270,18 @@ def render_verify(result, console: Console) -> None:
         for d in result.new_conditions:
             console.print(f"  ⚠ {escape(d.title)}")
         console.print("[dim]Run `sudo ipa-diagnose` for full detail on this.[/dim]")
+    _print_verify_undiagnosed_note(result, console)
+
+
+def _print_verify_undiagnosed_note(result, console: Console) -> None:
+    """Explain a non-zero verify exit that is not about the previously found problem."""
+
+    rep = result.current_report
+    if rep is not None and rep.undiagnosed_findings and rep.overall_status == OverallStatus.NOT_FULLY_VERIFIED:
+        console.print(
+            f"[yellow]Overall status is still NOT_FULLY_VERIFIED (exit 4):[/yellow] {len(rep.undiagnosed_findings)} "
+            "ipa-healthcheck finding(s) that no ipa-diagnose rule explains remain. Run `sudo ipa-diagnose` to list them."
+        )
 
 
 def _print_evidence_banner(report: DiagnosisReport, console: Console) -> None:
