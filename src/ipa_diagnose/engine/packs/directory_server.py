@@ -562,6 +562,10 @@ class NssTlsDbFormatRule(DiagnosticRule):
                 upstream_candidates=[],
             )
 
+        # A generic TLS journal line WITHOUT a certificate finding is routine noise
+        # (client aborts, scanners): it supports neither cause, so say nothing.
+        if not cert_expiry_findings:
+            return None
         # Both a TLS journal failure and a certificate-expiry finding are
         # present: either could explain the symptom and we cannot rank one
         # over the other from this evidence alone.

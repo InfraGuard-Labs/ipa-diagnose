@@ -40,8 +40,9 @@ def test_generic_tls_journal_line_is_not_an_nss_db_format_diagnosis():
         [_entry("ipahealthcheck.ipa.files", "TomcatFileCheck", "WARNING", "mode 0664")],
         items=[EvidenceItem(item_id="j1", kind="dirsrv_journal_line", summary="tls", data={"category": "nss_tls", "message": "SSL alert: handshake failure from client"})],
     )
-    d = _rule(run_diagnosis(b), "nss-tls-db-format")
-    assert d is None or d.status != DiagnosisStatus.DIAGNOSED
+    # Routine TLS noise supports neither cause: no diagnosis and no false statement at all.
+    assert _rule(run_diagnosis(b), "nss-tls-db-format") is None
+    assert run_diagnosis(b).overall_status.value != "UNKNOWN"
 
 
 def test_nss_db_format_needs_db_file_evidence_or_a_healthcheck_result():

@@ -79,7 +79,6 @@ def _is_real_problem(d: Diagnosis) -> bool:
 _SERVICE_PACK = {
     "dirsrv": "directory-server",
     "krb5kdc": "kerberos",
-    "kadmin": "kerberos",
     "named": "dns",
     "named-pkcs11": "dns",
     "pki-tomcatd": "certificates",
