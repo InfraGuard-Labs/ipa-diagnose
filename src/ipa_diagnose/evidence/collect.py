@@ -153,6 +153,9 @@ def _collect_healthcheck(bundle: EvidenceBundle, *, live: bool, fixture_path: Op
     else:
         hc_file = fixture_path / "healthcheck.json"
         if not hc_file.exists():
+            bundle.collection_errors.append(
+                CollectionError(collector="ipa-healthcheck", message=f"no healthcheck.json in replay directory {fixture_path}")
+            )
             return
         try:
             raw_results = json.loads(hc_file.read_text(encoding="utf-8"))
@@ -166,6 +169,20 @@ def _collect_healthcheck(bundle: EvidenceBundle, *, live: bool, fixture_path: Op
                 CollectionError(collector="ipa-healthcheck", message=f"fixture {hc_file} is not a JSON array")
             )
             return
+        # Same guards as the live path: zero usable results is not health, and unreadable entries are recorded.
+        usable = [r for r in raw_results if isinstance(r, dict)]
+        if not usable:
+            bundle.collection_errors.append(
+                CollectionError(collector="ipa-healthcheck", message=f"fixture {hc_file} contains no usable results")
+            )
+            return
+        if len(usable) != len(raw_results):
+            bundle.collection_errors.append(
+                CollectionError(
+                    collector="ipa-healthcheck",
+                    message=f"{len(raw_results) - len(usable)} ipa-healthcheck result entries could not be read",
+                )
+            )
         bundle.findings.extend(
             parse_healthcheck_results(raw_results, command=f"--replay {hc_file}", live=False, host=bundle.hostname)
         )

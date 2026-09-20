@@ -278,3 +278,9 @@ def test_message_placeholders_and_keys_make_identical_findings_distinguishable()
     e2 = _entry("ipahealthcheck.ipa.idns", "IPADNSSystemRecordsCheck", "WARNING", msg="missing IP address for ipa-ca server {server}", server="ipa1.test")
     u2 = run_diagnosis(_bundle([e2])).undiagnosed_findings
     assert any("ipa1.test" in x.message and "{server}" not in x.message for x in u2)
+
+
+def test_message_placeholders_never_evaluate_format_expressions():
+    e = _entry("ipahealthcheck.zz.brand_new", "Fmt", "WARNING", msg="{a.__class__} {0} {:>99999999} {server.__init__} {server}", server="ipa1")
+    u = run_diagnosis(_bundle([e])).undiagnosed_findings[0]
+    assert "<class" not in u.message and "ipa1" in u.message and len(u.message) <= 300

@@ -23,6 +23,7 @@ Design rationale (see docs/architecture.md for the full writeup):
 
 from __future__ import annotations
 
+import re
 from typing import Dict, List
 
 from ipa_diagnose.engine.model import (
@@ -165,9 +166,7 @@ def build_report(
     )
 
 
-class _KeepUnknown(dict):
-    def __missing__(self, k):
-        return "{" + k + "}"
+_PLACEHOLDER_RE = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]{0,40})\}")
 
 
 def _display_message(f) -> str:
@@ -180,10 +179,9 @@ def _display_message(f) -> str:
         names = ", ".join(sanitize_text(k, 40) for k in list(kw)[:8])
         return f"(no message; fields: {names})" if names else "(no message)"
     if "{" in text:
-        try:
-            text = text.format_map(_KeepUnknown({str(k): sanitize_text(v, 80) for k, v in kw.items()}))
-        except (ValueError, IndexError, KeyError, AttributeError):
-            pass
+        # Plain {name} placeholders only - never str.format on untrusted text (no attribute/index/format-spec access).
+        values = {str(k): sanitize_text(v, 80) for k, v in list(kw.items())[:64]}
+        text = _PLACEHOLDER_RE.sub(lambda m: values.get(m.group(1), m.group(0)), text[:2000])
     # Local output may be pasted into tickets: mask secret-looking text (same patterns as the AI path).
     from ipa_diagnose.privacy.redact import redact_text
 

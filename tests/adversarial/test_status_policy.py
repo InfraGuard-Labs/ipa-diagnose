@@ -99,3 +99,29 @@ def test_exit_code_for_not_fully_verified_is_4():
 
     assert _exit_code_for(status([GOOD, e(FUT, "Odd", "WARNING", msg="odd")])) == 4
     assert _exit_code_for(status([GOOD])) == 0
+
+
+def _replay(tmp_path, content):
+    from ipa_diagnose.evidence.collect import collect_evidence
+
+    if content is not None:
+        (tmp_path / "healthcheck.json").write_text(content, encoding="utf-8")
+    return run_diagnosis(collect_evidence(replay_dir=str(tmp_path)))
+
+
+GOODJ = '{"source":"ipahealthcheck.meta.services","check":"dirsrv","result":"SUCCESS","uuid":"g","when":"20260101000000Z","duration":"0.01","kw":{"status":true}}'
+
+
+def test_replay_with_no_healthcheck_json_is_unknown_not_healthy(tmp_path):
+    assert _replay(tmp_path, None).overall_status == S.UNKNOWN
+
+
+@pytest.mark.parametrize("content", ["[]", '[null, 5, "CRITICAL"]', "{}", "[", ""])
+def test_replay_with_no_usable_results_is_unknown(tmp_path, content):
+    assert _replay(tmp_path, content).overall_status == S.UNKNOWN
+
+
+def test_replay_with_unreadable_entries_is_not_healthy(tmp_path):
+    r = _replay(tmp_path, f'[{GOODJ}, "CRITICAL", 5, null]')
+    assert r.overall_status in (S.UNKNOWN, S.NOT_FULLY_VERIFIED)  # same as the live path: never HEALTHY
+    assert r.evidence_completeness.level != "complete"
