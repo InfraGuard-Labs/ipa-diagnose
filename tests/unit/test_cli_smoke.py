@@ -47,3 +47,13 @@ def test_missing_fixture_dir_reports_collection_error_not_crash(capsys, tmp_path
     data = json.loads(capsys.readouterr().out)
     assert data["overall_status"] == "UNKNOWN"
     assert any("replay directory not found" in e for e in data["collection_errors"])
+
+
+def test_replay_runs_never_overwrite_the_real_verify_baseline(tmp_path, monkeypatch):
+    """Release-candidate review finding: a README demo (`--replay ... diagnose`) used to
+    overwrite the real server's baseline, so the next `verify` compared against fixture data."""
+    state = tmp_path / "state"
+    monkeypatch.setenv("IPA_DIAGNOSE_STATE_DIR", str(state))
+    main(["--replay", "tests/fixtures/replication/healthy", "diagnose"])
+    assert (state / "last_report.replay.json").exists()
+    assert not (state / "last_report.json").exists()

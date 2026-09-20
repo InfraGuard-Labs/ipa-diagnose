@@ -101,12 +101,20 @@ def _maybe_explain(
     return explanations
 
 
-def _save_baseline(report: DiagnosisReport) -> None:
+def _state_path(args: argparse.Namespace):
+    """--replay runs (demos against fixtures) use a SEPARATE state file so they can
+    never overwrite the real server's `verify` baseline."""
+
+    path = default_state_path()
+    return path.with_name("last_report.replay.json") if getattr(args, "replay", None) else path
+
+
+def _save_baseline(report: DiagnosisReport, args: argparse.Namespace) -> None:
     """An incomplete run (ipa-healthcheck itself unavailable) must not
     overwrite the last good baseline that `verify` compares against."""
 
     if report.evidence_completeness.healthcheck_collected:
-        save_report(default_state_path(), report)
+        save_report(_state_path(args), report)
 
 
 def cmd_diagnose(args: argparse.Namespace, console: Console) -> int:
@@ -118,13 +126,13 @@ def cmd_diagnose(args: argparse.Namespace, console: Console) -> int:
     else:
         render_report(report, console, details=args.details, ai_explanations=explanations)
 
-    _save_baseline(report)
+    _save_baseline(report, args)
     return _exit_code_for(report)
 
 
 def cmd_verify(args: argparse.Namespace, console: Console) -> int:
     bundle, report = _collect_and_diagnose(args)
-    previous = load_previous_report(default_state_path())
+    previous = load_previous_report(_state_path(args))
     result = compare(previous, report)
 
     if args.json:
@@ -145,7 +153,7 @@ def cmd_verify(args: argparse.Namespace, console: Console) -> int:
     else:
         render_verify(result, console)
 
-    _save_baseline(report)
+    _save_baseline(report, args)
     from ipa_diagnose.verify import VerifyOutcome
 
     fresh = _exit_code_for(report)

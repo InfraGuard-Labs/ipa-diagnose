@@ -669,7 +669,7 @@ class IndexBackendHealthRule(DiagnosticRule):
                     description=f"Reindex only the specific missing attribute ({attribute}) that the finding named.",
                     risk=RiskLevel.CAUTION,
                     command=f"db2index.pl -Z <instance> -t {safe_token(attribute, '<attribute>')}",
-                    rationale="Scoped to one attribute per port389.org guidance - resource-intensive and causes a brief unindexed-search window for that attribute, but does not touch replication state.",
+                    rationale="Scoped to one attribute per port389.org guidance. db2index runs OFFLINE: plan a maintenance window for that Directory Server instance (newer 389-DS releases offer dsconf/dsctl equivalents). It does not touch replication state.",
                 ),
                 Action(
                     description="Avoid: do not run db2index.pl/db2index with no arguments/target attribute to 'reindex everything'.",

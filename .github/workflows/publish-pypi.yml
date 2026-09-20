@@ -35,7 +35,7 @@ on:
       ref:
         description: "Git tag to build and publish (e.g. v0.1.0). Only needed for the one-time initial publish of a release that predates this workflow."
         required: true
-        default: "v0.1.0"
+        default: "v0.1.2"
 
 permissions:
   contents: read
@@ -44,6 +44,8 @@ jobs:
   build-and-publish:
     name: Build and publish to PyPI (Trusted Publishing)
     runs-on: ubuntu-latest
+    # Never publish a pre-release to PyPI from the release event.
+    if: github.event_name == 'workflow_dispatch' || github.event.release.prerelease == false
     environment:
       name: pypi
       url: https://pypi.org/project/ipa-diagnose/
@@ -62,6 +64,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
+      - name: Refuse to publish if the tag does not match the package version
+        env:
+          TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.ref_name }}
+        run: |
+          PKG_VERSION="$(grep -m1 '^version' pyproject.toml | sed -E 's/version = "(.*)"/\1/')"
+          echo "tag=$TAG pyproject=$PKG_VERSION"
+          test "v$PKG_VERSION" = "$TAG" || { echo "::error::tag $TAG does not match pyproject version $PKG_VERSION"; exit 1; }
 
       - name: Build wheel and sdist
         run: |

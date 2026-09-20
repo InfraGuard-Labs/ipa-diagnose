@@ -51,3 +51,10 @@ finding (`ipahealthcheck.meta.services`) - they're all more specific
 (disk space, ownership/SELinux, NSS/TLS format, missing index). This is a
 real, scoped v1 coverage gap, not a bug - see
 [docs/limitations.md](../../../docs/limitations.md).
+
+
+## Update (v0.1.2)
+
+The "dirsrv down produced no additional diagnosis" gap noted above was closed in
+v0.1.2 (`engine/unexplained.py`). Newer REAL LIVE CAPTURES (FreeIPA 4.13.3,
+Fedora 43, GitHub Actions lab): `dirsrv-stopped/` and `certmonger-stopped/`.

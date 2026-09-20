@@ -1,4 +1,4 @@
-%{!?version: %global version 0.1.0}
+%{!?version: %global version 0.1.2}
 %{!?release: %global release 1}
 
 # --- EL8 / python39 AppStream module target ---------------------------------

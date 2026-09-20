@@ -273,7 +273,7 @@ class PeerConnectivityBreakRule(DiagnosticRule):
                         Action(
                             description="Re-run the GSSAPI bind check against the peer named in the errored agreement.",
                             risk=RiskLevel.SAFE,
-                            command="kinit -kt /etc/dirsrv/ds.keytab ldap/<host> && klist && ldapsearch -Y GSSAPI -H ldap://<peer> -b '' -s base",
+                            command="export KRB5CCNAME=FILE:/tmp/ipa-diag-cc; kinit -kt /etc/dirsrv/ds.keytab ldap/<host> && klist && ldapsearch -Y GSSAPI -H ldap://<peer> -b '' -s base",
                         ),
                     ],
                     verification=[_verification_condition()],
@@ -333,7 +333,7 @@ class PeerConnectivityBreakRule(DiagnosticRule):
                     Action(
                         description="Verify the replication keytab produces a valid GSSAPI bind to the peer.",
                         risk=RiskLevel.SAFE,
-                        command="kinit -kt /etc/dirsrv/ds.keytab ldap/<host> && klist && ldapsearch -Y GSSAPI -H ldap://<peer> -b '' -s base",
+                        command="export KRB5CCNAME=FILE:/tmp/ipa-diag-cc; kinit -kt /etc/dirsrv/ds.keytab ldap/<host> && klist && ldapsearch -Y GSSAPI -H ldap://<peer> -b '' -s base",
                     ),
                 ],
                 verification=[_verification_condition()],

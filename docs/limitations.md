@@ -24,14 +24,13 @@ validated, at what tier, and don't claim more.
   a regression test using the exact real shape.
 - ✅ Confirmed `directory-server.ownership-selinux-mismatch` fires correctly
   against a real `TomcatFileCheck` finding.
-- ⚠️ **Found, and is NOT hiding, a real coverage gap**: the induced
-  `dirsrv`-down failure (a real ERROR + a real CRITICAL from a different
-  check plugin crashing when LDAP went down) did not trigger any
-  *additional* diagnosis - none of the directory-server pack's 4 rules key
-  off a generic "the dirsrv service itself is down"
-  (`ipahealthcheck.meta.services`) finding; they're all more specific
-  (disk space, ownership/SELinux, NSS/TLS format, missing index). A rule
-  for this is a reasonable v1.1 candidate, not a defect being papered over.
+- ✅ **Real coverage gap found here, since closed:** the induced `dirsrv`-down
+  failure (a real ERROR + a real CRITICAL from a check plugin crashing when
+  LDAP went down) originally produced no *additional* diagnosis. v0.1.2 adds a
+  visibility safety net (`engine/unexplained.py`): a `meta.services`
+  "`<service>: not running`" finding is reported as a diagnosed fact (the
+  cause left open), and crashed checks are reported as "failed to run" - see
+  [evidence-completeness.md](evidence-completeness.md).
 - This was **one topology** (a single freshly-installed server, no
   `--setup-dns`, one induced failure) exercising **one pack** (directory-server,
   via the file-permission finding both captures share) - it is real,
