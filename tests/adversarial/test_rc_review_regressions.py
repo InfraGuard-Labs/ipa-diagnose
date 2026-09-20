@@ -38,7 +38,7 @@ def _rule(report, rule_id):
 def test_generic_tls_journal_line_is_not_an_nss_db_format_diagnosis():
     b = _bundle(
         [_entry("ipahealthcheck.ipa.files", "TomcatFileCheck", "WARNING", "mode 0664")],
-        items=[EvidenceItem(item_id="j1", kind="dirsrv_journal_line", summary="tls", data={"category": "nss_tls", "line": "SSL alert: handshake failure from client"})],
+        items=[EvidenceItem(item_id="j1", kind="dirsrv_journal_line", summary="tls", data={"category": "nss_tls", "message": "SSL alert: handshake failure from client"})],
     )
     d = _rule(run_diagnosis(b), "nss-tls-db-format")
     assert d is None or d.status != DiagnosisStatus.DIAGNOSED
@@ -47,7 +47,7 @@ def test_generic_tls_journal_line_is_not_an_nss_db_format_diagnosis():
 def test_nss_db_format_needs_db_file_evidence_or_a_healthcheck_result():
     b = _bundle(
         [_entry("ipahealthcheck.ipa.files", "TomcatFileCheck", "WARNING", "mode 0664")],
-        items=[EvidenceItem(item_id="j1", kind="dirsrv_journal_line", summary="nss", data={"category": "nss_tls", "line": "NSS error: unable to open cert8.db"})],
+        items=[EvidenceItem(item_id="j1", kind="dirsrv_journal_line", summary="nss", data={"category": "nss_tls", "message": "NSS error: unable to open cert8.db"})],
     )
     assert _rule(run_diagnosis(b), "nss-tls-db-format").status == DiagnosisStatus.DIAGNOSED
 
