@@ -1,7 +1,7 @@
 {
   "hostname": "ipa03.example.test",
   "scenario": "dirsrv permission-denied at startup with no corroborating IPAFileCheck ownership finding - genuinely ambiguous (Unix perms vs. SELinux)",
-  "expected_overall_status": "UNKNOWN",
+  "expected_overall_status": "NOT_FULLY_VERIFIED",
   "expected_diagnoses": [
     {
       "diagnosis_id": "directory-server.ownership-selinux-mismatch",

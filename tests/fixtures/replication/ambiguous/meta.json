@@ -1,7 +1,7 @@
 {
   "hostname": "ipa01.example.test",
   "scenario": "ReplicationCheck ERROR fires but the replication_agreements/ldap_query collectors have nothing to say",
-  "expected_overall_status": "UNKNOWN",
+  "expected_overall_status": "NOT_FULLY_VERIFIED",
   "expected_diagnoses": [
     {
       "diagnosis_id": "replication.peer-connectivity-break",

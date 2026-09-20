@@ -1,0 +1,47 @@
+[
+  {
+    "source": "ipahealthcheck.meta.services",
+    "check": "dirsrv",
+    "result": "SUCCESS",
+    "uuid": "g-dirsrv",
+    "when": "20260920120000Z",
+    "duration": "0.01",
+    "kw": {
+      "status": true
+    }
+  },
+  {
+    "source": "ipahealthcheck.meta.services",
+    "check": "krb5kdc",
+    "result": "SUCCESS",
+    "uuid": "g-krb5kdc",
+    "when": "20260920120000Z",
+    "duration": "0.01",
+    "kw": {
+      "status": true
+    }
+  },
+  {
+    "source": "ipahealthcheck.meta.services",
+    "check": "httpd",
+    "result": "SUCCESS",
+    "uuid": "g-httpd",
+    "when": "20260920120000Z",
+    "duration": "0.01",
+    "kw": {
+      "status": true
+    }
+  },
+  {
+    "source": "ipahealthcheck.ipa.dna",
+    "check": "IPADNARangeCheck",
+    "result": "WARNING",
+    "uuid": "w1",
+    "when": "20260920120000Z",
+    "duration": "0.1",
+    "kw": {
+      "key": "no_dna_range_defined",
+      "msg": "No DNA range defined. If no masters define a range then users and groups cannot be created."
+    }
+  }
+]

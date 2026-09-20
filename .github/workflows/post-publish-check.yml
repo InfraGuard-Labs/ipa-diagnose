@@ -9,15 +9,18 @@ name: Post-publish check (public release, from scratch)
 #   * healthy replay fixture                 -> HEALTHY (exit 0)
 #   * partial evidence (RUV unreadable)      -> NOT_FULLY_VERIFIED (exit 4)
 #   * fully verified healthy (live path)     -> HEALTHY (exit 0)
+#   * (0.1.3) only an undiagnosed finding    -> NOT_FULLY_VERIFIED (exit 4), visible in console + JSON
+#   * (0.1.3) DSCERTLE0002                   -> certificate-expiry diagnosis, never an NSS DB mismatch
+#   * (0.1.3) unknown future ERROR           -> NOT_FULLY_VERIFIED, not diagnosed
 # The "live path" cases use tiny stand-in ipa-healthcheck / ipa-replica-manage
 # scripts that print real output shapes; they test ipa-diagnose's semantics, not FreeIPA.
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Released version to verify (e.g. 0.1.2)"
+        description: "Released version to verify (e.g. 0.1.3)"
         required: true
-        default: "0.1.2"
+        default: "0.1.3"
 
 permissions:
   contents: read
@@ -34,12 +37,15 @@ jobs:
           - {name: el10,     image: "almalinux:10",   prep: "dnf install -y epel-release && dnf install -y pipx"}
           - {name: fedora44, image: "fedora:44",      prep: "dnf install -y pipx"}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v${{ inputs.version }}   # only for the replay fixtures; the package under test is from PyPI
       - name: Install from PRODUCTION PyPI with pipx (README command) and check the version
         env:
           VERSION: ${{ inputs.version }}
         run: |
           mkdir -p logs
-          docker run --rm -e VERSION "${{ matrix.image }}" bash -c '
+          docker run --rm -e VERSION -v "$PWD/tests/fixtures:/fixtures:ro" "${{ matrix.image }}" bash -c '
             set -x
             ${{ matrix.prep }}
             export PATH=$HOME/.local/bin:$PATH
@@ -47,8 +53,19 @@ jobs:
             ipa-diagnose --version
             test "$(ipa-diagnose --version)" = "ipa-diagnose $VERSION"
             ipa-diagnose; echo "exit(no ipa-healthcheck)=$?"
+            ipa-diagnose --replay /fixtures/replication/healthy | grep -q "Overall: HEALTHY" && echo "OK healthy"
+            ipa-diagnose --replay /fixtures/coverage/undiagnosed-warning > /tmp/u.txt; echo "exit(undiagnosed)=$?"
+            grep -q "Overall: NOT_FULLY_VERIFIED" /tmp/u.txt && grep -q "IPADNARangeCheck" /tmp/u.txt && echo "OK undiagnosed visible"
+            ipa-diagnose --replay /fixtures/coverage/undiagnosed-warning --json | python3 -c "import json,sys; d=json.load(sys.stdin); assert d[\"has_undiagnosed_findings\"] and d[\"undiagnosed_count\"]==1; print(\"OK undiagnosed json\")"
+            ipa-diagnose --replay /fixtures/coverage/ds-cert-expired > /tmp/d.txt; echo "exit(dscert)=$?"
+            grep -q "Directory Server certificate has expired" /tmp/d.txt && ! grep -qi "NSS/TLS DB format" /tmp/d.txt && echo "OK dscert expiry"
+            ipa-diagnose --replay /fixtures/coverage/future-unknown-check > /tmp/f.txt; echo "exit(future)=$?"
+            grep -q "Overall: NOT_FULLY_VERIFIED" /tmp/f.txt && echo "OK future not diagnosed"
           ' 2>&1 | tee "logs/pypi-${{ matrix.name }}.log"
           grep -q "exit(no ipa-healthcheck)=3" "logs/pypi-${{ matrix.name }}.log"
+          for m in "exit(undiagnosed)=4" "exit(dscert)=2" "exit(future)=4" "OK healthy" "OK undiagnosed visible" "OK undiagnosed json" "OK dscert expiry" "OK future not diagnosed"; do
+            grep -qF "$m" "logs/pypi-${{ matrix.name }}.log" || { echo "MISSING: $m"; exit 1; }
+          done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -103,7 +120,7 @@ jobs:
               dnf remove -y ipa-diagnose
               ! rpm -q ipa-diagnose
             ' 2>&1 | tee "logs/rpm-${{ matrix.name }}.log"
-          grep -q "SEMANTICS: 5 passed, 0 failed" "logs/rpm-${{ matrix.name }}.log"
+          grep -q "SEMANTICS: 11 passed, 0 failed" "logs/rpm-${{ matrix.name }}.log"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -1,7 +1,7 @@
 {
   "hostname": "ipa01.example.test",
   "scenario": "IPADNSSystemRecordsCheck ERROR present, but dns_lookup/journal_named could not run (simulated permission denied - their fixture files are deliberately absent from this directory)",
-  "expected_overall_status": "UNKNOWN",
+  "expected_overall_status": "NOT_FULLY_VERIFIED",
   "expected_diagnoses": [
     {
       "diagnosis_id": "dns.srv-autodiscovery",

@@ -1,0 +1,50 @@
+[
+  {
+    "source": "ipahealthcheck.meta.services",
+    "check": "dirsrv",
+    "result": "SUCCESS",
+    "uuid": "g-dirsrv",
+    "when": "20260920120000Z",
+    "duration": "0.01",
+    "kw": {
+      "status": true
+    }
+  },
+  {
+    "source": "ipahealthcheck.meta.services",
+    "check": "krb5kdc",
+    "result": "SUCCESS",
+    "uuid": "g-krb5kdc",
+    "when": "20260920120000Z",
+    "duration": "0.01",
+    "kw": {
+      "status": true
+    }
+  },
+  {
+    "source": "ipahealthcheck.meta.services",
+    "check": "httpd",
+    "result": "SUCCESS",
+    "uuid": "g-httpd",
+    "when": "20260920120000Z",
+    "duration": "0.01",
+    "kw": {
+      "status": true
+    }
+  },
+  {
+    "source": "ipahealthcheck.ds.nss_ssl",
+    "check": "NssCheck",
+    "result": "CRITICAL",
+    "uuid": "c1",
+    "when": "20260920120000Z",
+    "duration": "0.03",
+    "kw": {
+      "key": "DSCERTLE0002",
+      "items": [
+        "Expiration"
+      ],
+      "msg": "The certificate (Server-Cert) has expired"
+    }
+  }
+]

@@ -286,7 +286,7 @@ def test_idns_warning_on_ipv4_only_healthy_server_is_not_a_dns_diagnosis(monkeyp
     monkeypatch.setattr("socket.getfqdn", lambda *a: HOST)
     report = _diagnose()
     assert not any(d.rule_id == "srv-autodiscovery" for d in report.diagnoses), [d.title for d in report.diagnoses]
-    assert report.overall_status == OverallStatus.HEALTHY
+    assert report.overall_status == OverallStatus.NOT_FULLY_VERIFIED  # the WARNING stays undiagnosed, never HEALTHY
 
 
 # ---------------------------------------------------------------------------

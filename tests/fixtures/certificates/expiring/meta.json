@@ -1,7 +1,7 @@
 {
   "hostname": "ipa01.example.test",
   "scenario": "certificate approaching its expiry warning window, certmonger reports a clean MONITORING state with no error",
-  "expected_overall_status": "UNKNOWN",
+  "expected_overall_status": "NOT_FULLY_VERIFIED",
   "expected_diagnoses": [
     {
       "diagnosis_id": "certificates.cert-expired",

@@ -66,6 +66,11 @@ def render_report(
     status_style = _STATUS_STYLE[report.overall_status]
     console.print(Text.assemble(("Overall: ", "bold"), (report.overall_status.value, status_style)))
     _print_evidence_banner(report, console)
+    if report.overall_status == OverallStatus.NOT_FULLY_VERIFIED and report.undiagnosed_findings:
+        console.print(
+            f"[yellow]Not fully verified:[/yellow] {len(report.undiagnosed_findings)} ipa-healthcheck finding(s) "
+            "that no ipa-diagnose rule explains remain (see UNDIAGNOSED below). No cause is claimed."
+        )
     console.print()
 
     if not report.diagnoses:

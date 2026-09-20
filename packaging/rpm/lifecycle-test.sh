@@ -3,7 +3,7 @@
 # container (ipa-diagnose is not baked in). Mounts expected:
 #   /rpms/v1/*.rpm      candidate release "1"        /rpms/v2/*.rpm  release "2" (upgrade test)
 #   /rpms/SHA256SUMS    checksums of both            /fixtures       tests/fixtures (read-only)
-# Env: EXPECT_VERSION (e.g. 0.1.2)  PLATFORM (label only)
+# Env: EXPECT_VERSION (e.g. 0.1.3)  PLATFORM (label only)
 # Prints PASS/FAIL per step; exits non-zero if any step fails.
 set -uo pipefail
 PASS=0; FAIL=0
@@ -41,6 +41,18 @@ ipa-diagnose --replay /fixtures/real-freeipa-capture/dirsrv-stopped --details; r
 check "dirsrv-stopped replay exits 2 (CRITICAL)" test "${rc}" -eq 2
 check "names the stopped service" bash -c "ipa-diagnose --replay /fixtures/real-freeipa-capture/dirsrv-stopped | grep -q \"'dirsrv' is not running\""
 
+step "4b. v0.1.3 semantics: undiagnosed finding => NOT_FULLY_VERIFIED (exit 4); DS cert expiry; unknown future check"
+ipa-diagnose --replay /fixtures/coverage/undiagnosed-warning --details; rc=$?; echo "exit=${rc}"
+check "undiagnosed-only run exits 4 (NOT_FULLY_VERIFIED)" test "${rc}" -eq 4
+check "undiagnosed finding is listed by name" bash -c "ipa-diagnose --replay /fixtures/coverage/undiagnosed-warning | grep -q 'IPADNARangeCheck'"
+check "undiagnosed-only run is never HEALTHY" bash -c "! ipa-diagnose --replay /fixtures/coverage/undiagnosed-warning | grep -q 'Overall: HEALTHY'"
+ipa-diagnose --replay /fixtures/coverage/undiagnosed-warning --json > /tmp/ju.json; python3 -c "import json; d=json.load(open('/tmp/ju.json')); assert d['overall_status']=='NOT_FULLY_VERIFIED' and d['has_undiagnosed_findings'] is True and d['undiagnosed_count']==1 and d['undiagnosed_findings'][0]['check']=='IPADNARangeCheck'"
+check "json: undiagnosed_findings present, NOT_FULLY_VERIFIED" test $? -eq 0
+ipa-diagnose --replay /fixtures/coverage/ds-cert-expired --json > /tmp/jd.json; python3 -c "import json; d=json.load(open('/tmp/jd.json')); ids=[x['diagnosis_id'] for x in d['diagnoses']]; assert 'directory-server.ds-certificate-expiry' in ids and 'directory-server.nss-tls-db-format' not in ids"
+check "DS certificate expiry is a certificate diagnosis, not an NSS DB mismatch" test $? -eq 0
+ipa-diagnose --replay /fixtures/coverage/future-unknown-check --json > /tmp/jf.json; python3 -c "import json; d=json.load(open('/tmp/jf.json')); assert d['overall_status']=='NOT_FULLY_VERIFIED' and not any(x['status']=='DIAGNOSED' for x in d['diagnoses'])"
+check "unknown future ERROR is surfaced, never diagnosed" test $? -eq 0
+
 step "5. --json exposes evidence completeness"
 ipa-diagnose --replay /fixtures/replication/healthy --json > /tmp/j.json; python3 - <<'PY'
 import json
@@ -62,7 +74,7 @@ check "json: UNKNOWN / fully_verified false / insufficient" test $? -eq 0
 step "6b. Evidence-completeness semantics of the INSTALLED package (stand-in tools)"
 if [ -f /semantics.sh ]; then
     bash /semantics.sh > /tmp/sem.log 2>&1; tail -8 /tmp/sem.log
-    check "semantics: UNKNOWN / HEALTHY / NOT_FULLY_VERIFIED / RUV NOT VERIFIED / verified HEALTHY" grep -q "SEMANTICS: 5 passed, 0 failed" /tmp/sem.log
+    check "semantics: UNKNOWN / HEALTHY / NOT_FULLY_VERIFIED / RUV NOT VERIFIED / verified HEALTHY / undiagnosed / future / DS cert expiry" grep -q "SEMANTICS: 11 passed, 0 failed" /tmp/sem.log
 fi
 
 step "7. Uninstall, verify removal"

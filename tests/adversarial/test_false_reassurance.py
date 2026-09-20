@@ -393,17 +393,16 @@ def test_stopped_service_is_never_healthy(monkeypatch):
     assert report.diagnoses
 
 
-def test_unclaimed_warning_alone_is_a_documented_known_limitation(monkeypatch):
-    """KNOWN LIMITATION (documented in docs/limitations.md; not a collection failure): a WARNING
-    from a check no rule covers does not change the status. ipa-healthcheck WARNINGs such as the
-    container-only 'missing /proc/sys/crypto/fips_enabled' are common on healthy systems, so
-    surfacing every unclaimed WARNING would make healthy systems DEGRADED. ERROR/CRITICAL
-    findings are never dropped (see the tests above)."""
+def test_unclaimed_warning_alone_is_not_healthy(monkeypatch):
+    """v0.1.3 policy: a failed ipa-healthcheck finding that no rule explains (even a WARNING) is never
+    reported as HEALTHY. No cause is claimed - the status is NOT_FULLY_VERIFIED."""
     hc = json.dumps([_entry("ipahealthcheck.meta.services", "dirsrv", "SUCCESS"), _entry(UNKNOWN_SRC, "C", "WARNING", "something is off")])
     _install(monkeypatch, healthcheck=(1, hc, ""))
     report = _diagnose()
-    assert report.overall_status == OverallStatus.HEALTHY
+    assert report.overall_status == OverallStatus.NOT_FULLY_VERIFIED
     assert report.evidence_completeness.level == "complete"
+    assert not report.diagnoses
+    assert len(report.undiagnosed_findings) == 1
 
 
 # ---------------------------------------------------------------------------

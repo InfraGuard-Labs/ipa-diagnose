@@ -130,7 +130,7 @@ sudo ipa-diagnose
 Download the correct artifact for your platform from the
 [latest release](https://github.com/InfraGuard-Labs/ipa-diagnose/releases/latest)
 (the release page lists the files). Names look like
-`ipa-diagnose-0.1.2-1.el9.el9.noarch.rpm` (the target - `.el8.`, `.el9.`,
+`ipa-diagnose-0.1.3-1.el9.el9.noarch.rpm` (the target - `.el8.`, `.el9.`,
 `.el10.`, `.fc44.` - is repeated by the build; that is cosmetic). Verify the
 download, in the same directory as `SHA256SUMS`:
 
@@ -347,11 +347,11 @@ real-FreeIPA-validated - this project does not overclaim which is which.
 
 | Overall | Exit | Meaning | Treat as |
 |---|---|---|---|
-| `HEALTHY` | 0 | All expected evidence was collected and no supported problem was found. | OK |
+| `HEALTHY` | 0 | All expected evidence was collected, no supported problem was found, and no failed `ipa-healthcheck` finding is left unexplained. | OK |
 | `DEGRADED` | 1 | A supported problem was found (not critical). | Alert |
 | `CRITICAL` | 2 | A supported critical problem was found (for example a required service is not running). | Alert |
-| `UNKNOWN` | 3 | Not enough evidence to say anything is healthy (for example `ipa-healthcheck` is missing, timed out, or you are not root). | **Not OK - alert** |
-| `NOT_FULLY_VERIFIED` | 4 | No problem was found in the evidence that WAS collected, but some relevant evidence is missing (for example the replication RUV could not be read). | **Not OK - alert or investigate** |
+| `UNKNOWN` | 3 | The base health evidence is unavailable (for example `ipa-healthcheck` is missing, timed out, or you are not root), so nothing can be said. | **Not OK - alert** |
+| `NOT_FULLY_VERIFIED` | 4 | No supported root cause was found, but something meaningful is unresolved: an `ipa-healthcheck` finding that no ipa-diagnose rule explains (listed as *undiagnosed*, no cause claimed), or relevant evidence is missing (for example the replication RUV could not be read). | **Not OK - alert or investigate** |
 
 **In monitoring, alert on any non-zero exit - including 3 and 4.** A script
 that only tests for `2` will ignore "could not verify". When several things

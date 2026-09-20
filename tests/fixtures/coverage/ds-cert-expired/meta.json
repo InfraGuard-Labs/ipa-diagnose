@@ -1,0 +1,13 @@
+{
+  "hostname": "ipa01.example.test",
+  "scenario": "CONSTRUCTED (lib389 DSCERTLE0002 shape): Directory Server certificate expired",
+  "expected_overall_status": "CRITICAL",
+  "expected_diagnoses": [
+    {
+      "diagnosis_id": "directory-server.ds-certificate-expiry",
+      "status": "DIAGNOSED",
+      "priority": "PRIMARY_PROBLEM"
+    }
+  ],
+  "notes": "Must be a certificate-expiry diagnosis, never an NSS DB format mismatch."
+}

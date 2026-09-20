@@ -1,4 +1,4 @@
-%{!?version: %global version 0.1.2}
+%{!?version: %global version 0.1.3}
 %{!?release: %global release 1}
 
 # --- EL9-specific build notes -----------------------------------------
@@ -226,6 +226,12 @@ python3.11 -m pip wheel --no-build-isolation --no-deps --wheel-dir %{_pyproject_
 %{_bindir}/ipa-diagnose
 
 %changelog
+* Sun Sep 20 2026 Azeem Siddiqui <azeemsidd509@gmail.com> - 0.1.3-1
+- 0.1.3: every failed ipa-healthcheck finding is accounted for. Findings no rule
+  explains are listed as UNDIAGNOSED and make the run NOT_FULLY_VERIFIED (exit 4),
+  never HEALTHY. Fixes an inverted diagnosis of an expired Directory Server
+  certificate and several rules that claimed checks they did not understand.
+  See docs/healthcheck-coverage.md.
 * Sat Sep 19 2026 Azeem Siddiqui <azeemsidd509@gmail.com> - 0.1.2-1
 - 0.1.2: evidence completeness (UNKNOWN / NOT_FULLY_VERIFIED, exit code 4),
   explicit RUV state with a read-only LDAPI read (no Directory Manager password),

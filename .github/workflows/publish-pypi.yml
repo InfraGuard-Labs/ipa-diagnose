@@ -35,7 +35,7 @@ on:
       ref:
         description: "Git tag to build and publish (e.g. v0.1.0). Only needed for the one-time initial publish of a release that predates this workflow."
         required: true
-        default: "v0.1.2"
+        default: "v0.1.3"
 
 permissions:
   contents: read

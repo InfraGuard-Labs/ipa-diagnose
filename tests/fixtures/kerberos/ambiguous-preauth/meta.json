@@ -1,7 +1,7 @@
 {
   "hostname": "ipa01.example.test",
   "scenario": "kerberos generic preauth failure, collector unavailable (insufficient evidence)",
-  "expected_overall_status": "UNKNOWN",
+  "expected_overall_status": "NOT_FULLY_VERIFIED",
   "expected_diagnoses": [
     {
       "diagnosis_id": "kerberos.keytab-kvno-mismatch",

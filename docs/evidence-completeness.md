@@ -11,8 +11,8 @@ actually collect**.
 | `HEALTHY` | Enough relevant evidence was collected **and** no problem was found. | 0 |
 | `DEGRADED` | A supported problem was found (worst severity ERROR/WARNING). | 1 |
 | `CRITICAL` | A supported problem was found at CRITICAL severity. | 2 |
-| `UNKNOWN` | Not enough evidence to say anything is healthy (for example `ipa-healthcheck` could not run), or the primary problem could not be diagnosed. | 3 |
-| `NOT_FULLY_VERIFIED` | No problem was found in the evidence that **was** collected, but some relevant evidence is missing, so health is not established. | 4 |
+| `UNKNOWN` | The base health evidence is unavailable or insufficient (for example `ipa-healthcheck` could not run or you are not root), so nothing can be said. | 3 |
+| `NOT_FULLY_VERIFIED` | No supported root cause was established, but something meaningful is unresolved: an ipa-healthcheck WARNING/ERROR/CRITICAL finding no rule explains (listed as *undiagnosed*), or relevant evidence is missing. Health is not established. | 4 |
 
 A found problem is never hidden by a collection gap: a `DEGRADED`/`CRITICAL`
 result stays `DEGRADED`/`CRITICAL` even when evidence is also incomplete (the

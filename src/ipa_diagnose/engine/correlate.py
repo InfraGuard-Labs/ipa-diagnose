@@ -147,7 +147,7 @@ def build_report(
         1 for f in bundle.findings if f.severity == Severity.WARNING and f.finding_id not in claimed
     )
     undiagnosed = _undiagnosed_findings(bundle, diagnoses)
-    overall = _apply_completeness(_overall_status(diagnoses), completeness)
+    overall = _apply_completeness(_overall_status(diagnoses), completeness, bool(undiagnosed))
 
     return DiagnosisReport(
         generated_at=EvidenceBundle.now(),
@@ -321,16 +321,29 @@ def _assess_completeness(bundle: EvidenceBundle) -> EvidenceCompleteness:
     )
 
 
-def _apply_completeness(status: OverallStatus, completeness: EvidenceCompleteness) -> OverallStatus:
-    """HEALTHY is only ever reported when the evidence needed to say so was
-    collected. A found problem always wins (a collection gap must never hide
-    a real diagnosis); only the *absence* of problems is downgraded."""
+def _apply_completeness(
+    status: OverallStatus, completeness: EvidenceCompleteness, has_undiagnosed: bool = False
+) -> OverallStatus:
+    """Status policy (v0.1.3).
 
+    HEALTHY  - sufficient evidence, no supported problem, and no failed ipa-healthcheck finding left unexplained.
+    DEGRADED / CRITICAL - a supported problem was established (a found problem always wins over a gap).
+    NOT_FULLY_VERIFIED - no supported root cause, but something meaningful is unresolved: an undiagnosed
+        WARNING/ERROR/CRITICAL finding, an unexplained ERROR/CRITICAL, or incomplete evidence.
+    UNKNOWN  - the base health evidence (ipa-healthcheck) could not be collected at all."""
+
+    if completeness.level == "insufficient" and status in (
+        OverallStatus.HEALTHY,
+        OverallStatus.UNKNOWN,
+        OverallStatus.NOT_FULLY_VERIFIED,
+    ):
+        return OverallStatus.UNKNOWN
+    if status == OverallStatus.UNKNOWN:
+        # A primary problem exists but no root cause could be established: unresolved, not "no evidence".
+        return OverallStatus.NOT_FULLY_VERIFIED
     if status != OverallStatus.HEALTHY:
         return status
-    if completeness.level == "insufficient":
-        return OverallStatus.UNKNOWN
-    if completeness.level == "partial":
+    if completeness.level == "partial" or has_undiagnosed:
         return OverallStatus.NOT_FULLY_VERIFIED
     return OverallStatus.HEALTHY
 

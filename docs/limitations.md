@@ -112,10 +112,14 @@ none exist yet, and none are claimed.
 
 ## Known limitations of the completeness checks
 
-- An `ipa-healthcheck` **WARNING** from a check that no diagnostic rule covers
-  does not change the overall status. Such warnings (for example the
-  container-only "missing /proc/sys/crypto/fips_enabled") are common on healthy
-  systems; ERROR/CRITICAL findings are never dropped.
+- (Changed in 0.1.3.) An `ipa-healthcheck` WARNING/ERROR/CRITICAL that no
+  diagnostic rule explains is listed as *undiagnosed* and makes the run
+  `NOT_FULLY_VERIFIED` (exit 4) instead of `HEALTHY`. Some benign upstream
+  warnings (for example the container-only "missing /proc/sys/crypto/fips_enabled",
+  or DNS-record warnings on IPv4-only setups) will therefore show as
+  `NOT_FULLY_VERIFIED` on a working server: that is deliberate (ipa-diagnose will
+  not call a run healthy while a failed finding is unexplained) and it claims no
+  cause. Review the listed findings with `ipa-healthcheck`.
 - When the topology cannot be listed at all (not root, no Kerberos ticket) the
   RUV liveness of other servers is reported as undetermined and the run is
   `NOT_FULLY_VERIFIED`; it never produces a stale-RUV claim on its own.

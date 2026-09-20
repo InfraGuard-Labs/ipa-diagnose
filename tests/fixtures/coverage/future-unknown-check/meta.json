@@ -1,0 +1,13 @@
+{
+  "hostname": "ipa01.example.test",
+  "scenario": "CONSTRUCTED: a future/unknown ipa-healthcheck check reports ERROR",
+  "expected_overall_status": "NOT_FULLY_VERIFIED",
+  "expected_diagnoses": [
+    {
+      "diagnosis_id": "healthcheck.unexplained-findings",
+      "status": "UNKNOWN_INSUFFICIENT_EVIDENCE",
+      "priority": "PRIMARY_PROBLEM"
+    }
+  ],
+  "notes": "Surfaced, never claimed by a rule."
+}

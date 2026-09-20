@@ -1,7 +1,7 @@
 {
   "hostname": "ipa01.example.test",
   "scenario": "CA_UNREACHABLE with a generic/empty ca-error (the documented trap), plus one thin, uncorroborated RA-agent/Dogtag connectivity warning",
-  "expected_overall_status": "UNKNOWN",
+  "expected_overall_status": "NOT_FULLY_VERIFIED",
   "expected_diagnoses": [
     {
       "diagnosis_id": "certificates.certmonger-tracking-stuck",

@@ -1,0 +1,7 @@
+{
+  "hostname": "ipa01.example.test",
+  "scenario": "CONSTRUCTED (upstream-realistic shape, like the live capture): a single ipa-healthcheck WARNING that no rule explains",
+  "expected_overall_status": "NOT_FULLY_VERIFIED",
+  "expected_diagnoses": [],
+  "notes": "Undiagnosed WARNING only: never HEALTHY, no cause claimed."
+}

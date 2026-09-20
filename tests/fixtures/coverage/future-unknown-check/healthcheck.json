@@ -1,0 +1,47 @@
+[
+  {
+    "source": "ipahealthcheck.meta.services",
+    "check": "dirsrv",
+    "result": "SUCCESS",
+    "uuid": "g-dirsrv",
+    "when": "20260920120000Z",
+    "duration": "0.01",
+    "kw": {
+      "status": true
+    }
+  },
+  {
+    "source": "ipahealthcheck.meta.services",
+    "check": "krb5kdc",
+    "result": "SUCCESS",
+    "uuid": "g-krb5kdc",
+    "when": "20260920120000Z",
+    "duration": "0.01",
+    "kw": {
+      "status": true
+    }
+  },
+  {
+    "source": "ipahealthcheck.meta.services",
+    "check": "httpd",
+    "result": "SUCCESS",
+    "uuid": "g-httpd",
+    "when": "20260920120000Z",
+    "duration": "0.01",
+    "kw": {
+      "status": true
+    }
+  },
+  {
+    "source": "ipahealthcheck.zz.brand_new",
+    "check": "BrandNewCheck",
+    "result": "ERROR",
+    "uuid": "f1",
+    "when": "20260920120000Z",
+    "duration": "0.02",
+    "kw": {
+      "key": "NEW0001",
+      "msg": "a check this version has never seen failed"
+    }
+  }
+]
