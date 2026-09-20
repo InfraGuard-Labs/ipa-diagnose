@@ -12,8 +12,8 @@ Provenance labels used:
 
 - **REAL LIVE CAPTURE** - a real FreeIPA server (`freeipa/freeipa-server:fedora-43`
   image: FreeIPA 4.13.3, Fedora 43, ipa-healthcheck 0.19, 389-ds-base 3.1.4,
-  Python 3.14.7) on a free GitHub Actions runner, running the exact v0.1.2
-  source. Lab workflows: `.github/workflows/live-freeipa-scenarios.yml`
+  Python 3.14.7) on a free GitHub Actions runner, running the v0.1.2 source
+  (see "Source used" below). Lab workflows: `.github/workflows/live-freeipa-scenarios.yml`
   (single server) and `live-freeipa-validation.yml` (two-node topology).
 - **REAL CONTAINER CAPTURE** - an installation into a clean container of the named
   distribution (no FreeIPA present). Rocky/Alma images are **stand-ins** for RHEL;
