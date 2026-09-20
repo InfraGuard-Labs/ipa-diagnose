@@ -410,7 +410,10 @@ class KdcDiscoveryFailureRule(DiagnosticRule):
         # A more specific, already-diagnosable cause takes precedence over
         # this hypothesis rather than letting two rules fight over the same
         # symptom.
-        if _journal_items(bundle, "clock_skew") or _desynced_clock_items(bundle):
+        # An unsynchronised local clock only outranks this hypothesis when the keytab
+        # failure is itself NOT address-resolution shaped (see ClockSkewRule).
+        clock_corroborated = _desynced_clock_items(bundle) and any(not _is_dns_style(f.message or "") for f in keytab_findings)
+        if _journal_items(bundle, "clock_skew") or clock_corroborated:
             return None
         if any(i.data.get("match") is False for i in _kvno_items(bundle)):
             return None
