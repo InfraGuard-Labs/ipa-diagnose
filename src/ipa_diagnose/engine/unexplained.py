@@ -42,6 +42,12 @@ _NOT_RUNNING_RE = re.compile(r"^\s*([A-Za-z0-9_][A-Za-z0-9_.@-]*):\s*not running
 # read-only command: only plain identifiers are ever accepted (untrusted input).
 _SOURCE_RE = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.]*$")
 _CHECK_RE = re.compile(r"^[A-Za-z0-9_]+$")
+# Services managed by FreeIPA itself (`ipactl`): the unit names differ per instance
+# (dirsrv@REALM, pki-tomcatd@pki-tomcat), so the portable read-only command is `ipactl status`.
+_IPACTL_SERVICES = {
+    "dirsrv", "krb5kdc", "kadmin", "named", "named-pkcs11", "httpd", "ipa-custodia", "pki-tomcatd",
+    "ipa-otpd", "ipa-dnskeysyncd", "ipa",
+}
 _CORE_SERVICES = {"dirsrv", "krb5kdc", "kadmin", "httpd", "named", "named-pkcs11", "pki-tomcatd"}
 _MAX_GROUPED = 6
 
@@ -145,8 +151,16 @@ def _service_diagnosis(f: Finding, service: str) -> Diagnosis:
             Action(
                 description="Check why the service is not running before starting it.",
                 risk=RiskLevel.SAFE,
-                command=f"systemctl status --no-pager -- {service}; journalctl --no-pager -n 50 -u {service}",
-                rationale="Read-only: shows the unit state and its most recent log lines.",
+                command=(
+                    "ipactl status"
+                    if service.split("@")[0] in _IPACTL_SERVICES
+                    else f"systemctl status --no-pager -- {service}; journalctl --no-pager -n 50 -u {service}"
+                ),
+                rationale=(
+                    "Read-only: lists the state of every FreeIPA-managed service."
+                    if service.split("@")[0] in _IPACTL_SERVICES
+                    else "Read-only: shows the unit state and its most recent log lines."
+                ),
             )
         ],
         limitations="Root cause of the outage is not established by this finding alone.",

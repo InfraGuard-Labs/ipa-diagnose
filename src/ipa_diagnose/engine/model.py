@@ -188,6 +188,8 @@ class UnverifiedCapability:
     collector: str
     reason: str
     permission_related: bool = False
+    hint: str = ""
+    """Plain-language remedy (what the administrator can do), when known."""
 
 
 @dataclasses.dataclass

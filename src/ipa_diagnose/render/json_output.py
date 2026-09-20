@@ -80,6 +80,7 @@ def _completeness_to_dict(c) -> Dict[str, Any]:
                 "collector": u.collector,
                 "reason": u.reason,
                 "permission_related": u.permission_related,
+                "hint": u.hint,
             }
             for u in c.unverified
         ],

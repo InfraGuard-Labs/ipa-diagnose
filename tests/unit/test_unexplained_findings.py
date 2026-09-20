@@ -116,7 +116,10 @@ def test_hostile_service_name_is_not_treated_as_a_service_and_never_reaches_a_co
 def test_service_command_is_read_only_and_uses_option_terminator():
     report = run_diagnosis(_bundle_from([_entry("ipahealthcheck.meta.services", "dirsrv", "ERROR", "dirsrv: not running")]))
     cmd = next(d for d in report.diagnoses if "dirsrv" in d.title).actions[0].command
-    assert "-- dirsrv" in cmd and "restart" not in cmd and "start " not in cmd.split(";")[0]
+    assert cmd == "ipactl status"  # FreeIPA-managed service: portable, read-only
+    report = run_diagnosis(_bundle_from([_entry("ipahealthcheck.meta.services", "certmonger", "ERROR", "certmonger: not running")]))
+    cmd2 = next(d for d in report.diagnoses if "certmonger" in d.title).actions[0].command
+    assert "-- certmonger" in cmd2 and "restart" not in cmd2 and "start " not in cmd2.split(";")[0]
 
 
 def test_ai_payload_redacts_secrets_embedded_in_diagnosis_text():

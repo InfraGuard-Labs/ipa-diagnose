@@ -70,7 +70,10 @@ def render_report(
 
     if not report.diagnoses:
         if report.evidence_completeness.level == "complete":
-            console.print("[bold green]No problems detected.[/bold green] All evaluated checks passed.")
+            console.print(
+                "[bold green]No problems detected.[/bold green] All ipa-healthcheck checks passed and "
+                "all expected evidence was collected."
+            )
         else:
             console.print(
                 "[bold yellow]No problem was observed, but health could NOT be fully verified[/bold yellow] "
@@ -90,7 +93,7 @@ def render_report(
 
     if secondaries:
         console.print(Rule("OTHER INDEPENDENT PROBLEMS", style="yellow"))
-        console.print("[dim]Not caused by the problem above - each needs its own investigation.[/dim]\n")
+        console.print("[dim]May or may not be related to the problem above - each needs its own investigation.[/dim]\n")
         for d in secondaries:
             _render_primary_block(d, console, ai_explanations.get(d.diagnosis_id), details=details, compact=not details)
 
@@ -175,7 +178,7 @@ def _render_primary_block(
             console.print(f"\n    [bold cyan]{escape(first.command)}[/bold cyan]\n")
         style, label = _RISK_STYLE[first.risk]
         console.print(f"Safety: [{style}]{label}[/{style}]")
-        if len(d.actions) > 1 and not compact:
+        if len(d.actions) > 1 and not compact and not details:
             console.print(f"\n[dim]{len(d.actions) - 1} additional step(s) - see --details.[/dim]")
         console.print()
 
@@ -227,6 +230,8 @@ def render_verify(result, console: Console) -> None:
 
     console.print(f"[dim]Comparing against diagnosis from {escape(result.previous_generated_at)}[/dim]")
     if result.current_report is not None:
+        if result.current_report.evidence_completeness.level == "complete":
+            console.print("[green]Evidence for this check: COMPLETE[/green]")
         _print_evidence_banner(result.current_report, console)
     console.print()
     if not result.items:
@@ -266,15 +271,23 @@ def _print_evidence_banner(report: DiagnosisReport, console: Console) -> None:
             f"  [yellow]RUV state: NOT VERIFIED[/yellow] - {escape(c.ruv_reason or 'unknown reason')} "
             "(this is NOT a stale-RUV finding; stale replica metadata could not be checked)"
         )
+        ruv_cap = next((u for u in c.unverified if u.collector == "replication_agreements"), None)
+        if ruv_cap is not None and ruv_cap.hint:
+            console.print(f"    [cyan]What to do:[/cyan] {escape(ruv_cap.hint)}")
     for u in c.unverified:
         if u.collector == "replication_agreements" and c.ruv_state == "NOT_VERIFIED":
             continue
         console.print(f"  [yellow]NOT VERIFIED: {escape(u.capability)}[/yellow] - {escape(u.reason)}")
+        if u.hint:
+            console.print(f"    [cyan]What to do:[/cyan] {escape(u.hint)}")
 
 
 def _print_coverage(report: DiagnosisReport, console: Console, *, details: bool = False) -> None:
     console.print(Rule(style="dim"))
-    console.print(f"[dim]Diagnostic packs evaluated: {', '.join(report.packs_evaluated)}[/dim]")
+    if report.evidence_completeness.healthcheck_collected:
+        console.print(f"[dim]Diagnostic packs evaluated: {', '.join(report.packs_evaluated)}[/dim]")
+    else:
+        console.print("[dim]Diagnostic packs: not evaluated (no ipa-healthcheck evidence to evaluate)[/dim]")
     if report.collection_errors:
         console.print(f"[yellow]Evidence collection issues ({len(report.collection_errors)}):[/yellow]")
         for err in report.collection_errors:

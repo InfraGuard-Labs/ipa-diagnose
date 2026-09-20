@@ -105,6 +105,15 @@ def _collect_healthcheck(bundle: EvidenceBundle, *, live: bool, fixture_path: Op
                 )
             )
             return
+        if not (proc.stdout or "").strip():
+            bundle.collection_errors.append(
+                CollectionError(
+                    collector="ipa-healthcheck",
+                    message="ipa-healthcheck produced no output (it normally needs root)",
+                    permission_related=True,
+                )
+            )
+            return
         try:
             raw_results = parse_healthcheck_json_text(proc.stdout)
         except (ValueError, RecursionError, json.JSONDecodeError) as e:

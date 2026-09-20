@@ -47,13 +47,16 @@ And when the evidence genuinely isn't enough to tell two causes apart,
 
 ![Unknown result](artifacts/screenshots/06_unknown_insufficient_evidence.png)
 
-See [artifacts/screenshots/index.md](artifacts/screenshots/index.md) for all
-27 captured scenarios (healthy, degraded, multiple independent problems,
-`--details` including environment metadata, `--json`, CAUTION/HIGH-RISK
-actions, `verify`, all three AI providers, AI-failure fallback, the
-`ai-preview` redaction view, malformed input, the stale-RUV fix, and real
-RPM/PyPI installs) - every one of them is real recorded output from the
-actual application, not a mockup.
+See [artifacts/screenshots/index.md](artifacts/screenshots/index.md) for the
+27 fixture-based scenarios (healthy, degraded, multiple independent problems,
+`--details`, `--json`, CAUTION/HIGH-RISK actions, `verify`, the AI providers,
+AI-failure fallback, the `ai-preview` redaction view, malformed input, and
+real RPM/PyPI installs). Those were produced by the real CLI running against
+**recorded fixture evidence**, not a live FreeIPA server. Screenshots from a
+**real FreeIPA 4.13.3 lab** (evidence completeness, stopped Directory Server /
+KDC, `verify`, and more) are in
+[docs/screenshots/v0.1.2/index.md](docs/screenshots/v0.1.2/index.md), each
+labelled with its provenance.
 
 ## Installation
 
@@ -82,7 +85,7 @@ build them yourself.
 EPEL, so enable it first:
 
 ```bash
-sudo dnf install -y epel-release
+sudo dnf install -y epel-release dnf-plugins-core
 sudo dnf config-manager --set-enabled crb    # "PowerTools" on some 8.x mirrors
 sudo dnf install ./ipa-diagnose-<version>.el9.noarch.rpm   # or .el10.noarch.rpm
 sudo ipa-diagnose
@@ -125,9 +128,21 @@ sudo ipa-diagnose
 ```
 
 Download the correct artifact for your platform from the
-[latest release](https://github.com/InfraGuard-Labs/ipa-diagnose/releases) -
-artifact names clearly indicate their target (`.el8.`, `.el9.`, `.el10.`,
-`.fc44.`); verify against the attached `SHA256SUMS`.
+[latest release](https://github.com/InfraGuard-Labs/ipa-diagnose/releases/latest)
+(the release page lists the files). Names look like
+`ipa-diagnose-0.1.2-1.el9.el9.noarch.rpm` (the target - `.el8.`, `.el9.`,
+`.el10.`, `.fc44.` - is repeated by the build; that is cosmetic). Verify the
+download, in the same directory as `SHA256SUMS`:
+
+```bash
+sha256sum -c --ignore-missing SHA256SUMS
+```
+
+`dnf` warns "skipped OpenPGP checks" for a local RPM file: the packages are
+not GPG-signed, which is why the checksum step matters. The command is
+installed at `/usr/bin/ipa-diagnose` (`/usr/sbin` points to it on merged-`/usr`
+systems). Fedora 43 works too (tested), but only the `.fc44.` file is
+published; install it on 44, or use pipx.
 
 ### PyPI / pipx
 
@@ -137,9 +152,14 @@ ipa-diagnose --version
 ```
 
 On RHEL/Rocky/AlmaLinux 9 and 10, `pipx` itself comes from EPEL
-(`sudo dnf install -y epel-release && sudo dnf install -y pipx`); on 8, EPEL
-has no `pipx` package, so use the `python39` module instead
-(`sudo dnf install -y python39 && python3.9 -m pip install --user pipx`).
+(`sudo dnf install -y epel-release && sudo dnf install -y pipx`); on Fedora
+it is plain `sudo dnf install -y pipx` (no EPEL); on 8, EPEL has no `pipx`
+package, so use the `python39` module instead:
+
+```bash
+sudo dnf install -y python39 && python3.9 -m pip install --user pipx
+python3.9 -m pipx ensurepath      # then open a new shell so ~/.local/bin is on PATH
+```
 
 **Root/sudo caveat (tested, not assumed):** `pipx install` puts the
 executable in the installing user's `~/.local/bin`, which is *not* on
@@ -175,11 +195,21 @@ sudo ipa-diagnose ai-preview      # see exactly what would be sent to an AI prov
 sudo ipa-diagnose --no-ai         # never contact any AI provider (also the default)
 ```
 
-Try it without a live FreeIPA host, against the same fixtures used in
-testing and screenshots:
+`ipa-diagnose` must run as **root on the IPA server** (it reads root-only
+FreeIPA/389-DS state). It never changes anything itself: every suggested step
+is only *printed*, and labelled:
+
+- **SAFE** - read-only, changes nothing.
+- **CAUTION** - changes state, but is reversible and scoped. Never run for you.
+- **HIGH RISK** - potentially disruptive; understand the blast radius first.
+  Never run for you.
+
+Try it without a live FreeIPA host, against recorded evidence. The fixtures
+live in this repository's `tests/fixtures/` directory (a git checkout or the
+source tarball - they are not installed by the RPM):
 
 ```bash
-docker compose run --rm dev ipa-diagnose --replay tests/fixtures/replication/peer-unreachable diagnose
+ipa-diagnose --replay tests/fixtures/replication/peer-unreachable diagnose
 ```
 
 ## Architecture
@@ -302,7 +332,7 @@ docker compose run --rm test          # full test suite
 docker compose run --rm dev bash      # interactive shell
 ```
 
-130+ tests: unit tests for the engine/correlation/redaction core, per-pack
+470+ tests: unit tests for the engine/correlation/redaction core, per-pack
 fixture tests (one directory per scenario under `tests/fixtures/`, each with
 an expected outcome in `meta.json`), and an adversarial suite covering false
 correlation, prompt injection, secret leakage, command injection, and
@@ -312,10 +342,40 @@ real-FreeIPA-validated - this project does not overclaim which is which.
 
 ## Exit codes and evidence completeness
 
-`0` HEALTHY, `1` DEGRADED, `2` CRITICAL, `3` UNKNOWN, `4` NOT_FULLY_VERIFIED
-(no problem found, but relevant evidence could not be collected). "Could not
-verify" is never reported as healthy - see
-[docs/evidence-completeness.md](docs/evidence-completeness.md).
+`ipa-diagnose` never equates "could not verify" with "healthy". Read the
+`Overall:` line and the `Evidence:` block together.
+
+| Overall | Exit | Meaning | Treat as |
+|---|---|---|---|
+| `HEALTHY` | 0 | All expected evidence was collected and no supported problem was found. | OK |
+| `DEGRADED` | 1 | A supported problem was found (not critical). | Alert |
+| `CRITICAL` | 2 | A supported critical problem was found (for example a required service is not running). | Alert |
+| `UNKNOWN` | 3 | Not enough evidence to say anything is healthy (for example `ipa-healthcheck` is missing, timed out, or you are not root). | **Not OK - alert** |
+| `NOT_FULLY_VERIFIED` | 4 | No problem was found in the evidence that WAS collected, but some relevant evidence is missing (for example the replication RUV could not be read). | **Not OK - alert or investigate** |
+
+**In monitoring, alert on any non-zero exit - including 3 and 4.** A script
+that only tests for `2` will ignore "could not verify". When several things
+apply, the more severe wins (a stopped Directory Server with a partly
+unverified RUV exits `2`). Rare extra codes: `70` internal error (no diagnosis
+was produced), `141` output pipe closed.
+
+`sudo ipa-diagnose verify` re-checks a previous diagnosis: `0` everything
+previously found is resolved **and** evidence is complete; `1`/`2`/`3` a
+problem still exists (same meaning as above); `4` it could not confirm (the
+fresh evidence is incomplete, or a previous problem could not be re-checked -
+`UNABLE_TO_VERIFY`). `verify` always prints whether its fresh evidence was
+complete, so "RESOLVED" is never shown without that context.
+
+`HEALTHY` does **not** cover: SELinux/AVC denials, other servers in the
+topology (this is a single-host view), Trust/AD, or anything `ipa-healthcheck`
+itself does not check. See [docs/evidence-completeness.md](docs/evidence-completeness.md).
+
+**Directory Manager password:** `ipa-diagnose` never asks for, needs, stores or
+sends it. `ipa-replica-manage list-ruv` wants it, so `ipa-diagnose` instead
+reads the same replica update vector read-only over the local LDAPI socket as
+root (needs the OpenLDAP client tools - `ldapsearch`, package
+`openldap-clients` - which are present on any IPA server). If that is not
+possible the RUV is shown as `NOT VERIFIED` with what to do.
 
 ## Limitations
 

@@ -226,6 +226,14 @@ def main(argv: Optional[list] = None) -> int:
         return cmd_diagnose(args, console)
     except KeyboardInterrupt:
         return 130
+    except BrokenPipeError:
+        # The reader (head, grep -q, ...) went away: not an error of ours.
+        try:
+            devnull = os.open(os.devnull, os.O_WRONLY)
+            os.dup2(devnull, sys.stdout.fileno())
+        except Exception:  # noqa: BLE001
+            pass
+        return 141
     except Exception as e:  # noqa: BLE001
         # An internal error must never look like a diagnosis: exit 70
         # (EX_SOFTWARE), not the exit 1 that means DEGRADED.

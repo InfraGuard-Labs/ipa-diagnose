@@ -150,6 +150,29 @@ def sanitize_error_text(text: str) -> str:
     return sanitize_text(text, _MAX_ERROR_LEN)
 
 
+def _hint_for(collector: str, reason: str) -> str:
+    low = reason.lower()
+    if "ldapsearch is not installed" in low:
+        return "Install the OpenLDAP client tools (dnf install openldap-clients) and run as root."
+    if "not running as root" in low:
+        return "Run ipa-diagnose as root (sudo ipa-diagnose)."
+    if collector == "ipa-healthcheck" and "not installed" in low:
+        return "Install ipa-healthcheck (dnf install freeipa-healthcheck)."
+    if collector == "ipa-healthcheck" and "timed out" in low:
+        return (
+            "ipa-healthcheck did not finish in time. A stopped or unreachable DNS, LDAP or Kerberos service "
+            "is a common cause - check those services, then re-run."
+        )
+    if collector == "ipa-healthcheck" and ("no output" in low or "could not parse" in low or "no usable" in low):
+        return "ipa-healthcheck produced no usable output; it normally needs root - re-run with sudo."
+    if "directory manager password" in low:
+        return (
+            "ipa-diagnose never asks for the Directory Manager password; as root it reads the replica "
+            "update vector over the local LDAPI socket instead."
+        )
+    return ""
+
+
 def _assess_completeness(bundle: EvidenceBundle) -> EvidenceCompleteness:
     unverified = [
         UnverifiedCapability(
@@ -157,6 +180,7 @@ def _assess_completeness(bundle: EvidenceBundle) -> EvidenceCompleteness:
             collector=e.collector,
             reason=sanitize_error_text(e.message),
             permission_related=e.permission_related,
+            hint=_hint_for(e.collector, sanitize_error_text(e.message)),
         )
         for e in bundle.collection_errors
     ]

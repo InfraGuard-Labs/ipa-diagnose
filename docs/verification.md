@@ -51,3 +51,21 @@ the first report.
   outside what a single-host tool can fully confirm - where a pack's own
   verification is inherently partial for this reason, its `limitations`
   field says so (see [docs/limitations.md](limitations.md)).
+
+
+## Exit codes and evidence completeness
+
+`verify` prints `Evidence for this check: COMPLETE` when the fresh evidence was
+complete, or the `Evidence: PARTIAL / INSUFFICIENT` block otherwise, so a
+`RESOLVED` line is never shown without that context. `RESOLVED` means "the
+condition is no longer reported by fresh, complete evidence".
+
+| verify exit | Meaning |
+|---|---|
+| `0` | Everything previously found is `RESOLVED` and the fresh evidence is complete. |
+| `1` / `2` | A problem still exists (`STILL_PRESENT` / `PARTIALLY_RESOLVED` / a new condition); same severity meaning as `diagnose`. |
+| `3` | No baseline to compare against and the fresh run is `UNKNOWN`. |
+| `4` | Could not confirm: some previous problem was `UNABLE_TO_VERIFY`, or the fresh evidence is incomplete. |
+
+An incomplete run (for example `ipa-healthcheck` unavailable) never overwrites
+the saved baseline that `verify` compares against.

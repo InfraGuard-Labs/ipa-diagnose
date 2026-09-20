@@ -19,7 +19,13 @@ def sanitize_text(text: object, limit: int = DEFAULT_LIMIT) -> str:
     text = re.sub(r"\x1b[@-Z\\-_]", "", text)  # other 2-char ESC sequences
     text = "".join(ch if (ch == " " or ch.isprintable()) else " " for ch in text)
     text = " ".join(text.split())
-    return text[:limit]
+    if len(text) <= limit:
+        return text
+    cut = text[:limit]
+    space = cut.rfind(" ")
+    if space >= limit - 40:  # prefer a word boundary when one is close
+        cut = cut[:space]
+    return cut.rstrip(" ,;:-") + "..."
 
 
 def clean_multiline(text: object, limit: int = 20000) -> str:
