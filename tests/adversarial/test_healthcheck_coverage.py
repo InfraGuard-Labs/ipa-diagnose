@@ -399,3 +399,41 @@ def test_loose_zone_keywords_are_not_a_forward_zone_collision():
     j = _named_item("named[1]: zone example/IN: forward zone skip, sync failed, not loaded; empty zone? forward")
     e = _entry("ipahealthcheck.ipa.idns", "IPADNSSystemRecordsCheck", "WARNING", msg="Expected SRV record missing")
     assert "forward-zone-conflict" not in _diag_ids(run_diagnosis(_bundle([e], [j])))
+
+
+def test_other_clients_kdc_clock_skew_line_is_not_this_hosts_clock_skew():
+    e = _entry("ipahealthcheck.ipa.host", "IPAHostKeytab", "ERROR", msg="Failed to obtain host TGT: Preauthentication failed")
+    j = EvidenceItem(item_id="kj1", kind="krb5kdc_journal_line", summary="skew",
+                     data={"matched_pattern": "clock_skew", "message": "AS_REQ 10.0.0.9: CLOCK_SKEW: u@X Clock skew too great"})
+    assert "clock-skew" not in _diag_ids(run_diagnosis(_bundle([e], [j])))
+
+
+def test_benign_nss_startup_line_naming_cert9_is_not_a_db_format_diagnosis():
+    j = EvidenceItem(item_id="dj1", kind="dirsrv_journal_line", summary="nss",
+                     data={"category": "nss_tls", "message": "slapd_nss_init: NSS initialized using cert9.db"})
+    e = _entry("ipahealthcheck.ds.backends", "BackendsCheck", "WARNING", key="DSBLE0003", msg="x")
+    assert "nss-tls-db-format" not in _diag_ids(run_diagnosis(_bundle([e], [j])))
+    j2 = EvidenceItem(item_id="dj2", kind="dirsrv_journal_line", summary="nss",
+                      data={"category": "nss_tls", "message": "NSS error: unable to open cert8.db"})
+    assert "nss-tls-db-format" in _diag_ids(run_diagnosis(_bundle([e], [j2])))
+
+
+def test_kvno_collector_matches_when_any_keytab_kvno_equals_the_kdc_kvno(monkeypatch):
+    import subprocess
+    from ipa_diagnose.evidence.collectors import kerberos_client as kc
+
+    coll = kc.KerberosClientCollector() if hasattr(kc, "KerberosClientCollector") else None
+    if coll is None:
+        return
+    monkeypatch.setattr(coll, "_run", lambda args: subprocess.CompletedProcess(args, 0, "host/a.test@X: kvno = 3\n", ""))
+    item = coll._collect_kvno_comparison([("nfs/a.test@X", 9), ("host/a.test@X", 2), ("host/a.test@X", 3)], kc.Provenance(source="t"))
+    assert item.data["principal"] == "host/a.test@X" and item.data["match"] is True
+
+
+def test_srv_finding_is_not_confirmed_by_a_lookup_of_a_different_record():
+    e = _entry("ipahealthcheck.ipa.idns", "IPADNSSystemRecordsCheck", "ERROR", key="_ntp._udp.example.com.",
+               msg="Expected SRV record missing: _ntp._udp.example.com.")
+    other = EvidenceItem(item_id="d9", kind="dns_srv_record", summary="_kerberos-master._udp.example.com SRV: NXDOMAIN, 0 record(s)",
+                         data={"rcode": "NXDOMAIN", "answers": []})
+    d = next((d for d in run_diagnosis(_bundle([e], [other])).diagnoses if d.rule_id == "srv-autodiscovery"), None)
+    assert d is None or d.confidence.level.value not in ("HIGH",) and not (d.status == DiagnosisStatus.DIAGNOSED and other.item_id in {r.evidence_id for r in d.evidence_for})

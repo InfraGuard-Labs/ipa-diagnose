@@ -121,6 +121,11 @@ class ClockSkewRule(DiagnosticRule):
         keytab_findings = [f for f in _keytab_findings(bundle) if not _is_dns_style(f.message or "")]
         if not journal_hits and not keytab_findings:
             return None
+        # A KDC journal line names SOME client's skew, not necessarily this host: on its own (with an unrelated
+        # keytab failure) it must not become a diagnosis. Require this host's own clock evidence or a
+        # clock-shaped keytab failure as well.
+        if journal_hits and not desync_hits and not any(_is_clock_style(f.message or "") for f in keytab_findings):
+            return None
         if not journal_hits:
             # Local NTP being merely "unsynchronised" (common on VMs), or a few seconds
             # of offset, says nothing about skew: Kerberos tolerates 300 s. Require a

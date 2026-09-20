@@ -550,7 +550,12 @@ class NssTlsDbFormatRule(DiagnosticRule):
         db_format_journal = [
             i
             for i in tls_journal
-            if _re.search(r"cert8\.db|key3\.db|secmod\.db|cert9\.db|key4\.db|SEC_ERROR_BAD_DATABASE|SEC_ERROR_LEGACY_DATABASE|SEC_ERROR_NO_MODULE", f"{i.data.get('message', '')} {i.summary}", _re.I)
+            if _re.search(r"SEC_ERROR_BAD_DATABASE|SEC_ERROR_LEGACY_DATABASE|SEC_ERROR_NO_MODULE", f"{i.data.get('message', '')} {i.summary}", _re.I)
+            or _re.search(
+                r"(cert8|key3|secmod|cert9|key4)"+"\\"+"."+r"(db|sqlite).{0,120}(error|fail\w*|unable|cannot|could not|not found|missing|corrupt\w*)|(error|fail\w*|unable|cannot|could not|not found|missing|corrupt\w*).{0,120}(cert8|key3|secmod|cert9|key4)"+"\\"+"."+r"(db|sqlite)",
+                f"{i.data.get('message', '')} {i.summary}",
+                _re.I,
+            )
         ]
         if nss_findings or (db_format_journal and not cert_expiry_findings):
             corroborated = bool(nss_findings and tls_journal)

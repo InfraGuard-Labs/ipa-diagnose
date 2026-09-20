@@ -174,7 +174,12 @@ class KerberosClientCollector(Collector):
     def _collect_kvno_comparison(
         self, keytab_entries: List[Tuple[str, int]], prov: Provenance
     ) -> Optional[EvidenceItem]:
-        principal, keytab_kvno = keytab_entries[0]
+        # A keytab normally holds several kvnos per principal (old ones first) and may start with a non-host
+        # principal: compare the host principal's kvnos, and only call it a mismatch when the KDC's current
+        # kvno is absent from all of them.
+        principal = next((p for p, _ in keytab_entries if p.startswith("host/")), keytab_entries[0][0])
+        keytab_kvnos = sorted({kv for p, kv in keytab_entries if p == principal})
+        keytab_kvno = keytab_kvnos[-1]
         try:
             proc = self._run(["kvno", principal])
         except (OSError, subprocess.SubprocessError) as e:
@@ -190,7 +195,7 @@ class KerberosClientCollector(Collector):
         if m:
             kdc_kvno = int(m.group("kvno"))
         error = None if proc.returncode == 0 and kdc_kvno is not None else (proc.stderr or proc.stdout or "").strip()[:300]
-        match = None if kdc_kvno is None else (kdc_kvno == keytab_kvno)
+        match = None if kdc_kvno is None else (kdc_kvno in keytab_kvnos)
         return EvidenceItem(
             item_id="kerberos_client.kvno_comparison",
             kind="kvno_comparison",

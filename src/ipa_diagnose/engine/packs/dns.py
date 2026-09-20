@@ -529,7 +529,14 @@ class SrvAutodiscoveryRule(DiagnosticRule):
 
         worst = max(bad, key=lambda f: f.severity.rank)
         dns_items = _dns_lookup_items(bundle)
-        broken_items = [i for i in dns_items if _looks_broken(i)]
+        # A live lookup only corroborates a healthcheck finding that is about the SAME record name.
+        finding_text = " ".join(f"{f.message} {f.keywords.get('key', '') if isinstance(f.keywords, dict) else ''}" for f in bad).lower()
+
+        def _same_record(item: EvidenceItem) -> bool:
+            qname = str(item.summary).split(" ", 1)[0].lower().rstrip(".")
+            return bool(qname) and qname in finding_text.replace(".:", ":").replace("..", ".")
+
+        broken_items = [i for i in dns_items if _looks_broken(i) and _same_record(i)]
         healthy_items = [i for i in dns_items if not _looks_broken(i)]
 
         if worst.severity == Severity.WARNING:
