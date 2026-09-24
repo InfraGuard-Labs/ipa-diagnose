@@ -447,6 +447,20 @@ def resolve_report(report, runner: Runner) -> Dict[str, Resolution]:
     return out
 
 
+def _refers_to_this(p: Any) -> bool:
+    """A verify criterion must actually test the fresh check result (not only literals)."""
+
+    if not isinstance(p, dict):
+        return False
+    if "all" in p or "any" in p:
+        subs = p.get("all") or p.get("any")
+        return isinstance(subs, list) and bool(subs) and all(_refers_to_this(q) for q in subs)
+    if "not" in p:
+        return _refers_to_this(p["not"])
+    left = p.get("left")
+    return isinstance(left, dict) and left.get("ref") == "this" and isinstance(left.get("field"), str)
+
+
 def evaluate_verify(criteria: List[Dict[str, Any]], runner: Runner) -> List[Tuple[str, Optional[bool], str]]:
     """Run stored verification criteria with FRESH read-only checks: (text, True/False/None, detail)."""
 
@@ -455,7 +469,11 @@ def evaluate_verify(criteria: List[Dict[str, Any]], runner: Runner) -> List[Tupl
         try:
             if not isinstance(c, dict):
                 raise _Unknown("malformed criterion")
+            if not _refers_to_this(c.get("when")):
+                raise _Unknown("criterion does not test the fresh check result")
             res = runner.run(str(c.get("check")), dict(c.get("params") or {}))
+            if res.status != OK:
+                raise _Unknown(res.display or "the check could not run")
             scope = _Scope({}, {"this": res})
             ok = _pred(c["when"], scope)
             results.append((sanitize_text(c.get("text", ""), 200), ok, res.display))
