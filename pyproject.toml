@@ -43,6 +43,8 @@ ai = ["ipa-diagnose[openai,anthropic,bedrock]"]
 dev = [
     "pytest>=8,<9",
     "pytest-cov>=5,<6",
+    # build-time only: compiles knowledge/procedures/*.yaml to JSON (the runtime never imports yaml)
+    "PyYAML>=6,<7",
 ]
 # cairosvg is intentionally NOT a declared extra: it's only used by
 # scripts/capture_screenshots.py (SVG -> PNG conversion) and pulling it into
@@ -60,7 +62,7 @@ ipa-diagnose = "ipa_diagnose.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-ipa_diagnose = ["py.typed"]
+ipa_diagnose = ["py.typed", "resolution/procedures.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

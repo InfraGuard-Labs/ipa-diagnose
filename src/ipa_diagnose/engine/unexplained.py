@@ -167,6 +167,8 @@ def _service_diagnosis(f: Finding, service: str) -> Diagnosis:
             )
         ],
         limitations="Root cause of the outage is not established by this finding alone.",
+        resolution_key="healthcheck.service-not-running",
+        bindings={"service": service},
     )
 
 

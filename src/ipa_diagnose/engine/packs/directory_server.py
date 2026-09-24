@@ -16,6 +16,7 @@ Four rules, one per well-documented root-cause cluster for this domain:
 
 from __future__ import annotations
 
+import re
 from typing import List, Optional, Tuple
 
 from ipa_diagnose.textsafe import safe_token
@@ -319,6 +320,19 @@ def _file_findings(bundle: EvidenceBundle) -> List[Finding]:
     return out
 
 
+def _permission_targets(findings: List[Finding]) -> dict:
+    """Structured (path, expected, got) from ipa-healthcheck's own owner/group/mode results, one list per kind.
+    Values are passed on as-is; the resolution engine validates each one by type."""
+
+    out: dict = {"targets_mode": [], "targets_owner": [], "targets_group": []}
+    for f in findings:
+        kw = f.keywords if isinstance(f.keywords, dict) else {}
+        kind = str(kw.get("type", ""))
+        if kind in ("mode", "owner", "group"):
+            out[f"targets_{kind}"].append({k: kw.get(k) for k in ("path", "expected", "got")})
+    return out
+
+
 def _recheck_ownership(bundle: EvidenceBundle) -> bool:
     if _at_least_warning(_file_findings(bundle)):
         return False
@@ -426,6 +440,8 @@ class OwnershipSelinuxMismatchRule(DiagnosticRule):
                     "administrator via `ausearch -m avc -ts recent`, not by this tool."
                 ),
                 upstream_candidates=[],
+                resolution_key="directory-server.ipa-file-permissions",
+                bindings=_permission_targets(file_findings),
             )
 
         # No IPAFileCheck-style finding naming an exact wrong value - just a
@@ -818,6 +834,13 @@ class DsCertificateExpiryRule(DiagnosticRule):
 
         any_expired = any(_expired(f) for f in relevant)
         worst = max(relevant, key=lambda f: f.severity.rank)
+        keys = {str(f.keywords.get("key", "")) if isinstance(f.keywords, dict) else "" for f in relevant}
+        # The procedure variant is decided by lib389's own result key, never by message wording.
+        variant = "expired" if "DSCERTLE0002" in keys else ("expiring" if keys == {"DSCERTLE0001"} else None)
+        nickname = None
+        if len(relevant) == 1:
+            m = re.match(r"^\s*The certificate \(([^)]{1,64})\) (?:will expire|has expired)", relevant[0].message or "")
+            nickname = m.group(1) if m else None
         state = "has EXPIRED" if any_expired else "expires within 30 days"
         return Diagnosis(
             pack_id=PACK_ID,
@@ -863,6 +886,9 @@ class DsCertificateExpiryRule(DiagnosticRule):
             ],
             limitations="This does not establish WHY the certificate was not renewed; check certmonger and the CA next.",
             upstream_candidates=[],
+            resolution_key="directory-server.certificate-expiry",
+            variant=variant,
+            bindings={"nickname": nickname} if nickname else {},
         )
 
 

@@ -1,0 +1,24 @@
+{
+ "file.stat|path=/var/lib/pki/pki-tomcat/conf/ca/CS.cfg": {
+  "command": "stat /var/lib/pki/pki-tomcat/conf/ca/CS.cfg",
+  "display": "/var/lib/pki/pki-tomcat/conf/ca/CS.cfg: mode 0664, owner pkiuser, group pkiuser",
+  "fields": {
+   "exists": true,
+   "group": "pkiuser",
+   "is_dir": false,
+   "is_regular": true,
+   "is_symlink": false,
+   "mode": "0664",
+   "owner": "pkiuser"
+  },
+  "status": "OK"
+ },
+ "host.privilege|": {
+  "command": "",
+  "display": "running as root",
+  "fields": {
+   "is_root": true
+  },
+  "status": "OK"
+ }
+}

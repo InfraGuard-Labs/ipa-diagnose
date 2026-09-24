@@ -245,6 +245,9 @@ class ClockSkewRule(DiagnosticRule):
                 "(MEDIUM) because it does not by itself prove the *relative* skew against the KDC."
             ),
             upstream_candidates=[],
+            resolution_key="kerberos.clock-skew",
+            # Only a measured desync of THIS host's clock can have a local fix.
+            variant="local-desync" if desync_hits else "kdc-reported",
         )
 
 

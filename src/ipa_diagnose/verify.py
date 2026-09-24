@@ -91,11 +91,21 @@ def load_previous_report(state_path: pathlib.Path) -> Optional[Dict[str, Any]]:
     return data
 
 
-def compare(previous: Optional[Dict[str, Any]], current: DiagnosisReport) -> VerifyResult:
+def _previous_resolutions(previous: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    v2 = previous.get("v2") if isinstance(previous.get("v2"), dict) else {}
+    out = {}
+    for r in v2.get("resolutions", []) if isinstance(v2.get("resolutions"), list) else []:
+        if isinstance(r, dict) and r.get("status") == "OFFERED" and isinstance(r.get("diagnosis_id"), str):
+            out[r["diagnosis_id"]] = r
+    return out
+
+
+def compare(previous: Optional[Dict[str, Any]], current: DiagnosisReport, runner=None) -> VerifyResult:
     if previous is None:
         return VerifyResult(items=[], new_conditions=[], previous_generated_at=None, current_report=current)
 
     prev_by_id = {d["diagnosis_id"]: d for d in previous.get("diagnoses", [])}
+    prev_resolutions = _previous_resolutions(previous)
     curr_by_id = {d.diagnosis_id: d for d in current.diagnoses}
     affected_packs_with_errors = {
         err.split(":", 1)[0].strip() for err in current.collection_errors
@@ -145,14 +155,24 @@ def compare(previous: Optional[Dict[str, Any]], current: DiagnosisReport) -> Ver
             )
             continue
         if curr_d is None:
-            items.append(
-                VerifyItem(
-                    diagnosis_id=diag_id,
-                    title=prev_d.get("title", diag_id),
-                    outcome=VerifyOutcome.RESOLVED,
-                    detail="The condition that triggered this diagnosis is no longer present in fresh evidence.",
-                )
-            )
+            outcome = VerifyOutcome.RESOLVED
+            detail = "The condition that triggered this diagnosis is no longer present in fresh evidence."
+            proc = prev_resolutions.get(diag_id)
+            if proc is not None and runner is not None and proc.get("verify"):
+                # The fix's own criteria, re-checked now with fresh read-only checks.
+                from ipa_diagnose.resolution.engine import evaluate_verify
+
+                results = evaluate_verify(proc["verify"], runner)
+                lines = [f"{'✓' if ok else ('✗' if ok is False else '?')} {text}" for text, ok, _ in results]
+                if any(ok is None for _, ok, _ in results):
+                    outcome = VerifyOutcome.UNABLE_TO_VERIFY
+                    detail = "The diagnosis is gone, but the fix's own checks could not all be run: " + "; ".join(lines)
+                elif all(ok for _, ok, _ in results):
+                    detail = "The diagnosis is gone and the fix's own checks pass: " + "; ".join(lines)
+                else:
+                    outcome = VerifyOutcome.PARTIALLY_RESOLVED
+                    detail = "The diagnosis is gone, but not every check of the fix passes yet: " + "; ".join(lines)
+            items.append(VerifyItem(diagnosis_id=diag_id, title=prev_d.get("title", diag_id), outcome=outcome, detail=detail))
             continue
 
         prev_root_tier = prev_d.get("priority") in {b.value for b in _ROOT_TIER}

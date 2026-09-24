@@ -1,0 +1,76 @@
+# Directory Server certificate expiring (lib389 DSCERTLE0001) -> ask certmonger to renew it now.
+kind: procedure
+id: proc.certs.renew-expiring-ds-certificate
+title: Renew the expiring Directory Server certificate now
+resolves:
+  diagnosis: directory-server.certificate-expiry
+  variant: expiring
+min_confidence: HIGH
+bindings:
+  nickname: {type: cert_nickname}
+applies_to:
+  freeipa_min: "4.9"
+  roles: [ipa-server]
+provenance:
+  tier: FIXTURE_ONLY
+  sources:
+    - kind: upstream-docs
+      ref: https://pagure.io/certmonger/blob/master/f/src/getcert-resubmit.1.in
+      title: "getcert-resubmit(1): resubmit a tracked certificate's signing request to its CA"
+    - kind: upstream-code
+      ref: https://github.com/389ds/389-ds-base/blob/main/src/lib389/lib389/lint.py
+      title: "lib389 DSCERTLE0001: certificate about to expire - renew it before it expires"
+  verified_on: []
+  reviews: []
+  tests:
+    - tests/resolution/test_procedures.py
+investigate:
+  - {id: root, check: host.privilege, params: {}, label: "Privileges"}
+  - {id: instance, check: ds.instance, params: {}, label: "Directory Server instance"}
+  - {id: certmonger, check: systemd.unit, params: {service: certmonger}, label: "certmonger service"}
+  - {id: cert, check: certmonger.ds_cert, params: {instance: {ref: instance, field: instance}, nickname: {bind: nickname}}, label: "certmonger tracking of {bind.nickname}"}
+  - {id: getcert, check: binary.present, params: {name: getcert}, label: "getcert installed"}
+withhold_if:
+  - when: {left: {ref: instance, field: count}, op: ne, right: 1}
+    reason: "Found {ref.instance.count} Directory Server instances; ipa-diagnose cannot tell which one the certificate belongs to."
+  - when: {left: {ref: certmonger, field: active_state}, op: ne, right: active}
+    reason: "certmonger is not running ({ref.certmonger.active_state}); it performs the renewal. Start it first (ipa-diagnose reports a stopped service as its own problem)."
+  - when: {left: {ref: cert, field: found}, op: is_false}
+    reason: "certmonger does not track {bind.nickname} in the Directory Server database, so there is no renewal request to resubmit. It may not be an IPA-issued certificate."
+  - when: {left: {ref: cert, field: ca}, op: ne, right: IPA}
+    reason: "{bind.nickname} is tracked with CA '{ref.cert.ca}', not the IPA CA. Renewing it is outside what ipa-diagnose can do safely."
+  - when: {left: {ref: cert, field: days_left}, op: lt, right: 0}
+    reason: "The certificate has already expired (certmonger shows {ref.cert.not_after}). ipa-diagnose has no verified fix for an expired certificate."
+  - when: {left: {ref: cert, field: state}, op: ne, right: MONITORING}
+    reason: "The renewal request is in state {ref.cert.state} ({ref.cert.ca_error}). That is a different problem from an upcoming expiry; resubmitting would not address it."
+  - when: {left: {ref: cert, field: post_save_restarts_dirsrv}, op: is_false}
+    reason: "The tracking request does not restart Directory Server after renewal, which is not the standard IPA setup; ipa-diagnose will not guess the follow-up steps."
+prerequisites:
+  - id: root
+    text: "ipa-diagnose is running as root (certmonger requests are managed by root)"
+    when: {left: {ref: root, field: is_root}, op: is_true}
+  - id: getcert
+    text: "getcert is installed"
+    when: {left: {ref: getcert, field: present}, op: is_true}
+steps:
+  - id: resubmit
+    text: "Ask certmonger to renew {bind.nickname} now (request {ref.cert.request_id})"
+    run_on: local
+    command: [getcert, resubmit, -i, {ref: cert, field: request_id, type: certmonger_request_id}]
+    risk: MEDIUM
+    changes: [certmonger-request, service-restart]
+    expected: "certmonger gets a new certificate from the IPA CA and saves it; its post-save command restarts Directory Server {ref.instance.instance}. 'getcert list' shows MONITORING again with a later expiry date."
+what_changes:
+  - text: "{bind.nickname} in /etc/dirsrv/slapd-{ref.instance.instance} is replaced by a newly issued certificate from the IPA CA. Directory Server on this server restarts once to load it (a short LDAP interruption here)."
+rollback:
+  - text: "This procedure does not keep the previous certificate. It is the same renewal certmonger performs on its own before expiry. If the new certificate is not issued, the request shows why in 'getcert list' and the current certificate stays in place until it expires."
+verify:
+  - text: "The renewal request is back to MONITORING"
+    check: certmonger.ds_cert
+    params: {instance: {ref: instance, field: instance}, nickname: {bind: nickname}}
+    when: {left: {ref: this, field: state}, op: eq, right: MONITORING}
+  - text: "The certificate is valid for more than 30 more days"
+    check: certmonger.ds_cert
+    params: {instance: {ref: instance, field: instance}, nickname: {bind: nickname}}
+    when: {left: {ref: this, field: days_left}, op: gt, right: 30}
+limitations: "This renews one certificate. It does not explain why certmonger had not renewed it yet (by default it renews shortly before expiry, so an expiring warning can be normal)."

@@ -64,9 +64,19 @@ def _ai_config_from_args(args: argparse.Namespace) -> AIConfig:
     return AIConfig.from_env_and_args(no_ai=args.no_ai, provider_arg=args.ai_provider)
 
 
+def _runner(args: argparse.Namespace):
+    from ipa_diagnose.resolution.checks import LiveRunner, ReplayRunner
+
+    return ReplayRunner(args.replay) if args.replay else LiveRunner()
+
+
 def _collect_and_diagnose(args: argparse.Namespace) -> tuple[EvidenceBundle, DiagnosisReport]:
+    from ipa_diagnose.resolution.engine import resolve_report
+
     bundle = collect_evidence(replay_dir=args.replay)
     report = run_diagnosis(bundle)
+    # Read-only checks + procedure selection; never changes the diagnosis or the overall status.
+    resolve_report(report, _runner(args))
     return bundle, report
 
 
@@ -133,7 +143,7 @@ def cmd_diagnose(args: argparse.Namespace, console: Console) -> int:
 def cmd_verify(args: argparse.Namespace, console: Console) -> int:
     bundle, report = _collect_and_diagnose(args)
     previous = load_previous_report(_state_path(args))
-    result = compare(previous, report)
+    result = compare(previous, report, runner=_runner(args))
 
     if args.json:
         print(

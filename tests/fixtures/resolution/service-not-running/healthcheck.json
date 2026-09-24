@@ -1,0 +1,58 @@
+[
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "dirsrv",
+  "result": "ERROR",
+  "uuid": "res-svc-dirsrv",
+  "when": "20260924120000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": false,
+   "msg": "dirsrv: not running"
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "krb5kdc",
+  "result": "SUCCESS",
+  "uuid": "res-svc-krb5kdc",
+  "when": "20260924120000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "httpd",
+  "result": "SUCCESS",
+  "uuid": "res-svc-httpd",
+  "when": "20260924120000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "certmonger",
+  "result": "SUCCESS",
+  "uuid": "res-svc-certmonger",
+  "when": "20260924120000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "chronyd",
+  "result": "SUCCESS",
+  "uuid": "res-svc-chronyd",
+  "when": "20260924120000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ }
+]

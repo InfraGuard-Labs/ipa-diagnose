@@ -1,0 +1,92 @@
+# ipa-healthcheck reports a wrong owner, group or mode on an IPA-managed file -> set exactly the value it expects.
+kind: procedure
+id: proc.files.restore-expected-permissions
+title: Set the owner, group or mode that ipa-healthcheck expects
+resolves:
+  diagnosis: directory-server.ipa-file-permissions
+min_confidence: MEDIUM
+bindings:
+  targets_mode: {type: list, item: {path: ipa_path, expected: file_mode, got: file_mode}}
+  targets_owner: {type: list, item: {path: ipa_path, expected: posix_name, got: posix_name}}
+  targets_group: {type: list, item: {path: ipa_path, expected: posix_name, got: posix_name}}
+applies_to:
+  freeipa_min: "4.9"
+  roles: [ipa-server]
+provenance:
+  tier: FIXTURE_ONLY
+  sources:
+    - kind: upstream-code
+      ref: https://github.com/freeipa/freeipa-healthcheck/blob/master/src/ipahealthcheck/core/files.py
+      title: "ipa-healthcheck FileCheck: the expected owner, group and mode are defined by ipa-healthcheck itself"
+    - kind: upstream-code
+      ref: https://github.com/freeipa/freeipa-healthcheck/blob/master/src/ipahealthcheck/ipa/files.py
+      title: "IPAFileCheck / TomcatFileCheck file lists"
+  verified_on: []
+  reviews: []
+  tests:
+    - tests/resolution/test_procedures.py
+investigate:
+  - {id: root, check: host.privilege, params: {}, label: "Privileges"}
+  - {id: stat, for_each: targets_mode, check: file.stat, params: {path: {item: path}}, label: "Current mode of {item.path}"}
+  - {id: stat, for_each: targets_owner, check: file.stat, params: {path: {item: path}}, label: "Current owner of {item.path}"}
+  - {id: stat, for_each: targets_group, check: file.stat, params: {path: {item: path}}, label: "Current group of {item.path}"}
+  - {id: account, for_each: targets_owner, check: account.user, params: {name: {item: expected}}, label: "User {item.expected} exists"}
+  - {id: account, for_each: targets_group, check: account.group, params: {name: {item: expected}}, label: "Group {item.expected} exists"}
+withhold_if:
+  # applied to each reported file; an affected file is dropped from the fix with the reason shown
+  - {for_each: targets_mode, when: {left: {ref: stat, field: exists}, op: is_false}, reason: "{item.path} no longer exists."}
+  - {for_each: targets_owner, when: {left: {ref: stat, field: exists}, op: is_false}, reason: "{item.path} no longer exists."}
+  - {for_each: targets_group, when: {left: {ref: stat, field: exists}, op: is_false}, reason: "{item.path} no longer exists."}
+  - {for_each: targets_mode, when: {left: {ref: stat, field: is_symlink}, op: is_true}, reason: "{item.path} is a symbolic link; ipa-diagnose will not change permissions through a link."}
+  - {for_each: targets_owner, when: {left: {ref: stat, field: is_symlink}, op: is_true}, reason: "{item.path} is a symbolic link; ipa-diagnose will not change ownership through a link."}
+  - {for_each: targets_group, when: {left: {ref: stat, field: is_symlink}, op: is_true}, reason: "{item.path} is a symbolic link; ipa-diagnose will not change ownership through a link."}
+  - {for_each: targets_mode, when: {left: {ref: stat, field: mode}, op: eq, right: {item: expected}}, reason: "{item.path} already has mode {item.expected} now (checked just now)."}
+  - {for_each: targets_owner, when: {left: {ref: stat, field: owner}, op: eq, right: {item: expected}}, reason: "{item.path} is already owned by {item.expected} now (checked just now)."}
+  - {for_each: targets_group, when: {left: {ref: stat, field: group}, op: eq, right: {item: expected}}, reason: "{item.path} already has group {item.expected} now (checked just now)."}
+  - {for_each: targets_mode, when: {left: {ref: stat, field: mode}, op: ne, right: {item: got}}, reason: "{item.path} changed since ipa-healthcheck ran (now mode {ref.stat.mode}, reported {item.got}); run ipa-diagnose again."}
+  - {for_each: targets_owner, when: {left: {ref: stat, field: owner}, op: ne, right: {item: got}}, reason: "{item.path} changed since ipa-healthcheck ran (now owner {ref.stat.owner}, reported {item.got}); run ipa-diagnose again."}
+  - {for_each: targets_group, when: {left: {ref: stat, field: group}, op: ne, right: {item: got}}, reason: "{item.path} changed since ipa-healthcheck ran (now group {ref.stat.group}, reported {item.got}); run ipa-diagnose again."}
+  - {for_each: targets_owner, when: {left: {ref: account, field: exists}, op: is_false}, reason: "The expected owner {item.expected} of {item.path} does not exist on this host; changing the owner is not safe."}
+  - {for_each: targets_group, when: {left: {ref: account, field: exists}, op: is_false}, reason: "The expected group {item.expected} of {item.path} does not exist on this host; changing the group is not safe."}
+prerequisites:
+  - id: root
+    text: "ipa-diagnose is running as root (changing these files needs root)"
+    when: {left: {ref: root, field: is_root}, op: is_true}
+steps:
+  - id: chmod
+    for_each: targets_mode
+    text: "Set the mode of {item.path} to {item.expected}"
+    run_on: local
+    command: [chmod, {item: expected, type: file_mode}, {item: path, type: ipa_path}]
+    risk: LOW
+    changes: [file-permission]
+    expected: "no output; the file's mode is {item.expected}"
+  - id: chown
+    for_each: targets_owner
+    text: "Set the owner of {item.path} to {item.expected}"
+    run_on: local
+    command: [chown, {item: expected, type: posix_name}, {item: path, type: ipa_path}]
+    risk: LOW
+    changes: [file-permission]
+    expected: "no output; the file is owned by {item.expected}"
+  - id: chgrp
+    for_each: targets_group
+    text: "Set the group of {item.path} to {item.expected}"
+    run_on: local
+    command: [chgrp, {item: expected, type: posix_name}, {item: path, type: ipa_path}]
+    risk: LOW
+    changes: [file-permission]
+    expected: "no output; the file's group is {item.expected}"
+what_changes:
+  - {for_each: targets_mode, text: "{item.path}: mode {item.got} -> {item.expected}. Nothing else about the file changes."}
+  - {for_each: targets_owner, text: "{item.path}: owner {item.got} -> {item.expected}. Nothing else about the file changes."}
+  - {for_each: targets_group, text: "{item.path}: group {item.got} -> {item.expected}. Nothing else about the file changes."}
+rollback:
+  - {for_each: targets_mode, text: "Put the previous mode of {item.path} back", command: [chmod, {item: got, type: file_mode}, {item: path, type: ipa_path}]}
+  - {for_each: targets_owner, text: "Put the previous owner of {item.path} back", command: [chown, {item: got, type: posix_name}, {item: path, type: ipa_path}]}
+  - {for_each: targets_group, text: "Put the previous group of {item.path} back", command: [chgrp, {item: got, type: posix_name}, {item: path, type: ipa_path}]}
+verify:
+  - {for_each: targets_mode, text: "{item.path} has mode {item.expected}", check: file.stat, params: {path: {item: path}}, when: {left: {ref: this, field: mode}, op: eq, right: {item: expected}}}
+  - {for_each: targets_owner, text: "{item.path} is owned by {item.expected}", check: file.stat, params: {path: {item: path}}, when: {left: {ref: this, field: owner}, op: eq, right: {item: expected}}}
+  - {for_each: targets_group, text: "{item.path} has group {item.expected}", check: file.stat, params: {path: {item: path}}, when: {left: {ref: this, field: group}, op: eq, right: {item: expected}}}
+limitations: "This sets only the owner, group or mode ipa-healthcheck reports; it does not change SELinux labels. If a service still cannot read the file afterwards, check 'ls -Z' and 'ausearch -m avc'. When ipa-healthcheck accepts more than one value, no fix is chosen for you."

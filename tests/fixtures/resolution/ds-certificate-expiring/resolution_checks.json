@@ -1,0 +1,56 @@
+{
+ "binary.present|name=getcert": {
+  "command": "",
+  "display": "getcert: installed",
+  "fields": {
+   "present": true
+  },
+  "status": "OK"
+ },
+ "certmonger.ds_cert|instance=LAB-TEST,nickname=Server-Cert": {
+  "command": "",
+  "display": "request 20260101120000: MONITORING, CA IPA, expires in 12 days",
+  "fields": {
+   "ca": "IPA",
+   "ca_error": "",
+   "found": true,
+   "not_after": "(12 days from now)",
+   "not_after_in_days": 12,
+   "post_save_restarts_dirsrv": true,
+   "request_id": "20260101120000",
+   "state": "MONITORING"
+  },
+  "status": "OK"
+ },
+ "ds.instance|": {
+  "command": "",
+  "display": "1 Directory Server instance(s): LAB-TEST",
+  "fields": {
+   "count": 1,
+   "instance": "LAB-TEST"
+  },
+  "status": "OK"
+ },
+ "host.privilege|": {
+  "command": "",
+  "display": "running as root",
+  "fields": {
+   "is_root": true
+  },
+  "status": "OK"
+ },
+ "systemd.unit|service=certmonger": {
+  "command": "",
+  "display": "certmonger.service: active (running)",
+  "fields": {
+   "active_state": "active",
+   "load_state": "loaded",
+   "result": "success",
+   "start_method": "systemctl",
+   "sub_state": "running",
+   "unit": "certmonger.service",
+   "unit_file_state": "enabled"
+  },
+  "status": "OK"
+ }
+}

@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import dataclasses
 import enum
-from typing import Callable, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from ipa_diagnose.evidence.model import EnvironmentInfo, EvidenceBundle, Severity
 
@@ -148,6 +148,15 @@ class Diagnosis:
     "related to: <title>" directly rather than requiring the reader to parse
     it out of `why`'s free text - a real UX gap found in review, where a
     RELATED SYMPTOMS entry's parent problem wasn't visually obvious."""
+    resolution_key: Optional[str] = None
+    """Stable id of the diagnosed *condition* that a resolution procedure can
+    attach to (e.g. "healthcheck.service-not-running"). Set by rule code only
+    when the rule's evidence identifies the condition exactly."""
+    variant: Optional[str] = None
+    """Sub-case of the condition that changes the fix (e.g. "expiring" vs "expired")."""
+    bindings: Dict[str, Any] = dataclasses.field(default_factory=dict)
+    """Structured values from the evidence that a procedure may use (validated
+    again by type before any of them can reach a printed command)."""
 
     def __post_init__(self) -> None:
         if not self.diagnosis_id:
@@ -249,6 +258,8 @@ class DiagnosisReport:
     """ipa-healthcheck WARNING findings that no diagnostic rule covers (never dropped silently)."""
     undiagnosed_findings: List[UndiagnosedFinding] = dataclasses.field(default_factory=list)
     """Every WARNING-or-worse ipa-healthcheck finding no rule explains, by name (never only a count)."""
+    resolutions: Dict[str, Any] = dataclasses.field(default_factory=dict)
+    """diagnosis_id -> resolution.engine.Resolution, filled by resolve_report (1.0 Slice 1)."""
     unknown_severity_findings: List[str] = dataclasses.field(default_factory=list)
     """Human-readable notes for any Finding whose raw ipa-healthcheck
     ``result`` value did not match a known severity (see Severity.UNKNOWN) -

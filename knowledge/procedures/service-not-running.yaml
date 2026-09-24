@@ -1,0 +1,76 @@
+# Required service not running -> start it (ipactl for IPA-managed services, systemctl otherwise).
+kind: procedure
+id: proc.service.start-stopped-service
+title: Start the stopped service
+resolves:
+  diagnosis: healthcheck.service-not-running
+min_confidence: HIGH
+bindings:
+  service: {type: ipa_service}
+applies_to:
+  freeipa_min: "4.9"
+  roles: [ipa-server]
+provenance:
+  tier: FIXTURE_ONLY
+  sources:
+    - kind: upstream-code
+      ref: https://github.com/freeipa/freeipa/blob/master/install/tools/man/ipactl.1
+      title: "ipactl(8): start, stop or restart all IPA services; services that are already running are left running"
+    - kind: upstream-code
+      ref: https://github.com/freeipa/freeipa-healthcheck/blob/master/src/ipahealthcheck/meta/services.py
+      title: "ipa-healthcheck service checks report '<service>: not running'"
+  verified_on: []
+  reviews: []
+  tests:
+    - tests/resolution/test_procedures.py
+investigate:
+  - {id: root, check: host.privilege, params: {}, label: "Privileges"}
+  - {id: unit, check: systemd.unit, params: {service: {bind: service}}, label: "State of {bind.service}"}
+  - {id: journal, check: systemd.journal_tail, params: {unit: {ref: unit, field: unit}}, label: "Recent log of {ref.unit.unit}"}
+  - {id: ipactl, check: binary.present, params: {name: ipactl}, label: "ipactl installed"}
+withhold_if:
+  - when: {left: {ref: unit, field: load_state}, op: eq, right: masked}
+    reason: "{ref.unit.unit} is masked: someone disabled it on purpose. ipa-diagnose will not suggest unmasking it; find out why it was masked first."
+  - when: {left: {ref: unit, field: load_state}, op: ne, right: loaded}
+    reason: "{ref.unit.unit} is not a loaded unit on this host (load state {ref.unit.load_state}), so it cannot simply be started."
+  - when: {left: {ref: unit, field: active_state}, op: eq, right: active}
+    reason: "{ref.unit.unit} is running now (checked just now), so there is nothing to start. Run ipa-diagnose again to refresh the findings."
+  - when: {left: {ref: unit, field: active_state}, op: in, right: [activating, deactivating, reloading]}
+    reason: "{ref.unit.unit} is currently {ref.unit.active_state}. Wait for it to settle, then run ipa-diagnose again."
+prerequisites:
+  - id: root
+    text: "ipa-diagnose is running as root (starting a system service needs root)"
+    when: {left: {ref: root, field: is_root}, op: is_true}
+  - id: tool
+    text: "The start command is available (ipactl for IPA-managed services, systemctl otherwise)"
+    when:
+      any:
+        - {left: {ref: unit, field: start_method}, op: eq, right: systemctl}
+        - {left: {ref: ipactl, field: present}, op: is_true}
+steps:
+  - id: start-ipactl
+    only_if: {left: {ref: unit, field: start_method}, op: eq, right: ipactl}
+    text: "Start the stopped IPA services (services that are already running are left as they are)"
+    run_on: local
+    command: [ipactl, start]
+    risk: MEDIUM
+    changes: [service-start]
+    expected: "ipactl reports each service as it starts, and {ref.unit.unit} ends up running"
+  - id: start-systemctl
+    only_if: {left: {ref: unit, field: start_method}, op: eq, right: systemctl}
+    text: "Start {ref.unit.unit}"
+    run_on: local
+    command: [systemctl, start, {ref: unit, field: unit, type: systemd_unit}]
+    risk: MEDIUM
+    changes: [service-start]
+    expected: "the command returns without an error and {ref.unit.unit} is active"
+what_changes:
+  - text: "{ref.unit.unit} goes from {ref.unit.active_state} to running. No configuration, data or already-running service is changed."
+rollback:
+  - text: "Starting a stopped service leaves nothing to undo. If it fails to start, it stays stopped and its log says why; run ipa-diagnose again and it reports that failure."
+verify:
+  - text: "{ref.unit.unit} is active"
+    check: systemd.unit
+    params: {service: {bind: service}}
+    when: {left: {ref: this, field: active_state}, op: eq, right: active}
+limitations: "This starts the service; it does not establish why it stopped. If it stops again, the log lines shown under 'Checked for you' are the place to start."

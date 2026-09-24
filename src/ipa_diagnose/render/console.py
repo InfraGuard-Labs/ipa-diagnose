@@ -101,14 +101,17 @@ def render_report(
     warnings = report.by_priority(PriorityBucket.WARNING)
     info = report.by_priority(PriorityBucket.INFORMATIONAL)
 
+    res = report.resolutions or {}
     for d in primaries:
-        _render_primary_block(d, console, ai_explanations.get(d.diagnosis_id), details=details)
+        _render_primary_block(d, console, ai_explanations.get(d.diagnosis_id), details=details,
+                              resolution=res.get(d.diagnosis_id))
 
     if secondaries:
         console.print(Rule("OTHER INDEPENDENT PROBLEMS", style="yellow"))
         console.print("[dim]May or may not be related to the problem above - each needs its own investigation.[/dim]\n")
         for d in secondaries:
-            _render_primary_block(d, console, ai_explanations.get(d.diagnosis_id), details=details, compact=not details)
+            _render_primary_block(d, console, ai_explanations.get(d.diagnosis_id), details=details, compact=not details,
+                                  resolution=res.get(d.diagnosis_id))
 
     if related:
         console.print(Rule("RELATED SYMPTOMS", style="dim"))
@@ -123,10 +126,16 @@ def render_report(
         console.print()
 
     if warnings:
-        console.print(Rule("WARNINGS", style="dim"))
-        for d in warnings:
-            console.print(f"  ⚠ {escape(d.title)}")
-        console.print()
+        with_fix = [d for d in warnings if d.diagnosis_id in res]
+        plain = [d for d in warnings if d.diagnosis_id not in res]
+        if plain:
+            console.print(Rule("WARNINGS", style="dim"))
+            for d in plain:
+                console.print(f"  ⚠ {escape(d.title)}")
+            console.print()
+        for d in with_fix:
+            _render_primary_block(d, console, ai_explanations.get(d.diagnosis_id), details=details,
+                                  resolution=res.get(d.diagnosis_id), label="WARNING")
 
     if details and info:
         console.print(Rule("INFORMATIONAL", style="dim"))
@@ -143,10 +152,14 @@ def _first_line(text: str) -> str:
 
 
 def _render_primary_block(
-    d: Diagnosis, console: Console, ai_explanation: Optional[str], *, details: bool, compact: bool = False
+    d: Diagnosis, console: Console, ai_explanation: Optional[str], *, details: bool, compact: bool = False,
+    resolution=None, label: Optional[str] = None,
 ) -> None:
-    label = "PRIMARY PROBLEM" if d.priority == PriorityBucket.PRIMARY else "INDEPENDENT PROBLEM"
+    if label is None:
+        label = "PRIMARY PROBLEM" if d.priority == PriorityBucket.PRIMARY else "INDEPENDENT PROBLEM"
     console.print(Rule(label, style="red" if d.priority == PriorityBucket.PRIMARY else "yellow"))
+    if resolution is not None and d.status == DiagnosisStatus.DIAGNOSED:
+        console.print(Text("ROOT CAUSE", style="bold underline"))
     console.print(Text(d.title, style="bold"))
     console.print()
 
@@ -169,10 +182,17 @@ def _render_primary_block(
                 console.print(f"  [yellow]✗ (contradicts) {escape(ref.why_relevant)}[/yellow]")
         console.print()
 
+    if resolution is not None and resolution.checks:
+        _render_checked(resolution, console)
+
     if d.impact:
         console.print(Text("IMPACT", style="bold underline"))
         console.print(escape(d.impact))
         console.print()
+
+    if resolution is not None:
+        _render_resolution(d, resolution, console, details=details)
+        return
 
     if d.status != DiagnosisStatus.DIAGNOSED and d.next_diagnostic_step:
         console.print(Text("DO THIS NEXT", style="bold underline"))
@@ -223,6 +243,122 @@ def _render_primary_block(
             for v in d.verification:
                 console.print(f"  - {escape(v.description)}")
         console.print()
+
+
+_PROC_RISK = {
+    "LOW": ("green", "LOW - a small, reversible change"),
+    "MEDIUM": ("yellow", "MEDIUM - changes a running system; read each step before running it"),
+    "HIGH": ("red", "HIGH - hard to reverse or affects other servers"),
+}
+_CHECK_MARK = {"OK": "✓", "FAILED": "✗", "NOT_RUN": "?", "DENIED": "?"}
+
+
+def _render_checked(r, console: Console) -> None:
+    console.print(Text("CHECKED FOR YOU", style="bold underline"))
+    console.print("[dim]Read-only checks ipa-diagnose ran on this host just now:[/dim]")
+    for label, c in r.checks:
+        mark = _CHECK_MARK.get(c.status, "?")
+        result = c.display or c.status
+        console.print(f"  {mark} {escape(label)}: {escape(result)}")
+    console.print()
+
+
+def _render_resolution(d: Diagnosis, r, console: Console, *, details: bool) -> None:
+    """ROOT CAUSE -> WHY -> IMPACT (above) -> FIX -> PREREQUISITES -> WHAT THIS CHANGES -> RISK -> ROLLBACK -> VERIFY."""
+
+    if r.status == "NONE":
+        console.print(Text("FIX", style="bold underline"))
+        console.print("[bold]No deterministic fix is shown.[/bold]")
+        for reason in r.reasons:
+            console.print(escape(reason))
+        if r.reference:
+            console.print(f"Documentation: {escape(r.reference)}")
+        console.print()
+        _render_safe_legacy_actions(d, console)
+        return
+    if r.status != "OFFERED":
+        console.print(Text("FIX", style="bold underline"))
+        console.print("[bold yellow]No fix is shown[/bold yellow] - ipa-diagnose shows a fix only when it could confirm, "
+                      "with fresh read-only checks, that it applies here and is safe to suggest.")
+        for reason in r.reasons:
+            console.print(f"  - {escape(reason)}")
+        console.print()
+        _render_safe_legacy_actions(d, console)
+        return
+
+    console.print(Text("FIX", style="bold underline"))
+    count = len(r.steps)
+    console.print(f"[bold]{escape(r.title)}[/bold] - {count} step{'s' if count != 1 else ''} on this server, "
+                  "run by you (ipa-diagnose never runs a fix itself).")
+    if not r.definitive:
+        console.print(f"[yellow]{escape(r.verification_label)}[/yellow]")
+    for i, st in enumerate(r.steps, 1):
+        console.print(f"  {i}. {escape(st.text)}")
+        console.print(f"       [bold cyan]{escape(st.command)}[/bold cyan]")
+        if details:
+            console.print(f"       [dim]expected: {escape(st.expected)} | risk {st.risk}[/dim]")
+    for reason in r.reasons:  # e.g. a reported file that was skipped
+        console.print(f"  [dim]note: {escape(reason)}[/dim]")
+    console.print()
+
+    if r.prerequisites:
+        console.print(Text("PREREQUISITES", style="bold underline"))
+        for p in r.prerequisites:
+            if p.state == "met":
+                console.print(f"  ✓ {escape(p.text)} (checked)")
+            else:
+                console.print(f"  [yellow]! You must confirm:[/yellow] {escape(p.text)}")
+        console.print()
+
+    console.print(Text("WHAT THIS CHANGES", style="bold underline"))
+    for w in r.what_changes:
+        console.print(f"  - {escape(w)}")
+    console.print()
+
+    style, text = _PROC_RISK.get(r.risk, ("yellow", r.risk))
+    console.print(Text("RISK", style="bold underline"))
+    console.print(f"[{style}]{text}[/{style}]")
+    console.print()
+
+    console.print(Text("ROLLBACK", style="bold underline"))
+    for rb in r.rollback:
+        console.print(f"  - {escape(rb['text'])}")
+        if rb.get("argv"):
+            console.print(f"       [cyan]{escape(' '.join(rb['argv']))}[/cyan]")
+    console.print()
+
+    console.print(Text("VERIFY", style="bold underline"))
+    console.print("After the fix, run:\n\n    [bold]sudo ipa-diagnose verify[/bold]\n")
+    console.print("It re-runs the diagnosis and checks, with fresh evidence:")
+    for v in r.verify:
+        console.print(f"  - {escape(v['text'])}")
+    console.print()
+
+    if details:
+        console.print(Text("CONFIDENCE", style="bold underline"))
+        console.print(escape(f"{d.confidence.level.value}: {d.confidence.rationale}"))
+        console.print()
+        console.print(Text("ABOUT THIS FIX", style="bold underline"))
+        console.print(escape(f"Procedure {r.procedure_id} | applies to: {r.applies_to} | knowledge tier: {r.tier}"))
+        console.print(escape(r.verification_label))
+        if r.limitations:
+            console.print(escape(f"Limitations: {r.limitations}"))
+        console.print()
+
+
+def _render_safe_legacy_actions(d: Diagnosis, console: Console) -> None:
+    """When no procedure is offered, only read-only guidance from the older action list is shown."""
+
+    safe = [a for a in d.actions if a.risk == RiskLevel.SAFE]
+    if not safe:
+        return
+    console.print(Text("SAFE NEXT STEP", style="bold underline"))
+    console.print(escape(safe[0].description))
+    if safe[0].command:
+        console.print(f"\n    [bold cyan]{escape(safe[0].command)}[/bold cyan]\n")
+    style, label = _RISK_STYLE[RiskLevel.SAFE]
+    console.print(f"Safety: [{style}]{label}[/{style}]")
+    console.print()
 
 
 _VERIFY_STYLE = {
@@ -328,7 +464,7 @@ def _print_undiagnosed(report: DiagnosisReport, console: Console, *, details: bo
     for u in shown:
         crash = " [check crashed]" if u.crashed else ""
         keyed = f" - {u.key}" if u.key and u.key not in u.message else ""
-        console.print(f"  • \[{escape(u.severity)}] {escape(u.source)}.{escape(u.check)}{escape(crash)}: {escape(u.message)}{escape(keyed)}")
+        console.print(f"  • \\[{escape(u.severity)}] {escape(u.source)}.{escape(u.check)}{escape(crash)}: {escape(u.message)}{escape(keyed)}")
         if details:
             since = f"check available since ipa-healthcheck {u.check_known_since}" if u.check_known_since else "not in this build's upstream check catalog"
             ver = f"; installed ipa-healthcheck {u.ipa_healthcheck_version}" if u.ipa_healthcheck_version else ""

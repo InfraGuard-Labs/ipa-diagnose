@@ -120,4 +120,37 @@ def report_to_dict(report: DiagnosisReport, ai_explanations: Dict[str, str] = No
         "diagnoses": [
             _diagnosis_to_dict(d, ai_explanations.get(d.diagnosis_id)) for d in report.diagnoses
         ],
+        # 1.0 additions: v1 keys above are frozen; everything new lives under "v2".
+        "report_schema_version": 2,
+        "v2": {"resolutions": [resolution_to_dict(r) for r in (report.resolutions or {}).values()]},
+    }
+
+
+def resolution_to_dict(r) -> Dict[str, Any]:
+    return {
+        "diagnosis_id": r.diagnosis_id,
+        "status": r.status,
+        "procedure_id": r.procedure_id,
+        "title": r.title,
+        "reasons": list(r.reasons),
+        "checked": [
+            {"label": label, "check": c.check_id, "status": c.status, "result": c.display, "command": c.command}
+            for label, c in r.checks
+        ],
+        "prerequisites": [{"text": p.text, "state": p.state} for p in r.prerequisites],
+        "steps": [
+            {"id": s.step_id, "text": s.text, "argv": list(s.argv), "command": s.command, "risk": s.risk,
+             "changes": list(s.changes), "expected": s.expected, "run_on": s.run_on}
+            for s in r.steps
+        ],
+        "what_changes": list(r.what_changes),
+        "risk": r.risk if r.steps else None,
+        "rollback": [dict(x) for x in r.rollback],
+        "verify": list(r.verify),
+        "applies_to": r.applies_to,
+        "tier": r.tier,
+        "definitive": r.definitive,
+        "verification_label": r.verification_label,
+        "limitations": r.limitations,
+        "reference": r.reference,
     }
