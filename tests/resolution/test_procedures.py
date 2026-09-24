@@ -117,7 +117,7 @@ def _mutate(fn):
     lambda p: p["steps"][0].__setitem__("risk", "READ_ONLY"),
     lambda p: p["steps"][0].__setitem__("changes", ["service-start"]),                        # LOW < MEDIUM minimum
     lambda p: p.__setitem__("surprise", 1),                                                   # unknown field
-    lambda p: p["provenance"].__setitem__("tier", "BUILT_IN_VERIFIED"),                       # no live record / review
+    lambda p: p["provenance"].update(tier="BUILT_IN_VERIFIED", verified_on=[], reviews=[]),  # no live record / review
     lambda p: p["steps"][0].__setitem__("run_on", "every_server"),
     lambda p: p["investigate"][1].__setitem__("check", "shell.run"),
     lambda p: p["verify"].clear(),
@@ -132,6 +132,7 @@ def test_built_in_verified_requires_every_o10_element():
     prov = proc["provenance"]
     prov["tier"] = "BUILT_IN_VERIFIED"
     prov["verified_on"] = [{"freeipa": "4.13.3", "os": "fedora-43", "tier": "LIVE", "evidence": "https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36055264033"}]
+    prov["reviews"] = []
     with pytest.raises(K.KnowledgeError, match="independent review"):
         K.validate_catalogue(copy.deepcopy(cat))
     prov["reviews"] = [{"by": "fresh reviewer", "date": "2026-09-24", "scope": "procedure", "independent": True}]

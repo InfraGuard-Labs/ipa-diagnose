@@ -293,7 +293,8 @@ def _label(proc: Dict[str, Any], env: Optional[EnvironmentInfo]) -> Tuple[bool, 
     if live and not matched:
         return False, f"Verified in a live lab on {where} only - not yet on this FreeIPA version/OS. Check each step before running it."
     if live:
-        return False, f"Verified in a live lab on {where}; independent review pending. Check each step before running it."
+        return False, (f"Verified in a live lab on {where} (not yet marked fully verified by the maintainer). "
+                       "Check each step before running it.")
     return False, "Not yet verified on a live FreeIPA server (tested against recorded evidence only). Check each step before running it."
 
 

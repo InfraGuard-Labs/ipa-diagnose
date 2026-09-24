@@ -14,7 +14,7 @@ applies_to:
   freeipa_below: "5.0"
   roles: [ipa-server]
 provenance:
-  tier: FIXTURE_ONLY
+  tier: LIVE_VERIFIED
   sources:
     - kind: upstream-code
       ref: https://github.com/freeipa/freeipa-healthcheck/blob/master/src/ipahealthcheck/meta/services.py
@@ -22,10 +22,20 @@ provenance:
     - kind: upstream-code
       ref: https://github.com/freeipa/freeipa/blob/master/ipaserver/install/ipactl.py
       title: "ipactl start stops all IPA services when one fails to start - why this procedure starts the single unit"
-  verified_on: []
-  reviews: []
+  verified_on:
+    - freeipa: "4.13.3"
+      os: fedora-43
+      tier: LIVE
+      evidence: https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36057446151
+      date: "2026-09-24"
+  reviews:
+    - by: "fresh reviewer agents that did not implement Slice 1 (independent within a one-maintainer project), rounds 1-4"
+      date: "2026-09-24"
+      scope: "adversarial: tried to make ipa-diagnose offer a wrong or unsafe procedure; all blockers fixed and regression-tested"
+      independent: true
   tests:
     - tests/resolution/test_procedures.py
+    - tests/resolution/test_round3_regressions.py
 investigate:
   - {id: root, check: host.privilege, params: {}, label: "Privileges"}
   - {id: unit, check: systemd.unit, params: {service: {bind: service}}, label: "State of {bind.service}"}

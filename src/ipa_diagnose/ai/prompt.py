@@ -29,16 +29,17 @@ from ipa_diagnose.privacy.minimize import build_ai_payload
 # "reject anything command-shaped we don't recognize as approved," not
 # "recognize every dangerous command by name."
 _COMMAND_LIKE = re.compile(
-    # Zero-width lookbehind for the boundary (start-of-string, whitespace, or
-    # a backtick) rather than a consuming group - otherwise match.group(0)
-    # includes the boundary character and would never equal an approved
-    # command string during comparison.
-    r"(?<![^\s`])(?:\$\s*)?(?:sudo\s+)?(?:/usr/(?:s?bin)/)?"
-    r"(ipa[\w-]*|getcert|kinit|klist|kvno|dsconf|dsctl|ldapmodify|ldapsearch|"
+    # Zero-width lookbehind for the boundary (anything but a word, path or dot
+    # character: quotes, brackets, '**', '|', '&&' all count) rather than a
+    # consuming group, and any path prefix (/bin/, /usr/sbin/, ...).
+    r"(?<![\w./-])(?:\$\s*)?(?:sudo\s+)?(?:/[\w.-]+)*/?"
+    r"(ipa[\w-]*|getcert|kinit|klist|kvno|dsconf|dsctl|ldapmodify|ldapsearch|ldapadd|ldapdelete|"
     r"systemctl|service|reboot|shutdown|halt|poweroff|init\s+0|"
-    r"rm\b|mkfs[\w.]*|dd\b|userdel|groupdel|iptables|firewall-cmd|"
-    r"dnf|yum|rpm\b|certutil|db2index[\w.]*|chmod|chown|kill(?:all)?|"
-    r"curl|wget|python[\w.]*|perl|bash|sh\b|nc\b|ncat|chronyc|chgrp|setfacl|restorecon|mv\b|cp\b)\b",
+    r"rm\b|mkfs[\w.]*|dd\b|userdel|groupdel|usermod|passwd|iptables|firewall-cmd|"
+    r"dnf|yum|rpm\b|certutil|pk12util|openssl|pki\b|db2index[\w.]*|chmod|chown|chgrp|kill(?:all)?|"
+    r"curl|wget|python[\w.]*|perl|bash|sh\b|nc\b|ncat|ssh|scp|crontab|tee\b|sed\s+-i|"
+    r"chronyc|ntpdate|hwclock|timedatectl|date\s+(?:-s|--set)|setenforce|semanage|setfacl|restorecon|"
+    r"kadmin[\w.]*|kdb5_util|mv\b|cp\b|ln\b)\b",
     re.IGNORECASE,
 )
 _CODE_SPAN = re.compile(r"`([^`\n]{1,200})`")

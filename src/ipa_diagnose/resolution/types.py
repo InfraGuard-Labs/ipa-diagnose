@@ -55,6 +55,20 @@ IPA_LAYOUT_LINKS = {
     "/var/lib/pki/pki-tomcat/kra/logs": "/var/log/pki/pki-tomcat/kra",
     "/var/lib/pki/pki-tomcat/kra/alias": "/var/lib/pki/pki-tomcat/alias",
 }
+# Which IPA component a location belongs to. A file-permission fix for a reported path may only act on a real
+# file of the same component (so no chain of links can turn a PKI finding into a command on a DS file).
+IPA_COMPONENTS = {
+    "pki": ("/etc/pki/pki-tomcat/", "/var/lib/pki/", "/var/log/pki/"),
+    "dirsrv": ("/etc/dirsrv/", "/var/log/dirsrv/"),
+    "ipa": ("/etc/ipa/", "/var/lib/ipa/", "/var/log/ipa/", "/usr/share/ipa/", "/var/log/ipaserver-install.log",
+            "/var/log/ipareplica-install.log", "/var/log/ipaclient-install.log", "/var/log/ipaupgrade.log"),
+    "httpd": ("/etc/httpd/", "/var/log/httpd/"),
+    "named": ("/var/named/", "/etc/named.conf", "/etc/named.keytab"),
+    "kerberos": ("/var/kerberos/krb5kdc/", "/etc/krb5.keytab", "/etc/krb5.conf", "/var/log/krb5kdc.log",
+                 "/var/log/kadmind.log"),
+    "sssd": ("/etc/sssd/",),
+    "gssproxy": ("/etc/gssproxy/",),
+}
 # Accounts ipa-healthcheck's file checks expect as owner/group (service accounts of IPA components).
 IPA_ACCOUNTS = frozenset({"root", "dirsrv", "pkiuser", "named", "apache", "ipaapi", "kdcproxy", "sssd", "ods", "gssproxy"})
 

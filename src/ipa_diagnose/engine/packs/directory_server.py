@@ -355,7 +355,8 @@ def _is_key_material(path: str) -> bool:
     return ("/private/" in path or "/custodia/" in path or "/dnssec/" in path or "/backup/" in path
             or name.startswith(".") or "ccache" in name or "softhsm_pin" in name
             or name.endswith((".key", ".keytab", "-key.pem", ".keys", ".p12", ".pin"))
-            or name in ("key4.db", "key3.db", "password.conf", "pwdfile.txt", "pin.txt", "dse.ldif"))
+            # also their backup/temporary/journal siblings (dse.ldif.bak, key4.db-journal, pwdfile.txt.orig, ...)
+            or name.startswith(("key4.db", "key3.db", "password.conf", "pwdfile", "pin.txt", "dse.ldif", "sssd.conf")))
 
 
 def _mode_delta(got, expected) -> dict:

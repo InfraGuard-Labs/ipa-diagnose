@@ -14,7 +14,7 @@ applies_to:
   freeipa_below: "5.0"
   roles: [ipa-server]
 provenance:
-  tier: FIXTURE_ONLY
+  tier: LIVE_VERIFIED
   sources:
     - kind: upstream-code
       ref: https://github.com/freeipa/freeipa-healthcheck/blob/master/src/ipahealthcheck/core/files.py
@@ -22,10 +22,21 @@ provenance:
     - kind: upstream-code
       ref: https://github.com/freeipa/freeipa-healthcheck/blob/master/src/ipahealthcheck/ipa/files.py
       title: "IPAFileCheck / TomcatFileCheck file lists"
-  verified_on: []
-  reviews: []
+  verified_on:
+    - freeipa: "4.13.3"
+      os: fedora-43
+      tier: LIVE
+      evidence: https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36057446151
+      date: "2026-09-24"
+  reviews:
+    - by: "fresh reviewer agents that did not implement Slice 1 (independent within a one-maintainer project), rounds 1-4"
+      date: "2026-09-24"
+      scope: "adversarial: tried to make ipa-diagnose offer a wrong or unsafe procedure; all blockers fixed and regression-tested"
+      independent: true
   tests:
     - tests/resolution/test_procedures.py
+    - tests/resolution/test_round3_regressions.py
+    - tests/resolution/test_round4_regressions.py
 investigate:
   - {id: root, check: host.privilege, params: {}, label: "Privileges"}
   - {id: stat, for_each: targets_mode, check: file.stat, params: {path: {item: path}}, label: "Current mode of {item.path}"}
@@ -95,4 +106,4 @@ verify:
   - {for_each: targets_owner, text: "{ref.stat.target} is owned by {item.expected}", check: file.stat, params: {path: {ref: stat, field: target}}, when: {left: {ref: this, field: owner}, op: eq, right: {item: expected}}}
   - {for_each: targets_group, text: "{ref.stat.target} has group {item.expected}", check: file.stat, params: {path: {ref: stat, field: target}}, when: {left: {ref: this, field: group}, op: eq, right: {item: expected}}}
 impact_note: "A file that is too permissive can expose secrets in it to local users; one with the wrong owner or group can stop the IPA service that needs it from reading it."
-limitations: "This sets only the owner, group or mode ipa-healthcheck reports; it does not change SELinux labels. If a service still cannot read the file afterwards, check 'ls -Z' and 'ausearch -m avc'. When ipa-healthcheck accepts more than one value, the change would add permissions, or the owner is not an IPA service account, no fix is chosen for you."
+limitations: "This sets only the owner, group or mode ipa-healthcheck reports; it does not change SELinux labels. If a service still cannot read the file afterwards, check 'ls -Z' and 'ausearch -m avc'. When ipa-healthcheck accepts more than one value, the change would add permissions, or the owner is not an IPA service account, no fix is chosen for you. The checks describe the file as it was when ipa-diagnose ran: run the commands straight away, and run ipa-diagnose again if anything may have changed since (chown -h and chgrp -h do not follow a link at the file itself, but directories on the way are followed)."

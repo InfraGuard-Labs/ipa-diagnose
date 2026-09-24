@@ -162,16 +162,21 @@ def _systemd_unit(params):
     return _res("systemd.unit", params, OK, fields, disp, shlex.join(argv))
 
 
+# key=value / key: value / "key": "value" where the key names a secret (userPassword, bind_password, dm_password,
+# nsslapd-rootpw, ldap_default_authtok, session, ...), CLI password options, and whole auth/cookie headers.
 _LOG_SECRET = re.compile(
-    r"(?i)(\b(?:pass(?:word|wd|phrase)?|pwd|secret|token|pin|api[_-]?key|credentials?)\b\s*[=:]\s*)(\"[^\"]*\"|'[^']*'|\S+)")
-_LOG_AUTH = re.compile(r"(?i)(\bauthorization\s*[:=]\s*)(?:basic|bearer|negotiate|digest)?\s*\S+")
+    r"(?i)([\w.-]*(?:pass(?:word|wd|phrase)?|pwd|rootpw|secret|token|authtok|pin|api[_-]?key|credentials?|session)"
+    r"[\w.-]*[\"']?\s*[=:]\s*)(\"[^\"]*\"|'[^']*'|\S+)")
+_LOG_OPTION = re.compile(r"(?i)((?:^|\s)(?:-w|-y|--password|--bind-password|--dm-password|--admin-password|-p)[=\s]+)\S+")
+_LOG_HEADER = re.compile(r"(?i)(\b(?:authorization|proxy-authorization|cookie|set-cookie)\s*[:=]\s*).*")
 
 
 def _redact_log_line(line: str) -> str:
     from ipa_diagnose.privacy.redact import redact_text
 
+    line = _LOG_HEADER.sub(lambda m: m.group(1) + "[REDACTED:header]", line)
     line = _LOG_SECRET.sub(lambda m: m.group(1) + "[REDACTED:secret]", line)
-    line = _LOG_AUTH.sub(lambda m: m.group(1) + "[REDACTED:authorization]", line)
+    line = _LOG_OPTION.sub(lambda m: m.group(1) + "[REDACTED:secret]", line)
     return redact_text(line).redacted_text
 
 
@@ -190,9 +195,20 @@ def _journal_tail(params):
 CONTAINER_DATA_ROOT = "/data"
 
 
+def _link_destinations(link: str) -> set:
+    """Fixed strings a known PKI layout link may finally resolve to (following the table itself, never the disk)."""
+
+    out, cur = set(), link
+    while cur in T.IPA_LAYOUT_LINKS and T.IPA_LAYOUT_LINKS[cur] not in out:
+        cur = T.IPA_LAYOUT_LINKS[cur]
+        out.add(cur)
+    return out
+
+
 def _layout_ok(path: str) -> bool:
-    """Every symlink met on the way to `path` (parents and the file itself) is a known PKI layout link leading
-    exactly where it should, or a freeipa-container /data mirror of itself."""
+    """Every symlink met on the way to `path` (parents and the file itself) is a known PKI layout link whose real
+    location is one of its fixed destinations (as literal strings: a destination that is itself swapped for a
+    link elsewhere does not count), or a freeipa-container /data mirror of itself."""
 
     parts = [p for p in path.split("/") if p]
     for i in range(1, len(parts) + 1):
@@ -200,8 +216,8 @@ def _layout_ok(path: str) -> bool:
         if not os.path.islink(prefix):
             continue
         real = os.path.realpath(prefix)
-        known = T.IPA_LAYOUT_LINKS.get(prefix)
-        if known is not None and real == os.path.realpath(known):
+        allowed = _link_destinations(prefix)
+        if real in allowed or real in {CONTAINER_DATA_ROOT + d for d in allowed}:
             continue
         if real == CONTAINER_DATA_ROOT + prefix:
             continue
@@ -209,14 +225,30 @@ def _layout_ok(path: str) -> bool:
     return True
 
 
-def _command_target(real: str):
+def _component(path: str):
+    for name, roots in T.IPA_COMPONENTS.items():
+        if any(path == r or path.startswith(r if r.endswith("/") else r + "/") for r in roots):
+            return name
+    return None
+
+
+def _command_target(real: str, reported: Optional[str] = None):
     """Path a command may act on for a file whose real location is `real`: (target, allowed, via_container_mirror).
 
     Allowed when the real file is itself in an IPA-managed location, or - the freeipa-container layout, where
     /etc/pki, /var/lib/ipa, ... are symlinks into the /data volume - when stripping /data gives an IPA-managed
     path that itself resolves to exactly this real file. Anything else resolves outside IPA and is refused.
+    The real file must also belong to the same IPA component as the reported path (a PKI finding never leads
+    to a command on a Directory Server file, whatever links are in between).
     """
 
+    target, allowed, mirror = _target_location(real)
+    if allowed and reported is not None and (_component(target) is None or _component(target) != _component(reported)):
+        return target, False, mirror
+    return target, allowed, mirror
+
+
+def _target_location(real: str):
     if T.validate("ipa_path", real) is not None:
         return real, True, False
     root = CONTAINER_DATA_ROOT + "/"
@@ -246,8 +278,10 @@ def _file_stat(params):
     except (ImportError, KeyError):
         owner, group = f"uid:{st.st_uid}", f"gid:{st.st_gid}"
     real = os.path.realpath(path)
-    target, allowed, mirror = _command_target(real)
+    target, allowed, mirror = _command_target(real, path)
     allowed = allowed and (_stat.S_ISLNK(st.st_mode) or _layout_ok(path))
+    # A regular file with another hard link may really be another component's file under a second name.
+    allowed = allowed and not (_stat.S_ISREG(st.st_mode) and st.st_nlink > 1)
     fields = {
         "exists": True, "is_symlink": _stat.S_ISLNK(st.st_mode), "is_regular": _stat.S_ISREG(st.st_mode),
         "is_dir": _stat.S_ISDIR(st.st_mode), "mode": "%04o" % (st.st_mode & 0o7777),
