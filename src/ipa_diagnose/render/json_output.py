@@ -134,7 +134,8 @@ def resolution_to_dict(r) -> Dict[str, Any]:
         "title": r.title,
         "reasons": list(r.reasons),
         "checked": [
-            {"label": label, "check": c.check_id, "status": c.status, "result": c.display, "command": c.command}
+            {"label": label, "check": c.check_id, "status": c.status, "result": c.display, "command": c.command,
+             "source": "recorded" if r.replay else "live"}
             for label, c in r.checks
         ],
         "prerequisites": [{"text": p.text, "state": p.state} for p in r.prerequisites],
@@ -153,4 +154,5 @@ def resolution_to_dict(r) -> Dict[str, Any]:
         "verification_label": r.verification_label,
         "limitations": r.limitations,
         "reference": r.reference,
+        "impact_note": r.impact_note,
     }

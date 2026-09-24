@@ -10,6 +10,7 @@ bindings:
   nickname: {type: cert_nickname}
 applies_to:
   freeipa_min: "4.9"
+  freeipa_below: "5.0"
   roles: [ipa-server]
 provenance:
   tier: FIXTURE_ONLY
@@ -41,6 +42,10 @@ withhold_if:
     reason: "{bind.nickname} is tracked with CA '{ref.cert.ca}', not the IPA CA. Renewing it is outside what ipa-diagnose can do safely."
   - when: {left: {ref: cert, field: days_left}, op: lt, right: 0}
     reason: "The certificate has already expired (certmonger shows {ref.cert.not_after}). ipa-diagnose has no verified fix for an expired certificate."
+  - when: {left: {ref: cert, field: days_left}, op: gt, right: 30}
+    reason: "certmonger shows {bind.nickname} valid for {ref.cert.days_left} more days, so it has probably been renewed since ipa-healthcheck ran. Run ipa-diagnose again."
+  - when: {left: {ref: cert, field: ca_error}, op: ne, right: ""}
+    reason: "certmonger reports an error for this request ({ref.cert.ca_error}). Resubmitting would most likely hit the same error; fix that first."
   - when: {left: {ref: cert, field: state}, op: ne, right: MONITORING}
     reason: "The renewal request is in state {ref.cert.state} ({ref.cert.ca_error}). That is a different problem from an upcoming expiry; resubmitting would not address it."
   - when: {left: {ref: cert, field: post_save_restarts_dirsrv}, op: is_false}

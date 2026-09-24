@@ -1,4 +1,6 @@
-# Required service not running -> start it (ipactl for IPA-managed services, systemctl otherwise).
+# Required service not running -> start exactly that systemd unit.
+# Deliberately NOT `ipactl start`: if any IPA service fails to start, ipactl stops ALL IPA services
+# (ipaserver/install/ipactl.py, unless --ignore-service-failures), which can take a partly working server down.
 kind: procedure
 id: proc.service.start-stopped-service
 title: Start the stopped service
@@ -9,16 +11,17 @@ bindings:
   service: {type: ipa_service}
 applies_to:
   freeipa_min: "4.9"
+  freeipa_below: "5.0"
   roles: [ipa-server]
 provenance:
   tier: FIXTURE_ONLY
   sources:
     - kind: upstream-code
-      ref: https://github.com/freeipa/freeipa/blob/master/install/tools/man/ipactl.1
-      title: "ipactl(8): start, stop or restart all IPA services; services that are already running are left running"
-    - kind: upstream-code
       ref: https://github.com/freeipa/freeipa-healthcheck/blob/master/src/ipahealthcheck/meta/services.py
       title: "ipa-healthcheck service checks report '<service>: not running'"
+    - kind: upstream-code
+      ref: https://github.com/freeipa/freeipa/blob/master/ipaserver/install/ipactl.py
+      title: "ipactl start stops all IPA services when one fails to start - why this procedure starts the single unit"
   verified_on: []
   reviews: []
   tests:
@@ -27,7 +30,6 @@ investigate:
   - {id: root, check: host.privilege, params: {}, label: "Privileges"}
   - {id: unit, check: systemd.unit, params: {service: {bind: service}}, label: "State of {bind.service}"}
   - {id: journal, check: systemd.journal_tail, params: {unit: {ref: unit, field: unit}}, label: "Recent log of {ref.unit.unit}"}
-  - {id: ipactl, check: binary.present, params: {name: ipactl}, label: "ipactl installed"}
 withhold_if:
   - when: {left: {ref: unit, field: load_state}, op: eq, right: masked}
     reason: "{ref.unit.unit} is masked: someone disabled it on purpose. ipa-diagnose will not suggest unmasking it; find out why it was masked first."
@@ -37,40 +39,31 @@ withhold_if:
     reason: "{ref.unit.unit} is running now (checked just now), so there is nothing to start. Run ipa-diagnose again to refresh the findings."
   - when: {left: {ref: unit, field: active_state}, op: in, right: [activating, deactivating, reloading]}
     reason: "{ref.unit.unit} is currently {ref.unit.active_state}. Wait for it to settle, then run ipa-diagnose again."
+  - when:
+      all:
+        - {left: {ref: unit, field: start_method}, op: eq, right: systemctl}
+        - {left: {ref: unit, field: unit_file_state}, op: eq, right: disabled}
+    reason: "{ref.unit.unit} is disabled in systemd, which may be intentional. ipa-diagnose will not start a disabled service; check why it was disabled first."
 prerequisites:
   - id: root
     text: "ipa-diagnose is running as root (starting a system service needs root)"
     when: {left: {ref: root, field: is_root}, op: is_true}
-  - id: tool
-    text: "The start command is available (ipactl for IPA-managed services, systemctl otherwise)"
-    when:
-      any:
-        - {left: {ref: unit, field: start_method}, op: eq, right: systemctl}
-        - {left: {ref: ipactl, field: present}, op: is_true}
 steps:
-  - id: start-ipactl
-    only_if: {left: {ref: unit, field: start_method}, op: eq, right: ipactl}
-    text: "Start the stopped IPA services (services that are already running are left as they are)"
-    run_on: local
-    command: [ipactl, start]
-    risk: MEDIUM
-    changes: [service-start]
-    expected: "ipactl reports each service as it starts, and {ref.unit.unit} ends up running"
-  - id: start-systemctl
-    only_if: {left: {ref: unit, field: start_method}, op: eq, right: systemctl}
-    text: "Start {ref.unit.unit}"
+  - id: start-unit
+    text: "Start only {ref.unit.unit}; no other service is started or stopped"
     run_on: local
     command: [systemctl, start, {ref: unit, field: unit, type: systemd_unit}]
     risk: MEDIUM
     changes: [service-start]
-    expected: "the command returns without an error and {ref.unit.unit} is active"
+    expected: "the command returns without an error and {ref.unit.unit} is active. If it fails, it stays stopped and systemctl status shows why"
 what_changes:
-  - text: "{ref.unit.unit} goes from {ref.unit.active_state} to running. No configuration, data or already-running service is changed."
+  - text: "{ref.unit.unit} goes from {ref.unit.active_state} to running. No configuration, data or other service is changed."
 rollback:
-  - text: "Starting a stopped service leaves nothing to undo. If it fails to start, it stays stopped and its log says why; run ipa-diagnose again and it reports that failure."
+  - text: "Stop it again (back to the state it was in)"
+    command: [systemctl, stop, {ref: unit, field: unit, type: systemd_unit}]
 verify:
   - text: "{ref.unit.unit} is active"
     check: systemd.unit
     params: {service: {bind: service}}
     when: {left: {ref: this, field: active_state}, op: eq, right: active}
-limitations: "This starts the service; it does not establish why it stopped. If it stops again, the log lines shown under 'Checked for you' are the place to start."
+limitations: "This starts the one stopped service; it does not establish why it stopped. If it stopped because of a failure (see the last result and log line above), the same cause can stop it again. ipactl start is deliberately not used: if any IPA service fails to start, ipactl stops all IPA services."

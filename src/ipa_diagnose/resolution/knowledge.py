@@ -35,7 +35,7 @@ CHANGES_MIN_RISK = {
 TIERS = ("BUILT_IN_VERIFIED", "LIVE_VERIFIED", "FIXTURE_ONLY")
 AUTHORITATIVE_SOURCES = ("upstream-code", "upstream-docs", "vendor-docs")
 RUN_ON = ("local",)
-OPS = ("eq", "ne", "in", "not_in", "lt", "le", "gt", "ge", "abs_lt", "abs_ge", "is_true", "is_false")
+OPS = ("eq", "ne", "in", "not_in", "lt", "le", "gt", "ge", "abs_lt", "abs_ge", "is_true", "is_false", "is_empty")
 CONFIDENCE = ("HIGH", "MEDIUM")
 _ARG_LITERAL_RE = re.compile(r"^[A-Za-z0-9@._/=:+-]{1,128}$")
 _ID_RE = re.compile(r"^[a-z][a-z0-9_.-]{2,80}$")
@@ -132,7 +132,7 @@ def _check_pred(pid: str, p: Any, where: str, ctx: _Ctx) -> None:
     if p["op"] not in OPS:
         _fail(pid, f"{where}: unknown operator {p['op']!r}")
     _check_value(pid, p["left"], f"{where}.left", ctx)
-    if p["op"] not in ("is_true", "is_false"):
+    if p["op"] not in ("is_true", "is_false", "is_empty"):
         if "right" not in p:
             _fail(pid, f"{where}: operator {p['op']} needs 'right'")
         _check_value(pid, p["right"], f"{where}.right", ctx)
@@ -223,7 +223,7 @@ def _validate_procedure(proc: Dict[str, Any]) -> None:
                     _fail(pid, f"bindings.{name}.item.{f}: unknown type {t!r}")
         elif spec["type"] not in T.VALIDATORS:
             _fail(pid, f"bindings.{name}: unknown type {spec['type']!r}")
-    _only(pid, proc["applies_to"], "applies_to", {"freeipa_min", "roles"}, {"roles"})
+    _only(pid, proc["applies_to"], "applies_to", {"freeipa_min", "freeipa_below", "roles"}, {"roles"})
     if proc["applies_to"]["roles"] != ["ipa-server"]:
         _fail(pid, "applies_to.roles: only ipa-server is supported in this version")
     _validate_provenance(pid, proc)
@@ -331,6 +331,15 @@ def validate_catalogue(data: Any) -> List[Dict[str, Any]]:
 _CACHE: Optional[Tuple[List[Dict[str, Any]], Optional[str]]] = None
 
 
+def _no_duplicate_keys(pairs):
+    out = {}
+    for k, v in pairs:
+        if k in out:
+            raise KnowledgeError(f"duplicate key {k!r} in procedures.json")
+        out[k] = v
+    return out
+
+
 def load_catalogue() -> Tuple[List[Dict[str, Any]], Optional[str]]:
     """(procedures, error). On any error the catalogue is empty: fail closed."""
 
@@ -338,7 +347,7 @@ def load_catalogue() -> Tuple[List[Dict[str, Any]], Optional[str]]:
     if _CACHE is None:
         try:
             text = resources.files("ipa_diagnose.resolution").joinpath("procedures.json").read_text(encoding="utf-8")
-            _CACHE = (validate_catalogue(json.loads(text)), None)
+            _CACHE = (validate_catalogue(json.loads(text, object_pairs_hook=_no_duplicate_keys)), None)
         except (OSError, ValueError, KnowledgeError, KeyError, TypeError) as e:
             _CACHE = ([], f"procedure catalogue rejected: {e}")
     return _CACHE

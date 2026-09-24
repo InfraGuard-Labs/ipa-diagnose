@@ -50,9 +50,8 @@ def load_file(path: pathlib.Path):
     for event in yaml.parse(text, Loader=StrictLoader):
         if isinstance(event, yaml.AliasEvent) or getattr(event, "anchor", None):
             raise ValueError(f"{path.name}: anchors/aliases are not allowed")
-        tag = getattr(event, "tag", None)
-        if tag and isinstance(event, (yaml.ScalarEvent, yaml.MappingStartEvent, yaml.SequenceStartEvent)) and not getattr(event, "implicit", True):
-            raise ValueError(f"{path.name}: explicit YAML tags are not allowed ({tag})")
+        if isinstance(event, (yaml.ScalarEvent, yaml.MappingStartEvent, yaml.SequenceStartEvent)) and event.tag is not None:
+            raise ValueError(f"{path.name}: explicit YAML tags are not allowed ({event.tag})")
     return yaml.load(text, Loader=StrictLoader)  # noqa: S506 - StrictLoader is a SafeLoader subclass
 
 

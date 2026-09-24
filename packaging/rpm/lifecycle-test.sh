@@ -54,8 +54,8 @@ ipa-diagnose --replay /fixtures/coverage/future-unknown-check --json > /tmp/jf.j
 check "unknown future ERROR is surfaced, never diagnosed" test $? -eq 0
 
 step "4c. Slice 1: the packaged procedure catalogue loads and a procedure is offered (replay)"
-ipa-diagnose --replay /fixtures/resolution/service-not-running --json > /tmp/jr.json; python3 -c "import json; d=json.load(open('/tmp/jr.json')); r=[x for x in d['v2']['resolutions'] if x['procedure_id']=='proc.service.start-stopped-service']; assert r and r[0]['status']=='OFFERED' and r[0]['steps'][0]['argv']==['ipactl','start'], r; assert not any('catalogue rejected' in e for e in d['collection_errors'])"
-check "procedure offered from the packaged catalogue (ipactl start)" test $? -eq 0
+ipa-diagnose --replay /fixtures/resolution/service-not-running --json > /tmp/jr.json; python3 -c "import json; d=json.load(open('/tmp/jr.json')); r=[x for x in d['v2']['resolutions'] if x['procedure_id']=='proc.service.start-stopped-service']; assert r and r[0]['status']=='OFFERED' and r[0]['steps'][0]['argv']==['systemctl','start','dirsrv@LAB-TEST.service'], r; assert not any('catalogue rejected' in e for e in d['collection_errors'])"
+check "procedure offered from the packaged catalogue (systemctl start dirsrv@LAB-TEST)" test $? -eq 0
 ipa-diagnose --replay /fixtures/resolution/service-not-running | grep -q "WHAT THIS CHANGES"
 check "resolution contract rendered in the console" test $? -eq 0
 

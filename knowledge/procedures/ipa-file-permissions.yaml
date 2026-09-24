@@ -6,11 +6,12 @@ resolves:
   diagnosis: directory-server.ipa-file-permissions
 min_confidence: MEDIUM
 bindings:
-  targets_mode: {type: list, item: {path: ipa_path, expected: file_mode, got: file_mode}}
-  targets_owner: {type: list, item: {path: ipa_path, expected: posix_name, got: posix_name}}
-  targets_group: {type: list, item: {path: ipa_path, expected: posix_name, got: posix_name}}
+  targets_mode: {type: list, item: {path: ipa_path, expected: file_mode, got: file_mode, remove: any_text, restore: any_text, loosens: any_text}}
+  targets_owner: {type: list, item: {path: ipa_path, expected: ipa_account, got: posix_name}}
+  targets_group: {type: list, item: {path: ipa_path, expected: ipa_account, got: posix_name}}
 applies_to:
   freeipa_min: "4.9"
+  freeipa_below: "5.0"
   roles: [ipa-server]
 provenance:
   tier: FIXTURE_ONLY
@@ -34,9 +35,13 @@ investigate:
   - {id: account, for_each: targets_group, check: account.group, params: {name: {item: expected}}, label: "Group {item.expected} exists"}
 withhold_if:
   # applied to each reported file; an affected file is dropped from the fix with the reason shown
+  - {for_each: targets_mode, when: {left: {item: loosens}, op: ne, right: "no"}, reason: "Setting {item.path} to {item.expected} would ADD permissions (it is {item.got}). ipa-diagnose only offers changes that remove permissions; check this file manually."}
   - {for_each: targets_mode, when: {left: {ref: stat, field: exists}, op: is_false}, reason: "{item.path} no longer exists."}
   - {for_each: targets_owner, when: {left: {ref: stat, field: exists}, op: is_false}, reason: "{item.path} no longer exists."}
   - {for_each: targets_group, when: {left: {ref: stat, field: exists}, op: is_false}, reason: "{item.path} no longer exists."}
+  - {for_each: targets_mode, when: {left: {ref: stat, field: canonical}, op: is_false}, reason: "{item.path} is reached through a symbolic link in its path; ipa-diagnose will not change it."}
+  - {for_each: targets_owner, when: {left: {ref: stat, field: canonical}, op: is_false}, reason: "{item.path} is reached through a symbolic link in its path; ipa-diagnose will not change it."}
+  - {for_each: targets_group, when: {left: {ref: stat, field: canonical}, op: is_false}, reason: "{item.path} is reached through a symbolic link in its path; ipa-diagnose will not change it."}
   - {for_each: targets_mode, when: {left: {ref: stat, field: is_symlink}, op: is_true}, reason: "{item.path} is a symbolic link; ipa-diagnose will not change permissions through a link."}
   - {for_each: targets_owner, when: {left: {ref: stat, field: is_symlink}, op: is_true}, reason: "{item.path} is a symbolic link; ipa-diagnose will not change ownership through a link."}
   - {for_each: targets_group, when: {left: {ref: stat, field: is_symlink}, op: is_true}, reason: "{item.path} is a symbolic link; ipa-diagnose will not change ownership through a link."}
@@ -55,9 +60,9 @@ prerequisites:
 steps:
   - id: chmod
     for_each: targets_mode
-    text: "Set the mode of {item.path} to {item.expected}"
+    text: "Remove the extra permissions from {item.path} ({item.got} -> {item.expected})"
     run_on: local
-    command: [chmod, {item: expected, type: file_mode}, {item: path, type: ipa_path}]
+    command: [chmod, {item: remove, type: chmod_remove}, {item: path, type: ipa_path}]
     risk: LOW
     changes: [file-permission]
     expected: "no output; the file's mode is {item.expected}"
@@ -65,7 +70,7 @@ steps:
     for_each: targets_owner
     text: "Set the owner of {item.path} to {item.expected}"
     run_on: local
-    command: [chown, {item: expected, type: posix_name}, {item: path, type: ipa_path}]
+    command: [chown, -h, {item: expected, type: ipa_account}, {item: path, type: ipa_path}]
     risk: LOW
     changes: [file-permission]
     expected: "no output; the file is owned by {item.expected}"
@@ -73,7 +78,7 @@ steps:
     for_each: targets_group
     text: "Set the group of {item.path} to {item.expected}"
     run_on: local
-    command: [chgrp, {item: expected, type: posix_name}, {item: path, type: ipa_path}]
+    command: [chgrp, -h, {item: expected, type: ipa_account}, {item: path, type: ipa_path}]
     risk: LOW
     changes: [file-permission]
     expected: "no output; the file's group is {item.expected}"
@@ -82,11 +87,12 @@ what_changes:
   - {for_each: targets_owner, text: "{item.path}: owner {item.got} -> {item.expected}. Nothing else about the file changes."}
   - {for_each: targets_group, text: "{item.path}: group {item.got} -> {item.expected}. Nothing else about the file changes."}
 rollback:
-  - {for_each: targets_mode, text: "Put the previous mode of {item.path} back", command: [chmod, {item: got, type: file_mode}, {item: path, type: ipa_path}]}
-  - {for_each: targets_owner, text: "Put the previous owner of {item.path} back", command: [chown, {item: got, type: posix_name}, {item: path, type: ipa_path}]}
-  - {for_each: targets_group, text: "Put the previous group of {item.path} back", command: [chgrp, {item: got, type: posix_name}, {item: path, type: ipa_path}]}
+  - {for_each: targets_mode, text: "Put the previous mode of {item.path} back (this restores the state ipa-healthcheck flagged)", command: [chmod, {item: restore, type: chmod_add}, {item: path, type: ipa_path}]}
+  - {for_each: targets_owner, text: "Put the previous owner of {item.path} back (this restores the state ipa-healthcheck flagged)", command: [chown, -h, {item: got, type: posix_name}, {item: path, type: ipa_path}]}
+  - {for_each: targets_group, text: "Put the previous group of {item.path} back (this restores the state ipa-healthcheck flagged)", command: [chgrp, -h, {item: got, type: posix_name}, {item: path, type: ipa_path}]}
 verify:
   - {for_each: targets_mode, text: "{item.path} has mode {item.expected}", check: file.stat, params: {path: {item: path}}, when: {left: {ref: this, field: mode}, op: eq, right: {item: expected}}}
   - {for_each: targets_owner, text: "{item.path} is owned by {item.expected}", check: file.stat, params: {path: {item: path}}, when: {left: {ref: this, field: owner}, op: eq, right: {item: expected}}}
   - {for_each: targets_group, text: "{item.path} has group {item.expected}", check: file.stat, params: {path: {item: path}}, when: {left: {ref: this, field: group}, op: eq, right: {item: expected}}}
-limitations: "This sets only the owner, group or mode ipa-healthcheck reports; it does not change SELinux labels. If a service still cannot read the file afterwards, check 'ls -Z' and 'ausearch -m avc'. When ipa-healthcheck accepts more than one value, no fix is chosen for you."
+impact_note: "A file that is too permissive can expose secrets in it to local users; one with the wrong owner or group can stop the IPA service that needs it from reading it."
+limitations: "This sets only the owner, group or mode ipa-healthcheck reports; it does not change SELinux labels. If a service still cannot read the file afterwards, check 'ls -Z' and 'ausearch -m avc'. When ipa-healthcheck accepts more than one value, the change would add permissions, or the owner is not an IPA service account, no fix is chosen for you."

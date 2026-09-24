@@ -29,11 +29,14 @@ def _strip(data):
 
 
 @pytest.mark.parametrize("name", sorted(GOLDEN))
-def test_v1_json_is_unchanged(name):
-    fixture = ROOT / "fixtures" / name
+def test_v1_json_is_unchanged(name, monkeypatch):
+    monkeypatch.chdir(ROOT.parent)  # the golden file was captured with relative fixture paths
+    fixture = pathlib.Path("tests") / "fixtures" / name
     report = run_diagnosis(collect_evidence(replay_dir=str(fixture)))
     resolve_report(report, ReplayRunner(str(fixture)))
     data = report_to_dict(report)
+    if isinstance(data.get("environment"), dict):
+        data["environment"].pop("python_version", None)
     v1 = {k: data[k] for k in GOLDEN[name]}
     assert _strip(v1) == _strip(GOLDEN[name])
     assert set(data) - set(GOLDEN[name]) <= {"generated_at", "report_schema_version", "v2"}

@@ -250,12 +250,15 @@ _PROC_RISK = {
     "MEDIUM": ("yellow", "MEDIUM - changes a running system; read each step before running it"),
     "HIGH": ("red", "HIGH - hard to reverse or affects other servers"),
 }
-_CHECK_MARK = {"OK": "✓", "FAILED": "✗", "NOT_RUN": "?", "DENIED": "?"}
+_CHECK_MARK = {"OK": "-", "FAILED": "!", "NOT_RUN": "?", "DENIED": "?"}
 
 
 def _render_checked(r, console: Console) -> None:
     console.print(Text("CHECKED FOR YOU", style="bold underline"))
-    console.print("[dim]Read-only checks ipa-diagnose ran on this host just now:[/dim]")
+    if r.replay:
+        console.print("[dim]Read-only check results recorded in this replay fixture (not run now):[/dim]")
+    else:
+        console.print("[dim]Read-only checks ipa-diagnose ran on this host just now (results, not problems):[/dim]")
     for label, c in r.checks:
         mark = _CHECK_MARK.get(c.status, "?")
         result = c.display or c.status
@@ -305,14 +308,16 @@ def _render_resolution(d: Diagnosis, r, console: Console, *, details: bool) -> N
         console.print(Text("PREREQUISITES", style="bold underline"))
         for p in r.prerequisites:
             if p.state == "met":
-                console.print(f"  ✓ {escape(p.text)} (checked)")
+                console.print(f"  ✓ {escape(p.text)} ({'recorded' if r.replay else 'checked'})")
             else:
-                console.print(f"  [yellow]! You must confirm:[/yellow] {escape(p.text)}")
+                console.print(f"  [yellow]! Before running, accept that:[/yellow] {escape(p.text)}")
         console.print()
 
     console.print(Text("WHAT THIS CHANGES", style="bold underline"))
     for w in r.what_changes:
         console.print(f"  - {escape(w)}")
+    if r.impact_note:
+        console.print(f"  [dim]Why it matters: {escape(r.impact_note)}[/dim]")
     console.print()
 
     style, text = _PROC_RISK.get(r.risk, ("yellow", r.risk))
@@ -328,11 +333,15 @@ def _render_resolution(d: Diagnosis, r, console: Console, *, details: bool) -> N
     console.print()
 
     console.print(Text("VERIFY", style="bold underline"))
-    console.print("After the fix, run:\n\n    [bold]sudo ipa-diagnose verify[/bold]\n")
+    console.print("After the fix, run (on the server):\n\n    [bold]sudo ipa-diagnose verify[/bold]\n")
     console.print("It re-runs the diagnosis and checks, with fresh evidence:")
     for v in r.verify:
         console.print(f"  - {escape(v['text'])}")
     console.print()
+    if r.limitations:
+        console.print(Text("LIMITATIONS", style="bold underline"))
+        console.print(escape(r.limitations))
+        console.print()
 
     if details:
         console.print(Text("CONFIDENCE", style="bold underline"))
@@ -341,8 +350,6 @@ def _render_resolution(d: Diagnosis, r, console: Console, *, details: bool) -> N
         console.print(Text("ABOUT THIS FIX", style="bold underline"))
         console.print(escape(f"Procedure {r.procedure_id} | applies to: {r.applies_to} | knowledge tier: {r.tier}"))
         console.print(escape(r.verification_label))
-        if r.limitations:
-            console.print(escape(f"Limitations: {r.limitations}"))
         console.print()
 
 

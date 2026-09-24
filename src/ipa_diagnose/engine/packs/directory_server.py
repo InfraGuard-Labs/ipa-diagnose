@@ -325,12 +325,51 @@ def _permission_targets(findings: List[Finding]) -> dict:
     Values are passed on as-is; the resolution engine validates each one by type."""
 
     out: dict = {"targets_mode": [], "targets_owner": [], "targets_group": []}
+    seen: dict = {}
     for f in findings:
         kw = f.keywords if isinstance(f.keywords, dict) else {}
         kind = str(kw.get("type", ""))
-        if kind in ("mode", "owner", "group"):
-            out[f"targets_{kind}"].append({k: kw.get(k) for k in ("path", "expected", "got")})
+        if kind not in ("mode", "owner", "group"):
+            continue
+        item = {k: kw.get(k) for k in ("path", "expected", "got")}
+        key = (kind, item["path"])
+        if key in seen:
+            # Two results for the same file and attribute: identical ones are merged; different expected
+            # values make the item unusable (never pick one).
+            if seen[key]["expected"] != item["expected"]:
+                seen[key]["expected"] = f"(conflicting results: {seen[key]['expected']} / {item['expected']})"
+            continue
+        if kind == "mode":
+            item.update(_mode_delta(item["got"], item["expected"]))
+        elif "/private/" in str(item["path"]) or str(item["path"]).endswith((".key", ".keytab", "-key.pem")):
+            item["expected"] = "(ownership of key material is not changed automatically)"
+        seen[key] = item
+        out[f"targets_{kind}"].append(item)
     return out
+
+
+def _mode_delta(got, expected) -> dict:
+    """Symbolic chmod that only REMOVES permissions (never adds): chmod through a swapped symlink can then only
+    tighten the target. ``loosens`` is "yes" when the expected mode would add any permission."""
+
+    import re as _re
+
+    if not (isinstance(got, str) and isinstance(expected, str) and _re.fullmatch(r"0?[0-7]{3}", got)
+            and _re.fullmatch(r"0?[0-7]{3}", expected)):
+        return {"remove": "none", "restore": "none", "loosens": "unknown"}
+    g, e = int(got, 8), int(expected, 8)
+    removed, added = g & ~e & 0o777, e & ~g & 0o777
+
+    def symbolic(bits: int, sign: str) -> str:
+        parts = []
+        for who, shift in (("u", 6), ("g", 3), ("o", 0)):
+            b = (bits >> shift) & 7
+            letters = "".join(ch for ch, v in (("r", 4), ("w", 2), ("x", 1)) if b & v)
+            if letters:
+                parts.append(f"{who}{sign}{letters}")
+        return ",".join(parts) or "none"
+
+    return {"remove": symbolic(removed, "-"), "restore": symbolic(removed, "+"), "loosens": "yes" if added else "no"}
 
 
 def _recheck_ownership(bundle: EvidenceBundle) -> bool:

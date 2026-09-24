@@ -21,6 +21,7 @@
   },
   {
    "applies_to": {
+    "freeipa_below": "5.0",
     "freeipa_min": "4.9",
     "roles": [
      "ipa-server"
@@ -261,6 +262,28 @@
      }
     },
     {
+     "reason": "certmonger shows {bind.nickname} valid for {ref.cert.days_left} more days, so it has probably been renewed since ipa-healthcheck ran. Run ipa-diagnose again.",
+     "when": {
+      "left": {
+       "field": "days_left",
+       "ref": "cert"
+      },
+      "op": "gt",
+      "right": 30
+     }
+    },
+    {
+     "reason": "certmonger reports an error for this request ({ref.cert.ca_error}). Resubmitting would most likely hit the same error; fix that first.",
+     "when": {
+      "left": {
+       "field": "ca_error",
+       "ref": "cert"
+      },
+      "op": "ne",
+      "right": ""
+     }
+    },
+    {
      "reason": "The renewal request is in state {ref.cert.state} ({ref.cert.ca_error}). That is a different problem from an upcoming expiry; resubmitting would not address it.",
      "when": {
       "left": {
@@ -285,6 +308,7 @@
   },
   {
    "applies_to": {
+    "freeipa_below": "5.0",
     "freeipa_min": "4.9",
     "roles": [
      "ipa-server"
@@ -293,7 +317,7 @@
    "bindings": {
     "targets_group": {
      "item": {
-      "expected": "posix_name",
+      "expected": "ipa_account",
       "got": "posix_name",
       "path": "ipa_path"
      },
@@ -303,13 +327,16 @@
      "item": {
       "expected": "file_mode",
       "got": "file_mode",
-      "path": "ipa_path"
+      "loosens": "any_text",
+      "path": "ipa_path",
+      "remove": "any_text",
+      "restore": "any_text"
      },
      "type": "list"
     },
     "targets_owner": {
      "item": {
-      "expected": "posix_name",
+      "expected": "ipa_account",
       "got": "posix_name",
       "path": "ipa_path"
      },
@@ -317,6 +344,7 @@
     }
    },
    "id": "proc.files.restore-expected-permissions",
+   "impact_note": "A file that is too permissive can expose secrets in it to local users; one with the wrong owner or group can stop the IPA service that needs it from reading it.",
    "investigate": [
     {
      "check": "host.privilege",
@@ -381,7 +409,7 @@
     }
    ],
    "kind": "procedure",
-   "limitations": "This sets only the owner, group or mode ipa-healthcheck reports; it does not change SELinux labels. If a service still cannot read the file afterwards, check 'ls -Z' and 'ausearch -m avc'. When ipa-healthcheck accepts more than one value, no fix is chosen for you.",
+   "limitations": "This sets only the owner, group or mode ipa-healthcheck reports; it does not change SELinux labels. If a service still cannot read the file afterwards, check 'ls -Z' and 'ausearch -m avc'. When ipa-healthcheck accepts more than one value, the change would add permissions, or the owner is not an IPA service account, no fix is chosen for you.",
    "min_confidence": "MEDIUM",
    "prerequisites": [
     {
@@ -424,8 +452,8 @@
      "command": [
       "chmod",
       {
-       "item": "got",
-       "type": "file_mode"
+       "item": "restore",
+       "type": "chmod_add"
       },
       {
        "item": "path",
@@ -433,11 +461,12 @@
       }
      ],
      "for_each": "targets_mode",
-     "text": "Put the previous mode of {item.path} back"
+     "text": "Put the previous mode of {item.path} back (this restores the state ipa-healthcheck flagged)"
     },
     {
      "command": [
       "chown",
+      "-h",
       {
        "item": "got",
        "type": "posix_name"
@@ -448,11 +477,12 @@
       }
      ],
      "for_each": "targets_owner",
-     "text": "Put the previous owner of {item.path} back"
+     "text": "Put the previous owner of {item.path} back (this restores the state ipa-healthcheck flagged)"
     },
     {
      "command": [
       "chgrp",
+      "-h",
       {
        "item": "got",
        "type": "posix_name"
@@ -463,7 +493,7 @@
       }
      ],
      "for_each": "targets_group",
-     "text": "Put the previous group of {item.path} back"
+     "text": "Put the previous group of {item.path} back (this restores the state ipa-healthcheck flagged)"
     }
    ],
    "steps": [
@@ -474,8 +504,8 @@
      "command": [
       "chmod",
       {
-       "item": "expected",
-       "type": "file_mode"
+       "item": "remove",
+       "type": "chmod_remove"
       },
       {
        "item": "path",
@@ -487,7 +517,7 @@
      "id": "chmod",
      "risk": "LOW",
      "run_on": "local",
-     "text": "Set the mode of {item.path} to {item.expected}"
+     "text": "Remove the extra permissions from {item.path} ({item.got} -> {item.expected})"
     },
     {
      "changes": [
@@ -495,9 +525,10 @@
      ],
      "command": [
       "chown",
+      "-h",
       {
        "item": "expected",
-       "type": "posix_name"
+       "type": "ipa_account"
       },
       {
        "item": "path",
@@ -517,9 +548,10 @@
      ],
      "command": [
       "chgrp",
+      "-h",
       {
        "item": "expected",
-       "type": "posix_name"
+       "type": "ipa_account"
       },
       {
        "item": "path",
@@ -614,6 +646,17 @@
    "withhold_if": [
     {
      "for_each": "targets_mode",
+     "reason": "Setting {item.path} to {item.expected} would ADD permissions (it is {item.got}). ipa-diagnose only offers changes that remove permissions; check this file manually.",
+     "when": {
+      "left": {
+       "item": "loosens"
+      },
+      "op": "ne",
+      "right": "no"
+     }
+    },
+    {
+     "for_each": "targets_mode",
      "reason": "{item.path} no longer exists.",
      "when": {
       "left": {
@@ -640,6 +683,39 @@
      "when": {
       "left": {
        "field": "exists",
+       "ref": "stat"
+      },
+      "op": "is_false"
+     }
+    },
+    {
+     "for_each": "targets_mode",
+     "reason": "{item.path} is reached through a symbolic link in its path; ipa-diagnose will not change it.",
+     "when": {
+      "left": {
+       "field": "canonical",
+       "ref": "stat"
+      },
+      "op": "is_false"
+     }
+    },
+    {
+     "for_each": "targets_owner",
+     "reason": "{item.path} is reached through a symbolic link in its path; ipa-diagnose will not change it.",
+     "when": {
+      "left": {
+       "field": "canonical",
+       "ref": "stat"
+      },
+      "op": "is_false"
+     }
+    },
+    {
+     "for_each": "targets_group",
+     "reason": "{item.path} is reached through a symbolic link in its path; ipa-diagnose will not change it.",
+     "when": {
+      "left": {
+       "field": "canonical",
        "ref": "stat"
       },
       "op": "is_false"
@@ -788,6 +864,7 @@
   },
   {
    "applies_to": {
+    "freeipa_below": "5.0",
     "freeipa_min": "4.9",
     "roles": [
      "ipa-server"
@@ -826,18 +903,10 @@
        "ref": "unit"
       }
      }
-    },
-    {
-     "check": "binary.present",
-     "id": "ipactl",
-     "label": "ipactl installed",
-     "params": {
-      "name": "ipactl"
-     }
     }
    ],
    "kind": "procedure",
-   "limitations": "This starts the service; it does not establish why it stopped. If it stops again, the log lines shown under 'Checked for you' are the place to start.",
+   "limitations": "This starts the one stopped service; it does not establish why it stopped. If it stopped because of a failure (see the last result and log line above), the same cause can stop it again. ipactl start is deliberately not used: if any IPA service fails to start, ipactl stops all IPA services.",
    "min_confidence": "HIGH",
    "prerequisites": [
     {
@@ -850,29 +919,6 @@
       },
       "op": "is_true"
      }
-    },
-    {
-     "id": "tool",
-     "text": "The start command is available (ipactl for IPA-managed services, systemctl otherwise)",
-     "when": {
-      "any": [
-       {
-        "left": {
-         "field": "start_method",
-         "ref": "unit"
-        },
-        "op": "eq",
-        "right": "systemctl"
-       },
-       {
-        "left": {
-         "field": "present",
-         "ref": "ipactl"
-        },
-        "op": "is_true"
-       }
-      ]
-     }
     }
    ],
    "provenance": {
@@ -880,13 +926,13 @@
     "sources": [
      {
       "kind": "upstream-code",
-      "ref": "https://github.com/freeipa/freeipa/blob/master/install/tools/man/ipactl.1",
-      "title": "ipactl(8): start, stop or restart all IPA services; services that are already running are left running"
+      "ref": "https://github.com/freeipa/freeipa-healthcheck/blob/master/src/ipahealthcheck/meta/services.py",
+      "title": "ipa-healthcheck service checks report '<service>: not running'"
      },
      {
       "kind": "upstream-code",
-      "ref": "https://github.com/freeipa/freeipa-healthcheck/blob/master/src/ipahealthcheck/meta/services.py",
-      "title": "ipa-healthcheck service checks report '<service>: not running'"
+      "ref": "https://github.com/freeipa/freeipa/blob/master/ipaserver/install/ipactl.py",
+      "title": "ipactl start stops all IPA services when one fails to start - why this procedure starts the single unit"
      }
     ],
     "tests": [
@@ -900,32 +946,19 @@
    },
    "rollback": [
     {
-     "text": "Starting a stopped service leaves nothing to undo. If it fails to start, it stays stopped and its log says why; run ipa-diagnose again and it reports that failure."
+     "command": [
+      "systemctl",
+      "stop",
+      {
+       "field": "unit",
+       "ref": "unit",
+       "type": "systemd_unit"
+      }
+     ],
+     "text": "Stop it again (back to the state it was in)"
     }
    ],
    "steps": [
-    {
-     "changes": [
-      "service-start"
-     ],
-     "command": [
-      "ipactl",
-      "start"
-     ],
-     "expected": "ipactl reports each service as it starts, and {ref.unit.unit} ends up running",
-     "id": "start-ipactl",
-     "only_if": {
-      "left": {
-       "field": "start_method",
-       "ref": "unit"
-      },
-      "op": "eq",
-      "right": "ipactl"
-     },
-     "risk": "MEDIUM",
-     "run_on": "local",
-     "text": "Start the stopped IPA services (services that are already running are left as they are)"
-    },
     {
      "changes": [
       "service-start"
@@ -939,19 +972,11 @@
        "type": "systemd_unit"
       }
      ],
-     "expected": "the command returns without an error and {ref.unit.unit} is active",
-     "id": "start-systemctl",
-     "only_if": {
-      "left": {
-       "field": "start_method",
-       "ref": "unit"
-      },
-      "op": "eq",
-      "right": "systemctl"
-     },
+     "expected": "the command returns without an error and {ref.unit.unit} is active. If it fails, it stays stopped and systemctl status shows why",
+     "id": "start-unit",
      "risk": "MEDIUM",
      "run_on": "local",
-     "text": "Start {ref.unit.unit}"
+     "text": "Start only {ref.unit.unit}; no other service is started or stopped"
     }
    ],
    "title": "Start the stopped service",
@@ -976,7 +1001,7 @@
    ],
    "what_changes": [
     {
-     "text": "{ref.unit.unit} goes from {ref.unit.active_state} to running. No configuration, data or already-running service is changed."
+     "text": "{ref.unit.unit} goes from {ref.unit.active_state} to running. No configuration, data or other service is changed."
     }
    ],
    "withhold_if": [
@@ -1027,11 +1052,35 @@
        "reloading"
       ]
      }
+    },
+    {
+     "reason": "{ref.unit.unit} is disabled in systemd, which may be intentional. ipa-diagnose will not start a disabled service; check why it was disabled first.",
+     "when": {
+      "all": [
+       {
+        "left": {
+         "field": "start_method",
+         "ref": "unit"
+        },
+        "op": "eq",
+        "right": "systemctl"
+       },
+       {
+        "left": {
+         "field": "unit_file_state",
+         "ref": "unit"
+        },
+        "op": "eq",
+        "right": "disabled"
+       }
+      ]
+     }
     }
    ]
   },
   {
    "applies_to": {
+    "freeipa_below": "5.0",
     "freeipa_min": "4.9",
     "roles": [
      "ipa-server"
@@ -1085,7 +1134,7 @@
     {
      "id": "accept-jump",
      "kind": "confirm_by_admin",
-     "text": "You accept that the clock on this server jumps once by about {ref.tracking.offset_seconds} s. Log entries and tickets around that moment may show odd times."
+     "text": "the clock on this server jumps once by about {ref.tracking.offset_abs} s (it is {ref.tracking.direction} {ref.tracking.reference}). Log entries and tickets around that moment may show odd times."
     }
    ],
    "provenance": {
@@ -1163,7 +1212,7 @@
    ],
    "what_changes": [
     {
-     "text": "The system clock is stepped once to match {ref.tracking.reference} (it is {ref.tracking.offset_seconds} s off now). chronyd keeps it synchronized afterwards. Nothing else changes."
+     "text": "The system clock is stepped once by about {ref.tracking.offset_abs} s to match {ref.tracking.reference} (it is {ref.tracking.direction} it now). chronyd keeps it synchronized afterwards. Nothing else changes."
     }
    ],
    "withhold_if": [
@@ -1179,25 +1228,45 @@
      }
     },
     {
-     "reason": "This host's clock is synchronized now (offset {ref.tracking.offset_seconds} s). If Kerberos still reports clock skew, the clock that is wrong is on another machine.",
+     "reason": "This host's clock is within 1 second of its time source now ({ref.tracking.offset_abs} s {ref.tracking.direction} it). If Kerberos still reports clock skew, the clock that is wrong is on another machine.",
      "when": {
-      "all": [
-       {
-        "left": {
-         "field": "offset_seconds",
-         "ref": "tracking"
-        },
-        "op": "abs_lt",
-        "right": 1.0
-       },
-       {
-        "left": {
-         "field": "synchronized",
-         "ref": "tracking"
-        },
-        "op": "is_true"
-       }
-      ]
+      "left": {
+       "field": "offset_seconds",
+       "ref": "tracking"
+      },
+      "op": "abs_lt",
+      "right": 1.0
+     }
+    },
+    {
+     "reason": "chronyd has not synchronized with a time source (leap status {ref.tracking.leap_status}), so the time it would step to is not trustworthy. Fix NTP first.",
+     "when": {
+      "left": {
+       "field": "synchronized",
+       "ref": "tracking"
+      },
+      "op": "is_false"
+     }
+    },
+    {
+     "reason": "chronyd reports no reference source, so the time it would step to is not trustworthy.",
+     "when": {
+      "left": {
+       "field": "reference",
+       "ref": "tracking"
+      },
+      "op": "is_empty"
+     }
+    },
+    {
+     "reason": "The measured offset is more than a day ({ref.tracking.offset_abs} s). Stepping an IPA server's clock that far can make certificates look expired; confirm the time source is right before changing anything.",
+     "when": {
+      "left": {
+       "field": "offset_seconds",
+       "ref": "tracking"
+      },
+      "op": "abs_ge",
+      "right": 86400
      }
     },
     {

@@ -20,6 +20,7 @@ import json
 import os
 import pathlib
 import re
+import shlex
 import shutil
 import signal
 import subprocess
@@ -78,7 +79,10 @@ def _run(argv: List[str], timeout: float = _TIMEOUT) -> "tuple[Optional[int], st
             os.killpg(proc.pid, signal.SIGKILL)
         except (OSError, AttributeError):
             proc.kill()
-        proc.communicate()
+        try:
+            proc.communicate(timeout=5)
+        except (subprocess.TimeoutExpired, ValueError):
+            pass
         return None, "", f"timed out after {timeout:.0f}s"
     return proc.returncode, (out or "")[:_MAX_OUTPUT], (err or "")[:_MAX_OUTPUT]
 
@@ -138,7 +142,7 @@ def _systemd_unit(params):
     argv = ["systemctl", "show", "--no-pager", "-p", "LoadState,ActiveState,SubState,UnitFileState,Result", unit]
     rc, out, err = _run(argv)
     if rc is None:
-        return _res("systemd.unit", params, NOT_RUN, {}, err, " ".join(argv))
+        return _res("systemd.unit", params, NOT_RUN, {}, err, shlex.join(argv))
     props = dict(line.split("=", 1) for line in out.splitlines() if "=" in line)
     fields = {
         "unit": unit, "start_method": method,
@@ -149,24 +153,26 @@ def _systemd_unit(params):
         "result": sanitize_text(props.get("Result", ""), 40),
     }
     if not fields["load_state"]:
-        return _res("systemd.unit", params, FAILED, fields, "systemctl returned no unit state", " ".join(argv))
+        return _res("systemd.unit", params, FAILED, fields, "systemctl returned no unit state", shlex.join(argv))
     disp = f"{unit}: {fields['active_state']} ({fields['sub_state']})"
     if fields["result"] and fields["result"] != "success":
         disp += f", last result: {fields['result']}"
     if fields["load_state"] != "loaded":
         disp += f", load state: {fields['load_state']}"
-    return _res("systemd.unit", params, OK, fields, disp, " ".join(argv))
+    return _res("systemd.unit", params, OK, fields, disp, shlex.join(argv))
 
 
 def _journal_tail(params):
     argv = ["journalctl", "--no-pager", "-o", "cat", "-n", "20", "-u", params["unit"]]
     rc, out, err = _run(argv)
     if rc is None:
-        return _res("systemd.journal_tail", params, NOT_RUN, {}, err, " ".join(argv))
+        return _res("systemd.journal_tail", params, NOT_RUN, {}, err, shlex.join(argv))
+    from ipa_diagnose.privacy.redact import redact_text
+
     lines = [ln for ln in out.splitlines() if ln.strip() and not ln.startswith("-- ")]
-    last = sanitize_text(lines[-1], 200) if lines else ""
+    last = redact_text(sanitize_text(lines[-1], 200)).redacted_text if lines else ""
     return _res("systemd.journal_tail", params, OK, {"lines": len(lines), "last_line": last},
-                f"last log line: {last}" if last else "no recent log lines", " ".join(argv))
+                f"last log line: {last}" if last else "no recent log lines", shlex.join(argv))
 
 
 def _file_stat(params):
@@ -189,7 +195,9 @@ def _file_stat(params):
         owner, group = f"uid:{st.st_uid}", f"gid:{st.st_gid}"
     fields = {
         "exists": True, "is_symlink": _stat.S_ISLNK(st.st_mode), "is_regular": _stat.S_ISREG(st.st_mode),
-        "is_dir": _stat.S_ISDIR(st.st_mode), "mode": "0%03o" % (st.st_mode & 0o777),
+        "is_dir": _stat.S_ISDIR(st.st_mode), "mode": "%04o" % (st.st_mode & 0o7777),
+        # False when any parent directory is a symbolic link (lstat only looks at the last component).
+        "canonical": os.path.realpath(path) == path,
         "owner": sanitize_text(owner, 40), "group": sanitize_text(group, 40),
     }
     return _res("file.stat", params, OK, fields,
@@ -227,25 +235,27 @@ def _chrony_tracking(params):
     argv = ["chronyc", "-n", "tracking"]
     rc, out, err = _run(argv)
     if rc is None or rc != 0:
-        return _res("chrony.tracking", params, NOT_RUN if rc is None else FAILED, {}, err.strip() or "chronyc failed", " ".join(argv))
+        return _res("chrony.tracking", params, NOT_RUN if rc is None else FAILED, {}, err.strip() or "chronyc failed", shlex.join(argv))
     m = _OFFSET_RE.search(out)
     leap = _LEAP_RE.search(out)
     ref = _REF_RE.search(out)
     if not m:
-        return _res("chrony.tracking", params, FAILED, {}, "could not read the clock offset", " ".join(argv))
+        return _res("chrony.tracking", params, FAILED, {}, "could not read the clock offset", shlex.join(argv))
     offset = float(m.group(1)) * (1 if m.group(2).lower() == "fast" else -1)
     leap_status = sanitize_text(leap.group(1).strip(), 40) if leap else ""
-    fields = {"offset_seconds": offset, "leap_status": leap_status, "synchronized": leap_status == "Normal",
+    fields = {"offset_seconds": offset, "offset_abs": round(abs(offset), 3),
+              "direction": "ahead of" if offset >= 0 else "behind",
+              "leap_status": leap_status, "synchronized": leap_status == "Normal",
               "reference": sanitize_text(ref.group(1), 80) if ref else ""}
     return _res("chrony.tracking", params, OK, fields,
-                f"clock offset {offset:+.3f} s, leap status {leap_status or 'unknown'}", " ".join(argv))
+                f"clock offset {offset:+.3f} s, leap status {leap_status or 'unknown'}", shlex.join(argv))
 
 
 def _chrony_sources(params):
     argv = ["chronyc", "-n", "sources"]
     rc, out, err = _run(argv)
     if rc is None or rc != 0:
-        return _res("chrony.sources", params, NOT_RUN if rc is None else FAILED, {}, err.strip() or "chronyc failed", " ".join(argv))
+        return _res("chrony.sources", params, NOT_RUN if rc is None else FAILED, {}, err.strip() or "chronyc failed", shlex.join(argv))
     total = reachable = 0
     for line in out.splitlines():
         if len(line) > 2 and line[0] in "^=#" and line[1] in "*+-?x~ ":
@@ -258,7 +268,7 @@ def _chrony_sources(params):
                 except ValueError:
                     pass
     return _res("chrony.sources", params, OK, {"total": total, "reachable": reachable},
-                f"{reachable} of {total} time source(s) reachable", " ".join(argv))
+                f"{reachable} of {total} time source(s) reachable", shlex.join(argv))
 
 
 def _days_left(not_after: str) -> Optional[int]:
@@ -278,12 +288,12 @@ def _certmonger_ds_cert(params):
     argv = ["getcert", "list", "-d", nssdb, "-n", params["nickname"]]
     rc, out, err = _run(argv, timeout=15.0)
     if rc is None:
-        return _res("certmonger.ds_cert", params, NOT_RUN, {}, err, " ".join(argv))
+        return _res("certmonger.ds_cert", params, NOT_RUN, {}, err, shlex.join(argv))
     reqs = _parse_getcert_list(out)
     if not reqs:
-        return _res("certmonger.ds_cert", params, OK, {"found": False}, "certmonger does not track this certificate", " ".join(argv))
+        return _res("certmonger.ds_cert", params, OK, {"found": False}, "certmonger does not track this certificate", shlex.join(argv))
     if len(reqs) > 1:
-        return _res("certmonger.ds_cert", params, FAILED, {"found": True, "count": len(reqs)}, "more than one tracking request", " ".join(argv))
+        return _res("certmonger.ds_cert", params, FAILED, {"found": True, "count": len(reqs)}, "more than one tracking request", shlex.join(argv))
     r = reqs[0]
     request_id = T.validate("certmonger_request_id", r.get("request_id"))
     not_after = sanitize_text(r.get("not_valid_after", ""), 40)
@@ -295,7 +305,7 @@ def _certmonger_ds_cert(params):
         "post_save_restarts_dirsrv": "restart_dirsrv" in post_save,
     }
     return _res("certmonger.ds_cert", params, OK, fields,
-                f"request {request_id}: {fields['state']}, CA {fields['ca'] or '?'}, expires {not_after or '?'}", " ".join(argv))
+                f"request {request_id}: {fields['state']}, CA {fields['ca'] or '?'}, expires {not_after or '?'}", shlex.join(argv))
 
 
 _BINARIES = {"ipactl", "chronyc", "getcert", "systemctl"}

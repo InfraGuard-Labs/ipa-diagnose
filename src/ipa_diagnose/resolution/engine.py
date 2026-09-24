@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import dataclasses
 import re
+import shlex
 from typing import Any, Dict, List, Optional, Tuple
 
 from ipa_diagnose.engine.model import ConfidenceLevel, Diagnosis, DiagnosisStatus
@@ -58,7 +59,7 @@ class Step:
 
     @property
     def command(self) -> str:
-        return " ".join(self.argv)
+        return shlex.join(self.argv)  # quoted exactly as it must be typed
 
 
 @dataclasses.dataclass
@@ -81,12 +82,15 @@ class Resolution:
     applies_to: str = ""
     limitations: str = ""
     reference: Optional[str] = None
+    impact_note: str = ""
+    replay: bool = False
+    """True when check results came from a replay fixture (recorded), not from this host now."""
 
 
 def _version(text: Optional[str]) -> Optional[Tuple[int, ...]]:
     if not text:
         return None
-    m = re.match(r"^\s*(\d+)\.(\d+)(?:\.(\d+))?", str(text))
+    m = re.fullmatch(r"\s*(\d+)\.(\d+)(?:\.(\d+))?(?:-[A-Za-z0-9._+~]+)?\s*", str(text))
     if not m:
         return None
     return tuple(int(g) for g in m.groups() if g is not None)
@@ -131,6 +135,8 @@ def _compare(op: str, a: Any, b: Any) -> bool:
             return a is True
         if op == "is_false":
             return a is False
+        if op == "is_empty":
+            return a in (None, "", [], {})
         if a is None or b is None:
             raise _Unknown("value missing")
         if op == "lt":
@@ -292,7 +298,8 @@ def resolve_diagnosis(d: Diagnosis, env: Optional[EnvironmentInfo], runner: Runn
                           reasons=[proc["reason"]], reference=proc.get("reference"))
 
     r = Resolution(diagnosis_id=d.diagnosis_id, status=WITHHELD, procedure_id=proc["id"], title=proc["title"],
-                   tier=proc["provenance"]["tier"], limitations=proc.get("limitations", ""))
+                   tier=proc["provenance"]["tier"], limitations=proc.get("limitations", ""),
+                   impact_note=proc.get("impact_note", ""), replay=bool(getattr(runner, "replay", False)))
     fmin = proc["applies_to"].get("freeipa_min")
     r.applies_to = f"FreeIPA server {fmin} or later" if fmin else "FreeIPA server"
 
@@ -307,12 +314,23 @@ def resolve_diagnosis(d: Diagnosis, env: Optional[EnvironmentInfo], runner: Runn
         r.reasons.append("The evidence does not name values that can be used safely in a command.")
         return r
     # 4. applicability
+    # "ipa-server" role = the freeipa-server package is installed (its version is what we read).
     here = _version(env.freeipa_version) if env else None
     if here is None:
-        r.reasons.append("The FreeIPA server version could not be established, so applicability is unknown.")
+        if r.replay:
+            r.reasons.append("This recorded evidence does not include the FreeIPA version or the checks a fix needs, "
+                             "so no fix can be confirmed from it.")
+        else:
+            r.reasons.append("Could not read the FreeIPA server version (rpm -q freeipa-server), so it is not "
+                             "established that this procedure applies here.")
         return r
     if fmin and here < _version(fmin):
         r.reasons.append(f"This procedure applies to FreeIPA {fmin} or later; this server runs {env.freeipa_version}.")
+        return r
+    fbelow = proc["applies_to"].get("freeipa_below")
+    if fbelow and here >= _version(fbelow):
+        r.reasons.append(f"This procedure has not been established for FreeIPA {fbelow} or later "
+                         f"(this server runs {env.freeipa_version}).")
         return r
 
     # 5. automatic read-only checks (lists: one entry per reported target, e.g. per file)
@@ -447,18 +465,25 @@ def resolve_report(report, runner: Runner) -> Dict[str, Resolution]:
     return out
 
 
+_VERIFY_OPS = {"eq", "ne", "in", "not_in", "lt", "le", "gt", "ge", "abs_lt", "abs_ge", "is_true", "is_false"}
+
+
 def _refers_to_this(p: Any) -> bool:
     """A verify criterion must actually test the fresh check result (not only literals)."""
 
-    if not isinstance(p, dict):
+    if not isinstance(p, dict) or len(p) == 0:
         return False
-    if "all" in p or "any" in p:
-        subs = p.get("all") or p.get("any")
+    if set(p) in ({"all"}, {"any"}):
+        subs = p.get("all") if "all" in p else p.get("any")
         return isinstance(subs, list) and bool(subs) and all(_refers_to_this(q) for q in subs)
-    if "not" in p:
+    if set(p) == {"not"}:
         return _refers_to_this(p["not"])
-    left = p.get("left")
-    return isinstance(left, dict) and left.get("ref") == "this" and isinstance(left.get("field"), str)
+    if not set(p) <= {"left", "op", "right"} or p.get("op") not in _VERIFY_OPS:
+        return False
+    left, right = p.get("left"), p.get("right")
+    # left: the fresh check's field; right: a literal (never another reference, so x == x cannot pass).
+    return (isinstance(left, dict) and set(left) == {"ref", "field"} and left["ref"] == "this"
+            and isinstance(left["field"], str) and not isinstance(right, dict))
 
 
 def evaluate_verify(criteria: List[Dict[str, Any]], runner: Runner) -> List[Tuple[str, Optional[bool], str]]:
@@ -469,15 +494,15 @@ def evaluate_verify(criteria: List[Dict[str, Any]], runner: Runner) -> List[Tupl
         try:
             if not isinstance(c, dict):
                 raise _Unknown("malformed criterion")
-            if not _refers_to_this(c.get("when")):
-                raise _Unknown("criterion does not test the fresh check result")
+            if not _refers_to_this(c.get("when")) or not isinstance(c.get("params", {}), dict):
+                raise _Unknown("criterion is malformed or does not test the fresh check result")
             res = runner.run(str(c.get("check")), dict(c.get("params") or {}))
             if res.status != OK:
                 raise _Unknown(res.display or "the check could not run")
             scope = _Scope({}, {"this": res})
             ok = _pred(c["when"], scope)
             results.append((sanitize_text(c.get("text", ""), 200), ok, res.display))
-        except (_Unknown, KeyError, TypeError) as e:
+        except Exception as e:  # noqa: BLE001 - a corrupt state file must never crash verify or pass
             why = e.why if isinstance(e, _Unknown) else "malformed criterion"
             results.append((sanitize_text(c.get("text", "") if isinstance(c, dict) else "", 200), None, why))
     return results

@@ -262,6 +262,21 @@ analysis against `ipa-healthcheck`):
 Each pack's rules, sourcing, and confidence levels are documented in
 [docs/diagnostic-packs.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/docs/diagnostic-packs.md).
 
+## From diagnosis to fix (resolutions)
+
+For four mature diagnoses ipa-diagnose also shows **how to fix it**, in a fixed order: ROOT CAUSE -> WHY ->
+CHECKED FOR YOU -> IMPACT -> FIX -> PREREQUISITES -> WHAT THIS CHANGES -> RISK -> ROLLBACK -> VERIFY.
+
+- a required IPA service is not running (start that one unit);
+- ipa-healthcheck reports a wrong owner, group or mode on an IPA file (a permission-removing `chmod`, or `chown -h`/`chgrp -h`);
+- Kerberos clock skew with this host's clock measured out of sync (`chronyc makestep`);
+- the Directory Server certificate is expiring (`getcert resubmit -i <request>`); an already expired one gets **no** invented fix.
+
+ipa-diagnose runs only **read-only** checks itself (shown under CHECKED FOR YOU) and **never runs a fix**. A fix is
+shown only when its applicability and prerequisites are established on this host and nothing contradicts it;
+otherwise the report says why no fix is shown. Details, guarantees and the JSON format (`v2.resolutions`):
+[docs/resolution.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/docs/resolution.md).
+
 ## The evidence model
 
 Every `Finding` and `EvidenceItem` the engine reasons about carries a

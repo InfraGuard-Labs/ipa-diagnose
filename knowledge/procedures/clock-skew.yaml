@@ -9,6 +9,7 @@ min_confidence: MEDIUM
 bindings: {}
 applies_to:
   freeipa_min: "4.9"
+  freeipa_below: "5.0"
   roles: [ipa-server]
 provenance:
   tier: FIXTURE_ONLY
@@ -31,11 +32,14 @@ investigate:
 withhold_if:
   - when: {left: {ref: chronyd, field: active_state}, op: ne, right: active}
     reason: "chronyd is not running ({ref.chronyd.active_state}). Stepping the clock without it would not stay correct; start chronyd first (ipa-diagnose reports a stopped service as its own problem)."
-  - when:
-      all:
-        - {left: {ref: tracking, field: offset_seconds}, op: abs_lt, right: 1.0}
-        - {left: {ref: tracking, field: synchronized}, op: is_true}
-    reason: "This host's clock is synchronized now (offset {ref.tracking.offset_seconds} s). If Kerberos still reports clock skew, the clock that is wrong is on another machine."
+  - when: {left: {ref: tracking, field: offset_seconds}, op: abs_lt, right: 1.0}
+    reason: "This host's clock is within 1 second of its time source now ({ref.tracking.offset_abs} s {ref.tracking.direction} it). If Kerberos still reports clock skew, the clock that is wrong is on another machine."
+  - when: {left: {ref: tracking, field: synchronized}, op: is_false}
+    reason: "chronyd has not synchronized with a time source (leap status {ref.tracking.leap_status}), so the time it would step to is not trustworthy. Fix NTP first."
+  - when: {left: {ref: tracking, field: reference}, op: is_empty}
+    reason: "chronyd reports no reference source, so the time it would step to is not trustworthy."
+  - when: {left: {ref: tracking, field: offset_seconds}, op: abs_ge, right: 86400}
+    reason: "The measured offset is more than a day ({ref.tracking.offset_abs} s). Stepping an IPA server's clock that far can make certificates look expired; confirm the time source is right before changing anything."
   - when: {left: {ref: sources, field: reachable}, op: lt, right: 1}
     reason: "No time source is reachable ({ref.sources.reachable} of {ref.sources.total}), so there is nothing trustworthy to set the clock to. Fix NTP server settings or network access first; ipa-diagnose has no deterministic fix for that."
 prerequisites:
@@ -44,7 +48,7 @@ prerequisites:
     when: {left: {ref: root, field: is_root}, op: is_true}
   - id: accept-jump
     kind: confirm_by_admin
-    text: "You accept that the clock on this server jumps once by about {ref.tracking.offset_seconds} s. Log entries and tickets around that moment may show odd times."
+    text: "the clock on this server jumps once by about {ref.tracking.offset_abs} s (it is {ref.tracking.direction} {ref.tracking.reference}). Log entries and tickets around that moment may show odd times."
 steps:
   - id: makestep
     text: "Step the clock to the time chronyd has measured as correct"
@@ -54,7 +58,7 @@ steps:
     changes: [time-resync]
     expected: "chronyc prints '200 OK'; 'chronyc tracking' then shows an offset close to 0"
 what_changes:
-  - text: "The system clock is stepped once to match {ref.tracking.reference} (it is {ref.tracking.offset_seconds} s off now). chronyd keeps it synchronized afterwards. Nothing else changes."
+  - text: "The system clock is stepped once by about {ref.tracking.offset_abs} s to match {ref.tracking.reference} (it is {ref.tracking.direction} it now). chronyd keeps it synchronized afterwards. Nothing else changes."
 rollback:
   - text: "A clock step is not undone: it moves the clock to the correct time. Nothing else is changed, so there is nothing else to roll back."
 verify:

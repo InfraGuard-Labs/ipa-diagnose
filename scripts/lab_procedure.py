@@ -61,6 +61,10 @@ def cmd_apply(json_file, procedure_id, container, log) -> int:
     if r is None or r["status"] != "OFFERED":
         record(False, f"{procedure_id}: nothing to apply ({err or r['status']})")
         return 1
+    allowed = {"systemctl", "chmod", "chown", "chgrp", "chronyc", "getcert"}
+    if any(not s.get("argv") or s["argv"][0] not in allowed for s in r["steps"]):
+        record(False, f"{procedure_id}: refusing to run a program outside {sorted(allowed)}")
+        return 1
     rc_all = 0
     with open(log, "w", encoding="utf-8") as fh:
         for step in r["steps"]:

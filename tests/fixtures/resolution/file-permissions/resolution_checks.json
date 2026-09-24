@@ -3,6 +3,7 @@
   "command": "stat /var/lib/pki/pki-tomcat/conf/ca/CS.cfg",
   "display": "/var/lib/pki/pki-tomcat/conf/ca/CS.cfg: mode 0664, owner pkiuser, group pkiuser",
   "fields": {
+   "canonical": true,
    "exists": true,
    "group": "pkiuser",
    "is_dir": false,

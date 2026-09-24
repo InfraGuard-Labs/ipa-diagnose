@@ -12,7 +12,9 @@
   "command": "",
   "display": "clock offset +421.200 s, leap status Normal",
   "fields": {
+   "direction": "ahead of",
    "leap_status": "Normal",
+   "offset_abs": 421.2,
    "offset_seconds": 421.2,
    "reference": "10.0.0.5",
    "synchronized": true

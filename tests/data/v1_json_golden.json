@@ -98,8 +98,7 @@
    "distro": null,
    "distro_version": null,
    "freeipa_version": null,
-   "ipa_healthcheck_version": null,
-   "python_version": null
+   "ipa_healthcheck_version": null
   },
   "evidence_completeness": {
    "healthcheck_collected": true,
@@ -119,7 +118,7 @@
    "replication",
    "certificates"
   ],
-  "replay_source": "/work/tests/fixtures/certificates/ambiguous",
+  "replay_source": "tests/fixtures/certificates/ambiguous",
   "unclaimed_warnings": 0,
   "undiagnosed_count": 0,
   "undiagnosed_findings": [],
@@ -196,8 +195,7 @@
    "distro": null,
    "distro_version": null,
    "freeipa_version": null,
-   "ipa_healthcheck_version": null,
-   "python_version": null
+   "ipa_healthcheck_version": null
   },
   "evidence_completeness": {
    "healthcheck_collected": true,
@@ -217,7 +215,7 @@
    "replication",
    "certificates"
   ],
-  "replay_source": "/work/tests/fixtures/certificates/expired",
+  "replay_source": "tests/fixtures/certificates/expired",
   "unclaimed_warnings": 0,
   "undiagnosed_count": 0,
   "undiagnosed_findings": [],
@@ -334,8 +332,7 @@
    "distro": null,
    "distro_version": null,
    "freeipa_version": null,
-   "ipa_healthcheck_version": null,
-   "python_version": null
+   "ipa_healthcheck_version": null
   },
   "evidence_completeness": {
    "healthcheck_collected": true,
@@ -355,7 +352,7 @@
    "replication",
    "certificates"
   ],
-  "replay_source": "/work/tests/fixtures/certificates/expiring",
+  "replay_source": "tests/fixtures/certificates/expiring",
   "unclaimed_warnings": 0,
   "undiagnosed_count": 0,
   "undiagnosed_findings": [],
@@ -370,8 +367,7 @@
    "distro": null,
    "distro_version": null,
    "freeipa_version": null,
-   "ipa_healthcheck_version": null,
-   "python_version": null
+   "ipa_healthcheck_version": null
   },
   "evidence_completeness": {
    "healthcheck_collected": true,
@@ -391,7 +387,7 @@
    "replication",
    "certificates"
   ],
-  "replay_source": "/work/tests/fixtures/certificates/healthy",
+  "replay_source": "tests/fixtures/certificates/healthy",
   "unclaimed_warnings": 0,
   "undiagnosed_count": 0,
   "undiagnosed_findings": [],
@@ -461,8 +457,7 @@
    "distro": null,
    "distro_version": null,
    "freeipa_version": null,
-   "ipa_healthcheck_version": null,
-   "python_version": null
+   "ipa_healthcheck_version": null
   },
   "evidence_completeness": {
    "healthcheck_collected": true,
@@ -482,7 +477,7 @@
    "replication",
    "certificates"
   ],
-  "replay_source": "/work/tests/fixtures/coverage/ds-cert-expired",
+  "replay_source": "tests/fixtures/coverage/ds-cert-expired",
   "unclaimed_warnings": 0,
   "undiagnosed_count": 0,
   "undiagnosed_findings": [],
@@ -543,8 +538,7 @@
    "distro": null,
    "distro_version": null,
    "freeipa_version": null,
-   "ipa_healthcheck_version": null,
-   "python_version": null
+   "ipa_healthcheck_version": null
   },
   "evidence_completeness": {
    "healthcheck_collected": true,
@@ -564,7 +558,7 @@
    "replication",
    "certificates"
   ],
-  "replay_source": "/work/tests/fixtures/coverage/future-unknown-check",
+  "replay_source": "tests/fixtures/coverage/future-unknown-check",
   "unclaimed_warnings": 0,
   "undiagnosed_count": 0,
   "undiagnosed_findings": [],
@@ -579,8 +573,7 @@
    "distro": null,
    "distro_version": null,
    "freeipa_version": null,
-   "ipa_healthcheck_version": null,
-   "python_version": null
+   "ipa_healthcheck_version": null
   },
   "evidence_completeness": {
    "healthcheck_collected": true,
@@ -600,7 +593,7 @@
    "replication",
    "certificates"
   ],
-  "replay_source": "/work/tests/fixtures/coverage/undiagnosed-warning",
+  "replay_source": "tests/fixtures/coverage/undiagnosed-warning",
   "unclaimed_warnings": 1,
   "undiagnosed_count": 1,
   "undiagnosed_findings": [
@@ -693,8 +686,7 @@
    "distro": null,
    "distro_version": null,
    "freeipa_version": null,
-   "ipa_healthcheck_version": null,
-   "python_version": null
+   "ipa_healthcheck_version": null
   },
   "evidence_completeness": {
    "healthcheck_collected": true,
@@ -714,7 +706,7 @@
    "replication",
    "certificates"
   ],
-  "replay_source": "/work/tests/fixtures/directory-server/disk-space",
+  "replay_source": "tests/fixtures/directory-server/disk-space",
   "unclaimed_warnings": 0,
   "undiagnosed_count": 0,
   "undiagnosed_findings": [],
@@ -729,8 +721,7 @@
    "distro": null,
    "distro_version": null,
    "freeipa_version": null,
-   "ipa_healthcheck_version": null,
-   "python_version": null
+   "ipa_healthcheck_version": null
   },
   "evidence_completeness": {
    "healthcheck_collected": true,
@@ -750,7 +741,7 @@
    "replication",
    "certificates"
   ],
-  "replay_source": "/work/tests/fixtures/directory-server/healthy",
+  "replay_source": "tests/fixtures/directory-server/healthy",
   "unclaimed_warnings": 0,
   "undiagnosed_count": 0,
   "undiagnosed_findings": [],
@@ -827,8 +818,7 @@
    "distro": null,
    "distro_version": null,
    "freeipa_version": null,
-   "ipa_healthcheck_version": null,
-   "python_version": null
+   "ipa_healthcheck_version": null
   },
   "evidence_completeness": {
    "healthcheck_collected": true,
@@ -848,7 +838,7 @@
    "replication",
    "certificates"
   ],
-  "replay_source": "/work/tests/fixtures/directory-server/index-health",
+  "replay_source": "tests/fixtures/directory-server/index-health",
   "unclaimed_warnings": 0,
   "undiagnosed_count": 0,
   "undiagnosed_findings": [],
@@ -925,8 +915,7 @@
    "distro": null,
    "distro_version": null,
    "freeipa_version": null,
-   "ipa_healthcheck_version": null,
-   "python_version": null
+   "ipa_healthcheck_version": null
   },
   "evidence_completeness": {
    "healthcheck_collected": true,
@@ -946,7 +935,7 @@
    "replication",
    "certificates"
   ],
-  "replay_source": "/work/tests/fixtures/directory-server/nss-db",
+  "replay_source": "tests/fixtures/directory-server/nss-db",
   "unclaimed_warnings": 1,
   "undiagnosed_count": 1,
   "undiagnosed_findings": [
@@ -1021,8 +1010,7 @@
    "distro": null,
    "distro_version": null,
    "freeipa_version": null,
-   "ipa_healthcheck_version": null,
-   "python_version": null
+   "ipa_healthcheck_version": null
   },
   "evidence_completeness": {
    "healthcheck_collected": true,
@@ -1042,7 +1030,7 @@
    "replication",
    "certificates"
   ],
-  "replay_source": "/work/tests/fixtures/directory-server/permissions",
+  "replay_source": "tests/fixtures/directory-server/permissions",
   "unclaimed_warnings": 1,
   "undiagnosed_count": 1,
   "undiagnosed_findings": [
@@ -1122,8 +1110,7 @@
    "distro": null,
    "distro_version": null,
    "freeipa_version": null,
-   "ipa_healthcheck_version": null,
-   "python_version": null
+   "ipa_healthcheck_version": null
   },
   "evidence_completeness": {
    "healthcheck_collected": true,
@@ -1143,7 +1130,7 @@
    "replication",
    "certificates"
   ],
-  "replay_source": "/work/tests/fixtures/dns/forward-zone-conflict",
+  "replay_source": "tests/fixtures/dns/forward-zone-conflict",
   "unclaimed_warnings": 1,
   "undiagnosed_count": 1,
   "undiagnosed_findings": [
@@ -1170,8 +1157,7 @@
    "distro": null,
    "distro_version": null,
    "freeipa_version": null,
-   "ipa_healthcheck_version": null,
-   "python_version": null
+   "ipa_healthcheck_version": null
   },
   "evidence_completeness": {
    "healthcheck_collected": true,
@@ -1191,7 +1177,7 @@
    "replication",
    "certificates"
   ],
-  "replay_source": "/work/tests/fixtures/dns/healthy",
+  "replay_source": "tests/fixtures/dns/healthy",
   "unclaimed_warnings": 0,
   "undiagnosed_count": 0,
   "undiagnosed_findings": [],
@@ -1385,8 +1371,7 @@
    "distro": null,
    "distro_version": null,
    "freeipa_version": null,
-   "ipa_healthcheck_version": null,
-   "python_version": null
+   "ipa_healthcheck_version": null
   },
   "evidence_completeness": {
    "healthcheck_collected": true,
@@ -1406,7 +1391,7 @@
    "replication",
    "certificates"
   ],
-  "replay_source": "/work/tests/fixtures/dns/named-down",
+  "replay_source": "tests/fixtures/dns/named-down",
   "unclaimed_warnings": 0,
   "undiagnosed_count": 0,
   "undiagnosed_findings": [],
@@ -1414,8 +1399,8 @@
  },
  "dns/srv-error-collectors-unavailable": {
   "collection_errors": [
-   "dns_lookup: no dns_lookup fixture at /work/tests/fixtures/dns/srv-error-collectors-unavailable/dns_lookup.json (simulating the collector being unable to run, e.g. permission denied)",
-   "journal_named: no journal_named fixture at /work/tests/fixtures/dns/srv-error-collectors-unavailable/journal_named.json (simulating the collector being unable to run, e.g. permission denied reading the journal)"
+   "dns_lookup: no dns_lookup fixture at tests/fixtures/dns/srv-error-collectors-unavailable/dns_lookup.json (simulating the collector being unable to run, e.g. permission denied)",
+   "journal_named: no journal_named fixture at tests/fixtures/dns/srv-error-collectors-unavailable/journal_named.json (simulating the collector being unable to run, e.g. permission denied reading the journal)"
   ],
   "diagnoses": [
    {
@@ -1457,8 +1442,7 @@
    "distro": null,
    "distro_version": null,
    "freeipa_version": null,
-   "ipa_healthcheck_version": null,
-   "python_version": null
+   "ipa_healthcheck_version": null
   },
   "evidence_completeness": {
    "healthcheck_collected": true,
@@ -1471,14 +1455,14 @@
      "collector": "dns_lookup",
      "hint": "",
      "permission_related": true,
-     "reason": "no dns_lookup fixture at /work/tests/fixtures/dns/srv-error-collectors-unavailable/dns_lookup.json (simulating the collector being unable to run, e.g. permission denied)"
+     "reason": "no dns_lookup fixture at tests/fixtures/dns/srv-error-collectors-unavailable/dns_lookup.json (simulating the collector being unable to run, e.g. permission denied)"
     },
     {
      "capability": "journal_named",
      "collector": "journal_named",
      "hint": "",
      "permission_related": true,
-     "reason": "no journal_named fixture at /work/tests/fixtures/dns/srv-error-collectors-unavailable/journal_named.json (simulating the collector being unable to run, e.g. permission denied reading the journal)"
+     "reason": "no journal_named fixture at tests/fixtures/dns/srv-error-collectors-unavailable/journal_named.json (simulating the collector being unable to run, e.g. permission denied reading the journal)"
     }
    ]
   },
@@ -1493,7 +1477,7 @@
    "replication",
    "certificates"
   ],
-  "replay_source": "/work/tests/fixtures/dns/srv-error-collectors-unavailable",
+  "replay_source": "tests/fixtures/dns/srv-error-collectors-unavailable",
   "unclaimed_warnings": 0,
   "undiagnosed_count": 0,
   "undiagnosed_findings": [],
@@ -1568,8 +1552,7 @@
    "distro": null,
    "distro_version": null,
    "freeipa_version": null,
-   "ipa_healthcheck_version": null,
-   "python_version": null
+   "ipa_healthcheck_version": null
   },
   "evidence_completeness": {
    "healthcheck_collected": true,
@@ -1589,7 +1572,7 @@
    "replication",
    "certificates"
   ],
-  "replay_source": "/work/tests/fixtures/dns/srv-missing",
+  "replay_source": "tests/fixtures/dns/srv-missing",
   "unclaimed_warnings": 0,
   "undiagnosed_count": 0,
   "undiagnosed_findings": [],
@@ -1645,8 +1628,7 @@
    "distro": null,
    "distro_version": null,
    "freeipa_version": null,
-   "ipa_healthcheck_version": null,
-   "python_version": null
+   "ipa_healthcheck_version": null
   },
   "evidence_completeness": {
    "healthcheck_collected": true,
@@ -1666,7 +1648,7 @@
    "replication",
    "certificates"
   ],
-  "replay_source": "/work/tests/fixtures/kerberos/ambiguous-preauth",
+  "replay_source": "tests/fixtures/kerberos/ambiguous-preauth",
   "unclaimed_warnings": 0,
   "undiagnosed_count": 0,
   "undiagnosed_findings": [],
@@ -1741,8 +1723,7 @@
    "distro": null,
    "distro_version": null,
    "freeipa_version": null,
-   "ipa_healthcheck_version": null,
-   "python_version": null
+   "ipa_healthcheck_version": null
   },
   "evidence_completeness": {
    "healthcheck_collected": true,
@@ -1762,7 +1743,7 @@
    "replication",
    "certificates"
   ],
-  "replay_source": "/work/tests/fixtures/kerberos/clock-skew",
+  "replay_source": "tests/fixtures/kerberos/clock-skew",
   "unclaimed_warnings": 0,
   "undiagnosed_count": 0,
   "undiagnosed_findings": [],
@@ -1834,8 +1815,7 @@
    "distro": null,
    "distro_version": null,
    "freeipa_version": null,
-   "ipa_healthcheck_version": null,
-   "python_version": null
+   "ipa_healthcheck_version": null
   },
   "evidence_completeness": {
    "healthcheck_collected": true,
@@ -1855,7 +1835,7 @@
    "replication",
    "certificates"
   ],
-  "replay_source": "/work/tests/fixtures/kerberos/dns-discovery",
+  "replay_source": "tests/fixtures/kerberos/dns-discovery",
   "unclaimed_warnings": 0,
   "undiagnosed_count": 0,
   "undiagnosed_findings": [],
@@ -1870,8 +1850,7 @@
    "distro": null,
    "distro_version": null,
    "freeipa_version": null,
-   "ipa_healthcheck_version": null,
-   "python_version": null
+   "ipa_healthcheck_version": null
   },
   "evidence_completeness": {
    "healthcheck_collected": true,
@@ -1891,7 +1870,7 @@
    "replication",
    "certificates"
   ],
-  "replay_source": "/work/tests/fixtures/kerberos/healthy",
+  "replay_source": "tests/fixtures/kerberos/healthy",
   "unclaimed_warnings": 0,
   "undiagnosed_count": 0,
   "undiagnosed_findings": [],
@@ -1966,8 +1945,7 @@
    "distro": null,
    "distro_version": null,
    "freeipa_version": null,
-   "ipa_healthcheck_version": null,
-   "python_version": null
+   "ipa_healthcheck_version": null
   },
   "evidence_completeness": {
    "healthcheck_collected": true,
@@ -1987,7 +1965,7 @@
    "replication",
    "certificates"
   ],
-  "replay_source": "/work/tests/fixtures/kerberos/keytab-mismatch",
+  "replay_source": "tests/fixtures/kerberos/keytab-mismatch",
   "unclaimed_warnings": 0,
   "undiagnosed_count": 0,
   "undiagnosed_findings": [],
@@ -2172,8 +2150,7 @@
    "distro": null,
    "distro_version": null,
    "freeipa_version": null,
-   "ipa_healthcheck_version": null,
-   "python_version": null
+   "ipa_healthcheck_version": null
   },
   "evidence_completeness": {
    "healthcheck_collected": true,
@@ -2193,7 +2170,7 @@
    "replication",
    "certificates"
   ],
-  "replay_source": "/work/tests/fixtures/real-freeipa-capture/certmonger-stopped",
+  "replay_source": "tests/fixtures/real-freeipa-capture/certmonger-stopped",
   "unclaimed_warnings": 1,
   "undiagnosed_count": 3,
   "undiagnosed_findings": [
@@ -2392,8 +2369,7 @@
    "distro": null,
    "distro_version": null,
    "freeipa_version": null,
-   "ipa_healthcheck_version": null,
-   "python_version": null
+   "ipa_healthcheck_version": null
   },
   "evidence_completeness": {
    "healthcheck_collected": true,
@@ -2413,7 +2389,7 @@
    "replication",
    "certificates"
   ],
-  "replay_source": "/work/tests/fixtures/real-freeipa-capture/dirsrv-down",
+  "replay_source": "tests/fixtures/real-freeipa-capture/dirsrv-down",
   "unclaimed_warnings": 1,
   "undiagnosed_count": 1,
   "undiagnosed_findings": [
@@ -2590,8 +2566,7 @@
    "distro": null,
    "distro_version": null,
    "freeipa_version": null,
-   "ipa_healthcheck_version": null,
-   "python_version": null
+   "ipa_healthcheck_version": null
   },
   "evidence_completeness": {
    "healthcheck_collected": true,
@@ -2611,7 +2586,7 @@
    "replication",
    "certificates"
   ],
-  "replay_source": "/work/tests/fixtures/real-freeipa-capture/dirsrv-stopped",
+  "replay_source": "tests/fixtures/real-freeipa-capture/dirsrv-stopped",
   "unclaimed_warnings": 0,
   "undiagnosed_count": 0,
   "undiagnosed_findings": [],
@@ -2619,8 +2594,8 @@
  },
  "real-freeipa-capture/healthy": {
   "collection_errors": [
-   "dns_lookup: no dns_lookup fixture at /work/tests/fixtures/real-freeipa-capture/healthy/dns_lookup.json (simulating the collector being unable to run, e.g. permission denied)",
-   "journal_named: no journal_named fixture at /work/tests/fixtures/real-freeipa-capture/healthy/journal_named.json (simulating the collector being unable to run, e.g. permission denied reading the journal)"
+   "dns_lookup: no dns_lookup fixture at tests/fixtures/real-freeipa-capture/healthy/dns_lookup.json (simulating the collector being unable to run, e.g. permission denied)",
+   "journal_named: no journal_named fixture at tests/fixtures/real-freeipa-capture/healthy/journal_named.json (simulating the collector being unable to run, e.g. permission denied reading the journal)"
   ],
   "diagnoses": [
    {
@@ -2691,8 +2666,7 @@
    "distro": null,
    "distro_version": null,
    "freeipa_version": null,
-   "ipa_healthcheck_version": null,
-   "python_version": null
+   "ipa_healthcheck_version": null
   },
   "evidence_completeness": {
    "healthcheck_collected": true,
@@ -2705,14 +2679,14 @@
      "collector": "dns_lookup",
      "hint": "",
      "permission_related": true,
-     "reason": "no dns_lookup fixture at /work/tests/fixtures/real-freeipa-capture/healthy/dns_lookup.json (simulating the collector being unable to run, e.g. permission denied)"
+     "reason": "no dns_lookup fixture at tests/fixtures/real-freeipa-capture/healthy/dns_lookup.json (simulating the collector being unable to run, e.g. permission denied)"
     },
     {
      "capability": "journal_named",
      "collector": "journal_named",
      "hint": "",
      "permission_related": true,
-     "reason": "no journal_named fixture at /work/tests/fixtures/real-freeipa-capture/healthy/journal_named.json (simulating the collector being unable to run, e.g. permission denied reading the journal)"
+     "reason": "no journal_named fixture at tests/fixtures/real-freeipa-capture/healthy/journal_named.json (simulating the collector being unable to run, e.g. permission denied reading the journal)"
     }
    ]
   },
@@ -2727,7 +2701,7 @@
    "replication",
    "certificates"
   ],
-  "replay_source": "/work/tests/fixtures/real-freeipa-capture/healthy",
+  "replay_source": "tests/fixtures/real-freeipa-capture/healthy",
   "unclaimed_warnings": 13,
   "undiagnosed_count": 13,
   "undiagnosed_findings": [
@@ -2938,8 +2912,7 @@
    "distro": null,
    "distro_version": null,
    "freeipa_version": null,
-   "ipa_healthcheck_version": null,
-   "python_version": null
+   "ipa_healthcheck_version": null
   },
   "evidence_completeness": {
    "healthcheck_collected": true,
@@ -2959,7 +2932,7 @@
    "replication",
    "certificates"
   ],
-  "replay_source": "/work/tests/fixtures/replication/ambiguous",
+  "replay_source": "tests/fixtures/replication/ambiguous",
   "unclaimed_warnings": 0,
   "undiagnosed_count": 0,
   "undiagnosed_findings": [],
@@ -3035,8 +3008,7 @@
    "distro": null,
    "distro_version": null,
    "freeipa_version": null,
-   "ipa_healthcheck_version": null,
-   "python_version": null
+   "ipa_healthcheck_version": null
   },
   "evidence_completeness": {
    "healthcheck_collected": true,
@@ -3056,7 +3028,7 @@
    "replication",
    "certificates"
   ],
-  "replay_source": "/work/tests/fixtures/replication/conflicting",
+  "replay_source": "tests/fixtures/replication/conflicting",
   "unclaimed_warnings": 0,
   "undiagnosed_count": 0,
   "undiagnosed_findings": [],
@@ -3071,8 +3043,7 @@
    "distro": null,
    "distro_version": null,
    "freeipa_version": null,
-   "ipa_healthcheck_version": null,
-   "python_version": null
+   "ipa_healthcheck_version": null
   },
   "evidence_completeness": {
    "healthcheck_collected": true,
@@ -3092,7 +3063,7 @@
    "replication",
    "certificates"
   ],
-  "replay_source": "/work/tests/fixtures/replication/healthy",
+  "replay_source": "tests/fixtures/replication/healthy",
   "unclaimed_warnings": 0,
   "undiagnosed_count": 0,
   "undiagnosed_findings": [],
@@ -3107,8 +3078,7 @@
    "distro": "rocky",
    "distro_version": "9.3",
    "freeipa_version": "4.12.2-2.el9",
-   "ipa_healthcheck_version": "0.19-1.el9",
-   "python_version": "3.9.18"
+   "ipa_healthcheck_version": "0.19-1.el9"
   },
   "evidence_completeness": {
    "healthcheck_collected": true,
@@ -3128,7 +3098,7 @@
    "replication",
    "certificates"
   ],
-  "replay_source": "/work/tests/fixtures/replication/healthy-with-environment",
+  "replay_source": "tests/fixtures/replication/healthy-with-environment",
   "unclaimed_warnings": 0,
   "undiagnosed_count": 0,
   "undiagnosed_findings": [],
@@ -3226,8 +3196,7 @@
    "distro": null,
    "distro_version": null,
    "freeipa_version": null,
-   "ipa_healthcheck_version": null,
-   "python_version": null
+   "ipa_healthcheck_version": null
   },
   "evidence_completeness": {
    "healthcheck_collected": true,
@@ -3247,7 +3216,7 @@
    "replication",
    "certificates"
   ],
-  "replay_source": "/work/tests/fixtures/replication/peer-unreachable",
+  "replay_source": "tests/fixtures/replication/peer-unreachable",
   "unclaimed_warnings": 0,
   "undiagnosed_count": 0,
   "undiagnosed_findings": [],
@@ -3318,8 +3287,7 @@
    "distro": null,
    "distro_version": null,
    "freeipa_version": null,
-   "ipa_healthcheck_version": null,
-   "python_version": null
+   "ipa_healthcheck_version": null
   },
   "evidence_completeness": {
    "healthcheck_collected": true,
@@ -3339,7 +3307,7 @@
    "replication",
    "certificates"
   ],
-  "replay_source": "/work/tests/fixtures/replication/stale-ruv-removed-replica",
+  "replay_source": "tests/fixtures/replication/stale-ruv-removed-replica",
   "unclaimed_warnings": 0,
   "undiagnosed_count": 0,
   "undiagnosed_findings": [],

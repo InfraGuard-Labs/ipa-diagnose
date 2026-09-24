@@ -18,13 +18,15 @@ from ipa_diagnose.engine.run import run_diagnosis
 from ipa_diagnose.evidence.collect import collect_evidence
 from ipa_diagnose.render.json_output import report_to_dict
 
-ROOT = pathlib.Path(__file__).resolve().parents[1] / "tests" / "fixtures"
+ROOT = pathlib.Path("tests") / "fixtures"  # relative: run from the repository root (paths appear in the output)
 VOLATILE = {"generated_at"}
 
 
 def v1_view(fixture: pathlib.Path) -> dict:
     report = run_diagnosis(collect_evidence(replay_dir=str(fixture)))
     data = report_to_dict(report)
+    if isinstance(data.get("environment"), dict):
+        data["environment"].pop("python_version", None)  # the interpreter running the test, not the fixture
     return {k: v for k, v in data.items() if k not in VOLATILE}
 
 

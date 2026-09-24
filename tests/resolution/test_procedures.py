@@ -187,7 +187,8 @@ SERVICE_OK = {**ROOT_OK, "systemd.unit|service=dirsrv": unit(), "binary.present|
 
 def test_service_procedure_offered_with_exact_command():
     r = res_of(report_for(DIRSRV_DOWN, SERVICE_OK)[0], "healthcheck.service-not-running")
-    assert r.status == OFFERED and [s.argv for s in r.steps] == [["ipactl", "start"]]
+    assert r.status == OFFERED and [s.argv for s in r.steps] == [["systemctl", "start", "dirsrv@LAB-TEST.service"]]
+    assert r.rollback[0]["argv"] == ["systemctl", "stop", "dirsrv@LAB-TEST.service"]
     assert r.risk == "MEDIUM" and r.verify and not r.definitive
 
 
@@ -251,14 +252,14 @@ def stat(mode="0664", owner="pkiuser", group="pkiuser", symlink=False, exists=Tr
     if not exists:
         return ok({"exists": False})
     return ok({"exists": True, "is_symlink": symlink, "is_regular": True, "is_dir": False, "mode": mode,
-               "owner": owner, "group": group})
+               "owner": owner, "group": group, "canonical": True})
 
 
 def test_file_mode_procedure_offered_with_exact_command_and_rollback():
     r = res_of(report_for([perm()], {**ROOT_OK, f"file.stat|path={CS}": stat()})[0], "directory-server.ipa-file-permissions")
     assert r.status == OFFERED
-    assert [s.argv for s in r.steps] == [["chmod", "0660", CS]]
-    assert r.rollback[0]["argv"] == ["chmod", "0664", CS] and r.risk == "LOW"
+    assert [s.argv for s in r.steps] == [["chmod", "o-r", CS]]      # removes permissions only
+    assert r.rollback[0]["argv"] == ["chmod", "o+r", CS] and r.risk == "LOW"
     assert r.verify[0]["params"] == {"path": CS}
 
 
@@ -268,7 +269,7 @@ def test_owner_and_group_targets_use_chown_and_chgrp():
                "account.user|name=pkiuser": ok({"exists": True}), "account.group|name=pkiuser": ok({"exists": True})}
     r = res_of(report_for(entries, results)[0], "directory-server.ipa-file-permissions")
     assert r.status == OFFERED
-    assert sorted(s.argv[0] for s in r.steps) == ["chgrp", "chown"]
+    assert sorted(s.argv[:2] for s in r.steps) == [["chgrp", "-h"], ["chown", "-h"]]  # never follow a symlink
 
 
 @pytest.mark.parametrize("entry,stat_result,needle", [
@@ -298,10 +299,10 @@ def test_missing_expected_owner_account_withholds_the_fix():
 
 def test_one_bad_target_is_dropped_and_the_good_one_still_fixed():
     other = "/etc/ipa/default.conf"
-    entries = [perm(), perm(path=other, expected="0644", got="0600", check="IPAFileCheck")]
-    results = {**ROOT_OK, f"file.stat|path={CS}": stat(mode="0660"), f"file.stat|path={other}": stat(mode="0600")}
+    entries = [perm(), perm(path=other, expected="0640", got="0644", check="IPAFileCheck")]
+    results = {**ROOT_OK, f"file.stat|path={CS}": stat(mode="0660"), f"file.stat|path={other}": stat(mode="0644")}
     r = res_of(report_for(entries, results)[0], "directory-server.ipa-file-permissions")
-    assert r.status == OFFERED and [s.argv for s in r.steps] == [["chmod", "0644", other]]
+    assert r.status == OFFERED and [s.argv for s in r.steps] == [["chmod", "o-r", other]]
     assert any("already has mode" in x for x in r.reasons)
 
 
@@ -322,7 +323,8 @@ KEYTAB_SKEW = [hc("ipahealthcheck.ipa.host", "IPAHostKeytab", "ERROR", msg="Fail
 DESYNC = [EvidenceItem(item_id="clk", kind="clock_sync", summary="c", data={"method": "chronyc", "ntp_synchronized": True, "offset_seconds": 421.2})]
 CHRONY_OK = {**ROOT_OK,
              "systemd.unit|service=chronyd": unit(state="active", method="systemctl", unit_name="chronyd.service"),
-             "chrony.tracking|": ok({"offset_seconds": 421.2, "leap_status": "Normal", "synchronized": True, "reference": "10.0.0.5"}),
+             "chrony.tracking|": ok({"offset_seconds": 421.2, "offset_abs": 421.2, "direction": "ahead of", "leap_status": "Normal",
+                                     "synchronized": True, "reference": "10.0.0.5"}),
              "chrony.sources|": ok({"total": 2, "reachable": 2})}
 
 
@@ -333,7 +335,11 @@ def test_clock_procedure_offered_with_admin_confirmation():
 
 
 @pytest.mark.parametrize("override,needle", [
-    ({"chrony.tracking|": ok({"offset_seconds": 0.02, "leap_status": "Normal", "synchronized": True, "reference": "x"})}, "synchronized now"),
+    ({"chrony.tracking|": ok({"offset_seconds": 0.02, "offset_abs": 0.02, "direction": "ahead of", "leap_status": "Normal", "synchronized": True, "reference": "x"})}, "within 1 second"),
+    ({"chrony.tracking|": ok({"offset_seconds": 0.02, "offset_abs": 0.02, "direction": "ahead of", "leap_status": "Not synchronised", "synchronized": False, "reference": ""})}, "within 1 second"),
+    ({"chrony.tracking|": ok({"offset_seconds": 421.2, "offset_abs": 421.2, "direction": "ahead of", "leap_status": "Not synchronised", "synchronized": False, "reference": "10.0.0.5"})}, "has not synchronized"),
+    ({"chrony.tracking|": ok({"offset_seconds": 421.2, "offset_abs": 421.2, "direction": "ahead of", "leap_status": "Normal", "synchronized": True, "reference": ""})}, "no reference"),
+    ({"chrony.tracking|": ok({"offset_seconds": -31536000.0, "offset_abs": 31536000.0, "direction": "behind", "leap_status": "Normal", "synchronized": True, "reference": "10.0.0.5"})}, "more than a day"),
     ({"chrony.sources|": ok({"total": 2, "reachable": 0})}, "No time source"),
     ({"systemd.unit|service=chronyd": unit(state="inactive", method="systemctl", unit_name="chronyd.service")}, "not running"),
     ({"chrony.tracking|": (C.NOT_RUN, {}, "chronyc: not installed")}, "Could not"),
@@ -382,7 +388,9 @@ def test_expired_ds_certificate_gets_no_invented_fix():
 
 @pytest.mark.parametrize("override,needle", [
     ({"certmonger.ds_cert|instance=LAB-TEST,nickname=Server-Cert": cert(days_left=-1)}, "already expired"),
-    ({"certmonger.ds_cert|instance=LAB-TEST,nickname=Server-Cert": cert(state="CA_UNREACHABLE", ca_error="refused")}, "CA_UNREACHABLE"),
+    ({"certmonger.ds_cert|instance=LAB-TEST,nickname=Server-Cert": cert(state="CA_UNREACHABLE")}, "CA_UNREACHABLE"),
+    ({"certmonger.ds_cert|instance=LAB-TEST,nickname=Server-Cert": cert(ca_error="Server at https://ipa01/ipa/xml denied")}, "reports an error"),
+    ({"certmonger.ds_cert|instance=LAB-TEST,nickname=Server-Cert": cert(days_left=700)}, "probably been renewed"),
     ({"certmonger.ds_cert|instance=LAB-TEST,nickname=Server-Cert": cert(ca="external")}, "not the IPA CA"),
     ({"certmonger.ds_cert|instance=LAB-TEST,nickname=Server-Cert": ok({"found": False})}, "does not track"),
     ({"certmonger.ds_cert|instance=LAB-TEST,nickname=Server-Cert": cert(post_save_restarts_dirsrv=False)}, "does not restart"),
@@ -465,7 +473,8 @@ def test_json_v2_carries_the_resolution_and_v1_is_untouched():
     data = report_to_dict(report)
     assert data["report_schema_version"] == 2
     res = data["v2"]["resolutions"][0]
-    assert res["status"] == "OFFERED" and res["steps"][0]["argv"] == ["ipactl", "start"]
+    assert res["status"] == "OFFERED" and res["steps"][0]["argv"] == ["systemctl", "start", "dirsrv@LAB-TEST.service"]
+    assert all(c["source"] == "live" for c in res["checked"])
     assert {"diagnoses", "overall_status", "undiagnosed_findings"} <= set(data)
     assert all(set(d) == set(data["diagnoses"][0]) for d in data["diagnoses"])  # no new keys inside v1 diagnoses
     json.dumps(data)
@@ -519,3 +528,107 @@ def test_verify_criteria_from_a_tampered_state_file_cannot_run_anything_unexpect
     results = evaluate_verify(criteria, runner)
     assert [ok_ for _, ok_, _ in results] == [None, None, None]
     assert runner.calls == []
+
+
+# ------------------------------------------------------------------------------------------- review findings (Slice 1)
+
+
+@pytest.mark.parametrize("entry,needle", [
+    (perm(path="/etc/shadow", expected="0000", got="0640"), "not a single value"),              # outside IPA locations
+    (perm(expected="0666", got="0664"), "would ADD permissions"),                                # loosening
+    (perm(expected="0644", got="0600"), "would ADD permissions"),
+])
+def test_file_fix_never_touches_non_ipa_files_or_adds_permissions(entry, needle):
+    path = entry["kw"]["path"]
+    r = res_of(report_for([entry], {**ROOT_OK, f"file.stat|path={path}": stat(mode=entry["kw"]["got"])})[0],
+               "directory-server.ipa-file-permissions")
+    assert r.status == WITHHELD and not r.steps and any(needle in x for x in r.reasons), r.reasons
+
+
+def test_conflicting_results_for_one_file_are_never_both_applied():
+    entries = [perm(expected="0640", got="0664"), dict(perm(expected="0600", got="0664"), uuid="other")]
+    r = res_of(report_for(entries, {**ROOT_OK, f"file.stat|path={CS}": stat()})[0], "directory-server.ipa-file-permissions")
+    assert r.status == WITHHELD and not r.steps and any("conflicting" in x for x in r.reasons), r.reasons
+
+
+@pytest.mark.parametrize("path,expected", [
+    ("/var/lib/ipa/private/kdc.key", "apache"),     # key material
+    ("/etc/ipa/default.conf", "nobody"),            # not an IPA service account
+])
+def test_ownership_of_key_material_or_to_non_ipa_accounts_is_never_offered(path, expected):
+    entry = perm(path=path, kind="owner", expected=expected, got="root")
+    results = {**ROOT_OK, f"file.stat|path={path}": stat(owner="root"), f"account.user|name={expected}": ok({"exists": True})}
+    r = res_of(report_for([entry], results)[0], "directory-server.ipa-file-permissions")
+    assert r.status == WITHHELD and not r.steps
+
+
+def test_symlinked_parent_directory_withholds_the_fix():
+    st = stat()
+    st[1]["canonical"] = False
+    r = res_of(report_for([perm()], {**ROOT_OK, f"file.stat|path={CS}": st})[0], "directory-server.ipa-file-permissions")
+    assert r.status == WITHHELD and any("symbolic link in its path" in x for x in r.reasons)
+
+
+def test_disabled_systemctl_unit_is_not_started_but_failed_ipa_unit_is_offered_scoped():
+    entries = [hc("ipahealthcheck.meta.services", "sssd", "ERROR", msg="sssd: not running", status=False)]
+    dis = ok({"unit": "sssd.service", "start_method": "systemctl", "load_state": "loaded", "active_state": "inactive",
+              "sub_state": "dead", "unit_file_state": "disabled", "result": "success"})
+    r = res_of(report_for(entries, {**ROOT_OK, "systemd.unit|service=sssd": dis})[0], "healthcheck.service-not-running")
+    assert r.status == WITHHELD and any("disabled" in x for x in r.reasons)
+    failed = ok({"unit": "dirsrv@LAB-TEST.service", "start_method": "ipactl", "load_state": "loaded", "active_state": "failed",
+                 "sub_state": "failed", "unit_file_state": "disabled", "result": "exit-code"})
+    r2 = res_of(report_for(DIRSRV_DOWN, {**SERVICE_OK, "systemd.unit|service=dirsrv": failed})[0], "healthcheck.service-not-running")
+    assert r2.status == OFFERED and r2.steps[0].argv == ["systemctl", "start", "dirsrv@LAB-TEST.service"]
+
+
+@pytest.mark.parametrize("version", ["10.0.1", "5.0.0-1.fc50", "4.9garbage", "v4.13"])
+def test_unknown_future_or_malformed_versions_withhold(version):
+    env = EnvironmentInfo(distro="fedora", freeipa_version=version)
+    r = res_of(report_for(DIRSRV_DOWN, SERVICE_OK, env=env)[0], "healthcheck.service-not-running")
+    assert r.status == WITHHELD and not r.steps
+
+
+@pytest.mark.parametrize("criterion", [
+    {"text": "x", "check": "file.stat", "params": {"path": CS}, "when": {"all": [], "any": [{"left": {"ref": "this", "field": "mode"}, "op": "eq", "right": "0"}]}},
+    {"text": "x", "check": "file.stat", "params": {"path": CS}, "when": {"left": {"ref": "this", "field": "mode"}, "op": "eq", "right": {"ref": "this", "field": "mode"}}},
+    {"text": "x", "check": "file.stat", "params": ["abc"], "when": {"left": {"ref": "this", "field": "mode"}, "op": "eq", "right": "0660"}},
+    {"text": "x", "check": "file.stat", "params": {"path": CS}, "when": {"left": {"ref": "this", "field": "mode"}, "op": "is_empty", "right": 1}},
+])
+def test_tampered_verify_criteria_never_pass_or_crash(criterion):
+    runner = FakeRunner({f"file.stat|path={CS}": stat(mode="0660")})
+    assert [ok_ for _, ok_, _ in evaluate_verify([criterion], runner)] == [None]
+
+
+def test_runtime_loader_rejects_duplicate_json_keys():
+    with pytest.raises(K.KnowledgeError):
+        json.loads('{"a": 1, "a": 2}', object_pairs_hook=K._no_duplicate_keys)
+
+
+def test_yaml_compiler_rejects_explicit_safe_tags_too(tmp_path):
+    pytest.importorskip("yaml")
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("ck", ROOT / "scripts" / "compile_knowledge.py")
+    ck = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ck)
+    p = tmp_path / "k.yaml"
+    p.write_text("a: !!str 5\n", encoding="utf-8")
+    with pytest.raises(ValueError):
+        ck.load_file(p)
+
+
+def test_replayed_check_results_are_labelled_as_recorded():
+    from ipa_diagnose.evidence.collect import collect_evidence
+
+    fx = ROOT / "tests" / "fixtures" / "resolution" / "file-permissions"
+    report = run_diagnosis(collect_evidence(replay_dir=str(fx)))
+    resolve_report(report, C.ReplayRunner(str(fx)))
+    out = _render(report)
+    assert "recorded in this replay fixture (not run now)" in out
+    assert all(c["source"] == "recorded" for c in report_to_dict(report)["v2"]["resolutions"][0]["checked"])
+
+
+def test_display_command_is_shell_quoted():
+    from ipa_diagnose.resolution.engine import Step
+
+    assert Step("s", "t", ["getcert", "list", "-n", "Server Cert"], "LOW", [], "", "local").command == "getcert list -n 'Server Cert'"

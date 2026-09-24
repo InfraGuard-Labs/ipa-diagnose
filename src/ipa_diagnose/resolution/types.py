@@ -31,9 +31,16 @@ IPA_SERVICES: Dict[str, Tuple[str, str]] = {
     "gssproxy": ("gssproxy.service", "systemctl"),
 }
 
-# File locations an IPA file-permission procedure may touch (ipa-healthcheck's
-# IPAFileCheck / IPAFileNSSDBCheck / TomcatFileCheck only check paths under these).
-IPA_PATH_PREFIXES = ("/etc/", "/var/lib/", "/var/log/", "/var/named/", "/var/kerberos/", "/usr/share/ipa/")
+# File locations an IPA file-permission procedure may touch: the IPA/PKI/389-DS/Kerberos/DNS locations
+# ipa-healthcheck's IPAFileCheck / IPAFileNSSDBCheck / TomcatFileCheck verify. Anything else (for example
+# /etc/shadow) never gets a printed command, whatever a healthcheck result says.
+IPA_PATH_PREFIXES = (
+    "/etc/ipa/", "/etc/pki/pki-tomcat/", "/var/lib/pki/", "/etc/dirsrv/", "/var/lib/ipa/", "/var/log/",
+    "/etc/httpd/", "/var/named/", "/var/kerberos/krb5kdc/", "/etc/sssd/", "/etc/gssproxy/", "/usr/share/ipa/",
+)
+IPA_PATH_EXACT = ("/etc/named.conf", "/etc/named.keytab", "/etc/krb5.keytab", "/etc/krb5.conf")
+# Accounts ipa-healthcheck's file checks expect as owner/group (service accounts of IPA components).
+IPA_ACCOUNTS = frozenset({"root", "dirsrv", "pkiuser", "named", "apache", "ipaapi", "kdcproxy", "sssd", "ods", "gssproxy"})
 
 _PATH_RE = re.compile(r"^/[A-Za-z0-9._@+/-]{1,4095}$")
 _MODE_RE = re.compile(r"^0[0-7]{3}$")
@@ -53,7 +60,7 @@ def _abs_path(v: Any) -> Optional[str]:
         return None
     if os.path.normpath(v) != v or "//" in v or "/../" in v or v.endswith("/..") or "/./" in v:
         return None
-    if not v.startswith(IPA_PATH_PREFIXES):
+    if not (v.startswith(IPA_PATH_PREFIXES) or v in IPA_PATH_EXACT):
         return None
     return v
 
@@ -84,6 +91,22 @@ def _unit(v: Any) -> Optional[str]:
     return v if isinstance(v, str) and _UNIT_RE.fullmatch(v) else None
 
 
+def _ipa_account(v: Any) -> Optional[str]:
+    return v if isinstance(v, str) and v in IPA_ACCOUNTS else None
+
+
+_CHMOD_REMOVE_RE = re.compile(r"^[ugo]-[rwx]{1,3}(,[ugo]-[rwx]{1,3}){0,2}$")
+_CHMOD_ADD_RE = re.compile(r"^[ugo]\+[rwx]{1,3}(,[ugo]\+[rwx]{1,3}){0,2}$")
+
+
+def _chmod_remove(v: Any) -> Optional[str]:
+    return v if isinstance(v, str) and _CHMOD_REMOVE_RE.fullmatch(v) else None
+
+
+def _chmod_add(v: Any) -> Optional[str]:
+    return v if isinstance(v, str) and _CHMOD_ADD_RE.fullmatch(v) else None
+
+
 def _perm_type(v: Any) -> Optional[str]:
     return v if v in ("mode", "owner", "group") else None
 
@@ -98,6 +121,9 @@ VALIDATORS: Dict[str, Callable[[Any], Optional[str]]] = {
     "ds_instance": _instance,
     "systemd_unit": _unit,
     "permission_type": _perm_type,
+    "ipa_account": _ipa_account,
+    "chmod_remove": _chmod_remove,
+    "chmod_add": _chmod_add,
 }
 
 

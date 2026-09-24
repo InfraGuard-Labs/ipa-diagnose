@@ -72,7 +72,7 @@ def main():
                            got="0664", msg=f"Permissions of {path} are too permissive: 0664 and should be 0660")], {
               **ROOT_OK,
               f"file.stat|path={path}": ok({"exists": True, "is_symlink": False, "is_regular": True, "is_dir": False,
-                                            "mode": "0664", "owner": "pkiuser", "group": "pkiuser"},
+                                            "mode": "0664", "owner": "pkiuser", "group": "pkiuser", "canonical": True},
                                            f"{path}: mode 0664, owner pkiuser, group pkiuser", f"stat {path}"),
           })
     # 3. clock skew: host keytab kinit fails with clock skew; chronyc shows +421 s
@@ -84,7 +84,7 @@ def main():
               "systemd.unit|service=chronyd": ok({"unit": "chronyd.service", "start_method": "systemctl", "load_state": "loaded",
                                                   "active_state": "active", "sub_state": "running", "unit_file_state": "enabled",
                                                   "result": "success"}, "chronyd.service: active (running)"),
-              "chrony.tracking|": ok({"offset_seconds": 421.2, "leap_status": "Normal", "synchronized": True,
+              "chrony.tracking|": ok({"offset_seconds": 421.2, "offset_abs": 421.2, "direction": "ahead of", "leap_status": "Normal", "synchronized": True,
                                       "reference": "10.0.0.5"}, "clock offset +421.200 s, leap status Normal"),
               "chrony.sources|": ok({"total": 2, "reachable": 2}, "2 of 2 time source(s) reachable"),
           })
