@@ -131,12 +131,12 @@ def test_built_in_verified_requires_every_o10_element():
     proc = next(p for p in cat["procedures"] if p["id"] == "proc.service.start-stopped-service")
     prov = proc["provenance"]
     prov["tier"] = "BUILT_IN_VERIFIED"
-    prov["verified_on"] = [{"freeipa": "4.13.3", "os": "fedora-43", "tier": "LIVE", "evidence": "run 1"}]
+    prov["verified_on"] = [{"freeipa": "4.13.3", "os": "fedora-43", "tier": "LIVE", "evidence": "https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36055264033"}]
     with pytest.raises(K.KnowledgeError, match="independent review"):
         K.validate_catalogue(copy.deepcopy(cat))
     prov["reviews"] = [{"by": "fresh reviewer", "date": "2026-09-24", "scope": "procedure", "independent": True}]
     K.validate_catalogue(copy.deepcopy(cat))  # now complete
-    prov["sources"] = [{"kind": "blog", "ref": "x"}]
+    prov["sources"] = [{"kind": "blog", "ref": "https://blog.example.test/post"}]
     with pytest.raises(K.KnowledgeError, match="authoritative"):
         K.validate_catalogue(copy.deepcopy(cat))
 

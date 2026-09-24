@@ -65,6 +65,10 @@ def compile_catalogue() -> str:
         procedures.extend(data if isinstance(data, list) else [data])
     catalogue = {"schema": 1, "procedures": sorted(procedures, key=lambda p: p.get("id", ""))}
     validate_catalogue(catalogue)
+    for p in procedures:  # provenance.tests must name regression tests that exist in this repository
+        for t in (p.get("provenance") or {}).get("tests") or []:
+            if not (ROOT / t).is_file():
+                raise SystemExit(f"{p.get('id')}: provenance.tests names {t}, which does not exist")
     return json.dumps(catalogue, indent=1, sort_keys=True, ensure_ascii=False) + "\n"
 
 

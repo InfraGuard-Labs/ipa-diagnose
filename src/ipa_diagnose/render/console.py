@@ -278,7 +278,8 @@ def _render_resolution(d: Diagnosis, r, console: Console, *, details: bool) -> N
         if r.reference:
             console.print(f"Documentation: {escape(r.reference)}")
         console.print()
-        _render_safe_legacy_actions(d, console)
+        _render_safe_legacy_actions(d, console, details=details)
+        _render_legacy_tail(d, console, details=details)
         return
     if r.status != "OFFERED":
         console.print(Text("FIX", style="bold underline"))
@@ -287,7 +288,8 @@ def _render_resolution(d: Diagnosis, r, console: Console, *, details: bool) -> N
         for reason in r.reasons:
             console.print(f"  - {escape(reason)}")
         console.print()
-        _render_safe_legacy_actions(d, console)
+        _render_safe_legacy_actions(d, console, details=details)
+        _render_legacy_tail(d, console, details=details)
         return
 
     console.print(Text("FIX", style="bold underline"))
@@ -354,8 +356,30 @@ def _render_resolution(d: Diagnosis, r, console: Console, *, details: bool) -> N
         console.print()
 
 
-def _render_safe_legacy_actions(d: Diagnosis, console: Console) -> None:
-    """When no procedure is offered, only read-only guidance from the older action list is shown."""
+def _render_legacy_tail(d: Diagnosis, console: Console, *, details: bool) -> None:
+    """CONFIDENCE / LIMITATIONS / VERIFY exactly as v0.1.3 shows them, for diagnoses without an offered fix."""
+
+    if details:
+        console.print(Text("CONFIDENCE", style="bold underline"))
+        console.print(escape(f"{d.confidence.level.value}: {d.confidence.rationale}"))
+        console.print()
+        if d.limitations:
+            console.print(Text("LIMITATIONS", style="bold underline"))
+            console.print(escape(d.limitations))
+            console.print()
+    if d.verification:
+        console.print(Text("VERIFY", style="bold underline"))
+        console.print("After addressing this, confirm with:\n")
+        console.print("    [bold]sudo ipa-diagnose verify[/bold]\n")
+        if details:
+            for v in d.verification:
+                console.print(f"  - {escape(v.description)}")
+        console.print()
+
+
+def _render_safe_legacy_actions(d: Diagnosis, console: Console, *, details: bool = False) -> None:
+    """When no procedure is offered, only read-only guidance from the older action list is shown (state-changing
+    legacy actions stay in the JSON only: the checks above found a reason not to show a fix)."""
 
     safe = [a for a in d.actions if a.risk == RiskLevel.SAFE]
     if not safe:
@@ -367,6 +391,14 @@ def _render_safe_legacy_actions(d: Diagnosis, console: Console) -> None:
     style, label = _RISK_STYLE[RiskLevel.SAFE]
     console.print(f"Safety: [{style}]{label}[/{style}]")
     console.print()
+    if details and len(safe) > 1:
+        console.print(Text("ADDITIONAL READ-ONLY STEPS", style="bold underline"))
+        for a in safe[1:]:
+            console.print(f"  - {escape(a.description)}")
+            if a.command:
+                console.print(f"      [cyan]{escape(a.command)}[/cyan]")
+            console.print(f"    Safety: [{style}]{label}[/{style}]")
+        console.print()
 
 
 _VERIFY_STYLE = {
@@ -387,6 +419,9 @@ def render_verify(result, console: Console) -> None:
         return
 
     console.print(f"[dim]Comparing against diagnosis from {escape(result.previous_generated_at)}[/dim]")
+    if result.current_report is not None and getattr(result.current_report, "replay_source", None):
+        console.print("[yellow]Replay: the fresh side of this comparison is recorded evidence from a fixture; "
+                      "nothing was checked on this host now.[/yellow]")
     if result.current_report is not None:
         if result.current_report.evidence_completeness.level == "complete":
             console.print("[green]Evidence for this check: COMPLETE[/green]")

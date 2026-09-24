@@ -23,7 +23,7 @@ A fix is shown only when **all** of these hold, checked on this host at the time
    now, the unit is masked, the file already has the expected mode, the certificate has already expired);
 5. every prerequisite was checked and is met (for example: running as root).
 
-Otherwise the report says **"No fix is shown"** and lists the reason, and only read-only guidance remains.
+Otherwise the report says **"No fix is shown"** and lists the reason, and only read-only guidance remains. (The older, general action list - which can include state-changing commands written for v0.1.3 - is then not printed in the console; it is still in the JSON `actions` list.)
 For some diagnoses ipa-diagnose deliberately has **no deterministic fix** and says so (for example an already
 expired Directory Server certificate: recovering it is a high-risk procedure that ipa-diagnose has not
 verified, so it points to the documented procedure instead of inventing one).
@@ -52,6 +52,11 @@ After running the fix, `sudo ipa-diagnose verify` re-runs the diagnosis **and** 
 fresh read-only checks (for example "`/var/lib/pki/pki-tomcat/conf/ca/CS.cfg` has mode 0660"). It reports
 RESOLVED only when the diagnosis is gone *and* those checks pass; if a check fails it reports
 PARTIALLY_RESOLVED, and if a check cannot run it reports UNABLE_TO_VERIFY (exit 4) - never RESOLVED.
+
+The criteria are read back from the saved report (`/var/lib/ipa-diagnose/last_report.json`, root-only, mode
+0600) and are run only if they are exactly the catalogue procedure's own criteria; anything else gives
+UNABLE_TO_VERIFY. The saved report is otherwise trusted as ipa-diagnose's own earlier output. With `--replay`,
+verify says that its fresh side is recorded evidence and nothing was checked on the host.
 
 ## JSON
 
@@ -82,4 +87,6 @@ fields, expressions in place of structured conditions, shell metacharacters or u
 steps labelled with less risk than what they change. A procedure can only claim `BUILT_IN_VERIFIED` with an
 authoritative source, a version constraint, regression tests, an independent review record and - for any step
 that changes state - a live-lab verification record. An invalid catalogue disables all fixes (the report then
-behaves exactly like v0.1.3) rather than loading part of it.
+behaves like v0.1.3, with one "procedure catalogue rejected" entry in `collection_errors`) rather than loading
+part of it. Provenance values are checked too: https source URLs, a real FreeIPA version range, dated named
+reviews, existing test files and, for a live record, the URL of the CI run that applied and verified the fix.

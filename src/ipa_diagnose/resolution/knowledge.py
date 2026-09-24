@@ -160,6 +160,14 @@ def _max_risk(proc: Dict[str, Any]) -> str:
     return max(risks, key=lambda r: RISK_RANK[r])
 
 
+_URL_RE = re.compile(r"https://[A-Za-z0-9.-]+/[^\s]{1,400}")
+_EVIDENCE_RE = re.compile(r"https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/actions/runs/[0-9]{5,}(/job/[0-9]+)?")
+_VERSION_RE = re.compile(r"[0-9]{1,3}(\.[0-9]{1,4}){1,3}")
+_NAME_RE = re.compile(r"[A-Za-z][A-Za-z0-9 ._-]{1,60}")
+_DATE_RE = re.compile(r"20[0-9]{2}-[01][0-9]-[0-3][0-9]")
+_TEST_RE = re.compile(r"tests/[A-Za-z0-9_/]+\.py")
+
+
 def _validate_provenance(pid: str, proc: Dict[str, Any]) -> None:
     prov = proc["provenance"]
     _only(pid, prov, "provenance", {"tier", "sources", "verified_on", "reviews", "tests"}, {"tier", "sources", "tests"})
@@ -169,13 +177,26 @@ def _validate_provenance(pid: str, proc: Dict[str, Any]) -> None:
     sources = prov.get("sources") or []
     for s in sources:
         _only(pid, s, "provenance.sources[]", {"kind", "ref", "title"}, {"kind", "ref"})
+        if not isinstance(s["ref"], str) or not _URL_RE.fullmatch(s["ref"]):
+            _fail(pid, "provenance.sources[].ref must be an https URL")
     live = [v for v in prov.get("verified_on") or [] if isinstance(v, dict) and v.get("tier") == "LIVE" and v.get("evidence")]
     for v in prov.get("verified_on") or []:
         _only(pid, v, "provenance.verified_on[]", {"freeipa", "os", "tier", "evidence", "date"}, {"freeipa", "os", "tier", "evidence"})
+        if not (isinstance(v["freeipa"], str) and _VERSION_RE.fullmatch(v["freeipa"])):
+            _fail(pid, "provenance.verified_on[].freeipa must be a FreeIPA version")
+        if not (isinstance(v["os"], str) and _NAME_RE.fullmatch(v["os"])):
+            _fail(pid, "provenance.verified_on[].os must name the OS")
+        if v["tier"] == "LIVE" and not (isinstance(v["evidence"], str) and _EVIDENCE_RE.fullmatch(v["evidence"])):
+            _fail(pid, "a LIVE verification record needs evidence: the URL of the CI run that applied and verified it")
+        if "date" in v and not (isinstance(v["date"], str) and _DATE_RE.fullmatch(v["date"])):
+            _fail(pid, "provenance.verified_on[].date must be YYYY-MM-DD")
     for r in prov.get("reviews") or []:
         _only(pid, r, "provenance.reviews[]", {"by", "date", "scope", "independent"}, {"by", "date", "scope", "independent"})
-    if not prov.get("tests"):
-        _fail(pid, "provenance.tests must list the regression tests")
+        if not (isinstance(r["by"], str) and r["by"].strip() and isinstance(r["scope"], str) and r["scope"].strip()
+                and isinstance(r["date"], str) and _DATE_RE.fullmatch(r["date"]) and isinstance(r["independent"], bool)):
+            _fail(pid, "provenance.reviews[] needs who (by), what (scope), a YYYY-MM-DD date and independent: true/false")
+    if not prov.get("tests") or not all(isinstance(t, str) and _TEST_RE.fullmatch(t) for t in prov["tests"]):
+        _fail(pid, "provenance.tests must list the regression test files (tests/...py)")
     if tier in ("BUILT_IN_VERIFIED", "LIVE_VERIFIED") and not live:
         _fail(pid, f"{tier} requires a live-lab verification record (verified_on with tier LIVE and evidence)")
     if tier == "BUILT_IN_VERIFIED":
@@ -224,6 +245,10 @@ def _validate_procedure(proc: Dict[str, Any]) -> None:
         elif spec["type"] not in T.VALIDATORS:
             _fail(pid, f"bindings.{name}: unknown type {spec['type']!r}")
     _only(pid, proc["applies_to"], "applies_to", {"freeipa_min", "freeipa_below", "roles"}, {"roles"})
+    for k in ("freeipa_min", "freeipa_below"):
+        v = proc["applies_to"].get(k)
+        if v is not None and not (isinstance(v, str) and _VERSION_RE.fullmatch(v) and int(v.split(".")[0]) >= 4):
+            _fail(pid, f"applies_to.{k} must be a FreeIPA version (4.x or later)")
     if proc["applies_to"]["roles"] != ["ipa-server"]:
         _fail(pid, "applies_to.roles: only ipa-server is supported in this version")
     _validate_provenance(pid, proc)
@@ -348,8 +373,8 @@ def load_catalogue() -> Tuple[List[Dict[str, Any]], Optional[str]]:
         try:
             text = resources.files("ipa_diagnose.resolution").joinpath("procedures.json").read_text(encoding="utf-8")
             _CACHE = (validate_catalogue(json.loads(text, object_pairs_hook=_no_duplicate_keys)), None)
-        except (OSError, ValueError, KnowledgeError, KeyError, TypeError) as e:
-            _CACHE = ([], f"procedure catalogue rejected: {e}")
+        except Exception as e:  # noqa: BLE001 - any malformed catalogue disables every fix, never the report
+            _CACHE = ([], f"procedure catalogue rejected: {type(e).__name__}: {e}")
     return _CACHE
 
 

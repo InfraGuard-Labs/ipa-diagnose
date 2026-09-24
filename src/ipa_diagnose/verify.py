@@ -21,6 +21,7 @@ from typing import Any, Dict, List, Optional
 
 from ipa_diagnose.engine.model import Diagnosis, DiagnosisReport, DiagnosisStatus, PriorityBucket
 from ipa_diagnose.render.json_output import report_to_dict
+from ipa_diagnose.textsafe import sanitize_text
 
 _ROOT_TIER = {PriorityBucket.PRIMARY, PriorityBucket.SECONDARY_INDEPENDENT}
 
@@ -88,6 +89,15 @@ def load_previous_report(state_path: pathlib.Path) -> Optional[Dict[str, Any]]:
     data["diagnoses"] = [
         d for d in data.get("diagnoses", []) if isinstance(d, dict) and isinstance(d.get("diagnosis_id"), str)
     ]
+    for d in data["diagnoses"]:
+        # Hand-edited values are never printed as multi-line text and never reach comparisons as non-strings.
+        d["diagnosis_id"] = sanitize_text(d["diagnosis_id"], 160)
+        d["title"] = sanitize_text(d["title"], 160) if isinstance(d.get("title"), str) else d["diagnosis_id"]
+        for key in ("pack_id", "priority", "status"):
+            if not isinstance(d.get(key), str):
+                d[key] = ""
+    if not isinstance(data.get("generated_at"), str):
+        data["generated_at"] = "an unknown time"
     return data
 
 
@@ -123,6 +133,7 @@ def compare(previous: Optional[Dict[str, Any]], current: DiagnosisReport, runner
 
     items: List[VerifyItem] = []
     for diag_id, prev_d in prev_by_id.items():
+        title = prev_d.get("title", diag_id)
         pack_id = prev_d.get("pack_id", "")
         pack_gap = pack_id and (
             any(pack_id in err_source for err_source in affected_packs_with_errors)
@@ -158,21 +169,29 @@ def compare(previous: Optional[Dict[str, Any]], current: DiagnosisReport, runner
             outcome = VerifyOutcome.RESOLVED
             detail = "The condition that triggered this diagnosis is no longer present in fresh evidence."
             proc = prev_resolutions.get(diag_id)
-            if proc is not None and runner is not None and proc.get("verify"):
-                # The fix's own criteria, re-checked now with fresh read-only checks.
-                from ipa_diagnose.resolution.engine import evaluate_verify
+            if proc is not None and runner is not None:
+                # The fix's own criteria, re-checked now with fresh read-only checks - only if they are exactly
+                # the catalogue procedure's criteria (the state file is not trusted to define what passes).
+                from ipa_diagnose.resolution.engine import evaluate_verify, stored_verify_matches
 
+                if not stored_verify_matches(proc.get("procedure_id"), proc.get("verify")):
+                    outcome = VerifyOutcome.UNABLE_TO_VERIFY
+                    detail = ("The diagnosis is gone, but the fix's checks saved with the previous report do not match "
+                              "ipa-diagnose's own procedure, so they were not run. Run ipa-diagnose again.")
+                    items.append(VerifyItem(diagnosis_id=diag_id, title=title, outcome=outcome, detail=detail))
+                    continue
                 results = evaluate_verify(proc["verify"], runner)
                 lines = [f"{'✓' if ok else ('✗' if ok is False else '?')} {text}" for text, ok, _ in results]
+                own = "the fix's own checks (recorded in the replay fixture, not run now)" if getattr(runner, "replay", False)                     else "the fix's own checks"
                 if any(ok is None for _, ok, _ in results):
                     outcome = VerifyOutcome.UNABLE_TO_VERIFY
-                    detail = "The diagnosis is gone, but the fix's own checks could not all be run: " + "; ".join(lines)
+                    detail = f"The diagnosis is gone, but {own} could not all be run: " + "; ".join(lines)
                 elif all(ok for _, ok, _ in results):
-                    detail = "The diagnosis is gone and the fix's own checks pass: " + "; ".join(lines)
+                    detail = f"The diagnosis is gone and {own} pass: " + "; ".join(lines)
                 else:
                     outcome = VerifyOutcome.PARTIALLY_RESOLVED
-                    detail = "The diagnosis is gone, but not every check of the fix passes yet: " + "; ".join(lines)
-            items.append(VerifyItem(diagnosis_id=diag_id, title=prev_d.get("title", diag_id), outcome=outcome, detail=detail))
+                    detail = f"The diagnosis is gone, but not every one of {own} passes yet: " + "; ".join(lines)
+            items.append(VerifyItem(diagnosis_id=diag_id, title=title, outcome=outcome, detail=detail))
             continue
 
         prev_root_tier = prev_d.get("priority") in {b.value for b in _ROOT_TIER}

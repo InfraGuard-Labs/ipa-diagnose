@@ -535,3 +535,59 @@ def evaluate_verify(criteria: List[Dict[str, Any]], runner: Runner) -> List[Tupl
             why = e.why if isinstance(e, _Unknown) else "malformed criterion"
             results.append((sanitize_text(c.get("text", "") if isinstance(c, dict) else "", 200), None, why))
     return results
+
+
+_SCALAR = (str, int, float, bool)
+
+
+def _shape_matches(tmpl: Any, stored: Any, type_of) -> bool:
+    """`stored` is `tmpl` with its bind/item/ref values filled in (each a scalar of the declared type)."""
+
+    if isinstance(tmpl, dict) and ({"bind", "item", "ref"} & set(tmpl)) and tmpl.get("ref") != "this":
+        if not isinstance(stored, _SCALAR) or isinstance(stored, float) and not math.isfinite(stored):
+            return False
+        t = type_of(tmpl)
+        return t is None or T.validate(t, stored) == stored
+    if isinstance(tmpl, dict):
+        return isinstance(stored, dict) and set(tmpl) == set(stored) and all(
+            _shape_matches(tmpl[k], stored[k], type_of) for k in tmpl)
+    if isinstance(tmpl, list):
+        return isinstance(stored, list) and len(tmpl) == len(stored) and all(
+            _shape_matches(a, b, type_of) for a, b in zip(tmpl, stored))
+    return type(tmpl) is type(stored) and tmpl == stored
+
+
+def stored_verify_matches(procedure_id: Any, criteria: Any) -> bool:
+    """Verify criteria read back from the state file must be exactly the catalogue procedure's own criteria
+    (only the values it filled in may differ, and those must be valid values of their type)."""
+
+    catalogue, _ = load_catalogue()
+    proc = next((p for p in catalogue if p.get("id") == procedure_id and p.get("kind") != "no_procedure"), None)
+    if proc is None or not isinstance(criteria, list) or not criteria:
+        return False
+
+    def typer(entry):
+        def type_of(ref):
+            if "bind" in ref:
+                spec = proc["bindings"].get(ref["bind"], {})
+                return spec.get("type") if spec.get("type") != "list" else None
+            if "item" in ref and entry.get("for_each"):
+                item = proc["bindings"].get(entry["for_each"], {}).get("item", {})
+                t = item.get(ref["item"])
+                return None if t == "any_text" else t
+            return None
+        return type_of
+
+    templates = proc["verify"]
+    used = set()
+    for c in criteria:
+        if not isinstance(c, dict) or set(c) != {"text", "check", "params", "when"}:
+            return False
+        hit = [i for i, t in enumerate(templates)
+               if c["check"] == t["check"] and _shape_matches(t["params"], c["params"], typer(t))
+               and _shape_matches(t["when"], c["when"], typer(t))]
+        if not hit:
+            return False
+        used.update(hit)
+    # criteria cannot be dropped: every template that is not per-target must be present
+    return all(i in used for i, t in enumerate(templates) if not t.get("for_each"))

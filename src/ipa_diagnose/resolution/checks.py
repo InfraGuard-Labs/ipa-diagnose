@@ -162,15 +162,27 @@ def _systemd_unit(params):
     return _res("systemd.unit", params, OK, fields, disp, shlex.join(argv))
 
 
+_LOG_SECRET = re.compile(
+    r"(?i)(\b(?:pass(?:word|wd|phrase)?|pwd|secret|token|pin|api[_-]?key|credentials?)\b\s*[=:]\s*)(\"[^\"]*\"|'[^']*'|\S+)")
+_LOG_AUTH = re.compile(r"(?i)(\bauthorization\s*[:=]\s*)(?:basic|bearer|negotiate|digest)?\s*\S+")
+
+
+def _redact_log_line(line: str) -> str:
+    from ipa_diagnose.privacy.redact import redact_text
+
+    line = _LOG_SECRET.sub(lambda m: m.group(1) + "[REDACTED:secret]", line)
+    line = _LOG_AUTH.sub(lambda m: m.group(1) + "[REDACTED:authorization]", line)
+    return redact_text(line).redacted_text
+
+
 def _journal_tail(params):
     argv = ["journalctl", "--no-pager", "-o", "cat", "-n", "20", "-u", params["unit"]]
     rc, out, err = _run(argv)
     if rc is None:
         return _res("systemd.journal_tail", params, NOT_RUN, {}, err, shlex.join(argv))
-    from ipa_diagnose.privacy.redact import redact_text
-
     lines = [ln for ln in out.splitlines() if ln.strip() and not ln.startswith("-- ")]
-    last = redact_text(sanitize_text(lines[-1], 200)).redacted_text if lines else ""
+    # Redact the whole line first (truncating first could shorten a secret below what the patterns recognise).
+    last = sanitize_text(_redact_log_line(lines[-1][:4096]), 200) if lines else ""
     return _res("systemd.journal_tail", params, OK, {"lines": len(lines), "last_line": last},
                 f"last log line: {last}" if last else "no recent log lines", shlex.join(argv))
 
@@ -452,7 +464,7 @@ class ReplayRunner(Runner):
                 raw = json.loads(p.read_text(encoding="utf-8"))
                 if isinstance(raw, dict):
                     self._data = raw
-            except (OSError, ValueError):
+            except (OSError, ValueError, RecursionError):
                 self._data = {}
 
     def _execute(self, spec: CheckSpec, params: Dict[str, str]) -> CheckResult:
