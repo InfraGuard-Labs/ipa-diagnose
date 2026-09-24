@@ -175,6 +175,46 @@ def _journal_tail(params):
                 f"last log line: {last}" if last else "no recent log lines", shlex.join(argv))
 
 
+CONTAINER_DATA_ROOT = "/data"
+
+
+def _layout_ok(path: str) -> bool:
+    """Every symlink met on the way to `path` (parents and the file itself) is a known PKI layout link leading
+    exactly where it should, or a freeipa-container /data mirror of itself."""
+
+    parts = [p for p in path.split("/") if p]
+    for i in range(1, len(parts) + 1):
+        prefix = "/" + "/".join(parts[:i])
+        if not os.path.islink(prefix):
+            continue
+        real = os.path.realpath(prefix)
+        known = T.IPA_LAYOUT_LINKS.get(prefix)
+        if known is not None and real == os.path.realpath(known):
+            continue
+        if real == CONTAINER_DATA_ROOT + prefix:
+            continue
+        return False
+    return True
+
+
+def _command_target(real: str):
+    """Path a command may act on for a file whose real location is `real`: (target, allowed, via_container_mirror).
+
+    Allowed when the real file is itself in an IPA-managed location, or - the freeipa-container layout, where
+    /etc/pki, /var/lib/ipa, ... are symlinks into the /data volume - when stripping /data gives an IPA-managed
+    path that itself resolves to exactly this real file. Anything else resolves outside IPA and is refused.
+    """
+
+    if T.validate("ipa_path", real) is not None:
+        return real, True, False
+    root = CONTAINER_DATA_ROOT + "/"
+    if real.startswith(root):
+        standard = real[len(CONTAINER_DATA_ROOT):]
+        if T.validate("ipa_path", standard) is not None and os.path.realpath(standard) == real:
+            return standard, True, True
+    return real, False, False
+
+
 def _file_stat(params):
     path = params["path"]
     try:
@@ -193,14 +233,19 @@ def _file_stat(params):
         group = grp.getgrgid(st.st_gid).gr_name
     except (ImportError, KeyError):
         owner, group = f"uid:{st.st_uid}", f"gid:{st.st_gid}"
+    real = os.path.realpath(path)
+    target, allowed, mirror = _command_target(real)
+    allowed = allowed and (_stat.S_ISLNK(st.st_mode) or _layout_ok(path))
     fields = {
         "exists": True, "is_symlink": _stat.S_ISLNK(st.st_mode), "is_regular": _stat.S_ISREG(st.st_mode),
         "is_dir": _stat.S_ISDIR(st.st_mode), "mode": "%04o" % (st.st_mode & 0o7777),
         # Real location (parent directories may be symlinks: on FreeIPA /var/lib/pki/pki-tomcat/conf -> /etc/pki/pki-tomcat).
-        # Commands act on the real path, and only if it is itself an IPA-managed location.
-        "canonical": os.path.realpath(path) == path,
-        "realpath": sanitize_text(os.path.realpath(path), 4096),
-        "realpath_allowed": T.validate("ipa_path", os.path.realpath(path)) is not None,
+        # Commands act on "target" (the real file, named by an IPA-managed path), and only if realpath_allowed.
+        "canonical": real == path,
+        "realpath": sanitize_text(real, 4096),
+        "target": sanitize_text(target, 4096),
+        "realpath_allowed": allowed,
+        "container_data_mirror": mirror,
         "owner": sanitize_text(owner, 40), "group": sanitize_text(group, 40),
     }
     return _res("file.stat", params, OK, fields,

@@ -352,9 +352,10 @@ def _is_key_material(path: str) -> bool:
     """Files whose ownership is never changed automatically (keys, key databases, stash and password files)."""
 
     name = path.rsplit("/", 1)[-1]
-    return ("/private/" in path or "/custodia/" in path or name.startswith(".k5.")
-            or name.endswith((".key", ".keytab", "-key.pem", ".keys", ".p12"))
-            or name in ("key4.db", "key3.db", "password.conf", "pwdfile.txt", "pin.txt"))
+    return ("/private/" in path or "/custodia/" in path or "/dnssec/" in path or "/backup/" in path
+            or name.startswith(".") or "ccache" in name or "softhsm_pin" in name
+            or name.endswith((".key", ".keytab", "-key.pem", ".keys", ".p12", ".pin"))
+            or name in ("key4.db", "key3.db", "password.conf", "pwdfile.txt", "pin.txt", "dse.ldif"))
 
 
 def _mode_delta(got, expected) -> dict:

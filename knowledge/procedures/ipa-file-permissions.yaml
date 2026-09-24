@@ -39,9 +39,9 @@ withhold_if:
   - {for_each: targets_mode, when: {left: {ref: stat, field: exists}, op: is_false}, reason: "{item.path} no longer exists."}
   - {for_each: targets_owner, when: {left: {ref: stat, field: exists}, op: is_false}, reason: "{item.path} no longer exists."}
   - {for_each: targets_group, when: {left: {ref: stat, field: exists}, op: is_false}, reason: "{item.path} no longer exists."}
-  - {for_each: targets_mode, when: {left: {ref: stat, field: realpath_allowed}, op: is_false}, reason: "{item.path} resolves to {ref.stat.realpath}, which is outside IPA-managed locations; ipa-diagnose will not change it."}
-  - {for_each: targets_owner, when: {left: {ref: stat, field: realpath_allowed}, op: is_false}, reason: "{item.path} resolves to {ref.stat.realpath}, which is outside IPA-managed locations; ipa-diagnose will not change it."}
-  - {for_each: targets_group, when: {left: {ref: stat, field: realpath_allowed}, op: is_false}, reason: "{item.path} resolves to {ref.stat.realpath}, which is outside IPA-managed locations; ipa-diagnose will not change it."}
+  - {for_each: targets_mode, when: {left: {ref: stat, field: realpath_allowed}, op: is_false}, reason: "{item.path} resolves to {ref.stat.realpath} through a symbolic link that is not part of the standard IPA layout, or to a location outside IPA-managed locations; ipa-diagnose will not change it."}
+  - {for_each: targets_owner, when: {left: {ref: stat, field: realpath_allowed}, op: is_false}, reason: "{item.path} resolves to {ref.stat.realpath} through a symbolic link that is not part of the standard IPA layout, or to a location outside IPA-managed locations; ipa-diagnose will not change it."}
+  - {for_each: targets_group, when: {left: {ref: stat, field: realpath_allowed}, op: is_false}, reason: "{item.path} resolves to {ref.stat.realpath} through a symbolic link that is not part of the standard IPA layout, or to a location outside IPA-managed locations; ipa-diagnose will not change it."}
   - {for_each: targets_mode, when: {left: {ref: stat, field: is_symlink}, op: is_true}, reason: "{item.path} is a symbolic link; ipa-diagnose will not change permissions through a link."}
   - {for_each: targets_owner, when: {left: {ref: stat, field: is_symlink}, op: is_true}, reason: "{item.path} is a symbolic link; ipa-diagnose will not change ownership through a link."}
   - {for_each: targets_group, when: {left: {ref: stat, field: is_symlink}, op: is_true}, reason: "{item.path} is a symbolic link; ipa-diagnose will not change ownership through a link."}
@@ -62,7 +62,7 @@ steps:
     for_each: targets_mode
     text: "Remove the extra permissions from {item.path} ({item.got} -> {item.expected})"
     run_on: local
-    command: [chmod, {item: remove, type: chmod_remove}, {ref: stat, field: realpath, type: ipa_path}]
+    command: [chmod, {item: remove, type: chmod_remove}, {ref: stat, field: target, type: ipa_path}]
     risk: LOW
     changes: [file-permission]
     expected: "no output; the file's mode is {item.expected}"
@@ -70,7 +70,7 @@ steps:
     for_each: targets_owner
     text: "Set the owner of {item.path} to {item.expected}"
     run_on: local
-    command: [chown, -h, {item: expected, type: ipa_account}, {ref: stat, field: realpath, type: ipa_path}]
+    command: [chown, -h, {item: expected, type: ipa_account}, {ref: stat, field: target, type: ipa_path}]
     risk: LOW
     changes: [file-permission]
     expected: "no output; the file is owned by {item.expected}"
@@ -78,21 +78,21 @@ steps:
     for_each: targets_group
     text: "Set the group of {item.path} to {item.expected}"
     run_on: local
-    command: [chgrp, -h, {item: expected, type: ipa_account}, {ref: stat, field: realpath, type: ipa_path}]
+    command: [chgrp, -h, {item: expected, type: ipa_account}, {ref: stat, field: target, type: ipa_path}]
     risk: LOW
     changes: [file-permission]
     expected: "no output; the file's group is {item.expected}"
 what_changes:
-  - {for_each: targets_mode, text: "{ref.stat.realpath}: mode {item.got} -> {item.expected}. Nothing else about the file changes."}
-  - {for_each: targets_owner, text: "{ref.stat.realpath}: owner {item.got} -> {item.expected}. Nothing else about the file changes."}
-  - {for_each: targets_group, text: "{ref.stat.realpath}: group {item.got} -> {item.expected}. Nothing else about the file changes."}
+  - {for_each: targets_mode, text: "{ref.stat.target}: mode {item.got} -> {item.expected}. Nothing else about the file changes."}
+  - {for_each: targets_owner, text: "{ref.stat.target}: owner {item.got} -> {item.expected}. Nothing else about the file changes."}
+  - {for_each: targets_group, text: "{ref.stat.target}: group {item.got} -> {item.expected}. Nothing else about the file changes."}
 rollback:
-  - {for_each: targets_mode, text: "Put the previous mode of {item.path} back (this restores the state ipa-healthcheck flagged)", command: [chmod, {item: restore, type: chmod_add}, {ref: stat, field: realpath, type: ipa_path}]}
-  - {for_each: targets_owner, text: "Put the previous owner of {item.path} back (this restores the state ipa-healthcheck flagged)", command: [chown, -h, {item: got, type: ipa_account}, {ref: stat, field: realpath, type: ipa_path}]}
-  - {for_each: targets_group, text: "Put the previous group of {item.path} back (this restores the state ipa-healthcheck flagged)", command: [chgrp, -h, {item: got, type: ipa_account}, {ref: stat, field: realpath, type: ipa_path}]}
+  - {for_each: targets_mode, text: "Put the previous mode of {ref.stat.target} back (this restores the state ipa-healthcheck flagged)", command: [chmod, {item: restore, type: chmod_add}, {ref: stat, field: target, type: ipa_path}]}
+  - {for_each: targets_owner, text: "Put the previous owner of {ref.stat.target} back (this restores the state ipa-healthcheck flagged)", command: [chown, -h, {item: got, type: ipa_account}, {ref: stat, field: target, type: ipa_path}]}
+  - {for_each: targets_group, text: "Put the previous group of {ref.stat.target} back (this restores the state ipa-healthcheck flagged)", command: [chgrp, -h, {item: got, type: ipa_account}, {ref: stat, field: target, type: ipa_path}]}
 verify:
-  - {for_each: targets_mode, text: "{item.path} has mode {item.expected}", check: file.stat, params: {path: {ref: stat, field: realpath}}, when: {left: {ref: this, field: mode}, op: eq, right: {item: expected}}}
-  - {for_each: targets_owner, text: "{item.path} is owned by {item.expected}", check: file.stat, params: {path: {ref: stat, field: realpath}}, when: {left: {ref: this, field: owner}, op: eq, right: {item: expected}}}
-  - {for_each: targets_group, text: "{item.path} has group {item.expected}", check: file.stat, params: {path: {ref: stat, field: realpath}}, when: {left: {ref: this, field: group}, op: eq, right: {item: expected}}}
+  - {for_each: targets_mode, text: "{ref.stat.target} has mode {item.expected}", check: file.stat, params: {path: {ref: stat, field: target}}, when: {left: {ref: this, field: mode}, op: eq, right: {item: expected}}}
+  - {for_each: targets_owner, text: "{ref.stat.target} is owned by {item.expected}", check: file.stat, params: {path: {ref: stat, field: target}}, when: {left: {ref: this, field: owner}, op: eq, right: {item: expected}}}
+  - {for_each: targets_group, text: "{ref.stat.target} has group {item.expected}", check: file.stat, params: {path: {ref: stat, field: target}}, when: {left: {ref: this, field: group}, op: eq, right: {item: expected}}}
 impact_note: "A file that is too permissive can expose secrets in it to local users; one with the wrong owner or group can stop the IPA service that needs it from reading it."
 limitations: "This sets only the owner, group or mode ipa-healthcheck reports; it does not change SELinux labels. If a service still cannot read the file afterwards, check 'ls -Z' and 'ausearch -m avc'. When ipa-healthcheck accepts more than one value, the change would add permissions, or the owner is not an IPA service account, no fix is chosen for you."

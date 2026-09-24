@@ -4,6 +4,7 @@
   "display": "/var/lib/pki/pki-tomcat/conf/ca/CS.cfg: mode 0664, owner pkiuser, group pkiuser",
   "fields": {
    "canonical": true,
+   "container_data_mirror": false,
    "exists": true,
    "group": "pkiuser",
    "is_dir": false,
@@ -12,7 +13,8 @@
    "mode": "0664",
    "owner": "pkiuser",
    "realpath": "/var/lib/pki/pki-tomcat/conf/ca/CS.cfg",
-   "realpath_allowed": true
+   "realpath_allowed": true,
+   "target": "/var/lib/pki/pki-tomcat/conf/ca/CS.cfg"
   },
   "status": "OK"
  },

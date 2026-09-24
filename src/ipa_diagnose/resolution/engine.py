@@ -16,6 +16,8 @@ Only then is the procedure OFFERED. Everything that ran is kept as "checked for 
 from __future__ import annotations
 
 import dataclasses
+import json
+import math
 import re
 import shlex
 from typing import Any, Dict, List, Optional, Tuple
@@ -139,6 +141,8 @@ def _compare(op: str, a: Any, b: Any) -> bool:
             return a in (None, "", [], {})
         if a is None or b is None:
             raise _Unknown("value missing")
+        if any(isinstance(x, float) and not math.isfinite(x) for x in (a, b)):
+            raise _Unknown("value is not a finite number")
         if op == "lt":
             return a < b
         if op == "le":
@@ -260,6 +264,16 @@ def _bindings(proc: Dict[str, Any], d: Diagnosis, reasons: List[str]) -> Optiona
     list_names = [n for n, sp in proc["bindings"].items() if sp["type"] == "list"]
     if list_names and not any(out[n] for n in list_names):
         return None
+    return out
+
+
+def _dedupe(items: List[Any], key) -> List[Any]:
+    seen, out = set(), []
+    for x in items:
+        k = key(x)
+        if k not in seen:
+            seen.add(k)
+            out.append(x)
     return out
 
 
@@ -440,6 +454,21 @@ def resolve_diagnosis(d: Diagnosis, env: Optional[EnvironmentInfo], runner: Runn
     if not r.steps:
         r.reasons.append("No step applies to the current state.")
         return r
+    # Two findings that reach the same target through different names must agree: the same step on the
+    # same target with different arguments is contradictory evidence, so nothing is shown.
+    seen: Dict[Tuple[str, str], List[str]] = {}
+    for st in r.steps:
+        k = (st.step_id, st.argv[-1])
+        if k in seen and seen[k] != st.argv:
+            r.steps, r.what_changes, r.rollback, r.verify = [], [], [], []
+            r.reasons.append(f"Two findings expect different values for the same file ({sanitize_text(st.argv[-1], 160)}), "
+                             "so ipa-diagnose cannot tell which one is right.")
+            return r
+        seen[k] = st.argv
+    r.steps = _dedupe(r.steps, lambda s: (s.step_id, tuple(s.argv)))
+    r.what_changes = _dedupe(r.what_changes, lambda x: x)
+    r.rollback = _dedupe(r.rollback, lambda x: tuple(x["argv"]) if x["argv"] else x["text"])
+    r.verify = _dedupe(r.verify, lambda x: json.dumps({k: x[k] for k in ("check", "params", "when")}, sort_keys=True))
     r.risk = max((s.risk for s in r.steps), key=lambda x: RISK_RANK[x])
     r.definitive, r.verification_label = _label(proc, env)
     r.status = OFFERED

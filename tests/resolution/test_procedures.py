@@ -253,7 +253,7 @@ def stat(mode="0664", owner="pkiuser", group="pkiuser", symlink=False, exists=Tr
     if not exists:
         return ok({"exists": False})
     return ok({"exists": True, "is_symlink": symlink, "is_regular": True, "is_dir": False, "mode": mode,
-               "owner": owner, "group": group, "canonical": True, "realpath": real, "realpath_allowed": allowed})
+               "owner": owner, "group": group, "canonical": True, "realpath": real, "target": real, "realpath_allowed": allowed, "container_data_mirror": False})
 
 
 def test_file_mode_procedure_offered_with_exact_command_and_rollback():
@@ -575,6 +575,35 @@ def test_symlinked_parent_resolving_outside_ipa_locations_withholds_the_fix():
     r = res_of(report_for([perm()], {**ROOT_OK, f"file.stat|path={CS}": stat(real="/etc/shadow", allowed=False)})[0],
                "directory-server.ipa-file-permissions")
     assert r.status == WITHHELD and not r.steps and any("outside IPA-managed locations" in x for x in r.reasons)
+
+
+def test_container_data_mirror_acts_on_the_standard_ipa_path():
+    # freeipa-container layout, found in the live lab: /etc/pki -> /data/etc/pki
+    data = "/data/etc/pki/pki-tomcat/ca/CS.cfg"
+    std = "/etc/pki/pki-tomcat/ca/CS.cfg"
+    st = stat(real=data)
+    st[1].update({"target": std, "container_data_mirror": True})
+    r = res_of(report_for([perm()], {**ROOT_OK, f"file.stat|path={CS}": st})[0], "directory-server.ipa-file-permissions")
+    assert r.status == OFFERED and r.steps[0].argv == ["chmod", "o-r", std]
+    assert r.verify[0]["params"] == {"path": std}
+
+
+@pytest.mark.parametrize("real,resolves,expect", [
+    ("/etc/pki/pki-tomcat/ca/CS.cfg", {}, ("/etc/pki/pki-tomcat/ca/CS.cfg", True, False)),
+    ("/data/etc/pki/pki-tomcat/ca/CS.cfg", {"/etc/pki/pki-tomcat/ca/CS.cfg": "/data/etc/pki/pki-tomcat/ca/CS.cfg"},
+     ("/etc/pki/pki-tomcat/ca/CS.cfg", True, True)),
+    # the standard path does not lead to this file: refused
+    ("/data/etc/pki/pki-tomcat/ca/CS.cfg", {"/etc/pki/pki-tomcat/ca/CS.cfg": "/etc/pki/pki-tomcat/ca/CS.cfg"},
+     ("/data/etc/pki/pki-tomcat/ca/CS.cfg", False, False)),
+    # a /data file whose standard path is not IPA-managed: refused
+    ("/data/etc/shadow", {"/etc/shadow": "/data/etc/shadow"}, ("/data/etc/shadow", False, False)),
+    ("/data/../etc/shadow", {}, ("/data/../etc/shadow", False, False)),
+    ("/etc/shadow", {}, ("/etc/shadow", False, False)),
+    ("/datax/etc/pki/pki-tomcat/ca/CS.cfg", {}, ("/datax/etc/pki/pki-tomcat/ca/CS.cfg", False, False)),
+])
+def test_command_target_only_follows_the_verified_container_mirror(monkeypatch, real, resolves, expect):
+    monkeypatch.setattr(C.os.path, "realpath", lambda p: resolves.get(p, p))
+    assert C._command_target(real) == expect
 
 
 def test_disabled_systemctl_unit_is_not_started_but_failed_ipa_unit_is_offered_scoped():

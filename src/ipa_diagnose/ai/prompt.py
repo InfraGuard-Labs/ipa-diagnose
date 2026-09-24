@@ -18,7 +18,7 @@ import re
 from typing import Optional
 
 from ipa_diagnose.ai.provider import AIProvider, AIRequest, ProviderError
-from ipa_diagnose.engine.model import Diagnosis
+from ipa_diagnose.engine.model import Diagnosis, RiskLevel
 from ipa_diagnose.evidence.model import EvidenceBundle
 from ipa_diagnose.privacy.minimize import build_ai_payload
 
@@ -38,31 +38,62 @@ _COMMAND_LIKE = re.compile(
     r"systemctl|service|reboot|shutdown|halt|poweroff|init\s+0|"
     r"rm\b|mkfs[\w.]*|dd\b|userdel|groupdel|iptables|firewall-cmd|"
     r"dnf|yum|rpm\b|certutil|db2index[\w.]*|chmod|chown|kill(?:all)?|"
-    r"curl|wget|python[\w.]*|perl|bash|sh\b|nc\b|ncat)\b",
+    r"curl|wget|python[\w.]*|perl|bash|sh\b|nc\b|ncat|chronyc|chgrp|setfacl|restorecon|mv\b|cp\b)\b",
     re.IGNORECASE,
 )
 _CODE_SPAN = re.compile(r"`([^`\n]{1,200})`")
 _MAX_EXPLANATION_CHARS = 4000
 
 
+# Where the phrase started by a command-shaped word ends (code-span edge, line end, clause punctuation).
+_PHRASE_END = re.compile(r"[`\n;,()]|\.(?:\s|$)|:\s")
+_LEAD = re.compile(r"^(?:\$\s*)?(?:sudo\s+)?")
+
+
+def _tokens(text: str) -> list:
+    return _LEAD.sub("", text.strip()).split()
+
+
 def _looks_approved(candidate: str, approved_commands: set) -> bool:
-    candidate = candidate.strip()
-    # The span must be (part of) an approved command - never an approved
-    # command with extra text appended.
-    return any(candidate in cmd for cmd in approved_commands)
+    """The candidate is an approved command, or its leading whole words (e.g. just the program name).
+
+    Never an approved command with anything appended, and never a substring match: a bare
+    `systemctl` inside an approved command must not approve `systemctl stop krb5kdc`."""
+
+    got = _tokens(candidate)
+    if not got:
+        return True
+    return any(got == _tokens(cmd)[:len(got)] for cmd in approved_commands)
+
+
+def _approved_spans(text: str, approved_commands: set) -> list:
+    """Character ranges where an approved command appears verbatim (followed by a word boundary)."""
+
+    spans = []
+    for cmd in approved_commands:
+        start = text.find(cmd)
+        while start != -1:
+            end = start + len(cmd)
+            if end == len(text) or not (text[end].isalnum() or text[end] in "-_/=@"):
+                spans.append((start, end))
+            start = text.find(cmd, start + 1)
+    return spans
 
 
 def sanitize_explanation(text: str, diagnosis: Diagnosis) -> Optional[str]:
     """Returns the explanation if it looks like prose only, else None (caller
     must fall back to the deterministic `why` text).
 
-    Two independent checks, either of which rejects the whole response:
-    1. Any command-shaped token (see _COMMAND_LIKE) appearing anywhere in
-       the text, not just at a line's start.
-    2. Any markdown-style inline code span (`` `...` ``) whose content isn't
-       one of the diagnosis's own approved commands - this catches the
-       common AI phrasing "run `<command>`" regardless of whether the
-       command inside the backticks matches a known binary name.
+    Only the diagnosis's own SAFE (read-only) actions count as approved: an AI
+    explanation must never bring back a state-changing command, in particular
+    one the resolution framework withheld. Two independent checks, either of
+    which rejects the whole response:
+    1. Any markdown-style inline code span (`` `...` ``) that is not an
+       approved command or its leading words - this catches the common AI
+       phrasing "run `<command>`" whatever binary it names.
+    2. Any command-shaped token (see _COMMAND_LIKE) anywhere in the text that
+       is not inside a verbatim approved command: the phrase it starts must be
+       an approved command or its leading words.
     """
 
     if not text or not text.strip():
@@ -70,14 +101,19 @@ def sanitize_explanation(text: str, diagnosis: Diagnosis) -> Optional[str]:
     if len(text) > _MAX_EXPLANATION_CHARS:
         return None
 
-    approved_commands = {a.command for a in diagnosis.actions if a.command}
+    approved_commands = {a.command for a in diagnosis.actions if a.command and a.risk == RiskLevel.SAFE}
 
     for span_match in _CODE_SPAN.finditer(text):
         if not _looks_approved(span_match.group(1), approved_commands):
             return None
 
+    covered = _approved_spans(text, approved_commands)
     for match in _COMMAND_LIKE.finditer(text):
-        if not _looks_approved(match.group(0), approved_commands):
+        if any(a <= match.start() < b for a, b in covered):
+            continue
+        rest = text[match.start():]
+        end = _PHRASE_END.search(rest)
+        if not _looks_approved(rest[:end.start()] if end else rest, approved_commands):
             return None
 
     return text.strip()

@@ -34,11 +34,27 @@ IPA_SERVICES: Dict[str, Tuple[str, str]] = {
 # /etc/shadow) never gets a printed command, whatever a healthcheck result says.
 IPA_PATH_PREFIXES = (
     "/etc/ipa/", "/etc/pki/pki-tomcat/", "/var/lib/pki/", "/etc/dirsrv/", "/var/lib/ipa/",
-    "/var/log/dirsrv/", "/var/log/pki/", "/var/log/httpd/", "/var/log/ipa",
+    "/var/log/dirsrv/", "/var/log/pki/", "/var/log/httpd/", "/var/log/ipa/",
     "/etc/httpd/", "/var/named/", "/var/kerberos/krb5kdc/", "/etc/sssd/", "/etc/gssproxy/", "/usr/share/ipa/",
 )
 IPA_PATH_EXACT = ("/etc/named.conf", "/etc/named.keytab", "/etc/krb5.keytab", "/etc/krb5.conf",
-                  "/var/log/krb5kdc.log", "/var/log/kadmind.log")
+                  "/var/log/krb5kdc.log", "/var/log/kadmind.log", "/var/log/ipaserver-install.log",
+                  "/var/log/ipareplica-install.log", "/var/log/ipaclient-install.log", "/var/log/ipaupgrade.log")
+# The only directory symlinks a file-permission fix may pass through: the ones PKI creates itself (link ->
+# where it must lead). Any other symlink in the path (for example a service account swapping one of its
+# directories for a link into another component) withholds the fix.
+IPA_LAYOUT_LINKS = {
+    "/var/lib/pki/pki-tomcat/conf": "/etc/pki/pki-tomcat",
+    "/var/lib/pki/pki-tomcat/logs": "/var/log/pki/pki-tomcat",
+    "/var/lib/pki/pki-tomcat/alias": "/etc/pki/pki-tomcat/alias",
+    "/etc/pki/pki-tomcat/alias": "/var/lib/pki/pki-tomcat/alias",
+    "/var/lib/pki/pki-tomcat/ca/conf": "/etc/pki/pki-tomcat/ca",
+    "/var/lib/pki/pki-tomcat/ca/logs": "/var/log/pki/pki-tomcat/ca",
+    "/var/lib/pki/pki-tomcat/ca/alias": "/var/lib/pki/pki-tomcat/alias",
+    "/var/lib/pki/pki-tomcat/kra/conf": "/etc/pki/pki-tomcat/kra",
+    "/var/lib/pki/pki-tomcat/kra/logs": "/var/log/pki/pki-tomcat/kra",
+    "/var/lib/pki/pki-tomcat/kra/alias": "/var/lib/pki/pki-tomcat/alias",
+}
 # Accounts ipa-healthcheck's file checks expect as owner/group (service accounts of IPA components).
 IPA_ACCOUNTS = frozenset({"root", "dirsrv", "pkiuser", "named", "apache", "ipaapi", "kdcproxy", "sssd", "ods", "gssproxy"})
 

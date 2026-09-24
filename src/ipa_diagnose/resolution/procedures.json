@@ -456,13 +456,13 @@
        "type": "chmod_add"
       },
       {
-       "field": "realpath",
+       "field": "target",
        "ref": "stat",
        "type": "ipa_path"
       }
      ],
      "for_each": "targets_mode",
-     "text": "Put the previous mode of {item.path} back (this restores the state ipa-healthcheck flagged)"
+     "text": "Put the previous mode of {ref.stat.target} back (this restores the state ipa-healthcheck flagged)"
     },
     {
      "command": [
@@ -473,13 +473,13 @@
        "type": "ipa_account"
       },
       {
-       "field": "realpath",
+       "field": "target",
        "ref": "stat",
        "type": "ipa_path"
       }
      ],
      "for_each": "targets_owner",
-     "text": "Put the previous owner of {item.path} back (this restores the state ipa-healthcheck flagged)"
+     "text": "Put the previous owner of {ref.stat.target} back (this restores the state ipa-healthcheck flagged)"
     },
     {
      "command": [
@@ -490,13 +490,13 @@
        "type": "ipa_account"
       },
       {
-       "field": "realpath",
+       "field": "target",
        "ref": "stat",
        "type": "ipa_path"
       }
      ],
      "for_each": "targets_group",
-     "text": "Put the previous group of {item.path} back (this restores the state ipa-healthcheck flagged)"
+     "text": "Put the previous group of {ref.stat.target} back (this restores the state ipa-healthcheck flagged)"
     }
    ],
    "steps": [
@@ -511,7 +511,7 @@
        "type": "chmod_remove"
       },
       {
-       "field": "realpath",
+       "field": "target",
        "ref": "stat",
        "type": "ipa_path"
       }
@@ -535,7 +535,7 @@
        "type": "ipa_account"
       },
       {
-       "field": "realpath",
+       "field": "target",
        "ref": "stat",
        "type": "ipa_path"
       }
@@ -559,7 +559,7 @@
        "type": "ipa_account"
       },
       {
-       "field": "realpath",
+       "field": "target",
        "ref": "stat",
        "type": "ipa_path"
       }
@@ -579,11 +579,11 @@
      "for_each": "targets_mode",
      "params": {
       "path": {
-       "field": "realpath",
+       "field": "target",
        "ref": "stat"
       }
      },
-     "text": "{item.path} has mode {item.expected}",
+     "text": "{ref.stat.target} has mode {item.expected}",
      "when": {
       "left": {
        "field": "mode",
@@ -600,11 +600,11 @@
      "for_each": "targets_owner",
      "params": {
       "path": {
-       "field": "realpath",
+       "field": "target",
        "ref": "stat"
       }
      },
-     "text": "{item.path} is owned by {item.expected}",
+     "text": "{ref.stat.target} is owned by {item.expected}",
      "when": {
       "left": {
        "field": "owner",
@@ -621,11 +621,11 @@
      "for_each": "targets_group",
      "params": {
       "path": {
-       "field": "realpath",
+       "field": "target",
        "ref": "stat"
       }
      },
-     "text": "{item.path} has group {item.expected}",
+     "text": "{ref.stat.target} has group {item.expected}",
      "when": {
       "left": {
        "field": "group",
@@ -641,15 +641,15 @@
    "what_changes": [
     {
      "for_each": "targets_mode",
-     "text": "{ref.stat.realpath}: mode {item.got} -> {item.expected}. Nothing else about the file changes."
+     "text": "{ref.stat.target}: mode {item.got} -> {item.expected}. Nothing else about the file changes."
     },
     {
      "for_each": "targets_owner",
-     "text": "{ref.stat.realpath}: owner {item.got} -> {item.expected}. Nothing else about the file changes."
+     "text": "{ref.stat.target}: owner {item.got} -> {item.expected}. Nothing else about the file changes."
     },
     {
      "for_each": "targets_group",
-     "text": "{ref.stat.realpath}: group {item.got} -> {item.expected}. Nothing else about the file changes."
+     "text": "{ref.stat.target}: group {item.got} -> {item.expected}. Nothing else about the file changes."
     }
    ],
    "withhold_if": [
@@ -699,7 +699,7 @@
     },
     {
      "for_each": "targets_mode",
-     "reason": "{item.path} resolves to {ref.stat.realpath}, which is outside IPA-managed locations; ipa-diagnose will not change it.",
+     "reason": "{item.path} resolves to {ref.stat.realpath} through a symbolic link that is not part of the standard IPA layout, or to a location outside IPA-managed locations; ipa-diagnose will not change it.",
      "when": {
       "left": {
        "field": "realpath_allowed",
@@ -710,7 +710,7 @@
     },
     {
      "for_each": "targets_owner",
-     "reason": "{item.path} resolves to {ref.stat.realpath}, which is outside IPA-managed locations; ipa-diagnose will not change it.",
+     "reason": "{item.path} resolves to {ref.stat.realpath} through a symbolic link that is not part of the standard IPA layout, or to a location outside IPA-managed locations; ipa-diagnose will not change it.",
      "when": {
       "left": {
        "field": "realpath_allowed",
@@ -721,7 +721,7 @@
     },
     {
      "for_each": "targets_group",
-     "reason": "{item.path} resolves to {ref.stat.realpath}, which is outside IPA-managed locations; ipa-diagnose will not change it.",
+     "reason": "{item.path} resolves to {ref.stat.realpath} through a symbolic link that is not part of the standard IPA layout, or to a location outside IPA-managed locations; ipa-diagnose will not change it.",
      "when": {
       "left": {
        "field": "realpath_allowed",
