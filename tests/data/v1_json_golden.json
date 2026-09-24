@@ -1,0 +1,3348 @@
+{
+ "certificates/ambiguous": {
+  "collection_errors": [],
+  "diagnoses": [
+   {
+    "actions": [
+     {
+      "command": "dig <ca-host>; curl -kv https://<ca-host>:8443/ca/admin/ca/getStatus",
+      "description": "Confirm reachability to the CA host over the network before changing anything.",
+      "rationale": "Read-only reachability check to rule the network path in or out first.",
+      "reference": null,
+      "risk": "SAFE"
+     }
+    ],
+    "ai_explanation": null,
+    "confidence": {
+     "contradicting_evidence_count": 0,
+     "corroborating_evidence_count": 2,
+     "level": "LOW",
+     "rationale": "[HIGH per mankier getcert-list(1) and freeipa.org/page/Troubleshooting/PKI that CA_UNREACHABLE has multiple unrelated root causes sharing one state name; LOW here specifically because the ca-error text available in this run is not specific enough to pick one - forcing a guess would violate 'unknown is better than wrong'.]"
+    },
+    "diagnosis_id": "certificates.certmonger-tracking-stuck",
+    "evidence_against": [],
+    "evidence_for": [
+     {
+      "evidence_id": "certmonger.20260601000000",
+      "kind": "item",
+      "why_relevant": "certmonger request 20260601000000 (nickname=Server-Cert) is in failure state CA_UNREACHABLE"
+     },
+     {
+      "evidence_id": "journal_pki.0",
+      "kind": "item",
+      "why_relevant": "journal line from the same window corroborates a CA/certmonger error"
+     }
+    ],
+    "impact": "Automated certificate renewal will not happen while this request is stuck; the certificate(s) behind it will eventually expire.",
+    "limitations": "",
+    "next_diagnostic_step": "Check DNS/network reachability to the CA host AND independently verify the CA certificate chain and local trust store - e.g. `dig`/`curl -kv` to the CA's HTTPS port for reachability, and `openssl s_client -connect <ca-host>:443 -showcerts` plus confirming the IPA CA root is present and unexpired in the local NSS/system trust store. Either failure mode produces the identical CA_UNREACHABLE state, so both must be checked before assuming which one it is.",
+    "pack_id": "certificates",
+    "priority": "PRIMARY_PROBLEM",
+    "related_to_titles": [],
+    "rule_id": "certmonger-tracking-stuck",
+    "severity": "ERROR",
+    "status": "UNKNOWN_INSUFFICIENT_EVIDENCE",
+    "title": "Certmonger tracking is stuck talking to the CA - cause unclear",
+    "upstream_candidates": [
+     "replication"
+    ],
+    "verification": [
+     {
+      "description": "Re-run `getcert list` and confirm the request has moved to MONITORING with a future expiry.",
+      "healthcheck_sources": [
+       "ipahealthcheck.ipa.certs",
+       "ipahealthcheck.dogtag.ca"
+      ]
+     }
+    ],
+    "why": "One or more certmonger tracking requests are stuck in a CA failure state, but the reported ca-error text is empty or too generic to tell apart the (at least) three distinct root causes that all produce this same state: a network/DNS outage to the CA, the CA's own certificate having expired, or this host's trust store missing the IPA CA root."
+   },
+   {
+    "actions": [],
+    "ai_explanation": null,
+    "confidence": {
+     "contradicting_evidence_count": 0,
+     "corroborating_evidence_count": 1,
+     "level": "LOW",
+     "rationale": "Only one weak signal present; forcing a diagnosis here would be a guess, not a finding."
+    },
+    "diagnosis_id": "certificates.ra-agent-desync",
+    "evidence_against": [],
+    "evidence_for": [
+     {
+      "evidence_id": "a1000000-0000-0000-0000-000000000001",
+      "kind": "finding",
+      "why_relevant": "DogtagCertsConnectivityCheck reported WARNING: Timed out contacting the CA agent endpoint"
+     }
+    ],
+    "impact": "",
+    "limitations": "A full confirmation would require comparing against the uid=ipara,ou=People,o=ipaca LDAP entry directly, which this pack does not query.",
+    "next_diagnostic_step": "Compare the RA agent certificate serial (`getcert list -c ipaCert`) against the uid=ipara,ou=People,o=ipaca LDAP entry with a read-only ldapsearch, and re-check `journalctl -u pki-tomcatd -u certmonger` for a repeat of the connectivity/auth error before concluding this is a real desync rather than a transient blip.",
+    "pack_id": "certificates",
+    "priority": "SECONDARY_INDEPENDENT_PROBLEM",
+    "related_to_titles": [],
+    "rule_id": "ra-agent-desync",
+    "severity": "WARNING",
+    "status": "UNKNOWN_INSUFFICIENT_EVIDENCE",
+    "title": "Possible RA agent / Dogtag connectivity issue - insufficient corroboration",
+    "upstream_candidates": [
+     "directory-server"
+    ],
+    "verification": [],
+    "why": "There is a single, thin signal (a WARNING-level Dogtag/RA-agent healthcheck finding) with no corroborating RA-agent certmonger failure or CA-agent authorization error in the journal - not enough to confidently call this an RA-agent/o=ipaca desync versus a transient blip."
+   }
+  ],
+  "environment": {
+   "detected_live": false,
+   "directory_server_version": null,
+   "distro": null,
+   "distro_version": null,
+   "freeipa_version": null,
+   "ipa_healthcheck_version": null,
+   "python_version": null
+  },
+  "evidence_completeness": {
+   "healthcheck_collected": true,
+   "level": "complete",
+   "ruv_reason": null,
+   "ruv_state": "NOT_COLLECTED",
+   "unverified": []
+  },
+  "fully_verified": true,
+  "has_undiagnosed_findings": false,
+  "hostname": "ipa01.example.test",
+  "overall_status": "NOT_FULLY_VERIFIED",
+  "packs_evaluated": [
+   "directory-server",
+   "dns",
+   "kerberos",
+   "replication",
+   "certificates"
+  ],
+  "replay_source": "/work/tests/fixtures/certificates/ambiguous",
+  "unclaimed_warnings": 0,
+  "undiagnosed_count": 0,
+  "undiagnosed_findings": [],
+  "unknown_severity_findings": []
+ },
+ "certificates/expired": {
+  "collection_errors": [],
+  "diagnoses": [
+   {
+    "actions": [
+     {
+      "command": "getcert list",
+      "description": "Confirm the current certmonger tracking state for this request before acting.",
+      "rationale": "Read-only - establishes whether certmonger already has a renewal in flight before intervening manually.",
+      "reference": null,
+      "risk": "SAFE"
+     },
+     {
+      "command": "getcert resubmit -i <request-id>",
+      "description": "Ask certmonger to resubmit the renewal now.",
+      "rationale": "Standard, reversible certmonger renewal path - try this before any destructive recovery step.",
+      "reference": null,
+      "risk": "CAUTION"
+     },
+     {
+      "command": "ipa-cert-fix",
+      "description": "Run ipa-cert-fix to recover from expired IPA system certificates.",
+      "rationale": "recovery-only per official guidance (freeipa.org/page/Troubleshooting/PKI, Fraser Tweedale's ipa-cert-fix writeup) - back up certs/keys first, use only when expired certs are actively blocking normal operation, and expect to need `getcert resubmit` on remaining CA masters afterward.",
+      "reference": "https://www.freeipa.org/page/Troubleshooting/PKI",
+      "risk": "HIGH_RISK"
+     }
+    ],
+    "ai_explanation": null,
+    "confidence": {
+     "contradicting_evidence_count": 0,
+     "corroborating_evidence_count": 1,
+     "level": "HIGH",
+     "rationale": "[HIGH] Directly reported by ipa-healthcheck's own IPACertmongerExpirationCheck/IPACertfileExpirationCheck, which reads the certificate's notAfter date - a direct measurement, not an inference."
+    },
+    "diagnosis_id": "certificates.cert-expired",
+    "evidence_against": [],
+    "evidence_for": [
+     {
+      "evidence_id": "ex000000-0000-0000-0000-000000000001",
+      "kind": "finding",
+      "why_relevant": "IPACertmongerExpirationCheck reported ERROR: Request id '20250801000000' status MONITORING expired on 2026-08-01 00:00:00 UTC"
+     }
+    ],
+    "impact": "Services relying on this certificate (LDAPS, HTTPS/Apache, or CA/KRA agent TLS) will fail TLS negotiation until it is renewed.",
+    "limitations": "Confirming the fix fully also requires checking that dependent services (httpd/dirsrv) actually reloaded the new certificate, not just that certmonger wrote a new file to disk; this pack's collectors do not check service-side TLS reload.",
+    "next_diagnostic_step": null,
+    "pack_id": "certificates",
+    "priority": "PRIMARY_PROBLEM",
+    "related_to_titles": [],
+    "rule_id": "cert-expired",
+    "severity": "CRITICAL",
+    "status": "DIAGNOSED",
+    "title": "Tracked certificate has passed its expiration threshold",
+    "upstream_candidates": [],
+    "verification": [
+     {
+      "description": "Re-run ipa-healthcheck's certs source fresh (not cached) and confirm SUCCESS for this check.",
+      "healthcheck_sources": [
+       "ipahealthcheck.ipa.certs"
+      ]
+     }
+    ],
+    "why": "IPACertmongerExpirationCheck reports ERROR for this certificate: Request id '20250801000000' status MONITORING expired on 2026-08-01 00:00:00 UTC. Per Red Hat KCS 7007191 and freeipa.org/page/V4/CA_certificate_renewal, an ERROR/CRITICAL result here means the certificate is at or past expiry and effectively already service-impacting."
+   }
+  ],
+  "environment": {
+   "detected_live": false,
+   "directory_server_version": null,
+   "distro": null,
+   "distro_version": null,
+   "freeipa_version": null,
+   "ipa_healthcheck_version": null,
+   "python_version": null
+  },
+  "evidence_completeness": {
+   "healthcheck_collected": true,
+   "level": "complete",
+   "ruv_reason": null,
+   "ruv_state": "NOT_COLLECTED",
+   "unverified": []
+  },
+  "fully_verified": true,
+  "has_undiagnosed_findings": false,
+  "hostname": "ipa01.example.test",
+  "overall_status": "CRITICAL",
+  "packs_evaluated": [
+   "directory-server",
+   "dns",
+   "kerberos",
+   "replication",
+   "certificates"
+  ],
+  "replay_source": "/work/tests/fixtures/certificates/expired",
+  "unclaimed_warnings": 0,
+  "undiagnosed_count": 0,
+  "undiagnosed_findings": [],
+  "unknown_severity_findings": []
+ },
+ "certificates/expiring": {
+  "collection_errors": [],
+  "diagnoses": [
+   {
+    "actions": [
+     {
+      "command": "ssh <renewal-master> 'getcert list; journalctl -u certmonger --since -1day'",
+      "description": "Identify and check the current CA renewal master's own certmonger/journal state.",
+      "rationale": "Read-only topology and journal check on the host that actually performs renewals.",
+      "reference": null,
+      "risk": "SAFE"
+     }
+    ],
+    "ai_explanation": null,
+    "confidence": {
+     "contradicting_evidence_count": 0,
+     "corroborating_evidence_count": 2,
+     "level": "LOW",
+     "rationale": "[HIGH per freeipa.org/page/Howto/Promote_CA_to_Renewal_and_CRL_Master and Fraser Tweedale's CA-renewal-master writeup for the architecture itself; LOW for confirming it applies here, since a single host cannot see which replica is the current renewal master or whether it is online.]"
+    },
+    "diagnosis_id": "certificates.renewal-master-unreachable",
+    "evidence_against": [],
+    "evidence_for": [
+     {
+      "evidence_id": "e1000000-0000-0000-0000-000000000001",
+      "kind": "finding",
+      "why_relevant": "IPACertmongerExpirationCheck reports WARNING (approaching expiry): Request id '20260101120000' status CA_WORKING/MONITORING expires in 15 days"
+     },
+     {
+      "evidence_id": "certmonger.20260101120000",
+      "kind": "item",
+      "why_relevant": "certmonger request 20260101120000 shows state MONITORING with no ca-error - this host sees no local failure that would explain the lack of renewal"
+     }
+    ],
+    "impact": "If the renewal master really is down, this certificate will continue aging toward outright expiry with no visible local error until someone checks the renewal master directly.",
+    "limitations": "This is inherently a topology-wide fact (which replica is the renewal master, and whether it's healthy) that a single host's evidence cannot fully confirm.",
+    "next_diagnostic_step": "Confirm which host is the current CA renewal master (check the CA renewal/CRL master role in the topology) and verify it is online and that its dogtag-ipa-ca-renew-agent / certmonger renewal helper completed successfully in its own journal.",
+    "pack_id": "certificates",
+    "priority": "PRIMARY_PROBLEM",
+    "related_to_titles": [],
+    "rule_id": "renewal-master-unreachable",
+    "severity": "ERROR",
+    "status": "UNKNOWN_INSUFFICIENT_EVIDENCE",
+    "title": "Certificate nearing expiry with no local certmonger error - possible CA renewal master issue",
+    "upstream_candidates": [
+     "replication"
+    ],
+    "verification": [
+     {
+      "description": "Once the renewal master is confirmed healthy, re-run ipa-healthcheck's certs source fresh and confirm the WARNING clears because the certificate was actually renewed, not just that the warning threshold changed.",
+      "healthcheck_sources": [
+       "ipahealthcheck.ipa.certs"
+      ]
+     }
+    ],
+    "why": "This certificate is inside ipa-healthcheck's pre-expiry warning window, and certmonger on this host reports no error at all (state MONITORING, no ca-error) - it is not stuck locally. In IPA's CA renewal architecture only the current CA renewal master replica actually performs renewals; other CA replicas just read the renewed certificate back from LDAP (freeipa.org/page/Howto/Promote_CA_to_Renewal_and_CRL_Master; Fraser Tweedale's CA renewal master writeup). A certificate that keeps aging with a clean local certmonger state is the documented signature of the renewal master itself being unreachable or down, not a local problem on this host."
+   },
+   {
+    "actions": [
+     {
+      "command": "getcert list",
+      "description": "Confirm certmonger auto-renewal is tracking this certificate on the happy path.",
+      "rationale": "Read-only - confirms the request is in MONITORING/CA_WORKING rather than a failure state.",
+      "reference": null,
+      "risk": "SAFE"
+     }
+    ],
+    "ai_explanation": null,
+    "confidence": {
+     "contradicting_evidence_count": 0,
+     "corroborating_evidence_count": 1,
+     "level": "HIGH",
+     "rationale": "[HIGH] Directly reported by ipa-healthcheck's own expiration check reading the cert's notAfter date against its configured warning threshold - a direct measurement, not an inference."
+    },
+    "diagnosis_id": "certificates.cert-expired",
+    "evidence_against": [],
+    "evidence_for": [
+     {
+      "evidence_id": "e1000000-0000-0000-0000-000000000001",
+      "kind": "finding",
+      "why_relevant": "IPACertmongerExpirationCheck reported WARNING: Request id '20260101120000' status CA_WORKING/MONITORING expires in 15 days"
+     }
+    ],
+    "impact": "No current service impact; becomes service-impacting only if automated renewal fails to complete before actual expiry.",
+    "limitations": "",
+    "next_diagnostic_step": null,
+    "pack_id": "certificates",
+    "priority": "WARNING",
+    "related_to_titles": [],
+    "rule_id": "cert-expired",
+    "severity": "WARNING",
+    "status": "DIAGNOSED",
+    "title": "Tracked certificate is approaching its expiration window",
+    "upstream_candidates": [],
+    "verification": [
+     {
+      "description": "Re-run ipa-healthcheck's certs source fresh (not cached) and confirm SUCCESS for this check.",
+      "healthcheck_sources": [
+       "ipahealthcheck.ipa.certs"
+      ]
+     }
+    ],
+    "why": "IPACertmongerExpirationCheck reports WARNING: Request id '20260101120000' status CA_WORKING/MONITORING expires in 15 days. This is inside ipa-healthcheck's configurable pre-expiry warning window (default 28 days, /etc/ipahealthcheck/ipahealthcheck.conf) - not yet broken, but worth confirming automated renewal is on track."
+   }
+  ],
+  "environment": {
+   "detected_live": false,
+   "directory_server_version": null,
+   "distro": null,
+   "distro_version": null,
+   "freeipa_version": null,
+   "ipa_healthcheck_version": null,
+   "python_version": null
+  },
+  "evidence_completeness": {
+   "healthcheck_collected": true,
+   "level": "complete",
+   "ruv_reason": null,
+   "ruv_state": "NOT_COLLECTED",
+   "unverified": []
+  },
+  "fully_verified": true,
+  "has_undiagnosed_findings": false,
+  "hostname": "ipa01.example.test",
+  "overall_status": "NOT_FULLY_VERIFIED",
+  "packs_evaluated": [
+   "directory-server",
+   "dns",
+   "kerberos",
+   "replication",
+   "certificates"
+  ],
+  "replay_source": "/work/tests/fixtures/certificates/expiring",
+  "unclaimed_warnings": 0,
+  "undiagnosed_count": 0,
+  "undiagnosed_findings": [],
+  "unknown_severity_findings": []
+ },
+ "certificates/healthy": {
+  "collection_errors": [],
+  "diagnoses": [],
+  "environment": {
+   "detected_live": false,
+   "directory_server_version": null,
+   "distro": null,
+   "distro_version": null,
+   "freeipa_version": null,
+   "ipa_healthcheck_version": null,
+   "python_version": null
+  },
+  "evidence_completeness": {
+   "healthcheck_collected": true,
+   "level": "complete",
+   "ruv_reason": null,
+   "ruv_state": "NOT_COLLECTED",
+   "unverified": []
+  },
+  "fully_verified": true,
+  "has_undiagnosed_findings": false,
+  "hostname": "ipa01.example.test",
+  "overall_status": "HEALTHY",
+  "packs_evaluated": [
+   "directory-server",
+   "dns",
+   "kerberos",
+   "replication",
+   "certificates"
+  ],
+  "replay_source": "/work/tests/fixtures/certificates/healthy",
+  "unclaimed_warnings": 0,
+  "undiagnosed_count": 0,
+  "undiagnosed_findings": [],
+  "unknown_severity_findings": []
+ },
+ "coverage/ds-cert-expired": {
+  "collection_errors": [],
+  "diagnoses": [
+   {
+    "actions": [
+     {
+      "command": "certutil -L -d /etc/dirsrv/slapd-<INSTANCE>",
+      "description": "List the certificates in the Directory Server NSS database and their validity dates.",
+      "rationale": "Read-only: shows which certificate and its dates.",
+      "reference": null,
+      "risk": "SAFE"
+     },
+     {
+      "command": "getcert list",
+      "description": "See whether certmonger tracks the certificate and what state its renewal is in.",
+      "rationale": "Read-only: shows tracking requests and their status/errors.",
+      "reference": null,
+      "risk": "SAFE"
+     }
+    ],
+    "ai_explanation": null,
+    "confidence": {
+     "contradicting_evidence_count": 0,
+     "corroborating_evidence_count": 1,
+     "level": "HIGH",
+     "rationale": "Direct report from ipa-healthcheck's Directory Server certificate check (DSCERTLE0001/0002)."
+    },
+    "diagnosis_id": "directory-server.ds-certificate-expiry",
+    "evidence_against": [],
+    "evidence_for": [
+     {
+      "evidence_id": "c1",
+      "kind": "finding",
+      "why_relevant": "ipahealthcheck.ds.nss_ssl.NssCheck reports: The certificate (Server-Cert) has expired"
+     }
+    ],
+    "impact": "TLS/LDAPS connections to this Directory Server can fail or be refused by clients once the certificate is expired; replication and other services that bind over TLS may be affected.",
+    "limitations": "This does not establish WHY the certificate was not renewed; check certmonger and the CA next.",
+    "next_diagnostic_step": null,
+    "pack_id": "directory-server",
+    "priority": "PRIMARY_PROBLEM",
+    "related_to_titles": [],
+    "rule_id": "ds-certificate-expiry",
+    "severity": "CRITICAL",
+    "status": "DIAGNOSED",
+    "title": "Directory Server certificate has expired",
+    "upstream_candidates": [],
+    "verification": [
+     {
+      "description": "Re-run the Directory Server certificate check and confirm it reports SUCCESS.",
+      "healthcheck_sources": [
+       "ipahealthcheck.ds.nss_ssl"
+      ]
+     }
+    ],
+    "why": "ipa-healthcheck (ipahealthcheck.ds.nss_ssl.NssCheck, lib389 certificate lint) directly reports that a Directory Server certificate has EXPIRED: The certificate (Server-Cert) has expired. This is the check's own statement about the certificate, not an inference."
+   }
+  ],
+  "environment": {
+   "detected_live": false,
+   "directory_server_version": null,
+   "distro": null,
+   "distro_version": null,
+   "freeipa_version": null,
+   "ipa_healthcheck_version": null,
+   "python_version": null
+  },
+  "evidence_completeness": {
+   "healthcheck_collected": true,
+   "level": "complete",
+   "ruv_reason": null,
+   "ruv_state": "NOT_COLLECTED",
+   "unverified": []
+  },
+  "fully_verified": true,
+  "has_undiagnosed_findings": false,
+  "hostname": "ipa01.example.test",
+  "overall_status": "CRITICAL",
+  "packs_evaluated": [
+   "directory-server",
+   "dns",
+   "kerberos",
+   "replication",
+   "certificates"
+  ],
+  "replay_source": "/work/tests/fixtures/coverage/ds-cert-expired",
+  "unclaimed_warnings": 0,
+  "undiagnosed_count": 0,
+  "undiagnosed_findings": [],
+  "unknown_severity_findings": []
+ },
+ "coverage/future-unknown-check": {
+  "collection_errors": [],
+  "diagnoses": [
+   {
+    "actions": [
+     {
+      "command": "ipa-healthcheck --source ipahealthcheck.zz.brand_new --check BrandNewCheck --failures-only",
+      "description": "Re-run the specific failing check for full detail.",
+      "rationale": "Read-only.",
+      "reference": null,
+      "risk": "SAFE"
+     }
+    ],
+    "ai_explanation": null,
+    "confidence": {
+     "contradicting_evidence_count": 0,
+     "corroborating_evidence_count": 0,
+     "level": "INSUFFICIENT",
+     "rationale": "No rule links these findings to a cause; shown so they are never silently dropped."
+    },
+    "diagnosis_id": "healthcheck.unexplained-findings",
+    "evidence_against": [],
+    "evidence_for": [
+     {
+      "evidence_id": "f1",
+      "kind": "finding",
+      "why_relevant": "Unexplained ipa-healthcheck finding."
+     }
+    ],
+    "impact": "Unknown - depends on what the underlying checks were verifying.",
+    "limitations": "ipa-diagnose has no rule for these findings; this is a visibility safeguard, not a diagnosis.",
+    "next_diagnostic_step": "ipa-healthcheck --source ipahealthcheck.zz.brand_new --check BrandNewCheck --failures-only",
+    "pack_id": "healthcheck",
+    "priority": "PRIMARY_PROBLEM",
+    "related_to_titles": [],
+    "rule_id": "unexplained-findings",
+    "severity": "ERROR",
+    "status": "UNKNOWN_INSUFFICIENT_EVIDENCE",
+    "title": "ipa-healthcheck reports ERROR/CRITICAL findings that no diagnostic rule explains",
+    "upstream_candidates": [
+     "directory-server",
+     "kerberos",
+     "dns",
+     "certificates"
+    ],
+    "verification": [],
+    "why": "1 finding(s) from ipa-healthcheck are at ERROR or CRITICAL and are not covered by any ipa-diagnose rule, so their cause is not determined: ipahealthcheck.zz.brand_new.BrandNewCheck (ERROR): a check this version has never seen failed. They may be consequences of another problem in this report (for example a stopped service) or independent problems."
+   }
+  ],
+  "environment": {
+   "detected_live": false,
+   "directory_server_version": null,
+   "distro": null,
+   "distro_version": null,
+   "freeipa_version": null,
+   "ipa_healthcheck_version": null,
+   "python_version": null
+  },
+  "evidence_completeness": {
+   "healthcheck_collected": true,
+   "level": "complete",
+   "ruv_reason": null,
+   "ruv_state": "NOT_COLLECTED",
+   "unverified": []
+  },
+  "fully_verified": true,
+  "has_undiagnosed_findings": false,
+  "hostname": "ipa01.example.test",
+  "overall_status": "NOT_FULLY_VERIFIED",
+  "packs_evaluated": [
+   "directory-server",
+   "dns",
+   "kerberos",
+   "replication",
+   "certificates"
+  ],
+  "replay_source": "/work/tests/fixtures/coverage/future-unknown-check",
+  "unclaimed_warnings": 0,
+  "undiagnosed_count": 0,
+  "undiagnosed_findings": [],
+  "unknown_severity_findings": []
+ },
+ "coverage/undiagnosed-warning": {
+  "collection_errors": [],
+  "diagnoses": [],
+  "environment": {
+   "detected_live": false,
+   "directory_server_version": null,
+   "distro": null,
+   "distro_version": null,
+   "freeipa_version": null,
+   "ipa_healthcheck_version": null,
+   "python_version": null
+  },
+  "evidence_completeness": {
+   "healthcheck_collected": true,
+   "level": "complete",
+   "ruv_reason": null,
+   "ruv_state": "NOT_COLLECTED",
+   "unverified": []
+  },
+  "fully_verified": true,
+  "has_undiagnosed_findings": true,
+  "hostname": "ipa01.example.test",
+  "overall_status": "NOT_FULLY_VERIFIED",
+  "packs_evaluated": [
+   "directory-server",
+   "dns",
+   "kerberos",
+   "replication",
+   "certificates"
+  ],
+  "replay_source": "/work/tests/fixtures/coverage/undiagnosed-warning",
+  "unclaimed_warnings": 1,
+  "undiagnosed_count": 1,
+  "undiagnosed_findings": [
+   {
+    "check": "IPADNARangeCheck",
+    "check_crashed": false,
+    "check_known_since_ipa_healthcheck": "0.3",
+    "ipa_healthcheck_version": null,
+    "key": "no_dna_range_defined",
+    "message": "No DNA range defined. If no masters define a range then users and groups cannot be created.",
+    "reason": "ipa-diagnose has no rule that explains this finding; it may or may not matter.",
+    "severity": "WARNING",
+    "source": "ipahealthcheck.ipa.dna"
+   }
+  ],
+  "unknown_severity_findings": []
+ },
+ "directory-server/disk-space": {
+  "collection_errors": [],
+  "diagnoses": [
+   {
+    "actions": [
+     {
+      "command": "df -h <affected-path>",
+      "description": "Re-check disk usage on the affected path in 15-30 minutes and see whether it has grown, shrunk, or stayed flat.",
+      "rationale": "Distinguishes a transient spike from chronic growth without changing anything.",
+      "reference": null,
+      "risk": "SAFE"
+     },
+     {
+      "command": "systemctl list-units --type=service --state=running | grep -Ei 'backup|logrotate'; ps aux | grep -i backup",
+      "description": "Check for an active ipa-backup job or log-rotation cycle that would explain a temporary spike.",
+      "rationale": "Read-only.",
+      "reference": null,
+      "risk": "SAFE"
+     }
+    ],
+    "ai_explanation": null,
+    "confidence": {
+     "contradicting_evidence_count": 0,
+     "corroborating_evidence_count": 3,
+     "level": "LOW",
+     "rationale": "[MED] A single WARNING-level usage reading without a trend/history signal or a hard-failure journal entry cannot distinguish transient from chronic growth."
+    },
+    "diagnosis_id": "directory-server.disk-space-exhaustion",
+    "evidence_against": [],
+    "evidence_for": [
+     {
+      "evidence_id": "d2000000-0000-0000-0000-000000000001",
+      "kind": "finding",
+      "why_relevant": "ipa-healthcheck ipahealthcheck.system.filesystemspace.FileSystemSpaceCheck reported WARNING: /var/lib/dirsrv/: free space percentage under threshold: 16% < 20%"
+     },
+     {
+      "evidence_id": "disk-usage-var-lib-dirsrv",
+      "kind": "item",
+      "why_relevant": "live df reading shows 84% used on /var/lib/dirsrv/"
+     },
+     {
+      "evidence_id": "disk-usage-var-log",
+      "kind": "item",
+      "why_relevant": "live df reading shows 84% used on /var/log/"
+     }
+    ],
+    "impact": "Low immediate impact today; if usage keeps growing unchecked this can escalate to write failures or a dirsrv crash.",
+    "limitations": "This pack's collector takes one snapshot per run; it cannot itself observe a trend across time.",
+    "next_diagnostic_step": "Re-check disk usage on the affected path in 15-30 minutes (or via a second ipa-diagnose run) and check for an active backup/log-rotation job before treating this as a hard failure.",
+    "pack_id": "directory-server",
+    "priority": "PRIMARY_PROBLEM",
+    "related_to_titles": [],
+    "rule_id": "disk-space-exhaustion",
+    "severity": "WARNING",
+    "status": "TRANSIENT_SUSPECTED",
+    "title": "Elevated disk usage on a Directory Server-critical path (possibly transient)",
+    "upstream_candidates": [],
+    "verification": [
+     {
+      "description": "Re-run FileSystemSpaceCheck/DiskSpaceCheck across all monitored paths after the recheck window and confirm SUCCESS with real margin.",
+      "healthcheck_sources": [
+       "ipahealthcheck.system.filesystemspace",
+       "ipahealthcheck.ds.disk_space"
+      ]
+     }
+    ],
+    "why": "ipa-healthcheck's ipahealthcheck.system.filesystemspace.FileSystemSpaceCheck reported WARNING-level usage, but this is a single snapshot with no journalctl evidence of an actual write/space failure yet. This matches a common transient pattern (an in-progress backup, a temporary log burst, or a log-rotation job) just as well as it matches chronic unbounded growth."
+   }
+  ],
+  "environment": {
+   "detected_live": false,
+   "directory_server_version": null,
+   "distro": null,
+   "distro_version": null,
+   "freeipa_version": null,
+   "ipa_healthcheck_version": null,
+   "python_version": null
+  },
+  "evidence_completeness": {
+   "healthcheck_collected": true,
+   "level": "complete",
+   "ruv_reason": null,
+   "ruv_state": "NOT_COLLECTED",
+   "unverified": []
+  },
+  "fully_verified": true,
+  "has_undiagnosed_findings": false,
+  "hostname": "ipa02.example.test",
+  "overall_status": "DEGRADED",
+  "packs_evaluated": [
+   "directory-server",
+   "dns",
+   "kerberos",
+   "replication",
+   "certificates"
+  ],
+  "replay_source": "/work/tests/fixtures/directory-server/disk-space",
+  "unclaimed_warnings": 0,
+  "undiagnosed_count": 0,
+  "undiagnosed_findings": [],
+  "unknown_severity_findings": []
+ },
+ "directory-server/healthy": {
+  "collection_errors": [],
+  "diagnoses": [],
+  "environment": {
+   "detected_live": false,
+   "directory_server_version": null,
+   "distro": null,
+   "distro_version": null,
+   "freeipa_version": null,
+   "ipa_healthcheck_version": null,
+   "python_version": null
+  },
+  "evidence_completeness": {
+   "healthcheck_collected": true,
+   "level": "complete",
+   "ruv_reason": null,
+   "ruv_state": "NOT_COLLECTED",
+   "unverified": []
+  },
+  "fully_verified": true,
+  "has_undiagnosed_findings": false,
+  "hostname": "ipa01.example.test",
+  "overall_status": "HEALTHY",
+  "packs_evaluated": [
+   "directory-server",
+   "dns",
+   "kerberos",
+   "replication",
+   "certificates"
+  ],
+  "replay_source": "/work/tests/fixtures/directory-server/healthy",
+  "unclaimed_warnings": 0,
+  "undiagnosed_count": 0,
+  "undiagnosed_findings": [],
+  "unknown_severity_findings": []
+ },
+ "directory-server/index-health": {
+  "collection_errors": [],
+  "diagnoses": [
+   {
+    "actions": [
+     {
+      "command": "ipa-healthcheck --source ipahealthcheck.ds.backends --output-type json; dsconf <instance> backend index list <backend>",
+      "description": "Confirm exactly which backend/attribute is affected and its current index configuration.",
+      "rationale": "Read-only confirmation before reindexing anything.",
+      "reference": null,
+      "risk": "SAFE"
+     },
+     {
+      "command": "db2index.pl -Z <instance> -t entryrdn",
+      "description": "Reindex only the specific missing attribute (entryrdn); the attribute names are in the finding's discrepancy details.",
+      "rationale": "Scoped to one attribute per port389.org guidance. db2index runs OFFLINE: plan a maintenance window for that Directory Server instance (newer 389-DS releases offer dsconf/dsctl equivalents). It does not touch replication state.",
+      "reference": null,
+      "risk": "CAUTION"
+     },
+     {
+      "command": "db2index.pl (bare, no -t)",
+      "description": "Avoid: do not run db2index.pl/db2index with no arguments/target attribute to 'reindex everything'.",
+      "rationale": "Never run without specifying a target attribute - running it bare can break replication (389-ds-base #1914) via RUV/tombstone side effects.",
+      "reference": "389-ds-base GitHub issue #1914",
+      "risk": "HIGH_RISK"
+     }
+    ],
+    "ai_explanation": null,
+    "confidence": {
+     "contradicting_evidence_count": 0,
+     "corroborating_evidence_count": 1,
+     "level": "HIGH",
+     "rationale": "[HIGH, Red Hat KCS 7132895 documents this exact ipa-healthcheck BackendsCheck/DSBLE0007 finding] the healthcheck finding directly names the missing index."
+    },
+    "diagnosis_id": "directory-server.missing-system-index",
+    "evidence_against": [],
+    "evidence_for": [
+     {
+      "evidence_id": "d5000000-0000-0000-0000-000000000001",
+      "kind": "finding",
+      "why_relevant": "ipahealthcheck.ds.backends.BackendsCheck reports a missing/misconfigured system index: System index entryrdn is missing or misconfigured on backend userroot."
+     }
+    ],
+    "impact": "Searches relying on the missing index become unindexed (slow, resource-intensive, and subject to the server's unindexed-search size limit) until it is rebuilt.",
+    "limitations": "Ideally you would also confirm no new 'unindexed search' warnings appear in the access log under normal query patterns after reindexing; that requires an access-log collector, which is out of this pack's collector scope in v1.",
+    "next_diagnostic_step": null,
+    "pack_id": "directory-server",
+    "priority": "PRIMARY_PROBLEM",
+    "related_to_titles": [],
+    "rule_id": "missing-system-index",
+    "severity": "ERROR",
+    "status": "DIAGNOSED",
+    "title": "Missing or misconfigured system index on a Directory Server backend",
+    "upstream_candidates": [],
+    "verification": [
+     {
+      "description": "Re-run BackendsCheck and confirm SUCCESS.",
+      "healthcheck_sources": [
+       "ipahealthcheck.ds.backends"
+      ]
+     }
+    ],
+    "why": "ipa-healthcheck's ipahealthcheck.ds.backends.BackendsCheck reports a missing/misconfigured system index (System index entryrdn is missing or misconfigured on backend userroot.), matching the well-documented DSBLE0007 error key for BackendsCheck (Red Hat KCS 7132895). Missing system indexes (entryrdn, parentId, objectClass, aci, nsUniqueId, nsds5ReplConflict, etc.) cause unindexed searches and degraded/failed operations on that backend."
+   }
+  ],
+  "environment": {
+   "detected_live": false,
+   "directory_server_version": null,
+   "distro": null,
+   "distro_version": null,
+   "freeipa_version": null,
+   "ipa_healthcheck_version": null,
+   "python_version": null
+  },
+  "evidence_completeness": {
+   "healthcheck_collected": true,
+   "level": "complete",
+   "ruv_reason": null,
+   "ruv_state": "NOT_COLLECTED",
+   "unverified": []
+  },
+  "fully_verified": true,
+  "has_undiagnosed_findings": false,
+  "hostname": "ipa05.example.test",
+  "overall_status": "DEGRADED",
+  "packs_evaluated": [
+   "directory-server",
+   "dns",
+   "kerberos",
+   "replication",
+   "certificates"
+  ],
+  "replay_source": "/work/tests/fixtures/directory-server/index-health",
+  "unclaimed_warnings": 0,
+  "undiagnosed_count": 0,
+  "undiagnosed_findings": [],
+  "unknown_severity_findings": []
+ },
+ "directory-server/nss-db": {
+  "collection_errors": [],
+  "diagnoses": [
+   {
+    "actions": [
+     {
+      "command": "ls /etc/dirsrv/slapd-*/ | grep -E 'cert8\\.db|cert9\\.db|key3\\.db|key4\\.db'; certutil -L -d sql:/etc/dirsrv/slapd-<instance>",
+      "description": "Confirm which NSS DB format is actually on disk.",
+      "rationale": "Distinguishes legacy Berkeley-DB format from the modern SQLite format before touching anything.",
+      "reference": null,
+      "risk": "SAFE"
+     },
+     {
+      "command": "certutil -A -d sql:/etc/dirsrv/slapd-<instance> -n <nickname> -t ',,' -a -i <cert-file>",
+      "description": "Re-import the certificate/key into the SQL-format NSS DB with the proper sql: prefix.",
+      "rationale": "Reversible/scoped: re-imports known-good material into the correct DB format; does not touch certificate validity or CA trust.",
+      "reference": "389-ds-base GitHub #2100 / Pagure #49041",
+      "risk": "CAUTION"
+     },
+     {
+      "command": "systemctl restart dirsrv@<instance>",
+      "description": "Restart dirsrv so it resyncs its in-memory certificate state with the on-disk NSS DB.",
+      "rationale": "Easy to skip and looks like 'the fix didn't work' if missed - dirsrv does not pick up NSS DB changes without a restart.",
+      "reference": null,
+      "risk": "CAUTION"
+     }
+    ],
+    "ai_explanation": null,
+    "confidence": {
+     "contradicting_evidence_count": 0,
+     "corroborating_evidence_count": 1,
+     "level": "MEDIUM",
+     "rationale": "[HIGH, 389-ds-base GitHub #2100 / Pagure #49041 document this exact cert8.db/key3.db vs. cert9.db/key4.db mismatch causing certs to 'vanish' after a restart or NSS library upgrade] only one of the two signals (NssCheck finding or TLS journal error) is present."
+    },
+    "diagnosis_id": "directory-server.nss-tls-db-format",
+    "evidence_against": [],
+    "evidence_for": [
+     {
+      "evidence_id": "journal-dirsrv-0",
+      "kind": "item",
+      "why_relevant": "journalctl shows a TLS/NSS-flavored failure from dirsrv"
+     }
+    ],
+    "impact": "LDAPS/StartTLS binds to Directory Server fail until the NSS DB format issue is resolved, even though the certificate itself may be perfectly valid.",
+    "limitations": "This pack has no ldap-query/TLS-handshake collector in v1, so the LDAPS-handshake verification step above must be run and confirmed manually; recheck() here can only confirm the NssCheck finding cleared and no new TLS journal errors appeared.",
+    "next_diagnostic_step": null,
+    "pack_id": "directory-server",
+    "priority": "PRIMARY_PROBLEM",
+    "related_to_titles": [],
+    "rule_id": "nss-tls-db-format",
+    "severity": "ERROR",
+    "status": "DIAGNOSED",
+    "title": "Likely NSS/TLS DB format mismatch, not a certificate lifecycle problem",
+    "upstream_candidates": [],
+    "verification": [
+     {
+      "description": "After restarting dirsrv, confirm an actual LDAPS handshake succeeds (openssl s_client / ldapsearch -H ldaps://), not just that certutil -L lists the certificate.",
+      "healthcheck_sources": [
+       "ipahealthcheck.ds.nss"
+      ]
+     }
+    ],
+    "why": "journalctl shows dirsrv hitting a TLS/NSS-flavored failure, and no certificate-expiry finding is present anywhere in this run to explain it via simple expiry. This can look exactly like an expired certificate or a broken CA trust chain, but a local NSS database format mismatch (legacy cert8.db/key3.db vs. modern cert9.db/key4.db SQLite format, typically surfacing after an NSS library upgrade or a restart) is a completely different, unrelated root cause. Check the certificates pack's output too before assuming this is a certificate lifecycle problem."
+   }
+  ],
+  "environment": {
+   "detected_live": false,
+   "directory_server_version": null,
+   "distro": null,
+   "distro_version": null,
+   "freeipa_version": null,
+   "ipa_healthcheck_version": null,
+   "python_version": null
+  },
+  "evidence_completeness": {
+   "healthcheck_collected": true,
+   "level": "complete",
+   "ruv_reason": null,
+   "ruv_state": "NOT_COLLECTED",
+   "unverified": []
+  },
+  "fully_verified": true,
+  "has_undiagnosed_findings": true,
+  "hostname": "ipa04.example.test",
+  "overall_status": "DEGRADED",
+  "packs_evaluated": [
+   "directory-server",
+   "dns",
+   "kerberos",
+   "replication",
+   "certificates"
+  ],
+  "replay_source": "/work/tests/fixtures/directory-server/nss-db",
+  "unclaimed_warnings": 1,
+  "undiagnosed_count": 1,
+  "undiagnosed_findings": [
+   {
+    "check": "BackendsCheck",
+    "check_crashed": false,
+    "check_known_since_ipa_healthcheck": "0.6",
+    "ipa_healthcheck_version": null,
+    "key": "DSBLE0003",
+    "message": "Backend userroot is not initialised (constructed: only activates the pack)",
+    "reason": "ipa-diagnose has no rule that explains this finding; it may or may not matter.",
+    "severity": "WARNING",
+    "source": "ipahealthcheck.ds.backends"
+   }
+  ],
+  "unknown_severity_findings": []
+ },
+ "directory-server/permissions": {
+  "collection_errors": [],
+  "diagnoses": [
+   {
+    "actions": [
+     {
+      "command": "ls -lZ /var/lib/dirsrv/slapd-*/ /etc/dirsrv/slapd-*/",
+      "description": "Check both ownership/mode AND SELinux context on the paths dirsrv logged trouble with.",
+      "rationale": "Read-only; shows owner:group:mode and SELinux label in one command.",
+      "reference": null,
+      "risk": "SAFE"
+     },
+     {
+      "command": "ausearch -m avc -ts recent",
+      "description": "Check for AVC denials in the same time window as the journal error.",
+      "rationale": "Read-only; the only reliable way to confirm/rule out SELinux as the cause.",
+      "reference": null,
+      "risk": "SAFE"
+     }
+    ],
+    "ai_explanation": null,
+    "confidence": {
+     "contradicting_evidence_count": 0,
+     "corroborating_evidence_count": 1,
+     "level": "LOW",
+     "rationale": "[HIGH that the ambiguity itself is a well-documented failure mode, per 389-ds-base GitHub #583 (rundir permissions) and #4714/#4717 (podman SELinux relabeling), and Red Hat KCS 2700931; LOW confidence in any specific root cause without ls -lZ / ausearch output.]"
+    },
+    "diagnosis_id": "directory-server.ownership-selinux-mismatch",
+    "evidence_against": [],
+    "evidence_for": [
+     {
+      "evidence_id": "journal-dirsrv-0",
+      "kind": "item",
+      "why_relevant": "journalctl shows dirsrv hitting a permission-denied error at startup"
+     }
+    ],
+    "impact": "dirsrv may fail to start or fail to access its own rundir/NSS DB files until the underlying cause is identified and fixed.",
+    "limitations": "Without an ausearch/AVC collector this pack cannot itself distinguish a Unix-permission cause from an SELinux cause; the two read-only commands above must be run and reviewed by an administrator.",
+    "next_diagnostic_step": "Run `ls -lZ` on the paths dirsrv logged trouble with and `ausearch -m avc -ts recent` to determine whether this is a plain ownership/mode problem or an SELinux denial before choosing a fix.",
+    "pack_id": "directory-server",
+    "priority": "PRIMARY_PROBLEM",
+    "related_to_titles": [],
+    "rule_id": "ownership-selinux-mismatch",
+    "severity": "ERROR",
+    "status": "UNKNOWN_INSUFFICIENT_EVIDENCE",
+    "title": "dirsrv permission-denied error: cause not yet distinguishable (Unix perms vs. SELinux)",
+    "upstream_candidates": [],
+    "verification": [],
+    "why": "journalctl shows dirsrv hitting a permission-denied style error, but there is no corroborating ipa-healthcheck IPAFileCheck/IPAFileNSSDBCheck finding naming a specific wrong owner/group/mode. A generic 'Permission denied' is ambiguous between a plain Unix ownership/mode problem and an SELinux AVC denial - they require different fixes (chown/chmod vs. restorecon/policy) - and this pack has no ausearch-based collector to disambiguate automatically."
+   }
+  ],
+  "environment": {
+   "detected_live": false,
+   "directory_server_version": null,
+   "distro": null,
+   "distro_version": null,
+   "freeipa_version": null,
+   "ipa_healthcheck_version": null,
+   "python_version": null
+  },
+  "evidence_completeness": {
+   "healthcheck_collected": true,
+   "level": "complete",
+   "ruv_reason": null,
+   "ruv_state": "NOT_COLLECTED",
+   "unverified": []
+  },
+  "fully_verified": true,
+  "has_undiagnosed_findings": true,
+  "hostname": "ipa03.example.test",
+  "overall_status": "NOT_FULLY_VERIFIED",
+  "packs_evaluated": [
+   "directory-server",
+   "dns",
+   "kerberos",
+   "replication",
+   "certificates"
+  ],
+  "replay_source": "/work/tests/fixtures/directory-server/permissions",
+  "unclaimed_warnings": 1,
+  "undiagnosed_count": 1,
+  "undiagnosed_findings": [
+   {
+    "check": "ConfigCheck",
+    "check_crashed": false,
+    "check_known_since_ipa_healthcheck": "0.6",
+    "ipa_healthcheck_version": null,
+    "key": null,
+    "message": "nsslapd-errorlog-level is not set to the recommended value.",
+    "reason": "ipa-diagnose has no rule that explains this finding; it may or may not matter.",
+    "severity": "WARNING",
+    "source": "ipahealthcheck.ds.config"
+   }
+  ],
+  "unknown_severity_findings": []
+ },
+ "dns/forward-zone-conflict": {
+  "collection_errors": [],
+  "diagnoses": [
+   {
+    "actions": [
+     {
+      "command": "journalctl -u named-pkcs11 -u named --since -30min --no-pager | grep -i 'empty zone'",
+      "description": "Identify exactly which forward zone and which built-in empty zone collided, from the log line cited above",
+      "rationale": "",
+      "reference": null,
+      "risk": "SAFE"
+     },
+     {
+      "command": null,
+      "description": "Either exempt the specific overlapping prefix from BIND's automatic empty zones, or re-scope/rename the forward zone so it no longer overlaps an RFC1918/automatic empty zone",
+      "rationale": "Documented fix for the forward-zone/empty-zone collision.",
+      "reference": "https://www.freeipa.org/page/V4/Forward_zones",
+      "risk": "CAUTION"
+     }
+    ],
+    "ai_explanation": null,
+    "confidence": {
+     "contradicting_evidence_count": 0,
+     "corroborating_evidence_count": 1,
+     "level": "HIGH",
+     "rationale": "[HIGH: freeipa.org/page/V4/Forward_zones] the journal shows the specific documented unload/collision log line, not just a generic resolution failure."
+    },
+    "diagnosis_id": "dns.forward-zone-conflict",
+    "evidence_against": [],
+    "evidence_for": [
+     {
+      "evidence_id": "journal_named.0000",
+      "kind": "item",
+      "why_relevant": "bind-dyndb-ldap log line shows the forward zone was unloaded due to an empty-zone collision"
+     }
+    ],
+    "impact": "Names under the affected forward zone fail to resolve (or resolve incorrectly via the empty zone) for every client using this DNS server, even though the forward zone configuration itself is correct.",
+    "limitations": "ipahealthcheck's IPADNSSystemRecordsCheck (and this pack's own dns_lookup collector) only resolve against resolver(s) reachable from this one host. In a multi-server IPA DNS topology, a clean result here does not confirm every IPA DNS server serves correct records - freeipa.org's DNS troubleshooting page documents this as a known blind spot. Spot-check `dig` against every known IPA DNS server before considering DNS fully verified.",
+    "next_diagnostic_step": null,
+    "pack_id": "dns",
+    "priority": "PRIMARY_PROBLEM",
+    "related_to_titles": [],
+    "rule_id": "forward-zone-conflict",
+    "severity": "ERROR",
+    "status": "DIAGNOSED",
+    "title": "Forward zone auto-unloaded due to a BIND empty-zone collision",
+    "upstream_candidates": [],
+    "verification": [
+     {
+      "description": "A name under the forward zone now resolves via the forwarder, and the journal no longer shows the zone being unloaded",
+      "healthcheck_sources": []
+     }
+    ],
+    "why": "bind-dyndb-ldap explicitly logged that a configured forward zone was skipped/unloaded because it overlaps one of BIND's automatic empty zones (e.g. an RFC1918 reverse zone). This is a documented FreeIPA forward-zone gotcha, distinct from the forwarders simply being unreachable: the forward zone is configured correctly but never actually loaded, so queries for names under it are answered (or NXDOMAIN'd) by the empty zone instead of being forwarded."
+   }
+  ],
+  "environment": {
+   "detected_live": false,
+   "directory_server_version": null,
+   "distro": null,
+   "distro_version": null,
+   "freeipa_version": null,
+   "ipa_healthcheck_version": null,
+   "python_version": null
+  },
+  "evidence_completeness": {
+   "healthcheck_collected": true,
+   "level": "complete",
+   "ruv_reason": null,
+   "ruv_state": "NOT_COLLECTED",
+   "unverified": []
+  },
+  "fully_verified": true,
+  "has_undiagnosed_findings": true,
+  "hostname": "ipa01.example.test",
+  "overall_status": "DEGRADED",
+  "packs_evaluated": [
+   "directory-server",
+   "dns",
+   "kerberos",
+   "replication",
+   "certificates"
+  ],
+  "replay_source": "/work/tests/fixtures/dns/forward-zone-conflict",
+  "unclaimed_warnings": 1,
+  "undiagnosed_count": 1,
+  "undiagnosed_findings": [
+   {
+    "check": "IPADNSSystemRecordsCheck",
+    "check_crashed": false,
+    "check_known_since_ipa_healthcheck": "0.4",
+    "ipa_healthcheck_version": null,
+    "key": "ipa-ca AAAA",
+    "message": "Expected 2 AAAA records for ipa-ca, found 1 (see freeipa-healthcheck issue #270 - known false positive on healthy systems)",
+    "reason": "ipa-diagnose has no rule that explains this finding; it may or may not matter.",
+    "severity": "WARNING",
+    "source": "ipahealthcheck.ipa.idns"
+   }
+  ],
+  "unknown_severity_findings": []
+ },
+ "dns/healthy": {
+  "collection_errors": [],
+  "diagnoses": [],
+  "environment": {
+   "detected_live": false,
+   "directory_server_version": null,
+   "distro": null,
+   "distro_version": null,
+   "freeipa_version": null,
+   "ipa_healthcheck_version": null,
+   "python_version": null
+  },
+  "evidence_completeness": {
+   "healthcheck_collected": true,
+   "level": "complete",
+   "ruv_reason": null,
+   "ruv_state": "NOT_COLLECTED",
+   "unverified": []
+  },
+  "fully_verified": true,
+  "has_undiagnosed_findings": false,
+  "hostname": "ipa01.example.test",
+  "overall_status": "HEALTHY",
+  "packs_evaluated": [
+   "directory-server",
+   "dns",
+   "kerberos",
+   "replication",
+   "certificates"
+  ],
+  "replay_source": "/work/tests/fixtures/dns/healthy",
+  "unclaimed_warnings": 0,
+  "undiagnosed_count": 0,
+  "undiagnosed_findings": [],
+  "unknown_severity_findings": []
+ },
+ "dns/named-down": {
+  "collection_errors": [],
+  "diagnoses": [
+   {
+    "actions": [
+     {
+      "command": "ldapsearch -Y GSSAPI -b 'cn=dns,$(ipa env basedn -o tsv 2>/dev/null || echo dc=example,dc=test)' aci",
+      "description": "Confirm the DNS service ACIs under cn=dns,<suffix> for the DNS/<fqdn>@REALM principal are actually missing before changing anything",
+      "rationale": "Verifies the specific documented cause before any remediation is attempted.",
+      "reference": null,
+      "risk": "SAFE"
+     },
+     {
+      "command": null,
+      "description": "Restore the standard DNS ACIs (compare against a known-good IPA DNS server, or reapply via the DNS update LDIF shipped with ipa-server-dns)",
+      "rationale": "Documented fix for ACIs lost during an LDIF restore or upgrade.",
+      "reference": "https://www.freeipa.org/page/Troubleshooting/DNS",
+      "risk": "CAUTION"
+     },
+     {
+      "command": "systemctl restart named-pkcs11",
+      "description": "Restart named-pkcs11 once the ACIs are confirmed restored",
+      "rationale": "named/bind-dyndb-ldap only re-reads ACIs at (re)start.",
+      "reference": null,
+      "risk": "CAUTION"
+     }
+    ],
+    "ai_explanation": null,
+    "confidence": {
+     "contradicting_evidence_count": 0,
+     "corroborating_evidence_count": 1,
+     "level": "HIGH",
+     "rationale": "[HIGH: freeipa.org/page/Troubleshooting/DNS + bind-dyndb-ldap's 'NamedCannotStart' doc] the journal shows the specific LDAP permission-denied signature this failure mode is documented to produce, not just a generic crash."
+    },
+    "diagnosis_id": "dns.named-service-down",
+    "evidence_against": [],
+    "evidence_for": [
+     {
+      "evidence_id": "journal_named.0000",
+      "kind": "item",
+      "why_relevant": "journal shows named/bind-dyndb-ldap failed to start with a permission/ACI error"
+     },
+     {
+      "evidence_id": "journal_named.0001",
+      "kind": "item",
+      "why_relevant": "journal shows named/bind-dyndb-ldap crashing or failing to start"
+     },
+     {
+      "evidence_id": "journal_named.0002",
+      "kind": "item",
+      "why_relevant": "journal shows named/bind-dyndb-ldap crashing or failing to start"
+     }
+    ],
+    "impact": "named is down: all DNS resolution this server is authoritative for (SRV/A/AAAA lookups clients depend on for Kerberos and LDAP discovery) fails for clients pointed at this server.",
+    "limitations": "Diagnosis is based on text pattern matching for the documented ACI-permission-denied signature; if bind-dyndb-ldap's exact wording differs across versions, confirm by reading the full journal excerpt manually before applying the ACI fix.",
+    "next_diagnostic_step": null,
+    "pack_id": "dns",
+    "priority": "PRIMARY_PROBLEM",
+    "related_to_titles": [],
+    "rule_id": "named-service-down",
+    "severity": "CRITICAL",
+    "status": "DIAGNOSED",
+    "title": "named failed to start: missing LDAP ACI for the DNS service principal",
+    "upstream_candidates": [
+     "directory-server"
+    ],
+    "verification": [
+     {
+      "description": "named-pkcs11 is active and no longer logs the ACI/permission-denied error on startup",
+      "healthcheck_sources": []
+     }
+    ],
+    "why": "named/bind-dyndb-ldap logged an LDAP permission-denied error while starting up. This matches the documented failure mode where ACIs for the DNS/<fqdn>@REALM principal under cn=dns are missing or incorrect - most commonly after an LDIF restore or an upgrade that didn't reapply DNS ACIs. Without those ACIs, bind-dyndb-ldap cannot read the DNS zone data it needs to start named."
+   },
+   {
+    "actions": [
+     {
+      "command": "ipa dns-update-system-records --dry-run",
+      "description": "Diff live DNS records against the expected IPA system records",
+      "rationale": "",
+      "reference": null,
+      "risk": "SAFE"
+     },
+     {
+      "command": "ipa dnsrecord-add <zone> <name> --srv-rec='<priority> <weight> <port> <target>'  # or --a-rec/--aaaa-rec as appropriate",
+      "description": "Add or correct the specific record identified above",
+      "rationale": "Directly repairs the record confirmed broken by both healthcheck and a live dig.",
+      "reference": "https://access.redhat.com/documentation - Checking DNS records using IdM Healthcheck",
+      "risk": "CAUTION"
+     }
+    ],
+    "ai_explanation": null,
+    "confidence": {
+     "contradicting_evidence_count": 0,
+     "corroborating_evidence_count": 1,
+     "level": "HIGH",
+     "rationale": "[HIGH: Red Hat 'Checking DNS records using IdM Healthcheck'] ERROR-level healthcheck result corroborated by an independent live dig lookup showing the same record is broken."
+    },
+    "diagnosis_id": "dns.srv-autodiscovery",
+    "evidence_against": [],
+    "evidence_for": [
+     {
+      "evidence_id": "d2222222-2222-2222-2222-222222222222",
+      "kind": "finding",
+      "why_relevant": "IPADNSSystemRecordsCheck flagged a system DNS record"
+     },
+     {
+      "evidence_id": "dns_lookup.srv_ldap_tcp",
+      "kind": "item",
+      "why_relevant": "live dig lookup independently confirms this record is missing or wrong"
+     }
+    ],
+    "impact": "Clients may fail Kerberos/LDAP server autodiscovery (SRV lookups) or CA chain retrieval (ipa-ca A/AAAA), causing authentication or enrollment failures.",
+    "limitations": "ipahealthcheck's IPADNSSystemRecordsCheck (and this pack's own dns_lookup collector) only resolve against resolver(s) reachable from this one host. In a multi-server IPA DNS topology, a clean result here does not confirm every IPA DNS server serves correct records - freeipa.org's DNS troubleshooting page documents this as a known blind spot. Spot-check `dig` against every known IPA DNS server before considering DNS fully verified. If the original symptom was a downstream Kerberos discovery failure, re-run the kerberos pack's checks after this fix for true end-to-end verification.",
+    "next_diagnostic_step": null,
+    "pack_id": "dns",
+    "priority": "SECONDARY_INDEPENDENT_PROBLEM",
+    "related_to_titles": [],
+    "rule_id": "srv-autodiscovery",
+    "severity": "ERROR",
+    "status": "DIAGNOSED",
+    "title": "DNS record(s) required for Kerberos/LDAP autodiscovery are broken",
+    "upstream_candidates": [],
+    "verification": [
+     {
+      "description": "Re-run IPADNSSystemRecordsCheck for SUCCESS and re-confirm via a fresh dig that the record now resolves correctly",
+      "healthcheck_sources": [
+       "ipahealthcheck.ipa.idns"
+      ]
+     }
+    ],
+    "why": "IPADNSSystemRecordsCheck reported ERROR (SRV record _ldap._tcp.example.test. required for LDAP autodiscovery could not be resolved), and an independent live `dig` lookup confirms the affected record is actually missing or resolving incorrectly."
+   },
+   {
+    "actions": [
+     {
+      "command": "ipa-healthcheck --source ipahealthcheck.meta.services --check IpaHealthCheckServicesCheck --failures-only",
+      "description": "Re-run the specific failing check for full detail.",
+      "rationale": "Read-only.",
+      "reference": null,
+      "risk": "SAFE"
+     }
+    ],
+    "ai_explanation": null,
+    "confidence": {
+     "contradicting_evidence_count": 0,
+     "corroborating_evidence_count": 0,
+     "level": "INSUFFICIENT",
+     "rationale": "No rule links these findings to a cause; shown so they are never silently dropped."
+    },
+    "diagnosis_id": "healthcheck.unexplained-findings",
+    "evidence_against": [],
+    "evidence_for": [
+     {
+      "evidence_id": "d2222222-2222-2222-2222-222222222223",
+      "kind": "finding",
+      "why_relevant": "Unexplained ipa-healthcheck finding."
+     }
+    ],
+    "impact": "Unknown - depends on what the underlying checks were verifying.",
+    "limitations": "ipa-diagnose has no rule for these findings; this is a visibility safeguard, not a diagnosis.",
+    "next_diagnostic_step": "ipa-healthcheck --source ipahealthcheck.meta.services --check IpaHealthCheckServicesCheck --failures-only",
+    "pack_id": "healthcheck",
+    "priority": "RELATED_SYMPTOM",
+    "related_to_titles": [
+     "named failed to start: missing LDAP ACI for the DNS service principal",
+     "DNS record(s) required for Kerberos/LDAP autodiscovery are broken"
+    ],
+    "rule_id": "unexplained-findings",
+    "severity": "CRITICAL",
+    "status": "UNKNOWN_INSUFFICIENT_EVIDENCE",
+    "title": "ipa-healthcheck reports ERROR/CRITICAL findings that no diagnostic rule explains",
+    "upstream_candidates": [
+     "directory-server",
+     "kerberos",
+     "dns",
+     "certificates"
+    ],
+    "verification": [],
+    "why": "1 finding(s) from ipa-healthcheck are at ERROR or CRITICAL and are not covered by any ipa-diagnose rule, so their cause is not determined: ipahealthcheck.meta.services.IpaHealthCheckServicesCheck (CRITICAL): named service is not running. They may be consequences of another problem in this report (for example a stopped service) or independent problems.\n\nMay be a downstream symptom of the dns problem reported above (not established)."
+   }
+  ],
+  "environment": {
+   "detected_live": false,
+   "directory_server_version": null,
+   "distro": null,
+   "distro_version": null,
+   "freeipa_version": null,
+   "ipa_healthcheck_version": null,
+   "python_version": null
+  },
+  "evidence_completeness": {
+   "healthcheck_collected": true,
+   "level": "complete",
+   "ruv_reason": null,
+   "ruv_state": "NOT_COLLECTED",
+   "unverified": []
+  },
+  "fully_verified": true,
+  "has_undiagnosed_findings": false,
+  "hostname": "ipa01.example.test",
+  "overall_status": "CRITICAL",
+  "packs_evaluated": [
+   "directory-server",
+   "dns",
+   "kerberos",
+   "replication",
+   "certificates"
+  ],
+  "replay_source": "/work/tests/fixtures/dns/named-down",
+  "unclaimed_warnings": 0,
+  "undiagnosed_count": 0,
+  "undiagnosed_findings": [],
+  "unknown_severity_findings": []
+ },
+ "dns/srv-error-collectors-unavailable": {
+  "collection_errors": [
+   "dns_lookup: no dns_lookup fixture at /work/tests/fixtures/dns/srv-error-collectors-unavailable/dns_lookup.json (simulating the collector being unable to run, e.g. permission denied)",
+   "journal_named: no journal_named fixture at /work/tests/fixtures/dns/srv-error-collectors-unavailable/journal_named.json (simulating the collector being unable to run, e.g. permission denied reading the journal)"
+  ],
+  "diagnoses": [
+   {
+    "actions": [],
+    "ai_explanation": null,
+    "confidence": {
+     "contradicting_evidence_count": 0,
+     "corroborating_evidence_count": 0,
+     "level": "LOW",
+     "rationale": "Only the single-resolver healthcheck result is available; no independent corroboration."
+    },
+    "diagnosis_id": "dns.srv-autodiscovery",
+    "evidence_against": [],
+    "evidence_for": [
+     {
+      "evidence_id": "d5555555-5555-5555-5555-555555555555",
+      "kind": "finding",
+      "why_relevant": "IPADNSSystemRecordsCheck flagged a system DNS record"
+     }
+    ],
+    "impact": "",
+    "limitations": "ipahealthcheck's IPADNSSystemRecordsCheck (and this pack's own dns_lookup collector) only resolve against resolver(s) reachable from this one host. In a multi-server IPA DNS topology, a clean result here does not confirm every IPA DNS server serves correct records - freeipa.org's DNS troubleshooting page documents this as a known blind spot. Spot-check `dig` against every known IPA DNS server before considering DNS fully verified.",
+    "next_diagnostic_step": "Run `dig SRV _ldap._tcp.<domain>` and `dig SRV _kerberos._udp.<realm>` against every IPA DNS server in the topology (not just this host) and check `journalctl -u named-pkcs11` as root.",
+    "pack_id": "dns",
+    "priority": "PRIMARY_PROBLEM",
+    "related_to_titles": [],
+    "rule_id": "srv-autodiscovery",
+    "severity": "ERROR",
+    "status": "UNKNOWN_INSUFFICIENT_EVIDENCE",
+    "title": "IPADNSSystemRecordsCheck reports a broken record - not independently confirmed",
+    "upstream_candidates": [],
+    "verification": [],
+    "why": "IPADNSSystemRecordsCheck reported ERROR (SRV record _ldap._tcp.example.test. required for LDAP autodiscovery could not be resolved), but no independent dig-based evidence is available to confirm which record is actually broken or corroborate the result."
+   }
+  ],
+  "environment": {
+   "detected_live": false,
+   "directory_server_version": null,
+   "distro": null,
+   "distro_version": null,
+   "freeipa_version": null,
+   "ipa_healthcheck_version": null,
+   "python_version": null
+  },
+  "evidence_completeness": {
+   "healthcheck_collected": true,
+   "level": "partial",
+   "ruv_reason": null,
+   "ruv_state": "NOT_COLLECTED",
+   "unverified": [
+    {
+     "capability": "dns_lookup",
+     "collector": "dns_lookup",
+     "hint": "",
+     "permission_related": true,
+     "reason": "no dns_lookup fixture at /work/tests/fixtures/dns/srv-error-collectors-unavailable/dns_lookup.json (simulating the collector being unable to run, e.g. permission denied)"
+    },
+    {
+     "capability": "journal_named",
+     "collector": "journal_named",
+     "hint": "",
+     "permission_related": true,
+     "reason": "no journal_named fixture at /work/tests/fixtures/dns/srv-error-collectors-unavailable/journal_named.json (simulating the collector being unable to run, e.g. permission denied reading the journal)"
+    }
+   ]
+  },
+  "fully_verified": false,
+  "has_undiagnosed_findings": false,
+  "hostname": "ipa01.example.test",
+  "overall_status": "NOT_FULLY_VERIFIED",
+  "packs_evaluated": [
+   "directory-server",
+   "dns",
+   "kerberos",
+   "replication",
+   "certificates"
+  ],
+  "replay_source": "/work/tests/fixtures/dns/srv-error-collectors-unavailable",
+  "unclaimed_warnings": 0,
+  "undiagnosed_count": 0,
+  "undiagnosed_findings": [],
+  "unknown_severity_findings": []
+ },
+ "dns/srv-missing": {
+  "collection_errors": [],
+  "diagnoses": [
+   {
+    "actions": [
+     {
+      "command": "ipa dns-update-system-records --dry-run",
+      "description": "Diff live DNS records against the expected IPA system records",
+      "rationale": "",
+      "reference": null,
+      "risk": "SAFE"
+     },
+     {
+      "command": "ipa dnsrecord-add <zone> <name> --srv-rec='<priority> <weight> <port> <target>'  # or --a-rec/--aaaa-rec as appropriate",
+      "description": "Add or correct the specific record identified above",
+      "rationale": "Directly repairs the record confirmed broken by both healthcheck and a live dig.",
+      "reference": "https://access.redhat.com/documentation - Checking DNS records using IdM Healthcheck",
+      "risk": "CAUTION"
+     }
+    ],
+    "ai_explanation": null,
+    "confidence": {
+     "contradicting_evidence_count": 0,
+     "corroborating_evidence_count": 1,
+     "level": "HIGH",
+     "rationale": "[HIGH: Red Hat 'Checking DNS records using IdM Healthcheck'] ERROR-level healthcheck result corroborated by an independent live dig lookup showing the same record is broken."
+    },
+    "diagnosis_id": "dns.srv-autodiscovery",
+    "evidence_against": [],
+    "evidence_for": [
+     {
+      "evidence_id": "d4444444-4444-4444-4444-444444444444",
+      "kind": "finding",
+      "why_relevant": "IPADNSSystemRecordsCheck flagged a system DNS record"
+     },
+     {
+      "evidence_id": "dns_lookup.srv_kerberos_udp",
+      "kind": "item",
+      "why_relevant": "live dig lookup independently confirms this record is missing or wrong"
+     }
+    ],
+    "impact": "Clients may fail Kerberos/LDAP server autodiscovery (SRV lookups) or CA chain retrieval (ipa-ca A/AAAA), causing authentication or enrollment failures.",
+    "limitations": "ipahealthcheck's IPADNSSystemRecordsCheck (and this pack's own dns_lookup collector) only resolve against resolver(s) reachable from this one host. In a multi-server IPA DNS topology, a clean result here does not confirm every IPA DNS server serves correct records - freeipa.org's DNS troubleshooting page documents this as a known blind spot. Spot-check `dig` against every known IPA DNS server before considering DNS fully verified. If the original symptom was a downstream Kerberos discovery failure, re-run the kerberos pack's checks after this fix for true end-to-end verification.",
+    "next_diagnostic_step": null,
+    "pack_id": "dns",
+    "priority": "PRIMARY_PROBLEM",
+    "related_to_titles": [],
+    "rule_id": "srv-autodiscovery",
+    "severity": "ERROR",
+    "status": "DIAGNOSED",
+    "title": "DNS record(s) required for Kerberos/LDAP autodiscovery are broken",
+    "upstream_candidates": [],
+    "verification": [
+     {
+      "description": "Re-run IPADNSSystemRecordsCheck for SUCCESS and re-confirm via a fresh dig that the record now resolves correctly",
+      "healthcheck_sources": [
+       "ipahealthcheck.ipa.idns"
+      ]
+     }
+    ],
+    "why": "IPADNSSystemRecordsCheck reported ERROR (SRV record _kerberos._udp.example.test. required for Kerberos autodiscovery could not be resolved (NXDOMAIN)), and an independent live `dig` lookup confirms the affected record is actually missing or resolving incorrectly."
+   }
+  ],
+  "environment": {
+   "detected_live": false,
+   "directory_server_version": null,
+   "distro": null,
+   "distro_version": null,
+   "freeipa_version": null,
+   "ipa_healthcheck_version": null,
+   "python_version": null
+  },
+  "evidence_completeness": {
+   "healthcheck_collected": true,
+   "level": "complete",
+   "ruv_reason": null,
+   "ruv_state": "NOT_COLLECTED",
+   "unverified": []
+  },
+  "fully_verified": true,
+  "has_undiagnosed_findings": false,
+  "hostname": "ipa01.example.test",
+  "overall_status": "DEGRADED",
+  "packs_evaluated": [
+   "directory-server",
+   "dns",
+   "kerberos",
+   "replication",
+   "certificates"
+  ],
+  "replay_source": "/work/tests/fixtures/dns/srv-missing",
+  "unclaimed_warnings": 0,
+  "undiagnosed_count": 0,
+  "undiagnosed_findings": [],
+  "unknown_severity_findings": []
+ },
+ "kerberos/ambiguous-preauth": {
+  "collection_errors": [],
+  "diagnoses": [
+   {
+    "actions": [
+     {
+      "command": "kvno <principal>; klist -kte /etc/krb5.keytab; chronyc tracking",
+      "description": "As root, compare `kvno <principal>` against `klist -kte /etc/krb5.keytab`, and check `chronyc tracking`/`date` against the KDC's clock, to distinguish clock skew from a keytab problem.",
+      "rationale": "Read-only; this is exactly the missing disambiguating evidence.",
+      "reference": null,
+      "risk": "SAFE"
+     }
+    ],
+    "ai_explanation": null,
+    "confidence": {
+     "contradicting_evidence_count": 0,
+     "corroborating_evidence_count": 0,
+     "level": "LOW",
+     "rationale": "[HIGH per Red Hat KCS that the error text alone is a generic bucket] The generic kinit failure message is, by itself, LOW-confidence evidence for any single specific cause - clock skew, keytab/KVNO mismatch, and salt mismatch all produce the same text."
+    },
+    "diagnosis_id": "kerberos.keytab-kvno-mismatch",
+    "evidence_against": [],
+    "evidence_for": [
+     {
+      "evidence_id": "eeeeeeee-0005-0005-0005-000000000001",
+      "kind": "finding",
+      "why_relevant": "IPAHostKeytab kinit failure - generic error text, not diagnostic by itself."
+     }
+    ],
+    "impact": "Kerberos authentication is failing for this host; the specific cause is not yet known.",
+    "limitations": "The kerberos_client collector did not produce a KVNO comparison for this run (fixture/collection unavailable), which is the one piece of evidence that could safely distinguish a keytab mismatch from clock skew or a salt mismatch.",
+    "next_diagnostic_step": "As root, compare `kvno <principal>` against `klist -kte /etc/krb5.keytab`, and check `chronyc tracking`/`date` against the KDC's clock, to distinguish clock skew from a keytab problem.",
+    "pack_id": "kerberos",
+    "priority": "PRIMARY_PROBLEM",
+    "related_to_titles": [],
+    "rule_id": "keytab-kvno-mismatch",
+    "severity": "ERROR",
+    "status": "UNKNOWN_INSUFFICIENT_EVIDENCE",
+    "title": "Kerberos authentication failing (kinit) - cause not yet disambiguated",
+    "upstream_candidates": [],
+    "verification": [],
+    "why": "IPAHostKeytab's kinit -kt attempt failed with a generic error, but the kerberos_client collector's KVNO comparison could not be obtained this run (missing/failed collection). 'Preauthentication failed' and similar generic kinit errors are produced by clock skew, a wrong keytab/password, AND a salt mismatch alike - without the direct KVNO comparison, this cannot be safely attributed to a keytab problem specifically."
+   }
+  ],
+  "environment": {
+   "detected_live": false,
+   "directory_server_version": null,
+   "distro": null,
+   "distro_version": null,
+   "freeipa_version": null,
+   "ipa_healthcheck_version": null,
+   "python_version": null
+  },
+  "evidence_completeness": {
+   "healthcheck_collected": true,
+   "level": "complete",
+   "ruv_reason": null,
+   "ruv_state": "NOT_COLLECTED",
+   "unverified": []
+  },
+  "fully_verified": true,
+  "has_undiagnosed_findings": false,
+  "hostname": "ipa01.example.test",
+  "overall_status": "NOT_FULLY_VERIFIED",
+  "packs_evaluated": [
+   "directory-server",
+   "dns",
+   "kerberos",
+   "replication",
+   "certificates"
+  ],
+  "replay_source": "/work/tests/fixtures/kerberos/ambiguous-preauth",
+  "unclaimed_warnings": 0,
+  "undiagnosed_count": 0,
+  "undiagnosed_findings": [],
+  "unknown_severity_findings": []
+ },
+ "kerberos/clock-skew": {
+  "collection_errors": [],
+  "diagnoses": [
+   {
+    "actions": [
+     {
+      "command": "chronyc tracking",
+      "description": "Run `chronyc tracking` (or `date -u`) on this host AND on the KDC to confirm the exact skew magnitude before changing anything.",
+      "rationale": "Read-only diagnostic step; confirms scope before any remediation.",
+      "reference": "https://web.mit.edu/kerberos/krb5-1.5/krb5-1.5.4/doc/krb5-admin/Clock-Skew.html",
+      "risk": "SAFE"
+     },
+     {
+      "command": "systemctl enable --now chronyd && chronyc makestep",
+      "description": "Ensure chronyd/ntpd is enabled and force an immediate resync.",
+      "rationale": "Reversible service/state change, not read-only: stepping the clock can disrupt any process sensitive to sudden time jumps (cron, TLS validity windows, other auth protocols), so this is CAUTION rather than SAFE.",
+      "reference": null,
+      "risk": "CAUTION"
+     }
+    ],
+    "ai_explanation": null,
+    "confidence": {
+     "contradicting_evidence_count": 0,
+     "corroborating_evidence_count": 2,
+     "level": "HIGH",
+     "rationale": "[HIGH, MIT Kerberos 'Clock Skew' docs] The krb5kdc journal contains an explicit clock-skew rejection line - this is direct KDC-side evidence, not an inference."
+    },
+    "diagnosis_id": "kerberos.clock-skew",
+    "evidence_against": [],
+    "evidence_for": [
+     {
+      "evidence_id": "bbbbbbbb-0002-0002-0002-000000000001",
+      "kind": "finding",
+      "why_relevant": "IPAHostKeytab's kinit -kt attempt failed around the same time as the clock evidence below."
+     },
+     {
+      "evidence_id": "journal_krb5kdc.1",
+      "kind": "item",
+      "why_relevant": "krb5kdc journal line explicitly rejects a request for clock skew, matching MIT Kerberos's documented default 300-second skew window."
+     }
+    ],
+    "impact": "Kerberos authentication (kinit, service tickets, SSO) fails intermittently or completely for this host until the clocks are back within the skew window.",
+    "limitations": "This pack can only directly observe this host's own NTP sync state (via chronyc/date), not the KDC's clock. A direct krb5kdc-journal clock-skew rejection line is treated as strong direct evidence (HIGH); a local desync alone is treated as indirect evidence (MEDIUM) because it does not by itself prove the *relative* skew against the KDC.",
+    "next_diagnostic_step": null,
+    "pack_id": "kerberos",
+    "priority": "PRIMARY_PROBLEM",
+    "related_to_titles": [],
+    "rule_id": "clock-skew",
+    "severity": "ERROR",
+    "status": "DIAGNOSED",
+    "title": "Kerberos authentication failing due to clock skew",
+    "upstream_candidates": [],
+    "verification": [
+     {
+      "description": "From a FRESH process (not a cached ticket/session), both `kinit` (password) and `kinit -kt /etc/krb5.keytab` succeed, `klist` shows a validly-timed ticket, and no new clock-skew line appears in the krb5kdc journal. A stale cached TGT can make a fix look successful when it isn't - always test from a fresh session.",
+      "healthcheck_sources": [
+       "ipahealthcheck.ipa.host"
+      ]
+     }
+    ],
+    "why": "Kerberos rejects authentication attempts when the client and KDC clocks differ by more than a default 5-minute window. The evidence below shows a clock-skew signal coinciding with a Kerberos authentication failure on this host."
+   }
+  ],
+  "environment": {
+   "detected_live": false,
+   "directory_server_version": null,
+   "distro": null,
+   "distro_version": null,
+   "freeipa_version": null,
+   "ipa_healthcheck_version": null,
+   "python_version": null
+  },
+  "evidence_completeness": {
+   "healthcheck_collected": true,
+   "level": "complete",
+   "ruv_reason": null,
+   "ruv_state": "NOT_COLLECTED",
+   "unverified": []
+  },
+  "fully_verified": true,
+  "has_undiagnosed_findings": false,
+  "hostname": "ipa01.example.test",
+  "overall_status": "DEGRADED",
+  "packs_evaluated": [
+   "directory-server",
+   "dns",
+   "kerberos",
+   "replication",
+   "certificates"
+  ],
+  "replay_source": "/work/tests/fixtures/kerberos/clock-skew",
+  "unclaimed_warnings": 0,
+  "undiagnosed_count": 0,
+  "undiagnosed_findings": [],
+  "unknown_severity_findings": []
+ },
+ "kerberos/dns-discovery": {
+  "collection_errors": [],
+  "diagnoses": [
+   {
+    "actions": [
+     {
+      "command": "dig _kerberos._udp.<domain> SRV; dig _kerberos._tcp.<domain> SRV",
+      "description": "Check the Kerberos SRV records: `dig _kerberos._udp.<domain> SRV` and `dig _kerberos._tcp.<domain> SRV`, confirming they resolve to the expected KDC(s).",
+      "rationale": "Read-only; this is the DNS pack's own evidence needed to fully confirm this cause.",
+      "reference": "Red Hat Bugzilla 1508053",
+      "risk": "SAFE"
+     },
+     {
+      "command": "nc -vz <kdc-host> 88",
+      "description": "Verify network reachability to the resolved KDC(s) on port 88 (tcp/udp).",
+      "rationale": "Read-only; distinguishes a DNS-only problem from a genuine network/firewall outage.",
+      "reference": null,
+      "risk": "SAFE"
+     }
+    ],
+    "ai_explanation": null,
+    "confidence": {
+     "contradicting_evidence_count": 0,
+     "corroborating_evidence_count": 1,
+     "level": "MEDIUM",
+     "rationale": "[MED, Red Hat Bugzilla 1508053] 'Cannot contact any KDC for realm' can mean either missing/wrong _kerberos._udp/_tcp SRV records (a DNS problem) OR that a correctly resolved KDC is genuinely network-unreachable (firewall/routing) - these are NOT the same problem, and this pack's own collectors cannot fully distinguish them without the DNS pack's SRV record check."
+    },
+    "diagnosis_id": "kerberos.kdc-discovery-failure",
+    "evidence_against": [],
+    "evidence_for": [
+     {
+      "evidence_id": "dddddddd-0004-0004-0004-000000000001",
+      "kind": "finding",
+      "why_relevant": "IPAHostKeytab's kinit -kt attempt failed because no KDC could be contacted for the realm."
+     }
+    ],
+    "impact": "Kerberos authentication cannot succeed at all for this host (and potentially others relying on the same DNS data) until KDC discovery/reachability is restored.",
+    "limitations": "Fully confirming this as a DNS root cause (vs. a genuine network/firewall outage to an otherwise-correctly-resolved KDC) requires checking the `_kerberos._udp`/`_tcp` SRV records via the dns pack's own collector, which this pack does not have direct access to. This diagnosis is linked to a concurrently-firing DNS-pack diagnosis, if any, via upstream_candidates.",
+    "next_diagnostic_step": null,
+    "pack_id": "kerberos",
+    "priority": "PRIMARY_PROBLEM",
+    "related_to_titles": [],
+    "rule_id": "kdc-discovery-failure",
+    "severity": "CRITICAL",
+    "status": "DIAGNOSED",
+    "title": "Kerberos authentication failing because no KDC could be found or reached",
+    "upstream_candidates": [
+     "dns"
+    ],
+    "verification": [
+     {
+      "description": "From a FRESH process (not a cached ticket/session), both password-based `kinit` and `kinit -kt /etc/krb5.keytab` succeed and `klist` shows a valid ticket; IPAHostKeytab reports SUCCESS. A cached ticket cannot be used to judge this.",
+      "healthcheck_sources": [
+       "ipahealthcheck.ipa.host"
+      ]
+     }
+    ],
+    "why": "kinit failed because no KDC could be contacted for the realm, with no clock-skew or KVNO-mismatch evidence present to explain the failure instead. The most commonly documented root cause for this pattern is missing or incorrect DNS SRV records for the Kerberos realm."
+   }
+  ],
+  "environment": {
+   "detected_live": false,
+   "directory_server_version": null,
+   "distro": null,
+   "distro_version": null,
+   "freeipa_version": null,
+   "ipa_healthcheck_version": null,
+   "python_version": null
+  },
+  "evidence_completeness": {
+   "healthcheck_collected": true,
+   "level": "complete",
+   "ruv_reason": null,
+   "ruv_state": "NOT_COLLECTED",
+   "unverified": []
+  },
+  "fully_verified": true,
+  "has_undiagnosed_findings": false,
+  "hostname": "ipa01.example.test",
+  "overall_status": "CRITICAL",
+  "packs_evaluated": [
+   "directory-server",
+   "dns",
+   "kerberos",
+   "replication",
+   "certificates"
+  ],
+  "replay_source": "/work/tests/fixtures/kerberos/dns-discovery",
+  "unclaimed_warnings": 0,
+  "undiagnosed_count": 0,
+  "undiagnosed_findings": [],
+  "unknown_severity_findings": []
+ },
+ "kerberos/healthy": {
+  "collection_errors": [],
+  "diagnoses": [],
+  "environment": {
+   "detected_live": false,
+   "directory_server_version": null,
+   "distro": null,
+   "distro_version": null,
+   "freeipa_version": null,
+   "ipa_healthcheck_version": null,
+   "python_version": null
+  },
+  "evidence_completeness": {
+   "healthcheck_collected": true,
+   "level": "complete",
+   "ruv_reason": null,
+   "ruv_state": "NOT_COLLECTED",
+   "unverified": []
+  },
+  "fully_verified": true,
+  "has_undiagnosed_findings": false,
+  "hostname": "ipa01.example.test",
+  "overall_status": "HEALTHY",
+  "packs_evaluated": [
+   "directory-server",
+   "dns",
+   "kerberos",
+   "replication",
+   "certificates"
+  ],
+  "replay_source": "/work/tests/fixtures/kerberos/healthy",
+  "unclaimed_warnings": 0,
+  "undiagnosed_count": 0,
+  "undiagnosed_findings": [],
+  "unknown_severity_findings": []
+ },
+ "kerberos/keytab-mismatch": {
+  "collection_errors": [],
+  "diagnoses": [
+   {
+    "actions": [
+     {
+      "command": "kvno <principal> && klist -kte /etc/krb5.keytab",
+      "description": "Re-run `kvno <principal>` and `klist -kte /etc/krb5.keytab` to reconfirm the KVNO numbers before changing anything.",
+      "rationale": "Read-only; confirms the mismatch is still current before remediating.",
+      "reference": null,
+      "risk": "SAFE"
+     },
+     {
+      "command": "ipa-getkeytab -s <ipa-server> -p <principal> -k /etc/krb5.keytab",
+      "description": "Regenerate the keytab properly via `ipa-getkeytab`.",
+      "rationale": "Reversible but disruptive: this immediately invalidates the OLD keytab. Any process or host still holding a copy of the old keytab file will start failing kinit until it also receives the new one. Do NOT manually rebuild a keytab with `ktutil` - Red Hat/community reports document that as a common CAUSE of salt mismatches, not a fix, so it is intentionally not offered here.",
+      "reference": "Red Hat KCS 5576461",
+      "risk": "CAUTION"
+     }
+    ],
+    "ai_explanation": null,
+    "confidence": {
+     "contradicting_evidence_count": 0,
+     "corroborating_evidence_count": 2,
+     "level": "HIGH",
+     "rationale": "[HIGH, Red Hat KCS 5576461 & 3380341] kvno-vs-keytab comparison is a direct, deterministic numeric check, not an inference from an ambiguous error string."
+    },
+    "diagnosis_id": "kerberos.keytab-kvno-mismatch",
+    "evidence_against": [],
+    "evidence_for": [
+     {
+      "evidence_id": "kerberos_client.kvno_comparison",
+      "kind": "item",
+      "why_relevant": "Direct KVNO comparison for host/ipa01.example.test@EXAMPLE.TEST: KDC kvno=3 vs keytab kvno=2 - a real numeric mismatch, not just the generic error string."
+     },
+     {
+      "evidence_id": "cccccccc-0003-0003-0003-000000000001",
+      "kind": "finding",
+      "why_relevant": "IPAHostKeytab's kinit -kt attempt failed, consistent with an out-of-date keytab."
+     }
+    ],
+    "impact": "This host cannot authenticate as its host/service principal until the keytab is refreshed.",
+    "limitations": "Manually rebuilding a keytab with `ktutil` is deliberately not offered as an action: it is a documented cause of salt mismatches, not a remediation for one.",
+    "next_diagnostic_step": null,
+    "pack_id": "kerberos",
+    "priority": "PRIMARY_PROBLEM",
+    "related_to_titles": [],
+    "rule_id": "keytab-kvno-mismatch",
+    "severity": "ERROR",
+    "status": "DIAGNOSED",
+    "title": "Kerberos authentication failing due to a stale host/service keytab (KVNO mismatch)",
+    "upstream_candidates": [],
+    "verification": [
+     {
+      "description": "From a FRESH process (not a cached ticket/session), `kinit -kt /etc/krb5.keytab` succeeds, a fresh `kvno <principal>` now matches the keytab's KVNO, and ipahealthcheck.ipa.host's IPAHostKeytab check reports SUCCESS. Do not rely on an already-cached ticket to judge success.",
+      "healthcheck_sources": [
+       "ipahealthcheck.ipa.host"
+      ]
+     }
+    ],
+    "why": "`kvno <principal>` (what the KDC currently has) does not match the key version recorded in `klist -kte /etc/krb5.keytab` (what this host has on disk). This is the direct disambiguating evidence for a keytab problem specifically - the generic 'Preauthentication failed' error alone was NOT used to reach this conclusion, since that message is also produced by clock skew and salt mismatches."
+   }
+  ],
+  "environment": {
+   "detected_live": false,
+   "directory_server_version": null,
+   "distro": null,
+   "distro_version": null,
+   "freeipa_version": null,
+   "ipa_healthcheck_version": null,
+   "python_version": null
+  },
+  "evidence_completeness": {
+   "healthcheck_collected": true,
+   "level": "complete",
+   "ruv_reason": null,
+   "ruv_state": "NOT_COLLECTED",
+   "unverified": []
+  },
+  "fully_verified": true,
+  "has_undiagnosed_findings": false,
+  "hostname": "ipa01.example.test",
+  "overall_status": "DEGRADED",
+  "packs_evaluated": [
+   "directory-server",
+   "dns",
+   "kerberos",
+   "replication",
+   "certificates"
+  ],
+  "replay_source": "/work/tests/fixtures/kerberos/keytab-mismatch",
+  "unclaimed_warnings": 0,
+  "undiagnosed_count": 0,
+  "undiagnosed_findings": [],
+  "unknown_severity_findings": []
+ },
+ "real-freeipa-capture/certmonger-stopped": {
+  "collection_errors": [],
+  "diagnoses": [
+   {
+    "actions": [
+     {
+      "command": "systemctl status --no-pager -- certmonger; journalctl --no-pager -n 50 -u certmonger",
+      "description": "Check why the service is not running before starting it.",
+      "rationale": "Read-only: shows the unit state and its most recent log lines.",
+      "reference": null,
+      "risk": "SAFE"
+     }
+    ],
+    "ai_explanation": null,
+    "confidence": {
+     "contradicting_evidence_count": 0,
+     "corroborating_evidence_count": 1,
+     "level": "HIGH",
+     "rationale": "Direct report from ipa-healthcheck's service status check."
+    },
+    "diagnosis_id": "healthcheck.service-not-running-certmonger",
+    "evidence_against": [],
+    "evidence_for": [
+     {
+      "evidence_id": "ad07371b-8e45-4e46-8e17-2467c113d049",
+      "kind": "finding",
+      "why_relevant": "ipa-healthcheck states this service is not running."
+     }
+    ],
+    "impact": "Functions that depend on this service are unavailable or degraded. Other failures in this report (for example ipa-healthcheck checks that could not connect) may be consequences.",
+    "limitations": "Root cause of the outage is not established by this finding alone.",
+    "next_diagnostic_step": null,
+    "pack_id": "healthcheck",
+    "priority": "PRIMARY_PROBLEM",
+    "related_to_titles": [],
+    "rule_id": "service-not-running-certmonger",
+    "severity": "ERROR",
+    "status": "DIAGNOSED",
+    "title": "Required service 'certmonger' is not running",
+    "upstream_candidates": [],
+    "verification": [],
+    "why": "ipa-healthcheck (ipahealthcheck.meta.services.certmonger) directly reports: certmonger: not running. This is the check's own statement, not an inference. Why the service is not running is NOT determined by this finding."
+   },
+   {
+    "actions": [
+     {
+      "command": "ipa-healthcheck --source ipahealthcheck.ipa.certs --check IPACertmongerExpirationCheck --failures-only",
+      "description": "Re-run the failing check after resolving any other problem in this report.",
+      "rationale": "Read-only.",
+      "reference": null,
+      "risk": "SAFE"
+     }
+    ],
+    "ai_explanation": null,
+    "confidence": {
+     "contradicting_evidence_count": 0,
+     "corroborating_evidence_count": 0,
+     "level": "INSUFFICIENT",
+     "rationale": "A check that crashed produced no result; it is reported so it is never silently dropped."
+    },
+    "diagnosis_id": "healthcheck.healthcheck-check-failed",
+    "evidence_against": [],
+    "evidence_for": [
+     {
+      "evidence_id": "40c2931b-268f-44d1-a0c2-506d7d6d1884",
+      "kind": "finding",
+      "why_relevant": "ipa-healthcheck check raised an exception."
+     },
+     {
+      "evidence_id": "b8f5af8e-5f77-4b5e-b474-65e1007cb9ed",
+      "kind": "finding",
+      "why_relevant": "ipa-healthcheck check raised an exception."
+     },
+     {
+      "evidence_id": "97243073-6d34-42ca-91ed-977e48d97534",
+      "kind": "finding",
+      "why_relevant": "ipa-healthcheck check raised an exception."
+     },
+     {
+      "evidence_id": "4f518772-9ec5-41fe-95c8-9d43e21839b9",
+      "kind": "finding",
+      "why_relevant": "ipa-healthcheck check raised an exception."
+     },
+     {
+      "evidence_id": "cf703ca5-10ec-418f-b46c-19f2cbffa2f0",
+      "kind": "finding",
+      "why_relevant": "ipa-healthcheck check raised an exception."
+     },
+     {
+      "evidence_id": "a5fba0b8-bc39-4058-9d97-c2640819375e",
+      "kind": "finding",
+      "why_relevant": "ipa-healthcheck check raised an exception."
+     }
+    ],
+    "impact": "Health of whatever these checks cover is not established.",
+    "limitations": "No conclusion about the affected subsystem can be drawn from a crashed check.",
+    "next_diagnostic_step": "ipa-healthcheck --source ipahealthcheck.ipa.certs --check IPACertmongerExpirationCheck --failures-only",
+    "pack_id": "healthcheck",
+    "priority": "RELATED_SYMPTOM",
+    "related_to_titles": [
+     "Required service 'certmonger' is not running"
+    ],
+    "rule_id": "healthcheck-check-failed",
+    "severity": "CRITICAL",
+    "status": "UNKNOWN_INSUFFICIENT_EVIDENCE",
+    "title": "One or more ipa-healthcheck checks failed to run",
+    "upstream_candidates": [
+     "directory-server",
+     "kerberos",
+     "dns",
+     "certificates"
+    ],
+    "verification": [],
+    "why": "8 ipa-healthcheck check(s) raised an exception instead of returning a result, so they say nothing about the state of the system: IPACertmongerExpirationCheck: CalledProcessError(Command ['/bin/systemctl', 'start', 'certmonger.service'] returned...; IPACertfileExpirationCheck: CalledProcessError(Command ['/bin/systemctl', 'start', 'certmonger.service'] returned...; IPACertTracking: CalledProcessError(Command ['/bin/systemctl', 'start', 'certmonger.service'] returned...; IPACertDNSSAN: CalledProcessError(Command ['/bin/systemctl', 'start', 'certmonger.service'] returned...; IPACertRevocation: CalledProcessError(Command ['/bin/systemctl', 'start', 'certmonger.service'] returned...; CertmongerStuckCheck: CalledProcessError(Command ['/bin/systemctl', 'start', 'certmonger.service'] returned... (+2 more). This is most often a consequence of another problem in this report (for example a stopped service the check needs).\n\nMay be a downstream symptom of the certificates problem reported above (not established)."
+   },
+   {
+    "actions": [
+     {
+      "command": "ipa-healthcheck --source ipahealthcheck.ipa.certs --check IPACertmongerCA --failures-only",
+      "description": "Re-run the specific failing check for full detail.",
+      "rationale": "Read-only.",
+      "reference": null,
+      "risk": "SAFE"
+     }
+    ],
+    "ai_explanation": null,
+    "confidence": {
+     "contradicting_evidence_count": 0,
+     "corroborating_evidence_count": 0,
+     "level": "INSUFFICIENT",
+     "rationale": "No rule links these findings to a cause; shown so they are never silently dropped."
+    },
+    "diagnosis_id": "healthcheck.unexplained-findings",
+    "evidence_against": [],
+    "evidence_for": [
+     {
+      "evidence_id": "f60bdbbe-87ef-4516-93a4-cbab13cc629c",
+      "kind": "finding",
+      "why_relevant": "Unexplained ipa-healthcheck finding."
+     },
+     {
+      "evidence_id": "d0c3e688-4d7e-422f-a073-26ff8e72c9a1",
+      "kind": "finding",
+      "why_relevant": "Unexplained ipa-healthcheck finding."
+     },
+     {
+      "evidence_id": "414febe0-699e-48e4-8bb0-b2b2789854ff",
+      "kind": "finding",
+      "why_relevant": "Unexplained ipa-healthcheck finding."
+     }
+    ],
+    "impact": "Unknown - depends on what the underlying checks were verifying.",
+    "limitations": "ipa-diagnose has no rule for these findings; this is a visibility safeguard, not a diagnosis.",
+    "next_diagnostic_step": "ipa-healthcheck --source ipahealthcheck.ipa.certs --check IPACertmongerCA --failures-only",
+    "pack_id": "healthcheck",
+    "priority": "RELATED_SYMPTOM",
+    "related_to_titles": [
+     "Required service 'certmonger' is not running"
+    ],
+    "rule_id": "unexplained-findings",
+    "severity": "ERROR",
+    "status": "UNKNOWN_INSUFFICIENT_EVIDENCE",
+    "title": "ipa-healthcheck reports ERROR/CRITICAL findings that no diagnostic rule explains",
+    "upstream_candidates": [
+     "directory-server",
+     "kerberos",
+     "dns",
+     "certificates"
+    ],
+    "verification": [],
+    "why": "3 finding(s) from ipa-healthcheck are at ERROR or CRITICAL and are not covered by any ipa-diagnose rule, so their cause is not determined: ipahealthcheck.ipa.certs.IPACertmongerCA (ERROR): Certmonger CA '{key}' missing; ipahealthcheck.ipa.certs.IPACertmongerCA (ERROR): Certmonger CA '{key}' missing; ipahealthcheck.ipa.certs.IPACertmongerCA (ERROR): Certmonger CA '{key}' missing. They may be consequences of another problem in this report (for example a stopped service) or independent problems.\n\nMay be a downstream symptom of the certificates problem reported above (not established)."
+   }
+  ],
+  "environment": {
+   "detected_live": false,
+   "directory_server_version": null,
+   "distro": null,
+   "distro_version": null,
+   "freeipa_version": null,
+   "ipa_healthcheck_version": null,
+   "python_version": null
+  },
+  "evidence_completeness": {
+   "healthcheck_collected": true,
+   "level": "complete",
+   "ruv_reason": null,
+   "ruv_state": "NOT_COLLECTED",
+   "unverified": []
+  },
+  "fully_verified": true,
+  "has_undiagnosed_findings": true,
+  "hostname": "ipa01.lab.test",
+  "overall_status": "CRITICAL",
+  "packs_evaluated": [
+   "directory-server",
+   "dns",
+   "kerberos",
+   "replication",
+   "certificates"
+  ],
+  "replay_source": "/work/tests/fixtures/real-freeipa-capture/certmonger-stopped",
+  "unclaimed_warnings": 1,
+  "undiagnosed_count": 3,
+  "undiagnosed_findings": [
+   {
+    "check": "CertmongerFIPSTokensCheck",
+    "check_crashed": true,
+    "check_known_since_ipa_healthcheck": "0.19",
+    "ipa_healthcheck_version": null,
+    "key": null,
+    "message": "CalledProcessError(Command ['/bin/systemctl', 'start', 'certmonger.service'] returned non-zero exit status 1: 'Failed to start certmonger.service: Unit certmonger.service is masked.\\n')",
+    "reason": "The check raised an exception instead of returning a result, so it says nothing about the system.",
+    "severity": "CRITICAL",
+    "source": "ipahealthcheck.ipa.certs"
+   },
+   {
+    "check": "IPAFileCheck",
+    "check_crashed": true,
+    "check_known_since_ipa_healthcheck": "0.2",
+    "ipa_healthcheck_version": null,
+    "key": null,
+    "message": "CalledProcessError(Command ['/bin/systemctl', 'start', 'certmonger.service'] returned non-zero exit status 1: 'Failed to start certmonger.service: Unit certmonger.service is masked.\\n')",
+    "reason": "The check raised an exception instead of returning a result, so it says nothing about the system.",
+    "severity": "CRITICAL",
+    "source": "ipahealthcheck.ipa.files"
+   },
+   {
+    "check": "MetaCheck",
+    "check_crashed": false,
+    "check_known_since_ipa_healthcheck": "0.2",
+    "ipa_healthcheck_version": null,
+    "key": "meta",
+    "message": "(no message; fields: key, fqdn, fips, acme, ipa_version, ipa_api_version)",
+    "reason": "ipa-diagnose has no rule that explains this finding; it may or may not matter.",
+    "severity": "WARNING",
+    "source": "ipahealthcheck.meta.core"
+   }
+  ],
+  "unknown_severity_findings": []
+ },
+ "real-freeipa-capture/dirsrv-down": {
+  "collection_errors": [],
+  "diagnoses": [
+   {
+    "actions": [
+     {
+      "command": "ipactl status",
+      "description": "Check why the service is not running before starting it.",
+      "rationale": "Read-only: lists the state of every FreeIPA-managed service.",
+      "reference": null,
+      "risk": "SAFE"
+     }
+    ],
+    "ai_explanation": null,
+    "confidence": {
+     "contradicting_evidence_count": 0,
+     "corroborating_evidence_count": 1,
+     "level": "HIGH",
+     "rationale": "Direct report from ipa-healthcheck's service status check."
+    },
+    "diagnosis_id": "healthcheck.service-not-running-dirsrv",
+    "evidence_against": [],
+    "evidence_for": [
+     {
+      "evidence_id": "d2c64890-21e7-49ca-98bb-a79963ed375e",
+      "kind": "finding",
+      "why_relevant": "ipa-healthcheck states this service is not running."
+     }
+    ],
+    "impact": "Functions that depend on this service are unavailable or degraded. Other failures in this report (for example ipa-healthcheck checks that could not connect) may be consequences.",
+    "limitations": "Root cause of the outage is not established by this finding alone.",
+    "next_diagnostic_step": null,
+    "pack_id": "healthcheck",
+    "priority": "PRIMARY_PROBLEM",
+    "related_to_titles": [],
+    "rule_id": "service-not-running-dirsrv",
+    "severity": "CRITICAL",
+    "status": "DIAGNOSED",
+    "title": "Required service 'dirsrv' is not running",
+    "upstream_candidates": [],
+    "verification": [],
+    "why": "ipa-healthcheck (ipahealthcheck.meta.services.dirsrv) directly reports: dirsrv: not running. This is the check's own statement, not an inference. Why the service is not running is NOT determined by this finding."
+   },
+   {
+    "actions": [
+     {
+      "command": "ls -lZ <path-from-finding>",
+      "description": "Confirm the current owner/group/mode and SELinux context of the reported path before changing anything.",
+      "rationale": "Read-only confirmation of the exact current state.",
+      "reference": null,
+      "risk": "SAFE"
+     },
+     {
+      "command": "chown <expected-owner>:<expected-group> <path>; chmod <expected-mode> <path>",
+      "description": "chown/chmod the file to the owner:group:mode ipa-healthcheck reports as correct.",
+      "rationale": "Changes file state, but is scoped to exactly the file the finding names and the value it already told us is correct - reversible and well-understood, not exploratory.",
+      "reference": null,
+      "risk": "CAUTION"
+     },
+     {
+      "command": "restorecon -Rv <path>",
+      "description": "If SELinux is enforcing, also restore the expected SELinux context on that same path (do not run this fleet-wide).",
+      "rationale": "Scoped relabel of the one affected path; broad/blind restorecon runs are out of scope for an automated suggestion.",
+      "reference": null,
+      "risk": "CAUTION"
+     }
+    ],
+    "ai_explanation": null,
+    "confidence": {
+     "contradicting_evidence_count": 0,
+     "corroborating_evidence_count": 1,
+     "level": "MEDIUM",
+     "rationale": "[HIGH, ipa-healthcheck's IPAFileCheck/IPAFileNSSDBCheck/TomcatFileCheck compare against documented owner:group:mode targets] the healthcheck finding is direct evidence of the exact wrong value."
+    },
+    "diagnosis_id": "directory-server.ownership-selinux-mismatch",
+    "evidence_against": [],
+    "evidence_for": [
+     {
+      "evidence_id": "d81348ca-8aab-4425-8012-cbbbac2dfa14",
+      "kind": "finding",
+      "why_relevant": "ipahealthcheck.ipa.files.TomcatFileCheck reports a file ownership/mode problem: Permissions of /var/lib/pki/pki-tomcat/conf/ca/CS.cfg are too permissive: 0664 and should be 0660"
+     }
+    ],
+    "impact": "dirsrv (or the RA agent / Tomcat/PKI NSS DB it depends on) can fail to start or fail to read its own certificate material until ownership/mode is corrected.",
+    "limitations": "This pack has no ausearch/AVC collector; 'no new AVC denials' can only be confirmed by the administrator via `ausearch -m avc -ts recent`, not by this tool.",
+    "next_diagnostic_step": null,
+    "pack_id": "directory-server",
+    "priority": "SECONDARY_INDEPENDENT_PROBLEM",
+    "related_to_titles": [],
+    "rule_id": "ownership-selinux-mismatch",
+    "severity": "ERROR",
+    "status": "DIAGNOSED",
+    "title": "File ownership/mode mismatch on an IPA-managed security-critical file",
+    "upstream_candidates": [],
+    "verification": [
+     {
+      "description": "Confirm dirsrv actually starts (not just that `ls -lZ` shows corrected labels), and that no new AVC denials appear in journalctl in a subsequent window.",
+      "healthcheck_sources": [
+       "ipahealthcheck.ipa.files"
+      ]
+     }
+    ],
+    "why": "ipa-healthcheck's ipahealthcheck.ipa.files.TomcatFileCheck directly reports an incorrect owner, group, or mode on a security-critical file: Permissions of /var/lib/pki/pki-tomcat/conf/ca/CS.cfg are too permissive: 0664 and should be 0660. This finding is itself direct evidence of a plain Unix ownership/permissions problem, independent of whether SELinux is also involved."
+   },
+   {
+    "actions": [
+     {
+      "command": "ipa-healthcheck --source ipahealthcheck.ipa.trust --check IPAauthzdatapacCheck --failures-only",
+      "description": "Re-run the failing check after resolving any other problem in this report.",
+      "rationale": "Read-only.",
+      "reference": null,
+      "risk": "SAFE"
+     }
+    ],
+    "ai_explanation": null,
+    "confidence": {
+     "contradicting_evidence_count": 0,
+     "corroborating_evidence_count": 0,
+     "level": "INSUFFICIENT",
+     "rationale": "A check that crashed produced no result; it is reported so it is never silently dropped."
+    },
+    "diagnosis_id": "healthcheck.healthcheck-check-failed",
+    "evidence_against": [],
+    "evidence_for": [
+     {
+      "evidence_id": "1180b5e2-e92b-4074-9c6d-6aed89427fbe",
+      "kind": "finding",
+      "why_relevant": "ipa-healthcheck check raised an exception."
+     }
+    ],
+    "impact": "Health of whatever these checks cover is not established.",
+    "limitations": "No conclusion about the affected subsystem can be drawn from a crashed check.",
+    "next_diagnostic_step": "ipa-healthcheck --source ipahealthcheck.ipa.trust --check IPAauthzdatapacCheck --failures-only",
+    "pack_id": "healthcheck",
+    "priority": "RELATED_SYMPTOM",
+    "related_to_titles": [
+     "File ownership/mode mismatch on an IPA-managed security-critical file",
+     "Required service 'dirsrv' is not running"
+    ],
+    "rule_id": "healthcheck-check-failed",
+    "severity": "CRITICAL",
+    "status": "UNKNOWN_INSUFFICIENT_EVIDENCE",
+    "title": "One or more ipa-healthcheck checks failed to run",
+    "upstream_candidates": [
+     "directory-server",
+     "kerberos",
+     "dns",
+     "certificates"
+    ],
+    "verification": [],
+    "why": "1 ipa-healthcheck check(s) raised an exception instead of returning a result, so they say nothing about the state of the system: IPAauthzdatapacCheck: ldap2 is not connected (ldap2_140334627694848 in MainThread). This is most often a consequence of another problem in this report (for example a stopped service the check needs).\n\nMay be a downstream symptom of the directory-server problem reported above (not established)."
+   }
+  ],
+  "environment": {
+   "detected_live": false,
+   "directory_server_version": null,
+   "distro": null,
+   "distro_version": null,
+   "freeipa_version": null,
+   "ipa_healthcheck_version": null,
+   "python_version": null
+  },
+  "evidence_completeness": {
+   "healthcheck_collected": true,
+   "level": "complete",
+   "ruv_reason": null,
+   "ruv_state": "NOT_COLLECTED",
+   "unverified": []
+  },
+  "fully_verified": true,
+  "has_undiagnosed_findings": true,
+  "hostname": "server.ipadiagnose.test",
+  "overall_status": "CRITICAL",
+  "packs_evaluated": [
+   "directory-server",
+   "dns",
+   "kerberos",
+   "replication",
+   "certificates"
+  ],
+  "replay_source": "/work/tests/fixtures/real-freeipa-capture/dirsrv-down",
+  "unclaimed_warnings": 1,
+  "undiagnosed_count": 1,
+  "undiagnosed_findings": [
+   {
+    "check": "MetaCheck",
+    "check_crashed": false,
+    "check_known_since_ipa_healthcheck": "0.2",
+    "ipa_healthcheck_version": null,
+    "key": "meta",
+    "message": "(no message; fields: key, fqdn, fips, acme, ipa_version, ipa_api_version)",
+    "reason": "ipa-diagnose has no rule that explains this finding; it may or may not matter.",
+    "severity": "WARNING",
+    "source": "ipahealthcheck.meta.core"
+   }
+  ],
+  "unknown_severity_findings": []
+ },
+ "real-freeipa-capture/dirsrv-stopped": {
+  "collection_errors": [],
+  "diagnoses": [
+   {
+    "actions": [
+     {
+      "command": "ipactl status",
+      "description": "Check why the service is not running before starting it.",
+      "rationale": "Read-only: lists the state of every FreeIPA-managed service.",
+      "reference": null,
+      "risk": "SAFE"
+     }
+    ],
+    "ai_explanation": null,
+    "confidence": {
+     "contradicting_evidence_count": 0,
+     "corroborating_evidence_count": 1,
+     "level": "HIGH",
+     "rationale": "Direct report from ipa-healthcheck's service status check."
+    },
+    "diagnosis_id": "healthcheck.service-not-running-dirsrv",
+    "evidence_against": [],
+    "evidence_for": [
+     {
+      "evidence_id": "dbe018f2-4ef7-4e83-be1a-b4f5a27bbed0",
+      "kind": "finding",
+      "why_relevant": "ipa-healthcheck states this service is not running."
+     }
+    ],
+    "impact": "Functions that depend on this service are unavailable or degraded. Other failures in this report (for example ipa-healthcheck checks that could not connect) may be consequences.",
+    "limitations": "Root cause of the outage is not established by this finding alone.",
+    "next_diagnostic_step": null,
+    "pack_id": "healthcheck",
+    "priority": "PRIMARY_PROBLEM",
+    "related_to_titles": [],
+    "rule_id": "service-not-running-dirsrv",
+    "severity": "CRITICAL",
+    "status": "DIAGNOSED",
+    "title": "Required service 'dirsrv' is not running",
+    "upstream_candidates": [],
+    "verification": [],
+    "why": "ipa-healthcheck (ipahealthcheck.meta.services.dirsrv) directly reports: dirsrv: not running. This is the check's own statement, not an inference. Why the service is not running is NOT determined by this finding."
+   },
+   {
+    "actions": [
+     {
+      "command": "ls -lZ <path-from-finding>",
+      "description": "Confirm the current owner/group/mode and SELinux context of the reported path before changing anything.",
+      "rationale": "Read-only confirmation of the exact current state.",
+      "reference": null,
+      "risk": "SAFE"
+     },
+     {
+      "command": "chown <expected-owner>:<expected-group> <path>; chmod <expected-mode> <path>",
+      "description": "chown/chmod the file to the owner:group:mode ipa-healthcheck reports as correct.",
+      "rationale": "Changes file state, but is scoped to exactly the file the finding names and the value it already told us is correct - reversible and well-understood, not exploratory.",
+      "reference": null,
+      "risk": "CAUTION"
+     },
+     {
+      "command": "restorecon -Rv <path>",
+      "description": "If SELinux is enforcing, also restore the expected SELinux context on that same path (do not run this fleet-wide).",
+      "rationale": "Scoped relabel of the one affected path; broad/blind restorecon runs are out of scope for an automated suggestion.",
+      "reference": null,
+      "risk": "CAUTION"
+     }
+    ],
+    "ai_explanation": null,
+    "confidence": {
+     "contradicting_evidence_count": 0,
+     "corroborating_evidence_count": 1,
+     "level": "MEDIUM",
+     "rationale": "[HIGH, ipa-healthcheck's IPAFileCheck/IPAFileNSSDBCheck/TomcatFileCheck compare against documented owner:group:mode targets] the healthcheck finding is direct evidence of the exact wrong value."
+    },
+    "diagnosis_id": "directory-server.ownership-selinux-mismatch",
+    "evidence_against": [],
+    "evidence_for": [
+     {
+      "evidence_id": "5dafce13-c637-4d09-b54d-45a372770495",
+      "kind": "finding",
+      "why_relevant": "ipahealthcheck.ipa.files.TomcatFileCheck reports a file ownership/mode problem: Permissions of /var/lib/pki/pki-tomcat/conf/ca/CS.cfg are too permissive: 0664 and should be 0660"
+     }
+    ],
+    "impact": "dirsrv (or the RA agent / Tomcat/PKI NSS DB it depends on) can fail to start or fail to read its own certificate material until ownership/mode is corrected.",
+    "limitations": "This pack has no ausearch/AVC collector; 'no new AVC denials' can only be confirmed by the administrator via `ausearch -m avc -ts recent`, not by this tool.",
+    "next_diagnostic_step": null,
+    "pack_id": "directory-server",
+    "priority": "SECONDARY_INDEPENDENT_PROBLEM",
+    "related_to_titles": [],
+    "rule_id": "ownership-selinux-mismatch",
+    "severity": "ERROR",
+    "status": "DIAGNOSED",
+    "title": "File ownership/mode mismatch on an IPA-managed security-critical file",
+    "upstream_candidates": [],
+    "verification": [
+     {
+      "description": "Confirm dirsrv actually starts (not just that `ls -lZ` shows corrected labels), and that no new AVC denials appear in journalctl in a subsequent window.",
+      "healthcheck_sources": [
+       "ipahealthcheck.ipa.files"
+      ]
+     }
+    ],
+    "why": "ipa-healthcheck's ipahealthcheck.ipa.files.TomcatFileCheck directly reports an incorrect owner, group, or mode on a security-critical file: Permissions of /var/lib/pki/pki-tomcat/conf/ca/CS.cfg are too permissive: 0664 and should be 0660. This finding is itself direct evidence of a plain Unix ownership/permissions problem, independent of whether SELinux is also involved."
+   },
+   {
+    "actions": [
+     {
+      "command": "ipa-healthcheck --source ipahealthcheck.ipa.trust --check IPAauthzdatapacCheck --failures-only",
+      "description": "Re-run the failing check after resolving any other problem in this report.",
+      "rationale": "Read-only.",
+      "reference": null,
+      "risk": "SAFE"
+     }
+    ],
+    "ai_explanation": null,
+    "confidence": {
+     "contradicting_evidence_count": 0,
+     "corroborating_evidence_count": 0,
+     "level": "INSUFFICIENT",
+     "rationale": "A check that crashed produced no result; it is reported so it is never silently dropped."
+    },
+    "diagnosis_id": "healthcheck.healthcheck-check-failed",
+    "evidence_against": [],
+    "evidence_for": [
+     {
+      "evidence_id": "fc42ea7a-907d-45af-a331-8353d0ecd075",
+      "kind": "finding",
+      "why_relevant": "ipa-healthcheck check raised an exception."
+     }
+    ],
+    "impact": "Health of whatever these checks cover is not established.",
+    "limitations": "No conclusion about the affected subsystem can be drawn from a crashed check.",
+    "next_diagnostic_step": "ipa-healthcheck --source ipahealthcheck.ipa.trust --check IPAauthzdatapacCheck --failures-only",
+    "pack_id": "healthcheck",
+    "priority": "RELATED_SYMPTOM",
+    "related_to_titles": [
+     "File ownership/mode mismatch on an IPA-managed security-critical file",
+     "Required service 'dirsrv' is not running"
+    ],
+    "rule_id": "healthcheck-check-failed",
+    "severity": "CRITICAL",
+    "status": "UNKNOWN_INSUFFICIENT_EVIDENCE",
+    "title": "One or more ipa-healthcheck checks failed to run",
+    "upstream_candidates": [
+     "directory-server",
+     "kerberos",
+     "dns",
+     "certificates"
+    ],
+    "verification": [],
+    "why": "1 ipa-healthcheck check(s) raised an exception instead of returning a result, so they say nothing about the state of the system: IPAauthzdatapacCheck: ldap2 is not connected (ldap2_140261934246144 in MainThread). This is most often a consequence of another problem in this report (for example a stopped service the check needs).\n\nMay be a downstream symptom of the directory-server problem reported above (not established)."
+   }
+  ],
+  "environment": {
+   "detected_live": false,
+   "directory_server_version": null,
+   "distro": null,
+   "distro_version": null,
+   "freeipa_version": null,
+   "ipa_healthcheck_version": null,
+   "python_version": null
+  },
+  "evidence_completeness": {
+   "healthcheck_collected": true,
+   "level": "complete",
+   "ruv_reason": null,
+   "ruv_state": "NOT_COLLECTED",
+   "unverified": []
+  },
+  "fully_verified": true,
+  "has_undiagnosed_findings": false,
+  "hostname": "ipa01.lab.test",
+  "overall_status": "CRITICAL",
+  "packs_evaluated": [
+   "directory-server",
+   "dns",
+   "kerberos",
+   "replication",
+   "certificates"
+  ],
+  "replay_source": "/work/tests/fixtures/real-freeipa-capture/dirsrv-stopped",
+  "unclaimed_warnings": 0,
+  "undiagnosed_count": 0,
+  "undiagnosed_findings": [],
+  "unknown_severity_findings": []
+ },
+ "real-freeipa-capture/healthy": {
+  "collection_errors": [
+   "dns_lookup: no dns_lookup fixture at /work/tests/fixtures/real-freeipa-capture/healthy/dns_lookup.json (simulating the collector being unable to run, e.g. permission denied)",
+   "journal_named: no journal_named fixture at /work/tests/fixtures/real-freeipa-capture/healthy/journal_named.json (simulating the collector being unable to run, e.g. permission denied reading the journal)"
+  ],
+  "diagnoses": [
+   {
+    "actions": [
+     {
+      "command": "ls -lZ <path-from-finding>",
+      "description": "Confirm the current owner/group/mode and SELinux context of the reported path before changing anything.",
+      "rationale": "Read-only confirmation of the exact current state.",
+      "reference": null,
+      "risk": "SAFE"
+     },
+     {
+      "command": "chown <expected-owner>:<expected-group> <path>; chmod <expected-mode> <path>",
+      "description": "chown/chmod the file to the owner:group:mode ipa-healthcheck reports as correct.",
+      "rationale": "Changes file state, but is scoped to exactly the file the finding names and the value it already told us is correct - reversible and well-understood, not exploratory.",
+      "reference": null,
+      "risk": "CAUTION"
+     },
+     {
+      "command": "restorecon -Rv <path>",
+      "description": "If SELinux is enforcing, also restore the expected SELinux context on that same path (do not run this fleet-wide).",
+      "rationale": "Scoped relabel of the one affected path; broad/blind restorecon runs are out of scope for an automated suggestion.",
+      "reference": null,
+      "risk": "CAUTION"
+     }
+    ],
+    "ai_explanation": null,
+    "confidence": {
+     "contradicting_evidence_count": 0,
+     "corroborating_evidence_count": 1,
+     "level": "MEDIUM",
+     "rationale": "[HIGH, ipa-healthcheck's IPAFileCheck/IPAFileNSSDBCheck/TomcatFileCheck compare against documented owner:group:mode targets] the healthcheck finding is direct evidence of the exact wrong value."
+    },
+    "diagnosis_id": "directory-server.ownership-selinux-mismatch",
+    "evidence_against": [],
+    "evidence_for": [
+     {
+      "evidence_id": "e4f1aea9-9e59-49e0-b170-bc93254c9323",
+      "kind": "finding",
+      "why_relevant": "ipahealthcheck.ipa.files.TomcatFileCheck reports a file ownership/mode problem: Permissions of /var/lib/pki/pki-tomcat/conf/ca/CS.cfg are too permissive: 0664 and should be 0660"
+     }
+    ],
+    "impact": "dirsrv (or the RA agent / Tomcat/PKI NSS DB it depends on) can fail to start or fail to read its own certificate material until ownership/mode is corrected.",
+    "limitations": "This pack has no ausearch/AVC collector; 'no new AVC denials' can only be confirmed by the administrator via `ausearch -m avc -ts recent`, not by this tool.",
+    "next_diagnostic_step": null,
+    "pack_id": "directory-server",
+    "priority": "PRIMARY_PROBLEM",
+    "related_to_titles": [],
+    "rule_id": "ownership-selinux-mismatch",
+    "severity": "ERROR",
+    "status": "DIAGNOSED",
+    "title": "File ownership/mode mismatch on an IPA-managed security-critical file",
+    "upstream_candidates": [],
+    "verification": [
+     {
+      "description": "Confirm dirsrv actually starts (not just that `ls -lZ` shows corrected labels), and that no new AVC denials appear in journalctl in a subsequent window.",
+      "healthcheck_sources": [
+       "ipahealthcheck.ipa.files"
+      ]
+     }
+    ],
+    "why": "ipa-healthcheck's ipahealthcheck.ipa.files.TomcatFileCheck directly reports an incorrect owner, group, or mode on a security-critical file: Permissions of /var/lib/pki/pki-tomcat/conf/ca/CS.cfg are too permissive: 0664 and should be 0660. This finding is itself direct evidence of a plain Unix ownership/permissions problem, independent of whether SELinux is also involved."
+   }
+  ],
+  "environment": {
+   "detected_live": false,
+   "directory_server_version": null,
+   "distro": null,
+   "distro_version": null,
+   "freeipa_version": null,
+   "ipa_healthcheck_version": null,
+   "python_version": null
+  },
+  "evidence_completeness": {
+   "healthcheck_collected": true,
+   "level": "partial",
+   "ruv_reason": null,
+   "ruv_state": "NOT_COLLECTED",
+   "unverified": [
+    {
+     "capability": "dns_lookup",
+     "collector": "dns_lookup",
+     "hint": "",
+     "permission_related": true,
+     "reason": "no dns_lookup fixture at /work/tests/fixtures/real-freeipa-capture/healthy/dns_lookup.json (simulating the collector being unable to run, e.g. permission denied)"
+    },
+    {
+     "capability": "journal_named",
+     "collector": "journal_named",
+     "hint": "",
+     "permission_related": true,
+     "reason": "no journal_named fixture at /work/tests/fixtures/real-freeipa-capture/healthy/journal_named.json (simulating the collector being unable to run, e.g. permission denied reading the journal)"
+    }
+   ]
+  },
+  "fully_verified": false,
+  "has_undiagnosed_findings": true,
+  "hostname": "server.ipadiagnose.test",
+  "overall_status": "DEGRADED",
+  "packs_evaluated": [
+   "directory-server",
+   "dns",
+   "kerberos",
+   "replication",
+   "certificates"
+  ],
+  "replay_source": "/work/tests/fixtures/real-freeipa-capture/healthy",
+  "unclaimed_warnings": 13,
+  "undiagnosed_count": 13,
+  "undiagnosed_findings": [
+   {
+    "check": "IPADNSSystemRecordsCheck",
+    "check_crashed": false,
+    "check_known_since_ipa_healthcheck": "0.4",
+    "ipa_healthcheck_version": null,
+    "key": "_ldap._tcp.ipadiagnose.test.:server.ipadiagnose.test.",
+    "message": "Expected SRV record missing",
+    "reason": "ipa-diagnose has no rule that explains this finding; it may or may not matter.",
+    "severity": "WARNING",
+    "source": "ipahealthcheck.ipa.idns"
+   },
+   {
+    "check": "IPADNSSystemRecordsCheck",
+    "check_crashed": false,
+    "check_known_since_ipa_healthcheck": "0.4",
+    "ipa_healthcheck_version": null,
+    "key": "_kerberos._tcp.ipadiagnose.test.:server.ipadiagnose.test.",
+    "message": "Expected SRV record missing",
+    "reason": "ipa-diagnose has no rule that explains this finding; it may or may not matter.",
+    "severity": "WARNING",
+    "source": "ipahealthcheck.ipa.idns"
+   },
+   {
+    "check": "IPADNSSystemRecordsCheck",
+    "check_crashed": false,
+    "check_known_since_ipa_healthcheck": "0.4",
+    "ipa_healthcheck_version": null,
+    "key": "_kerberos._udp.ipadiagnose.test.:server.ipadiagnose.test.",
+    "message": "Expected SRV record missing",
+    "reason": "ipa-diagnose has no rule that explains this finding; it may or may not matter.",
+    "severity": "WARNING",
+    "source": "ipahealthcheck.ipa.idns"
+   },
+   {
+    "check": "IPADNSSystemRecordsCheck",
+    "check_crashed": false,
+    "check_known_since_ipa_healthcheck": "0.4",
+    "ipa_healthcheck_version": null,
+    "key": "_kerberos-master._tcp.ipadiagnose.test.:server.ipadiagnose.test.",
+    "message": "Expected SRV record missing",
+    "reason": "ipa-diagnose has no rule that explains this finding; it may or may not matter.",
+    "severity": "WARNING",
+    "source": "ipahealthcheck.ipa.idns"
+   },
+   {
+    "check": "IPADNSSystemRecordsCheck",
+    "check_crashed": false,
+    "check_known_since_ipa_healthcheck": "0.4",
+    "ipa_healthcheck_version": null,
+    "key": "_kerberos-master._udp.ipadiagnose.test.:server.ipadiagnose.test.",
+    "message": "Expected SRV record missing",
+    "reason": "ipa-diagnose has no rule that explains this finding; it may or may not matter.",
+    "severity": "WARNING",
+    "source": "ipahealthcheck.ipa.idns"
+   },
+   {
+    "check": "IPADNSSystemRecordsCheck",
+    "check_crashed": false,
+    "check_known_since_ipa_healthcheck": "0.4",
+    "ipa_healthcheck_version": null,
+    "key": "_kpasswd._tcp.ipadiagnose.test.:server.ipadiagnose.test.",
+    "message": "Expected SRV record missing",
+    "reason": "ipa-diagnose has no rule that explains this finding; it may or may not matter.",
+    "severity": "WARNING",
+    "source": "ipahealthcheck.ipa.idns"
+   },
+   {
+    "check": "IPADNSSystemRecordsCheck",
+    "check_crashed": false,
+    "check_known_since_ipa_healthcheck": "0.4",
+    "ipa_healthcheck_version": null,
+    "key": "_kpasswd._udp.ipadiagnose.test.:server.ipadiagnose.test.",
+    "message": "Expected SRV record missing",
+    "reason": "ipa-diagnose has no rule that explains this finding; it may or may not matter.",
+    "severity": "WARNING",
+    "source": "ipahealthcheck.ipa.idns"
+   },
+   {
+    "check": "IPADNSSystemRecordsCheck",
+    "check_crashed": false,
+    "check_known_since_ipa_healthcheck": "0.4",
+    "ipa_healthcheck_version": null,
+    "key": "_kerberos.ipadiagnose.test.:krb5srv:m:tcp:server.ipadiagnose.test.",
+    "message": "Expected URI record missing",
+    "reason": "ipa-diagnose has no rule that explains this finding; it may or may not matter.",
+    "severity": "WARNING",
+    "source": "ipahealthcheck.ipa.idns"
+   },
+   {
+    "check": "IPADNSSystemRecordsCheck",
+    "check_crashed": false,
+    "check_known_since_ipa_healthcheck": "0.4",
+    "ipa_healthcheck_version": null,
+    "key": "_kerberos.ipadiagnose.test.:krb5srv:m:udp:server.ipadiagnose.test.",
+    "message": "Expected URI record missing",
+    "reason": "ipa-diagnose has no rule that explains this finding; it may or may not matter.",
+    "severity": "WARNING",
+    "source": "ipahealthcheck.ipa.idns"
+   },
+   {
+    "check": "IPADNSSystemRecordsCheck",
+    "check_crashed": false,
+    "check_known_since_ipa_healthcheck": "0.4",
+    "ipa_healthcheck_version": null,
+    "key": "_kpasswd.ipadiagnose.test.:krb5srv:m:tcp:server.ipadiagnose.test.",
+    "message": "Expected URI record missing",
+    "reason": "ipa-diagnose has no rule that explains this finding; it may or may not matter.",
+    "severity": "WARNING",
+    "source": "ipahealthcheck.ipa.idns"
+   },
+   {
+    "check": "IPADNSSystemRecordsCheck",
+    "check_crashed": false,
+    "check_known_since_ipa_healthcheck": "0.4",
+    "ipa_healthcheck_version": null,
+    "key": "_kpasswd.ipadiagnose.test.:krb5srv:m:udp:server.ipadiagnose.test.",
+    "message": "Expected URI record missing",
+    "reason": "ipa-diagnose has no rule that explains this finding; it may or may not matter.",
+    "severity": "WARNING",
+    "source": "ipahealthcheck.ipa.idns"
+   },
+   {
+    "check": "IPADNSSystemRecordsCheck",
+    "check_crashed": false,
+    "check_known_since_ipa_healthcheck": "0.4",
+    "ipa_healthcheck_version": null,
+    "key": "ipa_ca_missing_server.ipadiagnose.test",
+    "message": "missing IP address for ipa-ca server server.ipadiagnose.test",
+    "reason": "ipa-diagnose has no rule that explains this finding; it may or may not matter.",
+    "severity": "WARNING",
+    "source": "ipahealthcheck.ipa.idns"
+   },
+   {
+    "check": "MetaCheck",
+    "check_crashed": false,
+    "check_known_since_ipa_healthcheck": "0.2",
+    "ipa_healthcheck_version": null,
+    "key": "meta",
+    "message": "(no message; fields: key, fqdn, fips, acme, ipa_version, ipa_api_version)",
+    "reason": "ipa-diagnose has no rule that explains this finding; it may or may not matter.",
+    "severity": "WARNING",
+    "source": "ipahealthcheck.meta.core"
+   }
+  ],
+  "unknown_severity_findings": []
+ },
+ "replication/ambiguous": {
+  "collection_errors": [],
+  "diagnoses": [
+   {
+    "actions": [
+     {
+      "command": "ipa-replica-manage list <host>",
+      "description": "List replication agreements and check for conflict entries as root.",
+      "rationale": "Distinguishes a stalled/errored agreement from a healthy one with unrelated conflicts.",
+      "reference": "https://www.freeipa.org/page/Troubleshooting/Directory_Server",
+      "risk": "SAFE"
+     }
+    ],
+    "ai_explanation": null,
+    "confidence": {
+     "contradicting_evidence_count": 0,
+     "corroborating_evidence_count": 1,
+     "level": "LOW",
+     "rationale": "[HIGH mechanism, MED applicability] The freeipa.org troubleshooting guide documents connectivity/keytab breaks as a primary cause of this error, but without the corroborating collectors we cannot distinguish it from a conflict artifact or a transient blip."
+    },
+    "diagnosis_id": "replication.peer-connectivity-break",
+    "evidence_against": [],
+    "evidence_for": [
+     {
+      "evidence_id": "55555555-5555-5555-5555-555555555555",
+      "kind": "finding",
+      "why_relevant": "ipa-healthcheck ReplicationCheck reported ERROR/CRITICAL for a replication agreement."
+     }
+    ],
+    "impact": "Unknown until corroborated - could range from a stalled agreement to a benign, already-resolving artifact.",
+    "limitations": "RUVCheck/KnownRUVCheck itself documents that full replication-health analysis is not possible from a single host - it requires collecting the RUV from all masters.",
+    "next_diagnostic_step": "Run `ipa-replica-manage list <host>` and check for replication conflict entries as root to determine whether this is a connectivity break or a conflict-resolution artifact.",
+    "pack_id": "replication",
+    "priority": "PRIMARY_PROBLEM",
+    "related_to_titles": [],
+    "rule_id": "peer-connectivity-break",
+    "severity": "ERROR",
+    "status": "UNKNOWN_INSUFFICIENT_EVIDENCE",
+    "title": "Replication agreement error - cause not yet corroborated",
+    "upstream_candidates": [
+     "dns",
+     "kerberos"
+    ],
+    "verification": [
+     {
+      "description": "Re-run ReplicationCheck and IPATopologyDomainCheck and confirm SUCCESS, plus a clean GSSAPI bind check. This is necessary but not sufficient: true convergence requires pulling RUVs from ALL servers, which this single-host tool cannot fully do (matching RUVCheck's own documented limitation) - a live write-and-observe test across suppliers is the gold-standard check.",
+      "healthcheck_sources": [
+       "ipahealthcheck.ds.replication",
+       "ipahealthcheck.ipa.topology"
+      ]
+     }
+    ],
+    "why": "ipa-healthcheck's ReplicationCheck reports an error on a replication agreement, but neither the replication-agreement/RUV collector nor the LDAP keytab/bind and conflict-search collector produced any corroborating evidence. A connectivity/keytab break and a conflict-resolution artifact look identical from this single healthcheck finding alone."
+   }
+  ],
+  "environment": {
+   "detected_live": false,
+   "directory_server_version": null,
+   "distro": null,
+   "distro_version": null,
+   "freeipa_version": null,
+   "ipa_healthcheck_version": null,
+   "python_version": null
+  },
+  "evidence_completeness": {
+   "healthcheck_collected": true,
+   "level": "complete",
+   "ruv_reason": null,
+   "ruv_state": "NOT_COLLECTED",
+   "unverified": []
+  },
+  "fully_verified": true,
+  "has_undiagnosed_findings": false,
+  "hostname": "ipa01.example.test",
+  "overall_status": "NOT_FULLY_VERIFIED",
+  "packs_evaluated": [
+   "directory-server",
+   "dns",
+   "kerberos",
+   "replication",
+   "certificates"
+  ],
+  "replay_source": "/work/tests/fixtures/replication/ambiguous",
+  "unclaimed_warnings": 0,
+  "undiagnosed_count": 0,
+  "undiagnosed_findings": [],
+  "unknown_severity_findings": []
+ },
+ "replication/conflicting": {
+  "collection_errors": [],
+  "diagnoses": [
+   {
+    "actions": [
+     {
+      "command": "ldapsearch -Y GSSAPI -H ldap://localhost -b <suffix> \"(nsds5ReplConflict=*)\" dn nsds5ReplConflict",
+      "description": "Enumerate all conflict entries to assess scope.",
+      "rationale": "",
+      "reference": "https://www.port389.org/docs/389ds/howto/howto-repl-conflict.html",
+      "risk": "SAFE"
+     },
+     {
+      "command": "ldapmodify (modrdn to drop the nsuniqueid suffix; remove nsds5ReplConflict/glue objectclass)",
+      "description": "Resolve a specific conflict entry (choose which side wins, then strip the conflict marker).",
+      "rationale": "Requires human judgment about which side's data should win - never resolved automatically.",
+      "reference": "https://access.redhat.com/documentation/en-us/red_hat_directory_server/11/html/administration_guide/managing_replication-solving_common_replication_conflicts",
+      "risk": "CAUTION"
+     }
+    ],
+    "ai_explanation": null,
+    "confidence": {
+     "contradicting_evidence_count": 0,
+     "corroborating_evidence_count": 1,
+     "level": "HIGH",
+     "rationale": "[HIGH, port389.org 'Managing Replication Conflict Entries'; Red Hat Directory Server admin guide] presence of nsds5ReplConflict entries via a direct LDAP filter is an unambiguous fact, not an inference."
+    },
+    "diagnosis_id": "replication.replication-conflicts",
+    "evidence_against": [],
+    "evidence_for": [
+     {
+      "evidence_id": "88888888-8888-8888-8888-888888888888",
+      "kind": "finding",
+      "why_relevant": "ipa-healthcheck ReplicationConflictCheck reported conflict entries."
+     },
+     {
+      "evidence_id": "replication-conflict:uid=jdoe,cn=users,cn=accounts,dc=example,dc=test",
+      "kind": "item",
+      "why_relevant": "Direct LDAP search for (nsds5ReplConflict=*) returned this entry."
+     }
+    ],
+    "impact": "Affected entries have diverged data that will not self-resolve; left alone, conflict entries accumulate and complicate future maintenance.",
+    "limitations": "A conflict count alone does not indicate whether the underlying agreements are otherwise healthy - see the peer-connectivity-break rule for that.",
+    "next_diagnostic_step": null,
+    "pack_id": "replication",
+    "priority": "WARNING",
+    "related_to_titles": [],
+    "rule_id": "replication-conflicts",
+    "severity": "WARNING",
+    "status": "DIAGNOSED",
+    "title": "Replication conflict entries present",
+    "upstream_candidates": [],
+    "verification": [
+     {
+      "description": "Re-run ReplicationCheck and IPATopologyDomainCheck and confirm SUCCESS, plus a clean GSSAPI bind check. This is necessary but not sufficient: true convergence requires pulling RUVs from ALL servers, which this single-host tool cannot fully do (matching RUVCheck's own documented limitation) - a live write-and-observe test across suppliers is the gold-standard check.",
+      "healthcheck_sources": [
+       "ipahealthcheck.ds.replication",
+       "ipahealthcheck.ipa.topology"
+      ]
+     }
+    ],
+    "why": "Direct LDAP search found 1 entrie(s) matching (nsds5ReplConflict=*). This means writes from multiple suppliers reached each other and the reconciliation model created conflict entries - it is evidence replication IS working, not that it is broken, but the conflicts themselves need administrator review and resolution."
+   }
+  ],
+  "environment": {
+   "detected_live": false,
+   "directory_server_version": null,
+   "distro": null,
+   "distro_version": null,
+   "freeipa_version": null,
+   "ipa_healthcheck_version": null,
+   "python_version": null
+  },
+  "evidence_completeness": {
+   "healthcheck_collected": true,
+   "level": "complete",
+   "ruv_reason": null,
+   "ruv_state": "VERIFIED",
+   "unverified": []
+  },
+  "fully_verified": true,
+  "has_undiagnosed_findings": false,
+  "hostname": "ipa01.example.test",
+  "overall_status": "DEGRADED",
+  "packs_evaluated": [
+   "directory-server",
+   "dns",
+   "kerberos",
+   "replication",
+   "certificates"
+  ],
+  "replay_source": "/work/tests/fixtures/replication/conflicting",
+  "unclaimed_warnings": 0,
+  "undiagnosed_count": 0,
+  "undiagnosed_findings": [],
+  "unknown_severity_findings": []
+ },
+ "replication/healthy": {
+  "collection_errors": [],
+  "diagnoses": [],
+  "environment": {
+   "detected_live": false,
+   "directory_server_version": null,
+   "distro": null,
+   "distro_version": null,
+   "freeipa_version": null,
+   "ipa_healthcheck_version": null,
+   "python_version": null
+  },
+  "evidence_completeness": {
+   "healthcheck_collected": true,
+   "level": "complete",
+   "ruv_reason": null,
+   "ruv_state": "NOT_COLLECTED",
+   "unverified": []
+  },
+  "fully_verified": true,
+  "has_undiagnosed_findings": false,
+  "hostname": "ipa01.example.test",
+  "overall_status": "HEALTHY",
+  "packs_evaluated": [
+   "directory-server",
+   "dns",
+   "kerberos",
+   "replication",
+   "certificates"
+  ],
+  "replay_source": "/work/tests/fixtures/replication/healthy",
+  "unclaimed_warnings": 0,
+  "undiagnosed_count": 0,
+  "undiagnosed_findings": [],
+  "unknown_severity_findings": []
+ },
+ "replication/healthy-with-environment": {
+  "collection_errors": [],
+  "diagnoses": [],
+  "environment": {
+   "detected_live": false,
+   "directory_server_version": "2.4.5-4.el9",
+   "distro": "rocky",
+   "distro_version": "9.3",
+   "freeipa_version": "4.12.2-2.el9",
+   "ipa_healthcheck_version": "0.19-1.el9",
+   "python_version": "3.9.18"
+  },
+  "evidence_completeness": {
+   "healthcheck_collected": true,
+   "level": "complete",
+   "ruv_reason": null,
+   "ruv_state": "NOT_COLLECTED",
+   "unverified": []
+  },
+  "fully_verified": true,
+  "has_undiagnosed_findings": false,
+  "hostname": "ipa01.example.test",
+  "overall_status": "HEALTHY",
+  "packs_evaluated": [
+   "directory-server",
+   "dns",
+   "kerberos",
+   "replication",
+   "certificates"
+  ],
+  "replay_source": "/work/tests/fixtures/replication/healthy-with-environment",
+  "unclaimed_warnings": 0,
+  "undiagnosed_count": 0,
+  "undiagnosed_findings": [],
+  "unknown_severity_findings": []
+ },
+ "replication/peer-unreachable": {
+  "collection_errors": [],
+  "diagnoses": [
+   {
+    "actions": [
+     {
+      "command": "ipa-replica-manage list <host>",
+      "description": "List replication agreements for this host and confirm which one is failing.",
+      "rationale": "",
+      "reference": null,
+      "risk": "SAFE"
+     },
+     {
+      "command": "dsconf -D \"cn=Directory Manager\" ldap://<host> repl-agmt status --suffix=<suffix> <agreement>",
+      "description": "Check the specific agreement's live status.",
+      "rationale": "",
+      "reference": "https://access.redhat.com/solutions/6096751",
+      "risk": "SAFE"
+     },
+     {
+      "command": "dig +short <peer-fqdn>",
+      "description": "Verify DNS resolves the peer in both directions.",
+      "rationale": "",
+      "reference": null,
+      "risk": "SAFE"
+     },
+     {
+      "command": "export KRB5CCNAME=FILE:/tmp/ipa-diag-cc; kinit -kt /etc/dirsrv/ds.keytab ldap/<host> && klist && ldapsearch -Y GSSAPI -H ldap://<peer> -b '' -s base",
+      "description": "Verify the replication keytab produces a valid GSSAPI bind to the peer.",
+      "rationale": "",
+      "reference": null,
+      "risk": "SAFE"
+     }
+    ],
+    "ai_explanation": null,
+    "confidence": {
+     "contradicting_evidence_count": 0,
+     "corroborating_evidence_count": 2,
+     "level": "HIGH",
+     "rationale": "[HIGH, freeipa.org/page/Troubleshooting/Directory_Server] documents the GSSAPI bind/keytab check as the primary prerequisite verification for a stalled agreement; a direct bind failure is as close to ground truth as this pack gets."
+    },
+    "diagnosis_id": "replication.peer-connectivity-break",
+    "evidence_against": [],
+    "evidence_for": [
+     {
+      "evidence_id": "33333333-3333-3333-3333-333333333333",
+      "kind": "finding",
+      "why_relevant": "ipa-healthcheck ReplicationCheck reported ERROR/CRITICAL for a replication agreement."
+     },
+     {
+      "evidence_id": "keytab-bind-check",
+      "kind": "item",
+      "why_relevant": "GSSAPI bind to the peer failed, matching the documented keytab/DNS prerequisite failure mode."
+     },
+     {
+      "evidence_id": "replication-agreement:ipa02.example.test",
+      "kind": "item",
+      "why_relevant": "ipa-replica-manage reports this agreement's last update as failed."
+     }
+    ],
+    "impact": "Multi-supplier convergence has stopped for this agreement; changes will not propagate to/from the affected peer until resolved.",
+    "limitations": "True convergence requires pulling RUVs from ALL servers, which a single-host tool cannot fully do (RUVCheck documents this same limitation). A live write-and-observe test on both suppliers is the gold-standard verification step.",
+    "next_diagnostic_step": null,
+    "pack_id": "replication",
+    "priority": "PRIMARY_PROBLEM",
+    "related_to_titles": [],
+    "rule_id": "peer-connectivity-break",
+    "severity": "ERROR",
+    "status": "DIAGNOSED",
+    "title": "Replication agreement broken - peer unreachable or keytab/GSSAPI bind failing",
+    "upstream_candidates": [
+     "dns",
+     "kerberos"
+    ],
+    "verification": [
+     {
+      "description": "Re-run ReplicationCheck and IPATopologyDomainCheck and confirm SUCCESS, plus a clean GSSAPI bind check. This is necessary but not sufficient: true convergence requires pulling RUVs from ALL servers, which this single-host tool cannot fully do (matching RUVCheck's own documented limitation) - a live write-and-observe test across suppliers is the gold-standard check.",
+      "healthcheck_sources": [
+       "ipahealthcheck.ds.replication",
+       "ipahealthcheck.ipa.topology"
+      ]
+     }
+    ],
+    "why": "ipa-healthcheck's ReplicationCheck reports an agreement error, corroborated by a failed GSSAPI bind and/or a failed 'last update status' to the peer, with no conflict entries present to suggest this is merely a reconciliation artifact."
+   }
+  ],
+  "environment": {
+   "detected_live": false,
+   "directory_server_version": null,
+   "distro": null,
+   "distro_version": null,
+   "freeipa_version": null,
+   "ipa_healthcheck_version": null,
+   "python_version": null
+  },
+  "evidence_completeness": {
+   "healthcheck_collected": true,
+   "level": "complete",
+   "ruv_reason": null,
+   "ruv_state": "VERIFIED",
+   "unverified": []
+  },
+  "fully_verified": true,
+  "has_undiagnosed_findings": false,
+  "hostname": "ipa01.example.test",
+  "overall_status": "DEGRADED",
+  "packs_evaluated": [
+   "directory-server",
+   "dns",
+   "kerberos",
+   "replication",
+   "certificates"
+  ],
+  "replay_source": "/work/tests/fixtures/replication/peer-unreachable",
+  "unclaimed_warnings": 0,
+  "undiagnosed_count": 0,
+  "undiagnosed_findings": [],
+  "unknown_severity_findings": []
+ },
+ "replication/stale-ruv-removed-replica": {
+  "collection_errors": [],
+  "diagnoses": [
+   {
+    "actions": [
+     {
+      "command": "ipa-replica-manage list",
+      "description": "Cross-check the RID against the current live server/topology list before concluding it is dead.",
+      "rationale": "",
+      "reference": null,
+      "risk": "SAFE"
+     },
+     {
+      "command": "ipa-replica-manage list-ruv",
+      "description": "Re-run list-ruv again after a delay to rule out a slow-to-converge replica.",
+      "rationale": "",
+      "reference": null,
+      "risk": "SAFE"
+     }
+    ],
+    "ai_explanation": null,
+    "confidence": {
+     "contradicting_evidence_count": 0,
+     "corroborating_evidence_count": 1,
+     "level": "LOW",
+     "rationale": "[HIGH mechanism, port389.org CSN design; MED for any specific causal story] RUVCheck's own documentation states local analysis is not possible since it requires collecting the RUV from all masters, which this single-host collector cannot do."
+    },
+    "diagnosis_id": "replication.stale-ruv",
+    "evidence_against": [],
+    "evidence_for": [
+     {
+      "evidence_id": "replication-ruv:domain:6",
+      "kind": "item",
+      "why_relevant": "ipa-replica-manage list-ruv reports this replica ID with no corresponding live server in this snapshot."
+     }
+    ],
+    "impact": "If genuinely dead, this RID's changelog data lingers indefinitely; if not, treating it as dead risks data loss.",
+    "limitations": "A single host's RUV snapshot cannot confirm a replica is permanently gone; cross-referencing all masters' RUVs is the only conclusive method.",
+    "next_diagnostic_step": "Re-run `ipa-replica-manage list-ruv` after roughly 15 minutes and cross-check the RID against `ipa-replica-manage list` / a live topology query on ALL masters before concluding it is dead.",
+    "pack_id": "replication",
+    "priority": "PRIMARY_PROBLEM",
+    "related_to_titles": [],
+    "rule_id": "stale-ruv",
+    "severity": "WARNING",
+    "status": "UNKNOWN_INSUFFICIENT_EVIDENCE",
+    "title": "Possible stale/orphaned RUV entry",
+    "upstream_candidates": [],
+    "verification": [
+     {
+      "description": "Re-run ReplicationCheck and IPATopologyDomainCheck and confirm SUCCESS, plus a clean GSSAPI bind check. This is necessary but not sufficient: true convergence requires pulling RUVs from ALL servers, which this single-host tool cannot fully do (matching RUVCheck's own documented limitation) - a live write-and-observe test across suppliers is the gold-standard check.",
+      "healthcheck_sources": [
+       "ipahealthcheck.ds.replication",
+       "ipahealthcheck.ipa.topology"
+      ]
+     }
+    ],
+    "why": "1 RUV entrie(s) have no corresponding live server in this single-host snapshot. This can mean a replica was retired without cleanup, that it is slow to converge, or (for entries with incomplete peer data) simply that this host's agreement list could not be fully collected - a single snapshot cannot distinguish these."
+   }
+  ],
+  "environment": {
+   "detected_live": false,
+   "directory_server_version": null,
+   "distro": null,
+   "distro_version": null,
+   "freeipa_version": null,
+   "ipa_healthcheck_version": null,
+   "python_version": null
+  },
+  "evidence_completeness": {
+   "healthcheck_collected": true,
+   "level": "complete",
+   "ruv_reason": null,
+   "ruv_state": "VERIFIED",
+   "unverified": []
+  },
+  "fully_verified": true,
+  "has_undiagnosed_findings": false,
+  "hostname": "ipa01.example.test",
+  "overall_status": "DEGRADED",
+  "packs_evaluated": [
+   "directory-server",
+   "dns",
+   "kerberos",
+   "replication",
+   "certificates"
+  ],
+  "replay_source": "/work/tests/fixtures/replication/stale-ruv-removed-replica",
+  "unclaimed_warnings": 0,
+  "undiagnosed_count": 0,
+  "undiagnosed_findings": [],
+  "unknown_severity_findings": []
+ }
+}
