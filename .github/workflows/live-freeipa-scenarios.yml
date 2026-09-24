@@ -70,12 +70,23 @@ jobs:
           docker exec ipa-s ipa-healthcheck --failures-only --output-type json > out/s0-healthy-healthcheck-failures.json 2>&1 || true
           head -20 out/s0-healthy.txt
 
-      - name: S0b healthy-negative gate - correct the container image's known CS.cfg mode quirk, then expect HEALTHY
+      - name: P1 (Slice 1) apply the file-permission procedure exactly as printed, then verify
         run: |
           set +e
-          # Lab-only environment correction (the freeipa-server container image ships CS.cfg as 0664,
-          # ipa-healthcheck's TomcatFileCheck says it should be 0660). NOT something ipa-diagnose does.
-          docker exec ipa-s chmod 0660 /var/lib/pki/pki-tomcat/conf/ca/CS.cfg
+          # The freeipa-server image ships CS.cfg as 0664 (ipa-healthcheck expects 0660): a REAL finding.
+          # ipa-diagnose must offer the fix; the lab (playing the administrator) runs the printed argv verbatim.
+          python3 scripts/lab_procedure.py expect out/s0-healthy.json proc.files.restore-expected-permissions OFFERED
+          python3 scripts/lab_procedure.py apply out/s0-healthy.json proc.files.restore-expected-permissions ipa-s out/p1-apply.txt
+          docker exec ipa-s stat -c '%a %U:%G %n' /var/lib/pki/pki-tomcat/conf/ca/CS.cfg > out/p1-stat-after.txt 2>&1
+          docker exec ipa-s /root/.local/bin/ipa-diagnose verify > out/p1-verify.txt 2>&1; echo "exit=$?" >> out/p1-verify.txt
+          python3 scripts/lab_procedure.py verify out/p1-verify.txt proc.files.restore-expected-permissions
+          cat out/p1-apply.txt out/p1-stat-after.txt out/p1-verify.txt
+
+      - name: S0b healthy-negative gate - after the procedure, expect no remaining CS.cfg finding
+        run: |
+          set +e
+          # Fallback only if the procedure did not run (P1 then records FAIL): keep later scenarios meaningful.
+          docker exec ipa-s bash -c 'test "$(stat -c %a /var/lib/pki/pki-tomcat/conf/ca/CS.cfg)" = 660 || chmod 0660 /var/lib/pki/pki-tomcat/conf/ca/CS.cfg'
           docker exec ipa-s /root/.local/bin/ipa-diagnose --details > out/s0b-healthy-verified.txt 2>&1; echo "exit=$?" >> out/s0b-healthy-verified.txt || true
           docker exec ipa-s /root/.local/bin/ipa-diagnose --json > out/s0b-healthy-verified.json 2>/dev/null || true
           docker exec ipa-s ipa-healthcheck --failures-only --output-type json > out/s0b-healthy-verified-healthcheck-failures.json 2>&1 || true
@@ -114,9 +125,12 @@ jobs:
           docker exec ipa-s /root/.local/bin/ipa-diagnose --json > out/s3-dirsrv-down.json 2>/dev/null || true
           docker exec ipa-s ipa-healthcheck --failures-only --output-type json > out/s3-dirsrv-down-healthcheck-failures.json 2>&1 || true
           docker exec ipa-s /root/.local/bin/ipa-diagnose ai-preview > out/s3-ai-preview.txt 2>&1; echo "exit=$?" >> out/s3-ai-preview.txt || true
-          docker exec ipa-s systemctl start dirsrv@LAB-TEST.service || true
+          # Slice 1: restore by running the printed procedure verbatim (not a hand-written command).
+          python3 scripts/lab_procedure.py expect out/s3-dirsrv-down.json proc.service.start-stopped-service OFFERED
+          python3 scripts/lab_procedure.py apply out/s3-dirsrv-down.json proc.service.start-stopped-service ipa-s out/s3-apply.txt || docker exec ipa-s systemctl start dirsrv@LAB-TEST.service
           sleep 30; docker exec ipa-s ipactl status > out/s3-ipactl-after.txt 2>&1 || true
           docker exec ipa-s /root/.local/bin/ipa-diagnose verify > out/s3-verify.txt 2>&1; echo "exit=$?" >> out/s3-verify.txt || true
+          python3 scripts/lab_procedure.py verify out/s3-verify.txt "proc.service.start-stopped-service (dirsrv)"
           head -25 out/s3-dirsrv-down.txt; cat out/s3-verify.txt | head -15
 
       - name: S4 DNS (named) stopped -> diagnose -> restore -> verify
@@ -143,9 +157,11 @@ jobs:
           docker exec ipa-s /root/.local/bin/ipa-diagnose --details > out/s5-kdc-down.txt 2>&1; echo "exit=$?" >> out/s5-kdc-down.txt || true
           docker exec ipa-s /root/.local/bin/ipa-diagnose --json > out/s5-kdc-down.json 2>/dev/null || true
           docker exec ipa-s ipa-healthcheck --failures-only --output-type json > out/s5-kdc-down-healthcheck-failures.json 2>&1 || true
-          docker exec ipa-s systemctl start krb5kdc.service || true
+          python3 scripts/lab_procedure.py expect out/s5-kdc-down.json proc.service.start-stopped-service OFFERED
+          python3 scripts/lab_procedure.py apply out/s5-kdc-down.json proc.service.start-stopped-service ipa-s out/s5-apply.txt || docker exec ipa-s systemctl start krb5kdc.service
           sleep 15
           docker exec ipa-s /root/.local/bin/ipa-diagnose verify > out/s5-verify.txt 2>&1; echo "exit=$?" >> out/s5-verify.txt || true
+          python3 scripts/lab_procedure.py verify out/s5-verify.txt "proc.service.start-stopped-service (krb5kdc)"
           head -25 out/s5-kdc-down.txt; head -15 out/s5-verify.txt
 
       - name: S6 certmonger real capture + certmonger stopped -> diagnose -> restore
@@ -159,6 +175,8 @@ jobs:
           docker exec ipa-s /root/.local/bin/ipa-diagnose --details > out/s6-certmonger-down.txt 2>&1; echo "exit=$?" >> out/s6-certmonger-down.txt || true
           docker exec ipa-s /root/.local/bin/ipa-diagnose --json > out/s6-certmonger-down.json 2>/dev/null || true
           docker exec ipa-s ipa-healthcheck --failures-only --output-type json > out/s6-certmonger-down-healthcheck-failures.json 2>&1 || true
+          # Slice 1 contradiction case, live: a MASKED unit must never get a "start it" fix.
+          python3 scripts/lab_procedure.py expect out/s6-certmonger-down.json proc.service.start-stopped-service WITHHELD masked
           docker exec ipa-s systemctl unmask --runtime certmonger.service || true
           docker exec ipa-s systemctl start certmonger.service || true
           sleep 15
@@ -192,7 +210,11 @@ jobs:
           docker exec ipa-s /root/.local/bin/ipa-diagnose --no-ai > out/s10-no-ai.txt 2>&1; echo "exit=$?" >> out/s10-no-ai.txt || true
           head -20 out/s10-no-ai.txt
 
+      - name: Slice 1 procedure assertions (fails the job on any FAIL)
+        run: python3 scripts/lab_procedure.py summary
+
       - name: S9 timing (performance) - 3 timed runs
+        if: always()
         run: |
           set +e
           for n in 1 2 3; do
