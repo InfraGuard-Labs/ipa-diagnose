@@ -72,7 +72,7 @@ def main():
                            got="0664", msg=f"Permissions of {path} are too permissive: 0664 and should be 0660")], {
               **ROOT_OK,
               f"file.stat|path={path}": ok({"exists": True, "is_symlink": False, "is_regular": True, "is_dir": False,
-                                            "mode": "0664", "owner": "pkiuser", "group": "pkiuser", "canonical": True},
+                                            "mode": "0664", "owner": "pkiuser", "group": "pkiuser", "canonical": True, "realpath": path, "realpath_allowed": True},
                                            f"{path}: mode 0664, owner pkiuser, group pkiuser", f"stat {path}"),
           })
     # 3. clock skew: host keytab kinit fails with clock skew; chronyc shows +421 s

@@ -9,6 +9,7 @@ color/emphasis only, never to reorganize the structure.
 
 from __future__ import annotations
 
+import shlex
 from typing import Dict, Optional
 
 from rich.console import Console
@@ -329,7 +330,7 @@ def _render_resolution(d: Diagnosis, r, console: Console, *, details: bool) -> N
     for rb in r.rollback:
         console.print(f"  - {escape(rb['text'])}")
         if rb.get("argv"):
-            console.print(f"       [cyan]{escape(' '.join(rb['argv']))}[/cyan]")
+            console.print(f"       [cyan]{escape(shlex.join(rb['argv']))}[/cyan]")
     console.print()
 
     console.print(Text("VERIFY", style="bold underline"))

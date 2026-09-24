@@ -318,7 +318,7 @@
     "targets_group": {
      "item": {
       "expected": "ipa_account",
-      "got": "posix_name",
+      "got": "ipa_account",
       "path": "ipa_path"
      },
      "type": "list"
@@ -337,7 +337,7 @@
     "targets_owner": {
      "item": {
       "expected": "ipa_account",
-      "got": "posix_name",
+      "got": "ipa_account",
       "path": "ipa_path"
      },
      "type": "list"
@@ -456,7 +456,8 @@
        "type": "chmod_add"
       },
       {
-       "item": "path",
+       "field": "realpath",
+       "ref": "stat",
        "type": "ipa_path"
       }
      ],
@@ -469,10 +470,11 @@
       "-h",
       {
        "item": "got",
-       "type": "posix_name"
+       "type": "ipa_account"
       },
       {
-       "item": "path",
+       "field": "realpath",
+       "ref": "stat",
        "type": "ipa_path"
       }
      ],
@@ -485,10 +487,11 @@
       "-h",
       {
        "item": "got",
-       "type": "posix_name"
+       "type": "ipa_account"
       },
       {
-       "item": "path",
+       "field": "realpath",
+       "ref": "stat",
        "type": "ipa_path"
       }
      ],
@@ -508,7 +511,8 @@
        "type": "chmod_remove"
       },
       {
-       "item": "path",
+       "field": "realpath",
+       "ref": "stat",
        "type": "ipa_path"
       }
      ],
@@ -531,7 +535,8 @@
        "type": "ipa_account"
       },
       {
-       "item": "path",
+       "field": "realpath",
+       "ref": "stat",
        "type": "ipa_path"
       }
      ],
@@ -554,7 +559,8 @@
        "type": "ipa_account"
       },
       {
-       "item": "path",
+       "field": "realpath",
+       "ref": "stat",
        "type": "ipa_path"
       }
      ],
@@ -573,7 +579,8 @@
      "for_each": "targets_mode",
      "params": {
       "path": {
-       "item": "path"
+       "field": "realpath",
+       "ref": "stat"
       }
      },
      "text": "{item.path} has mode {item.expected}",
@@ -593,7 +600,8 @@
      "for_each": "targets_owner",
      "params": {
       "path": {
-       "item": "path"
+       "field": "realpath",
+       "ref": "stat"
       }
      },
      "text": "{item.path} is owned by {item.expected}",
@@ -613,7 +621,8 @@
      "for_each": "targets_group",
      "params": {
       "path": {
-       "item": "path"
+       "field": "realpath",
+       "ref": "stat"
       }
      },
      "text": "{item.path} has group {item.expected}",
@@ -632,15 +641,15 @@
    "what_changes": [
     {
      "for_each": "targets_mode",
-     "text": "{item.path}: mode {item.got} -> {item.expected}. Nothing else about the file changes."
+     "text": "{ref.stat.realpath}: mode {item.got} -> {item.expected}. Nothing else about the file changes."
     },
     {
      "for_each": "targets_owner",
-     "text": "{item.path}: owner {item.got} -> {item.expected}. Nothing else about the file changes."
+     "text": "{ref.stat.realpath}: owner {item.got} -> {item.expected}. Nothing else about the file changes."
     },
     {
      "for_each": "targets_group",
-     "text": "{item.path}: group {item.got} -> {item.expected}. Nothing else about the file changes."
+     "text": "{ref.stat.realpath}: group {item.got} -> {item.expected}. Nothing else about the file changes."
     }
    ],
    "withhold_if": [
@@ -690,10 +699,10 @@
     },
     {
      "for_each": "targets_mode",
-     "reason": "{item.path} is reached through a symbolic link in its path; ipa-diagnose will not change it.",
+     "reason": "{item.path} resolves to {ref.stat.realpath}, which is outside IPA-managed locations; ipa-diagnose will not change it.",
      "when": {
       "left": {
-       "field": "canonical",
+       "field": "realpath_allowed",
        "ref": "stat"
       },
       "op": "is_false"
@@ -701,10 +710,10 @@
     },
     {
      "for_each": "targets_owner",
-     "reason": "{item.path} is reached through a symbolic link in its path; ipa-diagnose will not change it.",
+     "reason": "{item.path} resolves to {ref.stat.realpath}, which is outside IPA-managed locations; ipa-diagnose will not change it.",
      "when": {
       "left": {
-       "field": "canonical",
+       "field": "realpath_allowed",
        "ref": "stat"
       },
       "op": "is_false"
@@ -712,10 +721,10 @@
     },
     {
      "for_each": "targets_group",
-     "reason": "{item.path} is reached through a symbolic link in its path; ipa-diagnose will not change it.",
+     "reason": "{item.path} resolves to {ref.stat.realpath}, which is outside IPA-managed locations; ipa-diagnose will not change it.",
      "when": {
       "left": {
-       "field": "canonical",
+       "field": "realpath_allowed",
        "ref": "stat"
       },
       "op": "is_false"
@@ -1228,14 +1237,14 @@
      }
     },
     {
-     "reason": "This host's clock is within 1 second of its time source now ({ref.tracking.offset_abs} s {ref.tracking.direction} it). If Kerberos still reports clock skew, the clock that is wrong is on another machine.",
+     "reason": "This host's clock is {ref.tracking.offset_abs} s {ref.tracking.direction} its time source, well inside Kerberos' 300 s tolerance, so it cannot by itself explain a clock-skew error. Compare 'chronyc tracking' on the KDC and on the other machine; the wrong clock is probably there.",
      "when": {
       "left": {
        "field": "offset_seconds",
        "ref": "tracking"
       },
       "op": "abs_lt",
-      "right": 1.0
+      "right": 240
      }
     },
     {

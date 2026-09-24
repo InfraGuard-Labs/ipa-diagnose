@@ -196,8 +196,11 @@ def _file_stat(params):
     fields = {
         "exists": True, "is_symlink": _stat.S_ISLNK(st.st_mode), "is_regular": _stat.S_ISREG(st.st_mode),
         "is_dir": _stat.S_ISDIR(st.st_mode), "mode": "%04o" % (st.st_mode & 0o7777),
-        # False when any parent directory is a symbolic link (lstat only looks at the last component).
+        # Real location (parent directories may be symlinks: on FreeIPA /var/lib/pki/pki-tomcat/conf -> /etc/pki/pki-tomcat).
+        # Commands act on the real path, and only if it is itself an IPA-managed location.
         "canonical": os.path.realpath(path) == path,
+        "realpath": sanitize_text(os.path.realpath(path), 4096),
+        "realpath_allowed": T.validate("ipa_path", os.path.realpath(path)) is not None,
         "owner": sanitize_text(owner, 40), "group": sanitize_text(group, 40),
     }
     return _res("file.stat", params, OK, fields,

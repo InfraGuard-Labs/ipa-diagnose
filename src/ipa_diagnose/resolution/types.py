@@ -22,8 +22,6 @@ IPA_SERVICES: Dict[str, Tuple[str, str]] = {
     "httpd": ("httpd.service", "ipactl"),
     "ipa-custodia": ("ipa-custodia.service", "ipactl"),
     "pki-tomcatd": ("pki-tomcatd@pki-tomcat.service", "ipactl"),
-    "named": ("named.service", "ipactl"),
-    "named-pkcs11": ("named-pkcs11.service", "ipactl"),
     "ipa-dnskeysyncd": ("ipa-dnskeysyncd.service", "ipactl"),
     "certmonger": ("certmonger.service", "systemctl"),
     "sssd": ("sssd.service", "systemctl"),
@@ -35,10 +33,12 @@ IPA_SERVICES: Dict[str, Tuple[str, str]] = {
 # ipa-healthcheck's IPAFileCheck / IPAFileNSSDBCheck / TomcatFileCheck verify. Anything else (for example
 # /etc/shadow) never gets a printed command, whatever a healthcheck result says.
 IPA_PATH_PREFIXES = (
-    "/etc/ipa/", "/etc/pki/pki-tomcat/", "/var/lib/pki/", "/etc/dirsrv/", "/var/lib/ipa/", "/var/log/",
+    "/etc/ipa/", "/etc/pki/pki-tomcat/", "/var/lib/pki/", "/etc/dirsrv/", "/var/lib/ipa/",
+    "/var/log/dirsrv/", "/var/log/pki/", "/var/log/httpd/", "/var/log/ipa",
     "/etc/httpd/", "/var/named/", "/var/kerberos/krb5kdc/", "/etc/sssd/", "/etc/gssproxy/", "/usr/share/ipa/",
 )
-IPA_PATH_EXACT = ("/etc/named.conf", "/etc/named.keytab", "/etc/krb5.keytab", "/etc/krb5.conf")
+IPA_PATH_EXACT = ("/etc/named.conf", "/etc/named.keytab", "/etc/krb5.keytab", "/etc/krb5.conf",
+                  "/var/log/krb5kdc.log", "/var/log/kadmind.log")
 # Accounts ipa-healthcheck's file checks expect as owner/group (service accounts of IPA components).
 IPA_ACCOUNTS = frozenset({"root", "dirsrv", "pkiuser", "named", "apache", "ipaapi", "kdcproxy", "sssd", "ods", "gssproxy"})
 

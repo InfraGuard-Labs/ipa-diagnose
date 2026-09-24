@@ -32,9 +32,9 @@ verified, so it points to the documented procedure instead of inventing one).
 
 | Diagnosis | Fix (printed, never run) | Risk | Shown only if |
 |---|---|---|---|
-| A required IPA service is not running | `systemctl start <that unit>` only (not `ipactl start`, which stops **all** IPA services if one fails to start), with `systemctl stop <unit>` as rollback | MEDIUM | the unit exists, is loaded, is not masked, is still stopped, and (for non-IPA-managed units such as sssd) is not disabled |
-| ipa-healthcheck reports a wrong owner, group or mode on an IPA file | a `chmod` that only **removes** permissions (for example `chmod o-r <file>`), or `chown -h` / `chgrp -h` to the IPA service account ipa-healthcheck expects; each with a rollback command | LOW | the file is in an IPA/PKI/389-DS/Kerberos/DNS location, still has the reported value, is not reached through a symlink, the expected value is a single value, the change does not add permissions, the owner is an IPA service account, and it is not key material |
-| Kerberos clock skew, with *this host's* clock measured out of sync | `chronyc makestep` (you accept the one-time clock jump first) | MEDIUM | chronyd runs and is synchronized to a named source, at least one source is reachable, the offset is at least 1 s and less than a day |
+| A required IPA service is not running | `systemctl start <that unit>` only (not `ipactl start`, which stops **all** IPA services if one fails to start), with `systemctl stop <unit>` as rollback | MEDIUM | the unit exists, is loaded, is not masked, is still stopped, and (for non-IPA-managed units such as sssd) is not disabled. Not offered for named/named-pkcs11, whose unit name differs by platform |
+| ipa-healthcheck reports a wrong owner, group or mode on an IPA file | a `chmod` that only **removes** permissions (for example `chmod o-r <file>`), or `chown -h` / `chgrp -h` to the IPA service account ipa-healthcheck expects; each with a rollback command | LOW | the file is in an IPA/PKI/389-DS/Kerberos/DNS location, still has the reported value, is not reached through a symlink, the expected value is a single value, the change does not add permissions, both the current and the expected owner/group are IPA service accounts, and it is not key material (keys, NSS key databases, KDC stash, custodia and password files) |
+| Kerberos clock skew, with *this host's* clock measured out of sync | `chronyc makestep` (you accept the one-time clock jump first) | MEDIUM | chronyd runs and is synchronized to a named source, at least one source is reachable, this host's offset is at least 240 s (Kerberos tolerates 300 s, so a smaller local offset cannot explain the error) and less than a day |
 | Directory Server certificate **expiring** (lib389 DSCERTLE0001) | `getcert resubmit -i <request>` | MEDIUM | certmonger runs and tracks the certificate with the IPA CA, the request is MONITORING with no error, it expires within 30 days but has not expired, and its post-save command restarts Directory Server |
 | Directory Server certificate **already expired** | none - documented procedure linked | - | - |
 | Kerberos reports skew but this host's clock is fine | none - the wrong clock may be elsewhere | - | - |
@@ -52,7 +52,7 @@ PARTIALLY_RESOLVED, and if a check cannot run it reports UNABLE_TO_VERIFY (exit 
 
 ## JSON
 
-The v1 JSON report is unchanged. New data is under `"v2"` (with `"report_schema_version": 2`):
+The v1 JSON report is unchanged, including the legacy per-diagnosis `actions` list (general guidance written for v0.1.3); the reviewed, gated fix is only in `v2.resolutions`. New data is under `"v2"` (with `"report_schema_version": 2`):
 
 ```json
 "v2": {"resolutions": [{
@@ -63,7 +63,7 @@ The v1 JSON report is unchanged. New data is under `"v2"` (with `"report_schema_
   "checked": [{"label": "...", "check": "systemd.unit", "status": "OK", "result": "...", "command": "...", "source": "live"}],
   "steps": [{"id": "start-unit", "text": "...", "argv": ["systemctl", "start", "dirsrv@EXAMPLE-TEST.service"], "risk": "MEDIUM", "changes": ["service-start"], "expected": "..."}],
   "prerequisites": [{"text": "...", "state": "met"}],
-  "what_changes": ["..."], "risk": "MEDIUM", "rollback": [{"text": "...", "argv": null}],
+  "what_changes": ["..."], "risk": "MEDIUM", "rollback": [{"text": "...", "argv": null, "command": null}],
   "verify": [{"text": "...", "check": "systemd.unit", "params": {"service": "dirsrv"}, "when": {...}}],
   "tier": "FIXTURE_ONLY", "definitive": false, "verification_label": "...", "applies_to": "FreeIPA server 4.9 or later"
 }]}

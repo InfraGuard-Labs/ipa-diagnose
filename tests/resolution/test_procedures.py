@@ -248,11 +248,12 @@ def perm(path=CS, kind="mode", expected="0660", got="0664", check="TomcatFileChe
               expected=expected, got=got, msg=f"Permissions of {path} are too permissive: {got} and should be {expected}")
 
 
-def stat(mode="0664", owner="pkiuser", group="pkiuser", symlink=False, exists=True):
+def stat(mode="0664", owner="pkiuser", group="pkiuser", symlink=False, exists=True, real=None, allowed=True):
+    real = real or CS
     if not exists:
         return ok({"exists": False})
     return ok({"exists": True, "is_symlink": symlink, "is_regular": True, "is_dir": False, "mode": mode,
-               "owner": owner, "group": group, "canonical": True})
+               "owner": owner, "group": group, "canonical": True, "realpath": real, "realpath_allowed": allowed})
 
 
 def test_file_mode_procedure_offered_with_exact_command_and_rollback():
@@ -300,7 +301,7 @@ def test_missing_expected_owner_account_withholds_the_fix():
 def test_one_bad_target_is_dropped_and_the_good_one_still_fixed():
     other = "/etc/ipa/default.conf"
     entries = [perm(), perm(path=other, expected="0640", got="0644", check="IPAFileCheck")]
-    results = {**ROOT_OK, f"file.stat|path={CS}": stat(mode="0660"), f"file.stat|path={other}": stat(mode="0644")}
+    results = {**ROOT_OK, f"file.stat|path={CS}": stat(mode="0660"), f"file.stat|path={other}": stat(mode="0644", real=other)}
     r = res_of(report_for(entries, results)[0], "directory-server.ipa-file-permissions")
     assert r.status == OFFERED and [s.argv for s in r.steps] == [["chmod", "o-r", other]]
     assert any("already has mode" in x for x in r.reasons)
@@ -335,8 +336,8 @@ def test_clock_procedure_offered_with_admin_confirmation():
 
 
 @pytest.mark.parametrize("override,needle", [
-    ({"chrony.tracking|": ok({"offset_seconds": 0.02, "offset_abs": 0.02, "direction": "ahead of", "leap_status": "Normal", "synchronized": True, "reference": "x"})}, "within 1 second"),
-    ({"chrony.tracking|": ok({"offset_seconds": 0.02, "offset_abs": 0.02, "direction": "ahead of", "leap_status": "Not synchronised", "synchronized": False, "reference": ""})}, "within 1 second"),
+    ({"chrony.tracking|": ok({"offset_seconds": 0.02, "offset_abs": 0.02, "direction": "ahead of", "leap_status": "Normal", "synchronized": True, "reference": "x"})}, "300 s tolerance"),
+    ({"chrony.tracking|": ok({"offset_seconds": 0.02, "offset_abs": 0.02, "direction": "ahead of", "leap_status": "Not synchronised", "synchronized": False, "reference": ""})}, "300 s tolerance"),
     ({"chrony.tracking|": ok({"offset_seconds": 421.2, "offset_abs": 421.2, "direction": "ahead of", "leap_status": "Not synchronised", "synchronized": False, "reference": "10.0.0.5"})}, "has not synchronized"),
     ({"chrony.tracking|": ok({"offset_seconds": 421.2, "offset_abs": 421.2, "direction": "ahead of", "leap_status": "Normal", "synchronized": True, "reference": ""})}, "no reference"),
     ({"chrony.tracking|": ok({"offset_seconds": -31536000.0, "offset_abs": 31536000.0, "direction": "behind", "leap_status": "Normal", "synchronized": True, "reference": "10.0.0.5"})}, "more than a day"),
@@ -562,11 +563,18 @@ def test_ownership_of_key_material_or_to_non_ipa_accounts_is_never_offered(path,
     assert r.status == WITHHELD and not r.steps
 
 
-def test_symlinked_parent_directory_withholds_the_fix():
-    st = stat()
-    st[1]["canonical"] = False
-    r = res_of(report_for([perm()], {**ROOT_OK, f"file.stat|path={CS}": st})[0], "directory-server.ipa-file-permissions")
-    assert r.status == WITHHELD and any("symbolic link in its path" in x for x in r.reasons)
+def test_symlinked_parent_resolving_inside_ipa_locations_acts_on_the_real_path():
+    # Real FreeIPA layout, found in the live lab: /var/lib/pki/pki-tomcat/conf -> /etc/pki/pki-tomcat
+    real = "/etc/pki/pki-tomcat/ca/CS.cfg"
+    r = res_of(report_for([perm()], {**ROOT_OK, f"file.stat|path={CS}": stat(real=real)})[0], "directory-server.ipa-file-permissions")
+    assert r.status == OFFERED and r.steps[0].argv == ["chmod", "o-r", real]
+    assert r.verify[0]["params"] == {"path": real}
+
+
+def test_symlinked_parent_resolving_outside_ipa_locations_withholds_the_fix():
+    r = res_of(report_for([perm()], {**ROOT_OK, f"file.stat|path={CS}": stat(real="/etc/shadow", allowed=False)})[0],
+               "directory-server.ipa-file-permissions")
+    assert r.status == WITHHELD and not r.steps and any("outside IPA-managed locations" in x for x in r.reasons)
 
 
 def test_disabled_systemctl_unit_is_not_started_but_failed_ipa_unit_is_offered_scoped():
@@ -632,3 +640,42 @@ def test_display_command_is_shell_quoted():
     from ipa_diagnose.resolution.engine import Step
 
     assert Step("s", "t", ["getcert", "list", "-n", "Server Cert"], "LOW", [], "", "local").command == "getcert list -n 'Server Cert'"
+
+
+def test_local_offset_inside_kerberos_tolerance_gets_no_clock_fix():
+    """Round-2 review: a 2 s local offset cannot cause 'Clock skew too great' (300 s tolerance)."""
+    small = [EvidenceItem(item_id="clk", kind="clock_sync", summary="c", data={"method": "chronyc", "ntp_synchronized": False, "offset_seconds": 2.0})]
+    results = {**CHRONY_OK, "chrony.tracking|": ok({"offset_seconds": 2.0, "offset_abs": 2.0, "direction": "ahead of",
+                                                     "leap_status": "Normal", "synchronized": True, "reference": "10.0.0.5"})}
+    r = res_of(report_for(KEYTAB_SKEW, results, items=small)[0], "kerberos.clock-skew")
+    assert r.status == WITHHELD and not r.steps and any("300 s tolerance" in x for x in r.reasons)
+
+
+@pytest.mark.parametrize("name", ["named", "named-pkcs11"])
+def test_named_is_never_given_a_start_command(name):
+    entries = [hc("ipahealthcheck.meta.services", name, "ERROR", msg=f"{name}: not running", status=False)]
+    r = res_of(report_for(entries, SERVICE_OK)[0], "healthcheck.service-not-running")
+    assert r is None or not r.steps
+
+
+@pytest.mark.parametrize("path", ["/etc/dirsrv/slapd-LAB-TEST/key4.db", "/etc/pki/pki-tomcat/password.conf",
+                                  "/var/kerberos/krb5kdc/.k5.LAB.TEST", "/etc/ipa/custodia/server.keys"])
+def test_ownership_of_key_databases_and_stash_files_is_never_offered(path):
+    entry = perm(path=path, kind="owner", expected="dirsrv", got="root")
+    results = {**ROOT_OK, f"file.stat|path={path}": stat(owner="root", real=path), "account.user|name=dirsrv": ok({"exists": True})}
+    r = res_of(report_for([entry], results)[0], "directory-server.ipa-file-permissions")
+    assert r.status == WITHHELD and not r.steps
+
+
+def test_ownership_rollback_never_hands_a_file_to_a_non_ipa_account():
+    entry = perm(kind="owner", expected="pkiuser", got="nobody")
+    results = {**ROOT_OK, f"file.stat|path={CS}": stat(owner="nobody"), "account.user|name=pkiuser": ok({"exists": True})}
+    r = res_of(report_for([entry], results)[0], "directory-server.ipa-file-permissions")
+    assert r.status == WITHHELD and not r.steps
+
+
+def test_unrelated_log_files_are_not_touched():
+    path = "/var/log/secure"
+    r = res_of(report_for([perm(path=path, expected="0600", got="0640")], {**ROOT_OK, f"file.stat|path={path}": stat(mode="0640", real=path)})[0],
+               "directory-server.ipa-file-permissions")
+    assert r.status == WITHHELD and not r.steps

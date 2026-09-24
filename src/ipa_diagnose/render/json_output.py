@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shlex
 from typing import Any, Dict
 
 from ipa_diagnose.engine.model import Action, Diagnosis, DiagnosisReport, EvidenceRef, VerificationCondition
@@ -146,7 +147,7 @@ def resolution_to_dict(r) -> Dict[str, Any]:
         ],
         "what_changes": list(r.what_changes),
         "risk": r.risk if r.steps else None,
-        "rollback": [dict(x) for x in r.rollback],
+        "rollback": [dict(x, command=shlex.join(x["argv"]) if x.get("argv") else None) for x in r.rollback],
         "verify": list(r.verify),
         "applies_to": r.applies_to,
         "tier": r.tier,

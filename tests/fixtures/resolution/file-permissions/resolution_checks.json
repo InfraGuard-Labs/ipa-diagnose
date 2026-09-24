@@ -10,7 +10,9 @@
    "is_regular": true,
    "is_symlink": false,
    "mode": "0664",
-   "owner": "pkiuser"
+   "owner": "pkiuser",
+   "realpath": "/var/lib/pki/pki-tomcat/conf/ca/CS.cfg",
+   "realpath_allowed": true
   },
   "status": "OK"
  },

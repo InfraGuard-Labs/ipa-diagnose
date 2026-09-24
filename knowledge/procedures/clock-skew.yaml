@@ -32,8 +32,8 @@ investigate:
 withhold_if:
   - when: {left: {ref: chronyd, field: active_state}, op: ne, right: active}
     reason: "chronyd is not running ({ref.chronyd.active_state}). Stepping the clock without it would not stay correct; start chronyd first (ipa-diagnose reports a stopped service as its own problem)."
-  - when: {left: {ref: tracking, field: offset_seconds}, op: abs_lt, right: 1.0}
-    reason: "This host's clock is within 1 second of its time source now ({ref.tracking.offset_abs} s {ref.tracking.direction} it). If Kerberos still reports clock skew, the clock that is wrong is on another machine."
+  - when: {left: {ref: tracking, field: offset_seconds}, op: abs_lt, right: 240}
+    reason: "This host's clock is {ref.tracking.offset_abs} s {ref.tracking.direction} its time source, well inside Kerberos' 300 s tolerance, so it cannot by itself explain a clock-skew error. Compare 'chronyc tracking' on the KDC and on the other machine; the wrong clock is probably there."
   - when: {left: {ref: tracking, field: synchronized}, op: is_false}
     reason: "chronyd has not synchronized with a time source (leap status {ref.tracking.leap_status}), so the time it would step to is not trustworthy. Fix NTP first."
   - when: {left: {ref: tracking, field: reference}, op: is_empty}
