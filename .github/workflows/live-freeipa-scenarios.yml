@@ -2,11 +2,12 @@ name: Live FreeIPA failure scenarios
 
 # Manually triggered only. One real single-node FreeIPA server (throwaway,
 # created and destroyed inside the job), then controlled, reversible faults
-# (stop a service -> ipa-diagnose -> restore -> ipa-diagnose verify) plus
-# missing-dependency / missing-privilege scenarios. Every output is REAL
-# LIVE CAPTURE evidence uploaded as an artifact. ipa-diagnose itself never
-# changes anything; only this lab script stops/starts services on the
-# throwaway server.
+# (stop a service / change one file's mode or group -> ipa-diagnose -> apply
+# the printed fix or restore -> ipa-diagnose verify) plus missing-dependency /
+# missing-privilege scenarios. Every output is REAL LIVE CAPTURE evidence
+# uploaded as an artifact; scripts/lab_truth.py records one truth-matrix row per
+# scenario (out/truth/results.jsonl). ipa-diagnose itself never changes anything;
+# only this lab script (playing the administrator) does, on the throwaway server.
 permissions:
   contents: read
 
@@ -18,95 +19,188 @@ on:
         required: false
         default: "source"
         type: string
+      image:
+        description: "freeipa/freeipa-server image tag (fedora-43, almalinux-9, almalinux-8, ...)"
+        required: false
+        default: "fedora-43"
+        type: string
 
 env:
   INSTALL_SOURCE: ${{ inputs.install_source }}
+  IMAGE: ${{ inputs.image || 'fedora-43' }}
   IPA_PASSWORD: LiveLabSecret123
+  T: python3 scripts/lab_truth.py
+  P: python3 scripts/lab_procedure.py
+  D: docker exec ipa-s /root/.local/bin/ipa-diagnose
 
 jobs:
   scenarios:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
 
       - name: Boot a real FreeIPA server (integrated DNS + CA)
         run: |
           set +e
+          echo "image: freeipa/freeipa-server:$IMAGE" | tee image.txt
           docker volume create ipa-data
           docker run -d --name ipa-s --privileged --cgroupns=host \
             -v /sys/fs/cgroup:/sys/fs/cgroup:rw -v ipa-data:/data \
             -h ipa01.lab.test -e PASSWORD=${IPA_PASSWORD} \
-            freeipa/freeipa-server:fedora-43 \
+            freeipa/freeipa-server:$IMAGE \
             ipa-server-install -U -r LAB.TEST --no-ntp --skip-mem-check --setup-dns --auto-forwarders --auto-reverse
-          for i in $(seq 1 90); do
+          for i in $(seq 1 120); do
             sleep 10
             if docker exec ipa-s systemctl is-active ipa.service 2>/dev/null | grep -qx active; then echo "active after ~$((i*10))s"; sleep 20; break; fi
           done
-          docker exec ipa-s ipactl status || true
+          docker exec ipa-s ipactl status || { docker logs ipa-s 2>&1 | tail -60; exit 1; }
 
       - name: Install ipa-diagnose
         run: |
           set +e
           docker exec ipa-s bash -c 'cp /etc/resolv.conf /etc/resolv.conf.bak; printf "nameserver 1.1.1.1\nnameserver 8.8.8.8\n" > /etc/resolv.conf'
-          docker exec ipa-s bash -c 'for a in 1 2 3; do dnf install -y python3-pip git && break; sleep 15; done; python3 -m pip install pipx'
+          PY=python3
+          if ! docker exec ipa-s python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)'; then
+            docker exec ipa-s bash -c 'for a in 1 2 3; do dnf install -y python3.11 python3.11-pip && break; sleep 15; done'
+            PY=python3.11
+          else
+            docker exec ipa-s bash -c 'for a in 1 2 3; do dnf install -y python3-pip && break; sleep 15; done'
+          fi
+          docker exec ipa-s $PY -m pip install pipx
           if [ "$INSTALL_SOURCE" = "pypi" ]; then
-            docker exec ipa-s bash -c "python3 -m pipx install ipa-diagnose"
+            docker exec ipa-s $PY -m pipx install ipa-diagnose
           else
             docker cp "$GITHUB_WORKSPACE" ipa-s:/ipa-diagnose-source
-            docker exec ipa-s bash -c "python3 -m pipx install /ipa-diagnose-source"
+            docker exec ipa-s $PY -m pipx install /ipa-diagnose-source
           fi
           docker exec ipa-s cp /etc/resolv.conf.bak /etc/resolv.conf
-          docker exec ipa-s /root/.local/bin/ipa-diagnose --version | tee env.txt
-          docker exec ipa-s rpm -q freeipa-server freeipa-healthcheck 389-ds-base python3 | tee -a env.txt
+          $D --version | tee env.txt
+          cat image.txt >> env.txt
+          docker exec ipa-s rpm -q freeipa-server freeipa-healthcheck 389-ds-base | tee -a env.txt
+          docker exec ipa-s $PY --version | tee -a env.txt
           docker exec ipa-s cat /etc/os-release | tee -a env.txt
+          INST=$(docker exec ipa-s bash -c 'ls -d /etc/dirsrv/slapd-* | head -1 | sed "s#.*/slapd-##"')
+          NAMED=$(docker exec ipa-s bash -c 'for u in named-pkcs11.service named.service; do systemctl is-enabled $u >/dev/null 2>&1 && { echo $u; break; }; done')
+          echo "INST=$INST" >> "$GITHUB_ENV"; echo "NAMED=${NAMED:-named.service}" >> "$GITHUB_ENV"
+          echo "DS instance: $INST  named unit: ${NAMED:-named.service}" | tee -a env.txt
 
       - name: S0 healthy baseline (reference)
         run: |
           set +e
           mkdir -p out
-          docker exec ipa-s /root/.local/bin/ipa-diagnose --details > out/s0-healthy.txt 2>&1; echo "exit=$?" >> out/s0-healthy.txt || true
-          docker exec ipa-s /root/.local/bin/ipa-diagnose --json > out/s0-healthy.json 2>/dev/null || true
+          $D --details > out/s0-healthy.txt 2>&1; echo "exit=$?" >> out/s0-healthy.txt || true
+          $D --json > out/s0-healthy.json 2>/dev/null || true
           docker exec ipa-s ipa-healthcheck --failures-only --output-type json > out/s0-healthy-healthcheck-failures.json 2>&1 || true
+          $T check S0-healthy-before-quirk-fix out/s0-healthy.json '{"overall_not": ["CRITICAL", "UNKNOWN"], "no_diagnosed": ["clock skew", "expired", "replication", "not running", "records", "keytab"]}'
           head -20 out/s0-healthy.txt
 
       - name: P1 (Slice 1) apply the file-permission procedure exactly as printed, then verify
         run: |
           set +e
-          # The freeipa-server image ships CS.cfg as 0664 (ipa-healthcheck expects 0660): a REAL finding.
-          # ipa-diagnose must offer the fix; the lab (playing the administrator) runs the printed argv verbatim.
-          python3 scripts/lab_procedure.py expect out/s0-healthy.json proc.files.restore-expected-permissions OFFERED
-          python3 scripts/lab_procedure.py apply out/s0-healthy.json proc.files.restore-expected-permissions ipa-s out/p1-apply.txt
-          docker exec ipa-s stat -c '%a %U:%G %n' /var/lib/pki/pki-tomcat/conf/ca/CS.cfg > out/p1-stat-after.txt 2>&1
-          docker exec ipa-s /root/.local/bin/ipa-diagnose verify > out/p1-verify.txt 2>&1; echo "exit=$?" >> out/p1-verify.txt
-          python3 scripts/lab_procedure.py verify out/p1-verify.txt proc.files.restore-expected-permissions
-          cat out/p1-apply.txt out/p1-stat-after.txt out/p1-verify.txt
+          # The Fedora freeipa-server image ships CS.cfg as 0664 (ipa-healthcheck expects 0660): a REAL finding.
+          if grep -q CS.cfg out/s0-healthy-healthcheck-failures.json; then
+            $P expect out/s0-healthy.json proc.files.restore-expected-permissions OFFERED
+            $P apply out/s0-healthy.json proc.files.restore-expected-permissions ipa-s out/p1-apply.txt
+            docker exec ipa-s stat -c '%a %U:%G %h %n' /var/lib/pki/pki-tomcat/conf/ca/CS.cfg > out/p1-stat-after.txt 2>&1
+            $D verify --json > out/p1-verify.json 2>/dev/null; echo "exit=$?" > out/p1-verify-exit.txt
+            $P verify out/p1-verify.json proc.files.restore-expected-permissions
+            $T verify P1-file-mode-fix-verify out/p1-verify.json '{"verify_outcome_in": ["RESOLVED"]}'
+            cat out/p1-apply.txt out/p1-stat-after.txt
+          else
+            $T skip P1-file-mode-fix "ipa-healthcheck reports no CS.cfg mode problem on this image"
+          fi
 
-      - name: S0b healthy-negative gate - after the procedure, expect no remaining CS.cfg finding
+      - name: S0b healthy-negative gate - after the procedure the server must look boringly healthy
         run: |
           set +e
-          # Fallback only if the procedure did not run (P1 then records FAIL): keep later scenarios meaningful.
           docker exec ipa-s bash -c 'test "$(stat -c %a /var/lib/pki/pki-tomcat/conf/ca/CS.cfg)" = 660 || chmod 0660 /var/lib/pki/pki-tomcat/conf/ca/CS.cfg'
-          docker exec ipa-s /root/.local/bin/ipa-diagnose --details > out/s0b-healthy-verified.txt 2>&1; echo "exit=$?" >> out/s0b-healthy-verified.txt || true
-          docker exec ipa-s /root/.local/bin/ipa-diagnose --json > out/s0b-healthy-verified.json 2>/dev/null || true
+          $D --details > out/s0b-healthy-verified.txt 2>&1; echo "exit=$?" >> out/s0b-healthy-verified.txt || true
+          $D --json > out/s0b-healthy-verified.json 2>/dev/null || true
           docker exec ipa-s ipa-healthcheck --failures-only --output-type json > out/s0b-healthy-verified-healthcheck-failures.json 2>&1 || true
+          $T check S0b-healthy-single-server out/s0b-healthy-verified.json '{"overall_in": ["HEALTHY"], "completeness": "complete", "ruv_state_in": ["NONE_CONFIGURED", "VERIFIED"], "no_offered": true}'
           head -25 out/s0b-healthy-verified.txt
+
+      - name: F1 group mismatch on a non-key IPA file -> printed fix applied -> verify
+        run: |
+          set +e
+          F=/etc/ipa/ca.crt
+          docker exec ipa-s stat -c '%a %U:%G %h' $F > out/f1-before.txt
+          docker exec ipa-s chgrp apache $F
+          docker exec ipa-s ipa-healthcheck --failures-only --output-type json > out/f1-healthcheck-failures.json 2>&1
+          $D --json > out/f1-group.json 2>/dev/null; $D --details > out/f1-group.txt 2>&1
+          if grep -q '/etc/ipa/ca.crt' out/f1-healthcheck-failures.json; then
+            $T check F1-group-mismatch out/f1-group.json '{"diagnosed_contains": ["File ownership/mode"], "resolution": {"procedure": "proc.files.restore-expected-permissions", "status": "OFFERED", "argv": ["chgrp", "-h", "root", "/etc/ipa/ca.crt"]}}'
+            $P apply out/f1-group.json proc.files.restore-expected-permissions ipa-s out/f1-apply.txt
+            $D verify --json > out/f1-verify.json 2>/dev/null
+            $P verify out/f1-verify.json "proc.files.restore-expected-permissions (group, /etc/ipa/ca.crt)"
+            $T verify F1-group-fix-verify out/f1-verify.json '{"verify_outcome_in": ["RESOLVED"]}'
+          else
+            $T skip F1-group-mismatch "ipa-healthcheck does not check /etc/ipa/ca.crt ownership on this image"
+          fi
+          docker exec ipa-s chgrp root $F; docker exec ipa-s stat -c '%a %U:%G %h' $F > out/f1-after.txt
+
+      - name: F2 group set to a non-IPA account -> no fix (withheld)
+        run: |
+          set +e
+          F=/etc/ipa/ca.crt
+          docker exec ipa-s chgrp nobody $F
+          docker exec ipa-s ipa-healthcheck --failures-only --output-type json > out/f2-healthcheck-failures.json 2>&1
+          $D --json > out/f2-nobody.json 2>/dev/null; $D --details > out/f2-nobody.txt 2>&1
+          if grep -q '/etc/ipa/ca.crt' out/f2-healthcheck-failures.json; then
+            $T check F2-non-ipa-group out/f2-nobody.json '{"no_offered": true}'
+          else
+            $T skip F2-non-ipa-group "ipa-healthcheck does not check /etc/ipa/ca.crt ownership on this image"
+          fi
+          docker exec ipa-s chgrp root $F
+
+      - name: F3 permissive file with a second hard link -> no fix (withheld)
+        run: |
+          set +e
+          R=$(docker exec ipa-s readlink -f /var/lib/pki/pki-tomcat/conf/ca/CS.cfg)
+          docker exec ipa-s chmod 0664 "$R"
+          docker exec ipa-s ln "$R" "$R.lab-hardlink"
+          docker exec ipa-s stat -c '%a %h %n' "$R" > out/f3-state.txt
+          docker exec ipa-s ipa-healthcheck --failures-only --output-type json > out/f3-healthcheck-failures.json 2>&1
+          $D --json > out/f3-hardlink.json 2>/dev/null; $D --details > out/f3-hardlink.txt 2>&1
+          if grep -q CS.cfg out/f3-healthcheck-failures.json; then
+            $T check F3-hard-link out/f3-hardlink.json '{"no_offered": true, "diagnosed_contains": ["File ownership/mode"]}'
+          else
+            $T skip F3-hard-link "ipa-healthcheck does not check the CS.cfg mode on this image"
+          fi
+          docker exec ipa-s rm -f "$R.lab-hardlink"; docker exec ipa-s chmod 0660 "$R"
+
+      - name: F4 wrong group on key material -> no ownership fix (withheld)
+        run: |
+          set +e
+          F=/var/lib/ipa/ra-agent.key
+          docker exec ipa-s stat -c '%a %U:%G' $F > out/f4-before.txt
+          G=$(docker exec ipa-s stat -c %G $F)
+          docker exec ipa-s chgrp root $F
+          docker exec ipa-s ipa-healthcheck --failures-only --output-type json > out/f4-healthcheck-failures.json 2>&1
+          $D --json > out/f4-key.json 2>/dev/null; $D --details > out/f4-key.txt 2>&1
+          if grep -q 'ra-agent.key' out/f4-healthcheck-failures.json; then
+            $T check F4-key-material out/f4-key.json '{"no_offered": true}'
+          else
+            $T skip F4-key-material "ipa-healthcheck does not check ra-agent.key ownership on this image"
+          fi
+          docker exec ipa-s chgrp "$G" $F
 
       - name: S1 dependency failures (ipa-healthcheck missing; ldapsearch missing)
         run: |
           set +e
           docker exec ipa-s mv /usr/bin/ipa-healthcheck /usr/bin/ipa-healthcheck.off || true
-          docker exec ipa-s /root/.local/bin/ipa-diagnose --details > out/s1-no-healthcheck.txt 2>&1; echo "exit=$?" >> out/s1-no-healthcheck.txt || true
-          docker exec ipa-s /root/.local/bin/ipa-diagnose --json > out/s1-no-healthcheck.json 2>/dev/null || true
-          docker exec ipa-s ipa-healthcheck --failures-only --output-type json > out/s1-no-healthcheck-healthcheck-failures.json 2>&1 || true
+          $D --details > out/s1-no-healthcheck.txt 2>&1; echo "exit=$?" >> out/s1-no-healthcheck.txt || true
+          $D --json > out/s1-no-healthcheck.json 2>/dev/null || true
           docker exec ipa-s mv /usr/bin/ipa-healthcheck.off /usr/bin/ipa-healthcheck || true
+          $T check S1-healthcheck-missing out/s1-no-healthcheck.json '{"overall_not": ["HEALTHY"], "completeness_not": "complete", "no_offered": true}'
           LDS=$(docker exec ipa-s bash -c 'command -v ldapsearch')
           echo "ldapsearch at: $LDS" > out/s1-ldapsearch-path.txt
           docker exec ipa-s mv "$LDS" "$LDS.off"
-          docker exec ipa-s bash -c 'command -v ldapsearch || echo "ldapsearch is now hidden"' >> out/s1-ldapsearch-path.txt
-          docker exec ipa-s /root/.local/bin/ipa-diagnose --details > out/s1-no-ldapsearch.txt 2>&1; echo "exit=$?" >> out/s1-no-ldapsearch.txt || true
-          docker exec ipa-s /root/.local/bin/ipa-diagnose --json > out/s1-no-ldapsearch.json 2>/dev/null || true
+          $D --details > out/s1-no-ldapsearch.txt 2>&1; echo "exit=$?" >> out/s1-no-ldapsearch.txt || true
+          $D --json > out/s1-no-ldapsearch.json 2>/dev/null || true
           docker exec ipa-s mv "$LDS.off" "$LDS"
+          $T check S1-ldapsearch-missing out/s1-no-ldapsearch.json '{"overall_not": ["HEALTHY"], "completeness_not": "complete"}'
           head -12 out/s1-no-healthcheck.txt; head -12 out/s1-no-ldapsearch.txt
 
       - name: S2 unprivileged run (non-root user)
@@ -114,57 +208,87 @@ jobs:
           set +e
           docker exec ipa-s bash -c 'chmod -R a+rX /root/.local /root/.local/pipx 2>/dev/null; chmod a+x /root' || true
           docker exec -u nobody ipa-s /root/.local/bin/ipa-diagnose --details > out/s2-nonroot.txt 2>&1; echo "exit=$?" >> out/s2-nonroot.txt || true
+          docker exec -u nobody ipa-s /root/.local/bin/ipa-diagnose --json > out/s2-nonroot.json 2>/dev/null || true
+          $T check S2-non-root out/s2-nonroot.json '{"overall_not": ["HEALTHY"], "no_offered": true}'
           head -25 out/s2-nonroot.txt
 
-      - name: S3 Directory Server stopped -> diagnose -> restore -> verify
+      - name: S3 Directory Server stopped -> diagnose -> printed fix applied -> verify
         run: |
           set +e
-          docker exec ipa-s systemctl stop dirsrv@LAB-TEST.service || true
+          docker exec ipa-s systemctl stop dirsrv@$INST.service || true
           sleep 5
-          docker exec ipa-s /root/.local/bin/ipa-diagnose --details > out/s3-dirsrv-down.txt 2>&1; echo "exit=$?" >> out/s3-dirsrv-down.txt || true
-          docker exec ipa-s /root/.local/bin/ipa-diagnose --json > out/s3-dirsrv-down.json 2>/dev/null || true
+          $D --details > out/s3-dirsrv-down.txt 2>&1; echo "exit=$?" >> out/s3-dirsrv-down.txt || true
+          $D --json > out/s3-dirsrv-down.json 2>/dev/null || true
           docker exec ipa-s ipa-healthcheck --failures-only --output-type json > out/s3-dirsrv-down-healthcheck-failures.json 2>&1 || true
-          docker exec ipa-s /root/.local/bin/ipa-diagnose ai-preview > out/s3-ai-preview.txt 2>&1; echo "exit=$?" >> out/s3-ai-preview.txt || true
-          # Slice 1: restore by running the printed procedure verbatim (not a hand-written command).
-          python3 scripts/lab_procedure.py expect out/s3-dirsrv-down.json proc.service.start-stopped-service OFFERED
-          python3 scripts/lab_procedure.py apply out/s3-dirsrv-down.json proc.service.start-stopped-service ipa-s out/s3-apply.txt || docker exec ipa-s systemctl start dirsrv@LAB-TEST.service
+          $D ai-preview > out/s3-ai-preview.txt 2>&1; echo "exit=$?" >> out/s3-ai-preview.txt || true
+          $T check S3-dirsrv-down out/s3-dirsrv-down.json "{\"primary_contains\": \"dirsrv\", \"primary_status\": \"DIAGNOSED\", \"no_diagnosed\": [\"clock skew\", \"expired\", \"records\"], \"resolution\": {\"procedure\": \"proc.service.start-stopped-service\", \"status\": \"OFFERED\", \"argv\": [\"systemctl\", \"start\", \"dirsrv@$INST.service\"], \"no_argv0\": [\"ipactl\"]}}"
+          $P expect out/s3-dirsrv-down.json proc.service.start-stopped-service OFFERED
+          $P apply out/s3-dirsrv-down.json proc.service.start-stopped-service ipa-s out/s3-apply.txt || docker exec ipa-s systemctl start dirsrv@$INST.service
           sleep 30; docker exec ipa-s ipactl status > out/s3-ipactl-after.txt 2>&1 || true
-          docker exec ipa-s /root/.local/bin/ipa-diagnose verify > out/s3-verify.txt 2>&1; echo "exit=$?" >> out/s3-verify.txt || true
-          python3 scripts/lab_procedure.py verify out/s3-verify.txt "proc.service.start-stopped-service (dirsrv)"
-          head -25 out/s3-dirsrv-down.txt; cat out/s3-verify.txt | head -15
+          $D verify --json > out/s3-verify.json 2>/dev/null
+          $P verify out/s3-verify.json "proc.service.start-stopped-service (dirsrv)"
+          $T verify S3-dirsrv-fix-verify out/s3-verify.json '{"verify_not": ["STILL_PRESENT", "CHANGED"]}'
+          head -25 out/s3-dirsrv-down.txt
 
       - name: S4 DNS (named) stopped -> diagnose -> restore -> verify
         run: |
           set +e
-          docker exec ipa-s systemctl list-units --all --no-legend 'named*' > out/s4-named-units.txt 2>&1 || true
-          NAMED=named.service
           docker exec ipa-s systemctl stop "$NAMED" || true
           sleep 5
           docker exec ipa-s systemctl is-active "$NAMED" > out/s4-named-state-during.txt 2>&1
-          docker exec ipa-s /root/.local/bin/ipa-diagnose --details > out/s4-dns-down.txt 2>&1; echo "exit=$?" >> out/s4-dns-down.txt || true
-          docker exec ipa-s /root/.local/bin/ipa-diagnose --json > out/s4-dns-down.json 2>/dev/null || true
+          $D --details > out/s4-dns-down.txt 2>&1; echo "exit=$?" >> out/s4-dns-down.txt || true
+          $D --json > out/s4-dns-down.json 2>/dev/null || true
           docker exec ipa-s ipa-healthcheck --failures-only --output-type json > out/s4-dns-down-healthcheck-failures.json 2>&1 || true
+          $T check S4-named-down out/s4-dns-down.json '{"primary_contains": "named", "not_primary": ["DNS record"], "no_diagnosed": ["clock skew", "expired"], "no_offered": true}'
           docker exec ipa-s systemctl start "$NAMED" || true
           sleep 20
-          docker exec ipa-s /root/.local/bin/ipa-diagnose verify > out/s4-verify.txt 2>&1; echo "exit=$?" >> out/s4-verify.txt || true
-          head -25 out/s4-dns-down.txt; head -15 out/s4-verify.txt
+          $D verify --json > out/s4-verify.json 2>/dev/null
+          $T verify S4-named-restored-verify out/s4-verify.json '{"verify_not": ["STILL_PRESENT", "CHANGED"]}'
+          head -25 out/s4-dns-down.txt
 
-      - name: S5 Kerberos KDC stopped -> diagnose -> restore -> verify
+      - name: S5 Kerberos KDC stopped -> diagnose -> printed fix applied -> verify
         run: |
           set +e
           docker exec ipa-s systemctl stop krb5kdc.service || true
           sleep 5
-          docker exec ipa-s /root/.local/bin/ipa-diagnose --details > out/s5-kdc-down.txt 2>&1; echo "exit=$?" >> out/s5-kdc-down.txt || true
-          docker exec ipa-s /root/.local/bin/ipa-diagnose --json > out/s5-kdc-down.json 2>/dev/null || true
+          $D --details > out/s5-kdc-down.txt 2>&1; echo "exit=$?" >> out/s5-kdc-down.txt || true
+          $D --json > out/s5-kdc-down.json 2>/dev/null || true
           docker exec ipa-s ipa-healthcheck --failures-only --output-type json > out/s5-kdc-down-healthcheck-failures.json 2>&1 || true
-          python3 scripts/lab_procedure.py expect out/s5-kdc-down.json proc.service.start-stopped-service OFFERED
-          python3 scripts/lab_procedure.py apply out/s5-kdc-down.json proc.service.start-stopped-service ipa-s out/s5-apply.txt || docker exec ipa-s systemctl start krb5kdc.service
+          $T check S5-krb5kdc-down out/s5-kdc-down.json '{"primary_contains": "krb5kdc", "primary_status": "DIAGNOSED", "no_diagnosed": ["clock skew", "named", "dirsrv"], "resolution": {"procedure": "proc.service.start-stopped-service", "status": "OFFERED", "argv": ["systemctl", "start", "krb5kdc.service"], "no_argv0": ["ipactl"]}}'
+          $P expect out/s5-kdc-down.json proc.service.start-stopped-service OFFERED
+          $P apply out/s5-kdc-down.json proc.service.start-stopped-service ipa-s out/s5-apply.txt || docker exec ipa-s systemctl start krb5kdc.service
           sleep 15
-          docker exec ipa-s /root/.local/bin/ipa-diagnose verify > out/s5-verify.txt 2>&1; echo "exit=$?" >> out/s5-verify.txt || true
-          python3 scripts/lab_procedure.py verify out/s5-verify.txt "proc.service.start-stopped-service (krb5kdc)"
-          head -25 out/s5-kdc-down.txt; head -15 out/s5-verify.txt
+          $D verify --json > out/s5-verify.json 2>/dev/null
+          $P verify out/s5-verify.json "proc.service.start-stopped-service (krb5kdc)"
+          $T verify S5-krb5kdc-fix-verify out/s5-verify.json '{"verify_not": ["STILL_PRESENT", "CHANGED"]}'
+          head -25 out/s5-kdc-down.txt
 
-      - name: S6 certmonger real capture + certmonger stopped -> diagnose -> restore
+      - name: V1-V2 verify must not be fooled - problem left in place; tampered saved baseline
+        run: |
+          set +e
+          docker exec ipa-s systemctl stop krb5kdc.service
+          sleep 5
+          $D --json > out/v1-kdc-down.json 2>/dev/null
+          $D verify --json > out/v1-verify-unfixed.json 2>/dev/null; echo "exit=$?" > out/v1-verify-unfixed-exit.txt
+          $T verify V1-verify-problem-still-present out/v1-verify-unfixed.json '{"verify_not": ["RESOLVED"]}'
+          # V2: re-baseline, corrupt the saved fix record's criteria digest, then really fix: must not be RESOLVED
+          $D --json > out/v2-kdc-down.json 2>/dev/null
+          docker exec ipa-s python3 -c "
+          import json, pathlib
+          for p in (pathlib.Path('/var/lib/ipa-diagnose/last_report.json'), pathlib.Path('/root/.cache/ipa-diagnose/last_report.json')):
+              if p.exists():
+                  d = json.loads(p.read_text())
+                  for f in d['v2']['verify_baseline']['fixes']:
+                      f['criteria_digest'] = '0' * 64
+                  p.write_text(json.dumps(d)); print('tampered', p)
+          " > out/v2-tamper.txt 2>&1
+          docker exec ipa-s systemctl start krb5kdc.service
+          sleep 15
+          $D verify --json > out/v2-verify-tampered.json 2>/dev/null; echo "exit=$?" > out/v2-verify-tampered-exit.txt
+          $T verify V2-verify-tampered-baseline out/v2-verify-tampered.json '{"verify_not": ["RESOLVED"]}'
+          cat out/v2-tamper.txt
+
+      - name: S6 certmonger real capture + certmonger masked and stopped -> diagnose -> restore
         run: |
           set +e
           docker exec ipa-s getcert list > out/s6-getcert-list.txt 2>&1 || true
@@ -172,46 +296,53 @@ jobs:
           docker exec ipa-s systemctl stop certmonger.service || true
           sleep 5
           docker exec ipa-s systemctl is-active certmonger.service > out/s6-certmonger-state-during.txt 2>&1
-          docker exec ipa-s /root/.local/bin/ipa-diagnose --details > out/s6-certmonger-down.txt 2>&1; echo "exit=$?" >> out/s6-certmonger-down.txt || true
-          docker exec ipa-s /root/.local/bin/ipa-diagnose --json > out/s6-certmonger-down.json 2>/dev/null || true
+          $D --details > out/s6-certmonger-down.txt 2>&1; echo "exit=$?" >> out/s6-certmonger-down.txt || true
+          $D --json > out/s6-certmonger-down.json 2>/dev/null || true
           docker exec ipa-s ipa-healthcheck --failures-only --output-type json > out/s6-certmonger-down-healthcheck-failures.json 2>&1 || true
-          # Slice 1 contradiction case, live: a MASKED unit must never get a "start it" fix.
-          python3 scripts/lab_procedure.py expect out/s6-certmonger-down.json proc.service.start-stopped-service WITHHELD masked
+          $P expect out/s6-certmonger-down.json proc.service.start-stopped-service WITHHELD masked
+          $T check S6-certmonger-masked out/s6-certmonger-down.json '{"primary_contains": "certmonger", "no_diagnosed": ["expired", "network"], "no_offered": true, "resolution": {"procedure": "proc.service.start-stopped-service", "status": "WITHHELD", "reason_contains": "masked"}}'
           docker exec ipa-s systemctl unmask --runtime certmonger.service || true
           docker exec ipa-s systemctl start certmonger.service || true
           sleep 15
-          docker exec ipa-s /root/.local/bin/ipa-diagnose verify > out/s6-verify.txt 2>&1; echo "exit=$?" >> out/s6-verify.txt || true
+          $D verify --json > out/s6-verify.json 2>/dev/null
+          $T verify S6-certmonger-restored-verify out/s6-verify.json '{"verify_not": ["STILL_PRESENT", "CHANGED"]}'
           head -30 out/s6-getcert-list.txt; head -25 out/s6-certmonger-down.txt
 
       - name: S7 multiple simultaneous failures (DNS + KDC) -> diagnose -> restore
         run: |
           set +e
-          NAMED=named.service
           docker exec ipa-s systemctl stop "$NAMED" krb5kdc.service || true
           sleep 5
           docker exec ipa-s systemctl is-active "$NAMED" krb5kdc.service > out/s7-state-during.txt 2>&1
-          docker exec ipa-s /root/.local/bin/ipa-diagnose --details > out/s7-multi.txt 2>&1; echo "exit=$?" >> out/s7-multi.txt || true
-          docker exec ipa-s /root/.local/bin/ipa-diagnose --json > out/s7-multi.json 2>/dev/null || true
+          $D --details > out/s7-multi.txt 2>&1; echo "exit=$?" >> out/s7-multi.txt || true
+          $D --json > out/s7-multi.json 2>/dev/null || true
           docker exec ipa-s ipa-healthcheck --failures-only --output-type json > out/s7-multi-healthcheck-failures.json 2>&1 || true
+          $T check S7-named-and-krb5kdc-down out/s7-multi.json '{"diagnosed_contains": ["krb5kdc", "named"], "no_diagnosed": ["clock skew", "expired"], "resolution": {"procedure": "proc.service.start-stopped-service", "status": "OFFERED", "argv": ["systemctl", "start", "krb5kdc.service"], "no_argv0": ["ipactl"]}}'
           docker exec ipa-s systemctl start "$NAMED" krb5kdc.service || true
           sleep 20
-          docker exec ipa-s /root/.local/bin/ipa-diagnose verify > out/s7-verify.txt 2>&1; echo "exit=$?" >> out/s7-verify.txt || true
+          $D verify --json > out/s7-verify.json 2>/dev/null
+          $T verify S7-restored-verify out/s7-verify.json '{"verify_not": ["STILL_PRESENT", "CHANGED"]}'
           head -30 out/s7-multi.txt
 
       - name: S8 ai-preview on real evidence (redaction, no provider call)
         run: |
           set +e
-          docker exec ipa-s /root/.local/bin/ipa-diagnose ai-preview > out/s8-ai-preview.txt 2>&1; echo "exit=$?" >> out/s8-ai-preview.txt || true
+          $D ai-preview > out/s8-ai-preview.txt 2>&1; echo "exit=$?" >> out/s8-ai-preview.txt || true
           head -40 out/s8-ai-preview.txt
 
-      - name: S10 --no-ai and --details on the healthy server
+      - name: S10 --no-ai and --details on the healthy server (after all restores)
         run: |
           set +e
-          docker exec ipa-s /root/.local/bin/ipa-diagnose --no-ai > out/s10-no-ai.txt 2>&1; echo "exit=$?" >> out/s10-no-ai.txt || true
+          $D --no-ai > out/s10-no-ai.txt 2>&1; echo "exit=$?" >> out/s10-no-ai.txt || true
+          $D --json > out/s10-final.json 2>/dev/null || true
+          $T check S10-healthy-after-all-restores out/s10-final.json '{"overall_in": ["HEALTHY"], "no_offered": true}'
           head -20 out/s10-no-ai.txt
 
-      - name: Slice 1 procedure assertions (fails the job on any FAIL)
-        run: python3 scripts/lab_procedure.py summary
+      - name: Slice 1 procedure and truth assertions (fail the job on any FAIL)
+        run: |
+          python3 scripts/lab_procedure.py summary; a=$?
+          python3 scripts/lab_truth.py summary; b=$?
+          exit $((a || b))
 
       - name: S9 timing (performance) - 3 timed runs
         if: always()
@@ -230,7 +361,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: live-scenarios-evidence
+          name: live-scenarios-evidence-${{ inputs.image || 'fedora-43' }}
           path: |
             env.txt
             out/

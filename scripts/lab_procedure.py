@@ -92,6 +92,15 @@ def cmd_apply(json_file, procedure_id, container, log) -> int:
 
 def cmd_verify(verify_txt, label) -> int:
     text = pathlib.Path(verify_txt).read_text(encoding="utf-8", errors="replace")
+    if verify_txt.endswith(".json"):
+        try:
+            items = json.loads(text).get("items") or []
+        except ValueError:
+            items = []
+        ok = (any(i.get("outcome") == "RESOLVED" and "fix's own checks pass" in (i.get("detail") or "") for i in items)
+              and not any(i.get("outcome") in ("STILL_PRESENT", "CHANGED") for i in items))
+        record(ok, f"{label}: verify reports RESOLVED with the fix's own checks passing")
+        return 0 if ok else 1
     ok = "RESOLVED" in text and "fix's own checks pass" in text and "STILL_PRESENT" not in text
     record(ok, f"{label}: verify reports RESOLVED with the fix's own checks passing")
     return 0 if ok else 1
