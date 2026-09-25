@@ -32,7 +32,7 @@ _COMMAND_LIKE = re.compile(
     # Zero-width lookbehind for the boundary (anything but a word, path or dot
     # character: quotes, brackets, '**', '|', '&&' all count) rather than a
     # consuming group, and any path prefix (/bin/, /usr/sbin/, ...).
-    r"(?<![\w./-])(?:\$\s*)?(?:sudo\s+)?(?:/[\w.-]+)*/?"
+    r"(?<![\w./-])(?:\$\s*)?(?:sudo\s+)?(?:/(?:usr/)?(?:local/)?s?bin/)?"
     r"(ipa[\w-]*|getcert|kinit|klist|kvno|dsconf|dsctl|ldapmodify|ldapsearch|ldapadd|ldapdelete|"
     r"systemctl|service|reboot|shutdown|halt|poweroff|init\s+0|"
     r"rm\b|mkfs[\w.]*|dd\b|userdel|groupdel|usermod|passwd|iptables|firewall-cmd|"
@@ -44,6 +44,16 @@ _COMMAND_LIKE = re.compile(
     re.IGNORECASE,
 )
 _CODE_SPAN = re.compile(r"`([^`\n]{1,200})`")
+_SHAPE = re.compile(r"(?<![\w./-])([A-Za-z][A-Za-z0-9_.+-]{0,40})\s+(?:--?[A-Za-z]|/[\w.-])")
+_REDIRECT = re.compile(r"(?<![-=<])>{1,2}\s*[/~$]|\|\s*[A-Za-z]|\$\(|&&|;\s*[a-z]+\s+-")
+_PROSE_WORDS = frozenset(
+    "a an the in at on under from to of into inside within for with and or is are was were be as by via see "
+    "file files directory directories dir path paths folder named called its their your this that these those "
+    "not only both also like such than then when while if because between over below above near "
+    "config configuration database log logs keytab keytabs certificate certificates socket link symlink "
+    "mode owner group permissions exists missing location copy entry key keys store stored lives points "
+    "reads writes uses under-".split()
+)
 _MAX_EXPLANATION_CHARS = 4000
 
 
@@ -112,6 +122,16 @@ def sanitize_explanation(text: str, diagnosis: Diagnosis) -> Optional[str]:
     # Backticks do not end a command phrase: "`chronyc` makestep" is the command "chronyc makestep".
     flat = text.replace("`", " ")
     covered = _approved_spans(flat, approved_commands)
+
+    # Generic command shapes, whatever the program is called (a name list alone cannot be complete - round-6
+    # review: bak2db, ldif2db, setsebool, kdestroy -A, ...): a word followed by an option or an absolute path,
+    # a redirect to a path, or a pipe into a word. Ordinary prose ("the file /etc/krb5.conf") is exempt.
+    for m in _SHAPE.finditer(flat):
+        if m.group(1).lower() in _PROSE_WORDS or any(a <= m.start() < b for a, b in covered):
+            continue
+        return None
+    if _REDIRECT.search(flat):
+        return None
     for match in _COMMAND_LIKE.finditer(flat):
         if any(a <= match.start() < b for a, b in covered):
             continue

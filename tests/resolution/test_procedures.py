@@ -367,7 +367,7 @@ def nss(key="DSCERTLE0001", nick="Server-Cert", verb="will expire in less than 3
 
 def cert(**over):
     f = {"found": True, "request_id": "20260101120000", "state": "MONITORING", "ca": "IPA", "ca_error": "",
-         "not_after": "x", "days_left": 12, "post_save_restarts_dirsrv": True}
+         "not_after": "x", "days_left": 12, "post_save_restarts_dirsrv": True, "profile": "caIPAserviceCert"}
     f.update(over)
     return ok(f)
 

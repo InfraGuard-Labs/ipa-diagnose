@@ -48,6 +48,8 @@ withhold_if:
     reason: "certmonger reports an error for this request ({ref.cert.ca_error}). Resubmitting would most likely hit the same error; fix that first."
   - when: {left: {ref: cert, field: state}, op: ne, right: MONITORING}
     reason: "The renewal request is in state {ref.cert.state} ({ref.cert.ca_error}). That is a different problem from an upcoming expiry; resubmitting would not address it."
+  - when: {left: {ref: cert, field: profile}, op: ne, right: caIPAserviceCert}
+    reason: "The renewal request uses certificate profile '{ref.cert.profile}', not IPA's standard service profile (caIPAserviceCert). A resubmit would issue another certificate from that profile, which may not extend its lifetime; ipa-diagnose will not guess."
   - when: {left: {ref: cert, field: post_save_restarts_dirsrv}, op: is_false}
     reason: "The tracking request does not restart Directory Server after renewal, which is not the standard IPA setup; ipa-diagnose will not guess the follow-up steps."
 prerequisites:

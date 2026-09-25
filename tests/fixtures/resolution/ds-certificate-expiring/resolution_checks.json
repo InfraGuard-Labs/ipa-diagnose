@@ -17,6 +17,7 @@
    "not_after": "(12 days from now)",
    "not_after_in_days": 12,
    "post_save_restarts_dirsrv": true,
+   "profile": "caIPAserviceCert",
    "request_id": "20260101120000",
    "state": "MONITORING"
   },

@@ -24,7 +24,7 @@ Design rationale (see docs/architecture.md for the full writeup):
 from __future__ import annotations
 
 import re
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from ipa_diagnose.engine.model import (
     ConfidenceLevel,
@@ -104,34 +104,77 @@ def _effective_pack(d: Diagnosis) -> str:
     return d.pack_id
 
 
-# Causality that holds whatever a rule declares (kept here so the rules' published upstream_candidates, part of
-# the frozen v1 JSON, do not change): krb5kdc reads its principals from Directory Server, so with dirsrv down
-# "no KDC could be reached" is a symptom of that, not a DNS finding (red-team round, Slice 1 hardening).
-_IMPLICIT_UPSTREAMS = {"kerberos.kdc-discovery-failure": ("directory-server",)}
-# Same-pack causality, by diagnosis id: with this server's named stopped its records cannot be resolved at
-# all, so "records broken" is a symptom of the stopped service, not an independent problem.
+# Specific causality by diagnosis id (a trailing * matches a prefix), in addition to the rules' declared
+# pack-level upstream_candidates (which are part of the frozen v1 JSON and so not changed):
+# - krb5kdc reads its principals from Directory Server: with dirsrv NOT RUNNING, "no KDC could be reached" is a
+#   symptom of that (only a stopped dirsrv - not any directory-server finding such as a full backup directory);
+# - with this server's named stopped its records cannot be resolved at all, so "records broken" is a symptom.
 _IMPLICIT_RULE_UPSTREAMS = {
+    "kerberos.kdc-discovery-failure": ("healthcheck.service-not-running-dirsrv*",),
     "dns.srv-autodiscovery": ("dns.named-service-down", "healthcheck.service-not-running-named",
                               "healthcheck.service-not-running-named-pkcs11"),
 }
 
 
-def _demote_via_causality(diagnoses: List[Diagnosis]) -> Dict[str, List[str]]:
+_SAFETY_NETS = ("healthcheck-check-failed", "unexplained-findings")
+
+
+def _explains_source(u: Diagnosis, source: str) -> bool:
+    """Whether a confirmed problem `u` explains a crashed/unexplained ipa-healthcheck finding from `source`."""
+
+    service_down = u.pack_id == "healthcheck" and u.rule_id.startswith("service-not-running-")
+    if service_down and u.rule_id[len("service-not-running-"):].split("@")[0] == "dirsrv":
+        return True  # Directory Server underlies every IPA check: with it stopped, any check can fail
+    if (service_down or u.rule_id == "named-service-down") and source.startswith("ipahealthcheck.meta.services"):
+        return True  # a service check failing is explained by a stopped service
+    return any(source.startswith(p) for p in _pack_sources(_effective_pack(u)))
+
+
+def _pack_sources(pack_id: str) -> List[str]:
+    from ipa_diagnose.engine.registry import all_packs
+
+    return [s for p in all_packs() if p.pack_id == pack_id for s in p.healthcheck_sources]
+
+
+def _demote_via_causality(diagnoses: List[Diagnosis], finding_sources: Optional[Dict[str, str]] = None) -> Dict[str, List[str]]:
     """Returns {diagnosis_id: [causing_pack_ids]} for diagnoses whose declared
     upstream_candidates actually fired - as a REAL problem, not merely any
     diagnosis at all - in this same report."""
 
-    fired_packs = {_effective_pack(d) for d in diagnoses if _is_real_problem(d) and d.explains_downstream}
+    # Only a real problem backed by ERROR/CRITICAL evidence that can break other subsystems may explain other
+    # packs' symptoms (a WARNING-level finding reported at ERROR severity cannot).
+    finding_sources = finding_sources or {}
+    causes = [u for u in diagnoses if _is_real_problem(u) and u.explains_downstream and _evidence_rank(u) >= Severity.ERROR.rank]
     demotions: Dict[str, List[str]] = {}
     for d in diagnoses:
-        upstream = list(d.upstream_candidates) + [p for p in _IMPLICIT_UPSTREAMS.get(d.diagnosis_id, ()) if p not in d.upstream_candidates]
-        causing = [p for p in upstream if p in fired_packs and p != d.pack_id]
-        causing += [_effective_pack(u) for u in diagnoses
-                    if u.diagnosis_id in _IMPLICIT_RULE_UPSTREAMS.get(d.diagnosis_id, ()) and _is_real_problem(u)
-                    and _effective_pack(u) not in causing]
-        if causing:
-            demotions[d.diagnosis_id] = causing
+        upstream = list(d.upstream_candidates)
+        candidates = [u for u in causes if _effective_pack(u) in upstream and _effective_pack(u) != d.pack_id
+                      and _effective_pack(u) not in d.not_caused_by]
+        candidates += [u for u in diagnoses if _implicit_cause(d, u) and _is_real_problem(u) and u not in candidates]
+        if d.pack_id == "healthcheck" and d.rule_id in _SAFETY_NETS:
+            # Crashed/unexplained ipa-healthcheck findings are absorbed only by a confirmed upstream problem whose
+            # pack owns every one of those checks (a stopped certmonger explains crashed ipa.certs checks, not an
+            # unrelated trust-agent CRITICAL).
+            srcs = [finding_sources.get(r.evidence_id, "") for r in d.evidence_for if r.kind == "finding"]
+            candidates = [u for u in candidates if u.status == DiagnosisStatus.DIAGNOSED and srcs
+                          and all(_explains_source(u, s) for s in srcs)]
+        else:
+            # A cause is never less severe than the symptom it absorbs, and an unconfirmed (UNKNOWN_*) upstream
+            # never hides a confidently DIAGNOSED problem (red-team round 2, Slice 1 hardening).
+            candidates = [u for u in candidates if _evidence_rank(u) >= _evidence_rank(d)
+                          and (u.status == DiagnosisStatus.DIAGNOSED or d.status != DiagnosisStatus.DIAGNOSED)]
+        packs: List[str] = []
+        for u in candidates:
+            if _effective_pack(u) not in packs:
+                packs.append(_effective_pack(u))
+        if packs:
+            demotions[d.diagnosis_id] = packs
     return demotions
+
+
+def _implicit_cause(d: Diagnosis, u: Diagnosis) -> bool:
+    return any(u.diagnosis_id == c or (c.endswith("*") and u.diagnosis_id.startswith(c[:-1]))
+               for c in _IMPLICIT_RULE_UPSTREAMS.get(d.diagnosis_id, ()))
 
 
 def build_report(
@@ -140,7 +183,7 @@ def build_report(
     packs_evaluated: List[str],
 ) -> DiagnosisReport:
     diagnoses = list(diagnoses)
-    demotions = _demote_via_causality(diagnoses)
+    demotions = _demote_via_causality(diagnoses, {f.finding_id: str(f.source) for f in bundle.findings})
     titles_by_pack: Dict[str, List[str]] = {}
     for d in diagnoses:
         if _is_real_problem(d):

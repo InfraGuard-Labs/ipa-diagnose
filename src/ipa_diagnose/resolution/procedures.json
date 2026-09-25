@@ -295,6 +295,17 @@
      }
     },
     {
+     "reason": "The renewal request uses certificate profile '{ref.cert.profile}', not IPA's standard service profile (caIPAserviceCert). A resubmit would issue another certificate from that profile, which may not extend its lifetime; ipa-diagnose will not guess.",
+     "when": {
+      "left": {
+       "field": "profile",
+       "ref": "cert"
+      },
+      "op": "ne",
+      "right": "caIPAserviceCert"
+     }
+    },
+    {
      "reason": "The tracking request does not restart Directory Server after renewal, which is not the standard IPA setup; ipa-diagnose will not guess the follow-up steps.",
      "when": {
       "left": {
@@ -394,7 +405,7 @@
        "type": "ipa_path"
       }
      ],
-     "expect": "{ref.stat.mode_a}:{ref.stat.owner}:{ref.stat.group}:1",
+     "expect": "{ref.stat.mode_a}:{ref.stat.owner}:{ref.stat.group}:{ref.stat.links}",
      "for_each": "targets_mode",
      "text": "mode, owner, group and hard-link count are still as checked"
     },
@@ -409,7 +420,7 @@
        "type": "ipa_path"
       }
      ],
-     "expect": "{ref.stat.mode_a}:{ref.stat.owner}:{ref.stat.group}:1",
+     "expect": "{ref.stat.mode_a}:{ref.stat.owner}:{ref.stat.group}:{ref.stat.links}",
      "for_each": "targets_owner",
      "text": "mode, owner, group and hard-link count are still as checked"
     },
@@ -424,7 +435,7 @@
        "type": "ipa_path"
       }
      ],
-     "expect": "{ref.stat.mode_a}:{ref.stat.owner}:{ref.stat.group}:1",
+     "expect": "{ref.stat.mode_a}:{ref.stat.owner}:{ref.stat.group}:{ref.stat.links}",
      "for_each": "targets_group",
      "text": "mode, owner, group and hard-link count are still as checked"
     }

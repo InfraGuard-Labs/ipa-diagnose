@@ -163,7 +163,12 @@ def cmd_verify(args: argparse.Namespace, console: Console) -> int:
     else:
         render_verify(result, console)
 
-    _save_baseline(report, args)
+    if result.keep_baseline:
+        if not args.json:
+            console.print("[dim]The previous diagnosis stays the baseline for the next verify, because not everything "
+                          "in it was confirmed resolved.[/dim]")
+    else:
+        _save_baseline(report, args)
     from ipa_diagnose.verify import VerifyOutcome
 
     fresh = _exit_code_for(report)

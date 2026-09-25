@@ -200,6 +200,23 @@ def _text(template: str, scope: _Scope) -> str:
     return _TEMPLATE_RE.sub(rep, template)
 
 
+def _text_strict(template: str, scope: _Scope) -> str:
+    """Like _text, but every value must be known and is not shortened (an expected command output the
+    administrator compares against must be exact, never '?' or cut)."""
+
+    def rep(m: "re.Match") -> str:
+        kind, name, field = m.group(1), m.group(2), m.group(3)
+        ref = {kind: name}
+        if field:
+            ref["field"] = field
+        value = sanitize_text(scope.value(ref), 4096)
+        if not value:
+            raise _Unknown(f"no value for {m.group(0)}")
+        return value
+
+    return _TEMPLATE_RE.sub(rep, template)
+
+
 def _argv(argv: List[Any], scope: _Scope) -> List[str]:
     out = []
     for a in argv:
@@ -433,7 +450,7 @@ def resolve_diagnosis(d: Diagnosis, env: Optional[EnvironmentInfo], runner: Runn
         for c in proc.get("confirm_first", []):
             for sc in scopes(c):
                 r.confirm_first.append({"text": _text(c["text"], sc), "argv": _argv(c["command"], sc),
-                                        "expect": _text(c["expect"], sc)})
+                                        "expect": _text_strict(c["expect"], sc)})
         r.confirm_first = _dedupe(r.confirm_first, lambda x: tuple(x["argv"]))
         for s in proc["steps"]:
             for sc in scopes(s):
@@ -479,7 +496,7 @@ def resolve_diagnosis(d: Diagnosis, env: Optional[EnvironmentInfo], runner: Runn
     # a digest of the criteria they produced. `verify` rebuilds the criteria from the CURRENT catalogue and
     # FRESH read-only checks; it never runs criteria, commands or statuses read back from the saved report.
     r.baseline = {"procedure_id": proc["id"], "procedure_digest": procedure_digest(proc),
-                  "bindings": json.loads(json.dumps(bindings)), "criteria_digest": criteria_digest(r.verify)}
+                  "bindings": json.loads(json.dumps(bindings)), "criteria_digest": criteria_digest(r.verify, d.diagnosis_id)}
     r.status = OFFERED
     return r
 
@@ -500,9 +517,13 @@ def procedure_digest(proc: Dict[str, Any]) -> str:
     return hashlib.sha256(json.dumps(proc, sort_keys=True, ensure_ascii=True).encode()).hexdigest()
 
 
-def criteria_digest(criteria: List[Dict[str, Any]]) -> str:
-    core = [{k: c[k] for k in ("check", "params", "when")} for c in criteria]
-    return hashlib.sha256(json.dumps(core, sort_keys=True, ensure_ascii=True).encode()).hexdigest()
+def criteria_digest(criteria: List[Dict[str, Any]], diagnosis_id: str = "") -> str:
+    """Digest of what a fix's verification checks, bound to the diagnosis it was shown for. The rendered text is
+    included because it names the concrete target (unit, file, certificate) even where the check parameters
+    do not (e.g. a service check resolves the DS instance itself)."""
+
+    core = [{k: c[k] for k in ("text", "check", "params", "when")} for c in criteria]
+    return hashlib.sha256(json.dumps([diagnosis_id, core], sort_keys=True, ensure_ascii=True).encode()).hexdigest()
 
 
 # outcomes of rebuild_verify besides success
@@ -547,7 +568,7 @@ def rebuild_verify(fix: Any, runner: Runner) -> Tuple[Optional[List[Dict[str, An
         return None, REBUILD_UNKNOWN, f"a fresh check needed to rebuild the fix's criteria failed: {e.why}"
     except Exception as e:  # noqa: BLE001 - a corrupt baseline must never crash verify or pass
         return None, REBUILD_UNKNOWN, f"the saved fix record could not be used ({type(e).__name__})"
-    if criteria_digest(criteria) != fix.get("criteria_digest"):
+    if criteria_digest(criteria, str(fix.get("diagnosis_id", ""))) != fix.get("criteria_digest"):
         return criteria, REBUILD_CHANGED, ("the fix's target is no longer what it was when the fix was shown "
                                            "(for example the file now resolves to another location)")
     return criteria, "", ""

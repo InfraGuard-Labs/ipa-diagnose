@@ -1,0 +1,46 @@
+{
+ "chrony.sources|": {
+  "command": "",
+  "display": "2 of 2 time source(s) reachable",
+  "fields": {
+   "reachable": 2,
+   "total": 2
+  },
+  "status": "OK"
+ },
+ "chrony.tracking|": {
+  "command": "",
+  "display": "clock offset +421.200 s, leap status Normal",
+  "fields": {
+   "direction": "ahead of",
+   "leap_status": "Normal",
+   "offset_abs": 421.2,
+   "offset_seconds": 421.2,
+   "reference": "10.0.0.5",
+   "synchronized": true
+  },
+  "status": "OK"
+ },
+ "host.privilege|": {
+  "command": "",
+  "display": "running as root",
+  "fields": {
+   "is_root": true
+  },
+  "status": "OK"
+ },
+ "systemd.unit|service=chronyd": {
+  "command": "",
+  "display": "chronyd.service: active (running)",
+  "fields": {
+   "active_state": "active",
+   "load_state": "loaded",
+   "result": "success",
+   "start_method": "systemctl",
+   "sub_state": "running",
+   "unit": "chronyd.service",
+   "unit_file_state": "enabled"
+  },
+  "status": "OK"
+ }
+}

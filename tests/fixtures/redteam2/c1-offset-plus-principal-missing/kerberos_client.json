@@ -1,0 +1,8 @@
+{
+ "clock_sync": {
+  "method": "chronyc",
+  "ntp_synchronized": false,
+  "offset_seconds": 420.0,
+  "raw": "x"
+ }
+}

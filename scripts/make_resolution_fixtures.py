@@ -105,7 +105,7 @@ def main():
                                                      "result": "success"}, "certmonger.service: active (running)"),
               "certmonger.ds_cert|instance=LAB-TEST,nickname=Server-Cert": ok(
                   {"found": True, "request_id": "20260101120000", "state": "MONITORING", "ca": "IPA", "ca_error": "",
-                   "not_after": "(12 days from now)", "not_after_in_days": 12, "post_save_restarts_dirsrv": True},
+                   "not_after": "(12 days from now)", "not_after_in_days": 12, "post_save_restarts_dirsrv": True, "profile": "caIPAserviceCert"},
                   "request 20260101120000: MONITORING, CA IPA, expires in 12 days"),
               "binary.present|name=getcert": ok({"present": True}, "getcert: installed"),
           })

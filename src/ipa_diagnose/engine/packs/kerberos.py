@@ -138,8 +138,15 @@ class ClockSkewRule(DiagnosticRule):
         # kinit failure or a local offset that really is outside the window (red-team round, Slice 1 hardening).
         if not big_offset and not clock_keytab:
             return None
+        # A big local offset alone does not explain a kinit failure that names another cause ("client not found",
+        # "no suitable keys"): the KDC on an IPA server shares this host's clock. It supports the diagnosis only
+        # with a clock-shaped kinit failure or with KDC lines rejecting clients for skew (red-team round 2).
+        if big_offset and not clock_keytab and not journal_hits:
+            return None
         if not big_offset:
             desync_hits = []  # "not synchronised" with a small offset is not evidence for this diagnosis
+        if not clock_keytab:
+            keytab_findings = []  # a kinit failure that names another cause is not evidence for clock skew
         evidence_for: List[EvidenceRef] = [
             EvidenceRef(
                 f.finding_id,

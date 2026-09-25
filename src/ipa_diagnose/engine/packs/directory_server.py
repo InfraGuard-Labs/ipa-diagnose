@@ -351,6 +351,27 @@ def _permission_targets(findings: List[Finding]) -> dict:
 _DS_PATH_PREFIXES = ("/etc/dirsrv/", "/var/lib/dirsrv/", "/var/log/dirsrv/", "/run/dirsrv/", "/usr/lib64/dirsrv/")
 
 
+def _names_any(item: EvidenceItem, paths: List[str]) -> bool:
+    text = str(item.data.get("message") or item.data.get("line") or item.summary or "")
+    for p in paths:
+        if p and (p in text or (p.rsplit("/", 1)[0] + "/") in text):
+            return True
+    return False
+
+
+def _can_break_ds(f: Finding) -> bool:
+    """A Directory Server file whose owner/group is wrong, or whose mode is too RESTRICTIVE, can stop DS from
+    reading it. A too-permissive mode cannot (it is a security problem, not an outage cause)."""
+
+    kw = f.keywords if isinstance(f.keywords, dict) else {}
+    if not str(kw.get("path") or "").startswith(_DS_PATH_PREFIXES):
+        return False
+    kind = str(kw.get("type", "")).lower()
+    if kind in ("owner", "group"):
+        return True
+    return kind == "mode" and _mode_delta(str(kw.get("got")), str(kw.get("expected"))).get("loosens") != "no"
+
+
 def _is_key_material(path: str) -> bool:
     """Files whose ownership is never changed automatically (keys, key databases, stash and password files)."""
 
@@ -422,7 +443,12 @@ class OwnershipSelinuxMismatchRule(DiagnosticRule):
         ]
 
         if file_findings:
-            corroborated = bool(permission_journal or selinux_journal)
+            # A dirsrv journal line only corroborates a reported file it actually names (or its directory); an
+            # unrelated permission error must not vouch for, say, a Tomcat file (red-team round 2).
+            paths = [str((f.keywords if isinstance(f.keywords, dict) else {}).get("path") or "") for f in file_findings]
+            relevant = [i for i in permission_journal + selinux_journal if _names_any(i, paths)]
+            evidence_for = [r for r in evidence_for if r.kind == "finding" or any(r.evidence_id == i.item_id for i in relevant)]
+            corroborated = bool(relevant)
             worst = max(file_findings, key=lambda f: f.severity.rank)
             return Diagnosis(
                 pack_id=PACK_ID,
@@ -501,9 +527,7 @@ class OwnershipSelinuxMismatchRule(DiagnosticRule):
                 # Only Directory Server's own files (or dirsrv logging permission errors) can break DS and so
                 # explain other packs' symptoms; a PKI/httpd/IPA file mode cannot.
                 evidence_severity=worst.severity,
-                explains_downstream=bool(permission_journal) or any(
-                    str((f.keywords if isinstance(f.keywords, dict) else {}).get("path") or "").startswith(_DS_PATH_PREFIXES)
-                    for f in file_findings),
+                explains_downstream=bool(relevant) or any(_can_break_ds(f) for f in file_findings),
             )
 
         # No IPAFileCheck-style finding naming an exact wrong value - just a

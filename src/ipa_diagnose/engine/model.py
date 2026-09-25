@@ -161,6 +161,9 @@ class Diagnosis:
     """Worst severity of the evidence itself when a rule reports a higher diagnosis severity (e.g. a file-mode
     WARNING reported as an ERROR-level diagnosis). Ranking uses the lower of the two, so such a diagnosis never
     outranks one backed by ERROR/CRITICAL evidence."""
+    not_caused_by: List[str] = dataclasses.field(default_factory=list)
+    """Packs that cannot be this diagnosis's upstream cause given its own evidence (e.g. a replication break whose
+    error is a network connection failure is not caused by a Kerberos key problem). Used by correlate.py only."""
     explains_downstream: bool = True
     """Whether this diagnosis, as a real problem, can be the upstream cause of other packs' symptoms
     (correlate.py). False for conditions that cannot break other subsystems, e.g. a too-permissive

@@ -111,6 +111,8 @@ def _parse_getcert_list(text: str) -> List[Dict[str, Any]]:
             current["issuer"] = value
         elif key == "post-save command":
             current["post_save"] = value
+        elif key == "profile":
+            current["profile"] = value
         elif key in ("certificate", "key pair storage") and "nickname" not in current:
             nick = _NICKNAME_RE.search(value)
             if nick:

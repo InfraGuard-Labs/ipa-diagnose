@@ -713,6 +713,7 @@ class RenewalMasterUnreachableRule(DiagnosticRule):
             rule_id=self.rule_id,
             status=DiagnosisStatus.UNKNOWN_INSUFFICIENT_EVIDENCE,
             title="Certificate nearing expiry with no local certmonger error - possible CA renewal master issue",
+            evidence_severity=Severity.WARNING,  # built only from WARNING "approaching expiry" results
             why=(
                 "This certificate is inside ipa-healthcheck's pre-expiry warning window, and certmonger on this "
                 "host reports no error at all (state MONITORING, no ca-error) - it is not stuck locally. In "

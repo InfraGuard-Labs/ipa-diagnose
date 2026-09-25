@@ -25,7 +25,7 @@ BIN=$(mktemp -d)
 cat > "$BIN/ipa-healthcheck" <<'EOF'
 #!/bin/sh
 cat <<'JSON'
-[{"source":"ipahealthcheck.meta.services","check":"dirsrv","result":"SUCCESS","uuid":"11111111-1111-1111-1111-111111111111","when":"20260101000000Z","duration":"0.01","kw":{"status":true}}]
+[{"source":"ipahealthcheck.meta.services","check":"dirsrv","result":"SUCCESS","uuid":"11111111-1111-1111-1111-111111111111","when":"20260101000000Z","duration":"0.01","kw":{"status":true}},{"source":"ipahealthcheck.ds.replication","check":"ReplicationCheck","result":"SUCCESS","uuid":"33333333-3333-3333-3333-333333333333","when":"20260101000000Z","duration":"0.01","kw":{}},{"source":"ipahealthcheck.ipa.certs","check":"IPACertmongerExpirationCheck","result":"SUCCESS","uuid":"44444444-4444-4444-4444-444444444444","when":"20260101000000Z","duration":"0.01","kw":{}}]
 JSON
 EOF
 chmod +x "$BIN/ipa-healthcheck"
@@ -45,6 +45,7 @@ out=$(PATH="$BIN:$PATH" ipa-diagnose 2>&1); rc=$?
 expect "RUV unreadable => RUV NOT VERIFIED" 4 "RUV state: NOT VERIFIED" "$rc" "$out"
 
 # 5. fully verified healthy (live path): tools succeed, RUV readable and every replica accounted for -> HEALTHY
+#    (the stand-in ipa-healthcheck reports DS and IPA checks too, as every real run does)
 cat > "$BIN/ipa-replica-manage" <<'EOF'
 #!/bin/sh
 case "$1" in
@@ -61,7 +62,7 @@ hc_with() { # $1 = extra JSON array element (may be empty)
   cat > "$BIN/ipa-healthcheck" <<EOF2
 #!/bin/sh
 cat <<'JSON'
-[{"source":"ipahealthcheck.meta.services","check":"dirsrv","result":"SUCCESS","uuid":"11111111-1111-1111-1111-111111111111","when":"20260101000000Z","duration":"0.01","kw":{"status":true}}$1]
+[{"source":"ipahealthcheck.meta.services","check":"dirsrv","result":"SUCCESS","uuid":"11111111-1111-1111-1111-111111111111","when":"20260101000000Z","duration":"0.01","kw":{"status":true}},{"source":"ipahealthcheck.ds.replication","check":"ReplicationCheck","result":"SUCCESS","uuid":"33333333-3333-3333-3333-333333333333","when":"20260101000000Z","duration":"0.01","kw":{}},{"source":"ipahealthcheck.ipa.certs","check":"IPACertmongerExpirationCheck","result":"SUCCESS","uuid":"44444444-4444-4444-4444-444444444444","when":"20260101000000Z","duration":"0.01","kw":{}}$1]
 JSON
 EOF2
   chmod +x "$BIN/ipa-healthcheck"

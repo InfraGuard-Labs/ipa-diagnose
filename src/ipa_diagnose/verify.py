@@ -51,6 +51,14 @@ class VerifyResult:
     previous_generated_at: Optional[str]
     current_report: DiagnosisReport
 
+    @property
+    def keep_baseline(self) -> bool:
+        """Something previously found was neither confirmed resolved nor is it in the fresh report: the saved
+        baseline must be kept, or the next verify would silently lose it (round-6 review)."""
+
+        fresh = {d.diagnosis_id for d in self.current_report.diagnoses} if self.current_report else set()
+        return any(i.outcome != VerifyOutcome.RESOLVED and i.diagnosis_id not in fresh for i in self.items)
+
 
 def default_state_path() -> pathlib.Path:
     override = os.environ.get("IPA_DIAGNOSE_STATE_DIR")
@@ -126,6 +134,8 @@ def _baseline_damage(previous: Dict[str, Any]) -> Optional[str]:
     base = v2.get("verify_baseline") if isinstance(v2, dict) else None
     if not isinstance(base, dict) or base.get("schema") != 1 or not isinstance(base.get("fixes"), list):
         return "The saved diagnosis is damaged (its verification data is missing or malformed). Run ipa-diagnose again."
+    if not isinstance(previous.get("hostname"), str) or not previous["hostname"].strip():
+        return "The saved diagnosis is damaged (it does not say which host it is from). Run ipa-diagnose again."
     return None
 
 

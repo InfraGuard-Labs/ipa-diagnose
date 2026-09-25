@@ -1,0 +1,103 @@
+[
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "dirsrv",
+  "result": "SUCCESS",
+  "uuid": "rt-svc-dirsrv",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "krb5kdc",
+  "result": "SUCCESS",
+  "uuid": "rt-svc-krb5kdc",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "kadmin",
+  "result": "SUCCESS",
+  "uuid": "rt-svc-kadmin",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "httpd",
+  "result": "SUCCESS",
+  "uuid": "rt-svc-httpd",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "certmonger",
+  "result": "SUCCESS",
+  "uuid": "rt-svc-certmonger",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "chronyd",
+  "result": "SUCCESS",
+  "uuid": "rt-svc-chronyd",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "ipa_custodia",
+  "result": "SUCCESS",
+  "uuid": "rt-svc-ipa_custodia",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.ds.replication",
+  "check": "ReplicationCheck",
+  "result": "ERROR",
+  "uuid": "rt-repl",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "key": "DSREPLLE0005",
+   "msg": "The replication agreement (meToipa02.example.test) under \"dc=example,dc=test\" is not in synchronization, because the consumer server is not reachable."
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.idns",
+  "check": "IPADNSSystemRecordsCheck",
+  "result": "WARNING",
+  "uuid": "idw",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "key": "ipa_ca_check",
+   "msg": "Got 1 ipa-ca AAAA records, expected 2"
+  }
+ }
+]

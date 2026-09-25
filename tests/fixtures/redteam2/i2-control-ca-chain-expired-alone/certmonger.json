@@ -1,0 +1,11 @@
+[
+ {
+  "request_id": "20260101000002",
+  "nickname": "Server-Cert cert-pki-ca",
+  "ca": "dogtag-ipa-ca-renew-agent",
+  "state": "MONITORING",
+  "stuck": "no",
+  "ca_error": "",
+  "not_valid_after": "2026-10-15 00:00:00 UTC"
+ }
+]

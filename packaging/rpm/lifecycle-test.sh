@@ -56,8 +56,8 @@ check "unknown future ERROR is surfaced, never diagnosed" test $? -eq 0
 step "4c. Slice 1: the packaged procedure catalogue loads and a procedure is offered (replay)"
 ipa-diagnose --replay /fixtures/resolution/service-not-running --json > /tmp/jr.json; python3 -c "import json; d=json.load(open('/tmp/jr.json')); r=[x for x in d['v2']['resolutions'] if x['procedure_id']=='proc.service.start-stopped-service']; assert r and r[0]['status']=='OFFERED' and r[0]['steps'][0]['argv']==['systemctl','start','dirsrv@LAB-TEST.service'], r; assert not any('catalogue rejected' in e for e in d['collection_errors'])"
 check "procedure offered from the packaged catalogue (systemctl start dirsrv@LAB-TEST)" test $? -eq 0
-ipa-diagnose --replay /fixtures/resolution/service-not-running | grep -q "WHAT THIS CHANGES"
-check "resolution contract rendered in the console" test $? -eq 0
+out4c=$(ipa-diagnose --replay /fixtures/resolution/service-not-running 2>&1)  # capture first: grep -q + pipefail races with SIGPIPE
+check "resolution contract rendered in the console" grep -q "WHAT THIS CHANGES" <<<"$out4c"
 
 step "5. --json exposes evidence completeness"
 ipa-diagnose --replay /fixtures/replication/healthy --json > /tmp/j.json; python3 - <<'PY'

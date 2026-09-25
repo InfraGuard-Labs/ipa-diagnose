@@ -412,6 +412,8 @@ def _certmonger_ds_cert(params):
         "ca": sanitize_text(r.get("ca", ""), 40), "ca_error": sanitize_text(r.get("ca_error", ""), 200),
         "not_after": not_after, "days_left": _days_left(not_after),
         "post_save_restarts_dirsrv": "restart_dirsrv" in post_save,
+        # The certificate profile a resubmit will use (live FreeIPA 4.13: caIPAserviceCert for Server-Cert).
+        "profile": sanitize_text(r.get("profile", ""), 60),
     }
     return _res("certmonger.ds_cert", params, OK, fields,
                 f"request {request_id}: {fields['state']}, CA {fields['ca'] or '?'}, expires {not_after or '?'}", shlex.join(argv))

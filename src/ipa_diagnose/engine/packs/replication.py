@@ -121,11 +121,32 @@ def _disk_space_signal(bundle: EvidenceBundle) -> bool:
     )
 
 
+_NETWORK_FAILURE = ("can't contact ldap server", "cannot contact ldap server", "connection refused", "timed out",
+                    "no route to host", "network is unreachable", "name or service not known")
+_AUTH_FAILURE = ("sasl", "gssapi", "kerberos", "invalid credentials", "preauth", "kvno", "keytab", "ticket")
+
+
+def _network_only_failure(bundle: EvidenceBundle) -> bool:
+    texts = [str(f.message or "") for f in bundle.findings if f.source == REPLICATION_SOURCE]
+    texts += [str(i.data.get("error") or i.data.get("message") or "") for i in bundle.items_by_kind("keytab_bind_check")
+              if not i.data.get("bind_ok", True)]
+    low = " ".join(texts).lower()
+    return any(n in low for n in _NETWORK_FAILURE) and not any(a in low for a in _AUTH_FAILURE)
+
+
 class PeerConnectivityBreakRule(DiagnosticRule):
     rule_id = "peer-connectivity-break"
     summary = "Replication agreement stalled due to peer unreachability or a broken keytab/GSSAPI bind."
 
     def evaluate(self, bundle: EvidenceBundle) -> Optional[Diagnosis]:
+        d = self._evaluate(bundle)
+        if d is not None and _network_only_failure(bundle):
+            # "Can't contact LDAP server" / refused / timed out: the peer is not reachable at all, which a
+            # Kerberos key problem cannot cause (red-team round 2, Slice 1 hardening).
+            d.not_caused_by = ["kerberos"]
+        return d
+
+    def _evaluate(self, bundle: EvidenceBundle) -> Optional[Diagnosis]:
         trigger_findings = [
             f
             for f in bundle.findings
