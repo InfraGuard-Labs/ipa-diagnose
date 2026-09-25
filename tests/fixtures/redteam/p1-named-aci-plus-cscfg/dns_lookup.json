@@ -1,0 +1,41 @@
+[
+ {
+  "item_id": "dns_lookup.srv_kerberos_udp",
+  "kind": "dns_srv_record",
+  "summary": "_kerberos._udp.example.test SRV: query timed out (no response from resolver)",
+  "data": {
+   "query": "_kerberos._udp.example.test",
+   "qtype": "SRV",
+   "resolver": "192.0.2.11",
+   "rcode": "TIMEOUT",
+   "answers": []
+  },
+  "severity": "ERROR"
+ },
+ {
+  "item_id": "dns_lookup.srv_ldap_tcp",
+  "kind": "dns_srv_record",
+  "summary": "_ldap._tcp.example.test SRV: SERVFAIL, 0 record(s)",
+  "data": {
+   "query": "_ldap._tcp.example.test",
+   "qtype": "SRV",
+   "resolver": "192.0.2.11",
+   "rcode": "SERVFAIL",
+   "answers": []
+  },
+  "severity": "ERROR"
+ },
+ {
+  "item_id": "dns_lookup.a_ipa_ca",
+  "kind": "dns_address_record",
+  "summary": "ipa-ca.example.test A: SERVFAIL, 0 record(s)",
+  "data": {
+   "query": "ipa-ca.example.test",
+   "qtype": "A",
+   "resolver": "192.0.2.11",
+   "rcode": "SERVFAIL",
+   "answers": []
+  },
+  "severity": "ERROR"
+ }
+]

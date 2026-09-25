@@ -65,7 +65,7 @@ def _entry(source, check, result, msg="", **kw):
     }
 
 
-GOOD_HC = json.dumps([_entry("ipahealthcheck.meta.services", "dirsrv", "SUCCESS")])
+GOOD_HC = json.dumps([_entry("ipahealthcheck.meta.services", "dirsrv", "SUCCESS"), _entry("ipahealthcheck.ds.replication", "ReplicationCheck", "SUCCESS"), _entry("ipahealthcheck.ipa.certs", "IPACertmongerExpirationCheck", "SUCCESS")])
 UNKNOWN_SRC = "ipahealthcheck.zzz.futurecheck"  # no pack rule claims this source
 
 LIST_GOOD = (
@@ -396,7 +396,7 @@ def test_stopped_service_is_never_healthy(monkeypatch):
 def test_unclaimed_warning_alone_is_not_healthy(monkeypatch):
     """v0.1.3 policy: a failed ipa-healthcheck finding that no rule explains (even a WARNING) is never
     reported as HEALTHY. No cause is claimed - the status is NOT_FULLY_VERIFIED."""
-    hc = json.dumps([_entry("ipahealthcheck.meta.services", "dirsrv", "SUCCESS"), _entry(UNKNOWN_SRC, "C", "WARNING", "something is off")])
+    hc = json.dumps([_entry("ipahealthcheck.meta.services", "dirsrv", "SUCCESS"), _entry("ipahealthcheck.ds.replication", "ReplicationCheck", "SUCCESS"), _entry("ipahealthcheck.ipa.certs", "IPACertmongerExpirationCheck", "SUCCESS"), _entry(UNKNOWN_SRC, "C", "WARNING", "something is off")])
     _install(monkeypatch, healthcheck=(1, hc, ""))
     report = _diagnose()
     assert report.overall_status == OverallStatus.NOT_FULLY_VERIFIED

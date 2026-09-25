@@ -37,7 +37,11 @@ AUTHORITATIVE_SOURCES = ("upstream-code", "upstream-docs", "vendor-docs")
 RUN_ON = ("local",)
 OPS = ("eq", "ne", "in", "not_in", "lt", "le", "gt", "ge", "abs_lt", "abs_ge", "is_true", "is_false", "is_empty")
 CONFIDENCE = ("HIGH", "MEDIUM")
-_ARG_LITERAL_RE = re.compile(r"^[A-Za-z0-9@._/=:+-]{1,128}$")
+_ARG_LITERAL_RE = re.compile(r"^[A-Za-z0-9@._/=:+%-]{1,128}$")
+# Programs a CONFIRM FIRST command may use: read-only inspection only.
+CONFIRM_PROGRAMS = {"stat": None, "readlink": {"-f"}}
+# Programs a fix step or rollback may run. Anything else (even well-formed) makes the catalogue invalid.
+FIX_PROGRAMS = frozenset({"systemctl", "chmod", "chown", "chgrp", "chronyc", "getcert"})
 _ID_RE = re.compile(r"^[a-z][a-z0-9_.-]{2,80}$")
 _TEMPLATE_RE = re.compile(r"\{(bind|item|ref)\.([A-Za-z0-9_]+)(?:\.([A-Za-z0-9_]+))?\}")
 
@@ -222,7 +226,8 @@ def _validate_procedure(proc: Dict[str, Any]) -> None:
     _only(
         pid, proc, "procedure",
         {"kind", "id", "title", "resolves", "min_confidence", "bindings", "applies_to", "provenance", "investigate",
-         "withhold_if", "prerequisites", "steps", "what_changes", "rollback", "verify", "impact_note", "limitations"},
+         "withhold_if", "prerequisites", "confirm_first", "steps", "what_changes", "rollback", "verify", "impact_note",
+         "limitations"},
         {"kind", "id", "title", "resolves", "min_confidence", "bindings", "applies_to", "provenance", "steps",
          "what_changes", "rollback", "verify"},
     )
@@ -285,6 +290,19 @@ def _validate_procedure(proc: Dict[str, Any]) -> None:
                 _fail(pid, f"prerequisite {pr['id']} needs 'when'")
             _check_pred(pid, pr["when"], f"prerequisites[{i}]", ctx)
         _check_text(pid, pr["text"], f"prerequisites[{i}].text", ctx)
+    for j, c in enumerate(proc.get("confirm_first", [])):
+        _only(pid, c, "confirm_first[]", {"text", "command", "expect", "for_each"}, {"text", "command", "expect"})
+        ctx.item = c.get("for_each")
+        _check_argv(pid, c["command"], f"confirm_first[{j}].command", ctx)
+        prog = c["command"][0]
+        if prog not in CONFIRM_PROGRAMS:
+            _fail(pid, f"confirm_first[{j}]: {prog!r} is not a read-only inspection program")
+        flags = [a for a in c["command"][1:] if isinstance(a, str) and a.startswith("-")]
+        if CONFIRM_PROGRAMS[prog] is not None and not set(flags) <= CONFIRM_PROGRAMS[prog]:
+            _fail(pid, f"confirm_first[{j}]: option not allowed for {prog}")
+        _check_text(pid, c["text"], f"confirm_first[{j}].text", ctx)
+        _check_text(pid, c["expect"], f"confirm_first[{j}].expect", ctx)
+        ctx.item = None
     if not proc["steps"]:
         _fail(pid, "a procedure needs at least one step")
     for s in proc["steps"]:
@@ -303,6 +321,8 @@ def _validate_procedure(proc: Dict[str, Any]) -> None:
                 _fail(pid, f"step {s['id']}: risk {s['risk']} is lower than required for {c!r}")
         ctx.item = s.get("for_each")
         _check_argv(pid, s["command"], f"step {s['id']}.command", ctx)
+        if s["command"][0] not in FIX_PROGRAMS:
+            _fail(pid, f"step {s['id']}: {s['command'][0]!r} is not an allowed fix program")
         if "only_if" in s:
             _check_pred(pid, s["only_if"], f"step {s['id']}.only_if", ctx)
         _check_text(pid, s["text"], f"step {s['id']}.text", ctx)
@@ -315,6 +335,8 @@ def _validate_procedure(proc: Dict[str, Any]) -> None:
             _check_text(pid, entry["text"], f"{key}[{j}].text", ctx)
             if "command" in entry:
                 _check_argv(pid, entry["command"], f"{key}[{j}].command", ctx)
+                if entry["command"][0] not in FIX_PROGRAMS:
+                    _fail(pid, f"{key}[{j}]: {entry['command'][0]!r} is not an allowed fix program")
             if "only_if" in entry:
                 _check_pred(pid, entry["only_if"], f"{key}[{j}].only_if", ctx)
             ctx.item = None

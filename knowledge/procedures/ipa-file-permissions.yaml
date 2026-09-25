@@ -68,6 +68,13 @@ prerequisites:
   - id: root
     text: "ipa-diagnose is running as root (changing these files needs root)"
     when: {left: {ref: root, field: is_root}, op: is_true}
+confirm_first:
+  - {for_each: targets_mode, text: "{item.path} still leads to the file that was checked", command: [readlink, -f, {item: path, type: ipa_path}], expect: "{ref.stat.realpath}"}
+  - {for_each: targets_owner, text: "{item.path} still leads to the file that was checked", command: [readlink, -f, {item: path, type: ipa_path}], expect: "{ref.stat.realpath}"}
+  - {for_each: targets_group, text: "{item.path} still leads to the file that was checked", command: [readlink, -f, {item: path, type: ipa_path}], expect: "{ref.stat.realpath}"}
+  - {for_each: targets_mode, text: "mode, owner, group and hard-link count are still as checked", command: [stat, -c, "%a:%U:%G:%h", {ref: stat, field: target, type: ipa_path}], expect: "{ref.stat.mode_a}:{ref.stat.owner}:{ref.stat.group}:1"}
+  - {for_each: targets_owner, text: "mode, owner, group and hard-link count are still as checked", command: [stat, -c, "%a:%U:%G:%h", {ref: stat, field: target, type: ipa_path}], expect: "{ref.stat.mode_a}:{ref.stat.owner}:{ref.stat.group}:1"}
+  - {for_each: targets_group, text: "mode, owner, group and hard-link count are still as checked", command: [stat, -c, "%a:%U:%G:%h", {ref: stat, field: target, type: ipa_path}], expect: "{ref.stat.mode_a}:{ref.stat.owner}:{ref.stat.group}:1"}
 steps:
   - id: chmod
     for_each: targets_mode

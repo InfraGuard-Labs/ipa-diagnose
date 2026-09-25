@@ -1,0 +1,3343 @@
+[
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "certmonger",
+  "result": "SUCCESS",
+  "uuid": "00bca201-8ba3-44ab-9d54-b72f4467508c",
+  "when": "20260916043401Z",
+  "duration": "0.010759",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "dirsrv",
+  "result": "SUCCESS",
+  "uuid": "35ed5015-2f2e-4f2a-a3cb-f2afece20fca",
+  "when": "20260916043401Z",
+  "duration": "0.010190",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "gssproxy",
+  "result": "SUCCESS",
+  "uuid": "fe2e0554-1851-478f-bb33-8d428fe45437",
+  "when": "20260916043401Z",
+  "duration": "0.009438",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "httpd",
+  "result": "SUCCESS",
+  "uuid": "19461208-6852-4104-a1a3-3e76f3587136",
+  "when": "20260916043401Z",
+  "duration": "0.008623",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "ipa_custodia",
+  "result": "SUCCESS",
+  "uuid": "764ac90b-a68a-45d0-bdbe-05324619c53a",
+  "when": "20260916043401Z",
+  "duration": "0.009556",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "ipa_otpd",
+  "result": "SUCCESS",
+  "uuid": "050caf4a-7820-4d67-95c2-f8423dc70d88",
+  "when": "20260916043401Z",
+  "duration": "0.009220",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "kadmin",
+  "result": "SUCCESS",
+  "uuid": "ea897ad5-3e22-48d9-9cf9-3477c932c035",
+  "when": "20260916043401Z",
+  "duration": "0.009113",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "krb5kdc",
+  "result": "SUCCESS",
+  "uuid": "bcfeeda5-f5b5-416d-b6e1-6153f5ef49a4",
+  "when": "20260916043401Z",
+  "duration": "0.010388",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "pki_tomcatd",
+  "result": "SUCCESS",
+  "uuid": "81318ce6-d82b-4c40-ae03-70a3b8dd6dd0",
+  "when": "20260916043401Z",
+  "duration": "0.007629",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "sssd",
+  "result": "SUCCESS",
+  "uuid": "910c3a9b-ea20-4dac-a4e1-7a75bd9dc603",
+  "when": "20260916043401Z",
+  "duration": "0.011559",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.dogtag.ca",
+  "check": "DogtagCertsConfigCheck",
+  "result": "SUCCESS",
+  "uuid": "d51fd68f-9dd6-4168-87ea-95aa26260a4b",
+  "when": "20260916043401Z",
+  "duration": "0.000894",
+  "kw": {}
+ },
+ {
+  "source": "ipahealthcheck.dogtag.ca",
+  "check": "DogtagCertsConnectivityCheck",
+  "result": "SUCCESS",
+  "uuid": "13d1284e-c9a7-4938-8dcd-25ce287c6958",
+  "when": "20260916043402Z",
+  "duration": "0.965288",
+  "kw": {}
+ },
+ {
+  "source": "ipahealthcheck.ds.backends",
+  "check": "BackendsCheck",
+  "result": "SUCCESS",
+  "uuid": "e1391552-c87e-4424-8a9b-d3c957c98068",
+  "when": "20260916043403Z",
+  "duration": "0.625078",
+  "kw": {}
+ },
+ {
+  "source": "ipahealthcheck.ds.config",
+  "check": "ConfigCheck",
+  "result": "SUCCESS",
+  "uuid": "5b7ec815-f2b5-46f6-bf87-48b1fe099578",
+  "when": "20260916043403Z",
+  "duration": "0.336721",
+  "kw": {}
+ },
+ {
+  "source": "ipahealthcheck.ds.disk_space",
+  "check": "DiskSpaceCheck",
+  "result": "SUCCESS",
+  "uuid": "9ebd2475-6fdb-477a-a904-6083f9ad8c49",
+  "when": "20260916043403Z",
+  "duration": "0.262701",
+  "kw": {}
+ },
+ {
+  "source": "ipahealthcheck.ds.dse",
+  "check": "DSECheck",
+  "result": "SUCCESS",
+  "uuid": "078ba59b-be22-495d-b330-16fa37be7939",
+  "when": "20260916043404Z",
+  "duration": "0.264304",
+  "kw": {}
+ },
+ {
+  "source": "ipahealthcheck.ds.encryption",
+  "check": "EncryptionCheck",
+  "result": "SUCCESS",
+  "uuid": "9131cce9-3848-4ee8-a5bc-44064fce8586",
+  "when": "20260916043404Z",
+  "duration": "0.262277",
+  "kw": {}
+ },
+ {
+  "source": "ipahealthcheck.ds.fs_checks",
+  "check": "FSCheck",
+  "result": "SUCCESS",
+  "uuid": "187d212c-a70b-4504-8e15-0cd080c1c256",
+  "when": "20260916043404Z",
+  "duration": "0.263111",
+  "kw": {}
+ },
+ {
+  "source": "ipahealthcheck.ds.nss_ssl",
+  "check": "NssCheck",
+  "result": "SUCCESS",
+  "uuid": "5134d071-0a00-4964-a4f4-574a99afcff2",
+  "when": "20260916043405Z",
+  "duration": "1.174536",
+  "kw": {}
+ },
+ {
+  "source": "ipahealthcheck.ds.ds_plugins",
+  "check": "RIPluginCheck",
+  "result": "SUCCESS",
+  "uuid": "155e5a04-270d-46ee-b384-bc0b79472c95",
+  "when": "20260916043406Z",
+  "duration": "0.314491",
+  "kw": {}
+ },
+ {
+  "source": "ipahealthcheck.ds.replication",
+  "check": "ReplicationCheck",
+  "result": "SUCCESS",
+  "uuid": "b0245bdd-a373-4e52-8735-f12149e4e4c1",
+  "when": "20260916043406Z",
+  "duration": "0.263631",
+  "kw": {}
+ },
+ {
+  "source": "ipahealthcheck.ds.replication",
+  "check": "ReplicationChangelogCheck",
+  "result": "SUCCESS",
+  "uuid": "2641ab25-e387-41d0-91b3-1659bca18021",
+  "when": "20260916043406Z",
+  "duration": "0.260484",
+  "kw": {}
+ },
+ {
+  "source": "ipahealthcheck.ds.ruv",
+  "check": "RUVCheck",
+  "result": "SUCCESS",
+  "uuid": "f3d76f57-0d1b-48c5-8499-cd4a795476f4",
+  "when": "20260916043406Z",
+  "duration": "0.001229",
+  "kw": {}
+ },
+ {
+  "source": "ipahealthcheck.ds.ruv",
+  "check": "KnownRUVCheck",
+  "result": "SUCCESS",
+  "uuid": "f229da8a-24f2-49e4-baad-1550aa8ca0ca",
+  "when": "20260916043406Z",
+  "duration": "0.000888",
+  "kw": {}
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertmongerExpirationCheck",
+  "result": "SUCCESS",
+  "uuid": "aa609b01-c273-4b70-88c4-49fe9343137d",
+  "when": "20260916043406Z",
+  "duration": "0.014492",
+  "kw": {
+   "key": "20260916043049"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertmongerExpirationCheck",
+  "result": "SUCCESS",
+  "uuid": "295d06d7-cb3d-4287-84bc-6bffa2c32a46",
+  "when": "20260916043406Z",
+  "duration": "0.023165",
+  "kw": {
+   "key": "20260916043050"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertmongerExpirationCheck",
+  "result": "SUCCESS",
+  "uuid": "b151f54e-0d14-4dab-aa7b-dd11f81f0ceb",
+  "when": "20260916043406Z",
+  "duration": "0.031863",
+  "kw": {
+   "key": "20260916043051"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertmongerExpirationCheck",
+  "result": "SUCCESS",
+  "uuid": "645d4d6a-af43-43b3-9bbc-836c931e9d60",
+  "when": "20260916043406Z",
+  "duration": "0.041260",
+  "kw": {
+   "key": "20260916043054"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertmongerExpirationCheck",
+  "result": "SUCCESS",
+  "uuid": "9edffdd4-2a57-44e0-8923-f4cffd02a5b9",
+  "when": "20260916043406Z",
+  "duration": "0.051907",
+  "kw": {
+   "key": "20260916043056"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertmongerExpirationCheck",
+  "result": "SUCCESS",
+  "uuid": "bfb47aee-0d4f-4346-b9c6-8001c23e6118",
+  "when": "20260916043406Z",
+  "duration": "0.062488",
+  "kw": {
+   "key": "20260916043058"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertmongerExpirationCheck",
+  "result": "SUCCESS",
+  "uuid": "112f4cdf-92fd-4cba-bcd0-9cabf58db396",
+  "when": "20260916043406Z",
+  "duration": "0.075823",
+  "kw": {
+   "key": "20260916043108"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertmongerExpirationCheck",
+  "result": "SUCCESS",
+  "uuid": "93425ef9-05e0-43f7-993a-3b46425921bb",
+  "when": "20260916043406Z",
+  "duration": "0.087675",
+  "kw": {
+   "key": "20260916043156"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertmongerExpirationCheck",
+  "result": "SUCCESS",
+  "uuid": "ce2dbf35-a241-4927-91cb-3918b8caeec2",
+  "when": "20260916043406Z",
+  "duration": "0.102675",
+  "kw": {
+   "key": "20260916043200"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertfileExpirationCheck",
+  "result": "SUCCESS",
+  "uuid": "2c85830d-8042-4365-bd3d-597956d34b08",
+  "when": "20260916043406Z",
+  "duration": "0.015610",
+  "kw": {
+   "key": "20260916043049"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertfileExpirationCheck",
+  "result": "SUCCESS",
+  "uuid": "8f5e1069-393f-4b0e-9b57-6fbce8a18753",
+  "when": "20260916043406Z",
+  "duration": "0.092270",
+  "kw": {
+   "key": "20260916043050"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertfileExpirationCheck",
+  "result": "SUCCESS",
+  "uuid": "eafe7bbf-0066-4303-b5ab-e78876ea1ef9",
+  "when": "20260916043406Z",
+  "duration": "0.147407",
+  "kw": {
+   "key": "20260916043051"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertfileExpirationCheck",
+  "result": "SUCCESS",
+  "uuid": "ac89c6b6-3439-48bc-82b4-9dcb6b9f1a70",
+  "when": "20260916043407Z",
+  "duration": "0.206623",
+  "kw": {
+   "key": "20260916043054"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertfileExpirationCheck",
+  "result": "SUCCESS",
+  "uuid": "68ffd29f-27e7-4e73-aebf-2d5851a4f9eb",
+  "when": "20260916043407Z",
+  "duration": "0.274239",
+  "kw": {
+   "key": "20260916043056"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertfileExpirationCheck",
+  "result": "SUCCESS",
+  "uuid": "cde09257-1374-4ec6-bf57-833f66669175",
+  "when": "20260916043407Z",
+  "duration": "0.335519",
+  "kw": {
+   "key": "20260916043058"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertfileExpirationCheck",
+  "result": "SUCCESS",
+  "uuid": "25be7ee9-d834-448f-982f-b4ad0eb4dcc7",
+  "when": "20260916043407Z",
+  "duration": "0.400154",
+  "kw": {
+   "key": "20260916043108"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertfileExpirationCheck",
+  "result": "SUCCESS",
+  "uuid": "f585be77-994b-48df-bbd6-861935405afd",
+  "when": "20260916043407Z",
+  "duration": "0.412913",
+  "kw": {
+   "key": "20260916043156"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertfileExpirationCheck",
+  "result": "SUCCESS",
+  "uuid": "f24e99f1-e314-4f22-89bf-3ba5e5a0f3e2",
+  "when": "20260916043407Z",
+  "duration": "0.425535",
+  "kw": {
+   "key": "20260916043200"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPAUserProvidedExpirationCheck",
+  "result": "SUCCESS",
+  "uuid": "b91ad06a-4dc4-48b0-bd9a-c108a491b75b",
+  "when": "20260916043407Z",
+  "duration": "0.084626",
+  "kw": {}
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertTracking",
+  "result": "SUCCESS",
+  "uuid": "67f6bb94-5c1c-47a8-a62f-95b1a77d2712",
+  "when": "20260916043408Z",
+  "duration": "0.939810",
+  "kw": {
+   "key": "20260916043049"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertTracking",
+  "result": "SUCCESS",
+  "uuid": "34ae19ea-2f30-43ff-a6f9-b4986f163fbc",
+  "when": "20260916043408Z",
+  "duration": "0.976123",
+  "kw": {
+   "key": "20260916043050"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertTracking",
+  "result": "SUCCESS",
+  "uuid": "79f5f6c5-4b16-47c4-9462-4eaddf86e75f",
+  "when": "20260916043408Z",
+  "duration": "1.013594",
+  "kw": {
+   "key": "20260916043051"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertTracking",
+  "result": "SUCCESS",
+  "uuid": "58e8e473-5ce2-4bf0-80e1-a9f3b652d795",
+  "when": "20260916043408Z",
+  "duration": "1.049333",
+  "kw": {
+   "key": "20260916043054"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertTracking",
+  "result": "SUCCESS",
+  "uuid": "e7abaeb3-87b0-4f08-829b-aae7a79527de",
+  "when": "20260916043408Z",
+  "duration": "1.088182",
+  "kw": {
+   "key": "20260916043056"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertTracking",
+  "result": "SUCCESS",
+  "uuid": "e3a90d5d-bbc7-4d7f-ba99-d3ee23246188",
+  "when": "20260916043408Z",
+  "duration": "1.126730",
+  "kw": {
+   "key": "20260916043058"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertTracking",
+  "result": "SUCCESS",
+  "uuid": "9728295a-afd1-410b-92c7-8043b6d74bb0",
+  "when": "20260916043408Z",
+  "duration": "1.159549",
+  "kw": {
+   "key": "20260916043156"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertTracking",
+  "result": "SUCCESS",
+  "uuid": "aaed06e5-140e-4ada-b23b-53479f19a514",
+  "when": "20260916043408Z",
+  "duration": "1.191497",
+  "kw": {
+   "key": "20260916043108"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertTracking",
+  "result": "SUCCESS",
+  "uuid": "c3af6742-b1f4-4cb2-b49c-ceeada3fb705",
+  "when": "20260916043408Z",
+  "duration": "1.224327",
+  "kw": {
+   "key": "20260916043200"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertDNSSAN",
+  "result": "SUCCESS",
+  "uuid": "01e63bd6-db53-4490-91e3-c444c4659a9f",
+  "when": "20260916043408Z",
+  "duration": "0.318106",
+  "kw": {
+   "key": "20260916043156",
+   "hostname": [
+    "server.ipadiagnose.test",
+    "ipa-ca.ipadiagnose.test"
+   ],
+   "san": [
+    "server.ipadiagnose.test",
+    "ipa-ca.ipadiagnose.test"
+   ],
+   "ca": "IPA",
+   "profile": "caIPAserviceCert"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertDNSSAN",
+  "result": "SUCCESS",
+  "uuid": "521487b6-05bd-47b1-8fc1-d926a28dd14a",
+  "when": "20260916043409Z",
+  "duration": "0.428268",
+  "kw": {
+   "key": "20260916043108",
+   "hostname": [
+    "server.ipadiagnose.test"
+   ],
+   "san": [
+    "server.ipadiagnose.test"
+   ],
+   "ca": "IPA",
+   "profile": "caIPAserviceCert"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertNSSTrust",
+  "result": "SUCCESS",
+  "uuid": "d8565b1a-9e9f-4d71-9b52-fdef50d9d70c",
+  "when": "20260916043409Z",
+  "duration": "0.634947",
+  "kw": {
+   "key": "caSigningCert cert-pki-ca"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertNSSTrust",
+  "result": "SUCCESS",
+  "uuid": "95369af8-0341-466f-9d08-28986019d515",
+  "when": "20260916043409Z",
+  "duration": "0.634999",
+  "kw": {
+   "key": "ocspSigningCert cert-pki-ca"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertNSSTrust",
+  "result": "SUCCESS",
+  "uuid": "ffc6b526-889a-45f2-a57a-456e3e5c30b1",
+  "when": "20260916043409Z",
+  "duration": "0.635028",
+  "kw": {
+   "key": "Server-Cert cert-pki-ca"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertNSSTrust",
+  "result": "SUCCESS",
+  "uuid": "c2473938-6c00-4558-80a1-0e6ea7077b16",
+  "when": "20260916043409Z",
+  "duration": "0.635053",
+  "kw": {
+   "key": "subsystemCert cert-pki-ca"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertNSSTrust",
+  "result": "SUCCESS",
+  "uuid": "727348f3-0f5a-48dc-b541-91624ac8e6bf",
+  "when": "20260916043409Z",
+  "duration": "0.635086",
+  "kw": {
+   "key": "auditSigningCert cert-pki-ca"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertMatchCheck",
+  "result": "SUCCESS",
+  "uuid": "dcccdf24-da7f-4f6d-9c67-6f30d2c33778",
+  "when": "20260916043409Z",
+  "duration": "0.131586",
+  "kw": {
+   "key": "/etc/ipa/ca.crt"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertMatchCheck",
+  "result": "SUCCESS",
+  "uuid": "5d87eaf2-7789-4eed-826e-c08fbf3f15f0",
+  "when": "20260916043409Z",
+  "duration": "0.131627",
+  "kw": {
+   "key": "/etc/dirsrv/slapd-IPADIAGNOSE-TEST"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertMatchCheck",
+  "result": "SUCCESS",
+  "uuid": "766fdedb-4030-4d37-a1e8-25d4a435fea7",
+  "when": "20260916043409Z",
+  "duration": "0.131653",
+  "kw": {
+   "key": "/etc/ipa/nssdb"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPADogtagCertsMatchCheck",
+  "result": "SUCCESS",
+  "uuid": "527d1c8b-2370-43ad-bc0c-0d28ed99d469",
+  "when": "20260916043410Z",
+  "duration": "0.972513",
+  "kw": {
+   "key": "subsystemCert cert-pki-ca"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPADogtagCertsMatchCheck",
+  "result": "SUCCESS",
+  "uuid": "9ea25d5f-03a4-49da-94ec-aea5e6cc4ae5",
+  "when": "20260916043410Z",
+  "duration": "0.972559",
+  "kw": {
+   "key": "caSigningCert cert-pki-ca"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPADogtagCertsMatchCheck",
+  "result": "SUCCESS",
+  "uuid": "9318958b-1164-48f1-8073-d790e708036b",
+  "when": "20260916043410Z",
+  "duration": "0.972607",
+  "kw": {
+   "key": "ou=certificateRepository,ou=ca,o=ipaca"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPANSSChainValidation",
+  "result": "SUCCESS",
+  "uuid": "f8c5c89c-f2c6-4460-8d23-5d6e4d6d18e4",
+  "when": "20260916043411Z",
+  "duration": "0.359253",
+  "kw": {
+   "dbdir": "/etc/pki/pki-tomcat/alias",
+   "nickname": "Server-Cert cert-pki-ca",
+   "key": "/etc/pki/pki-tomcat/alias:Server-Cert cert-pki-ca"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPANSSChainValidation",
+  "result": "SUCCESS",
+  "uuid": "0f70a322-53e8-4643-af58-b5017ad12b88",
+  "when": "20260916043411Z",
+  "duration": "0.569030",
+  "kw": {
+   "dbdir": "/etc/dirsrv/slapd-IPADIAGNOSE-TEST/",
+   "nickname": "Server-Cert",
+   "key": "/etc/dirsrv/slapd-IPADIAGNOSE-TEST:Server-Cert"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPAOpenSSLChainValidation",
+  "result": "SUCCESS",
+  "uuid": "c3572df6-0670-4384-8699-3e59ecd06468",
+  "when": "20260916043411Z",
+  "duration": "0.006444",
+  "kw": {
+   "key": "/var/lib/ipa/certs/httpd.crt"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPAOpenSSLChainValidation",
+  "result": "SUCCESS",
+  "uuid": "1ce66362-b7db-409f-b518-4ec4aadc4560",
+  "when": "20260916043411Z",
+  "duration": "0.013142",
+  "kw": {
+   "key": "/var/lib/ipa/ra-agent.pem"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPAKRAAgent",
+  "result": "SUCCESS",
+  "uuid": "69ba7f81-367b-482e-86ae-53fcde791724",
+  "when": "20260916043412Z",
+  "duration": "0.905285",
+  "kw": {}
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertRevocation",
+  "result": "SUCCESS",
+  "uuid": "c8338713-e27b-42fc-a8bf-597ed5b96128",
+  "when": "20260916043412Z",
+  "duration": "0.449119",
+  "kw": {
+   "key": "20260916043049"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertRevocation",
+  "result": "SUCCESS",
+  "uuid": "393e414e-ea76-4394-94ea-ec8ccd95f2fd",
+  "when": "20260916043413Z",
+  "duration": "1.330585",
+  "kw": {
+   "key": "20260916043050"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertRevocation",
+  "result": "SUCCESS",
+  "uuid": "3fa1d34e-b726-4ad8-bc46-2ed48300c48c",
+  "when": "20260916043413Z",
+  "duration": "1.644899",
+  "kw": {
+   "key": "20260916043051"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertRevocation",
+  "result": "SUCCESS",
+  "uuid": "eec6727f-1e38-472e-bd3f-eb07ab372f32",
+  "when": "20260916043414Z",
+  "duration": "2.015464",
+  "kw": {
+   "key": "20260916043054"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertRevocation",
+  "result": "SUCCESS",
+  "uuid": "288e9dcd-8509-4b0d-b61b-7356d5ad8539",
+  "when": "20260916043414Z",
+  "duration": "2.345537",
+  "kw": {
+   "key": "20260916043056"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertRevocation",
+  "result": "SUCCESS",
+  "uuid": "494b5795-421c-49a3-a490-7275de05213c",
+  "when": "20260916043415Z",
+  "duration": "2.806533",
+  "kw": {
+   "key": "20260916043058"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertRevocation",
+  "result": "SUCCESS",
+  "uuid": "732c777a-d365-43be-97f3-dd8490703759",
+  "when": "20260916043416Z",
+  "duration": "3.891978",
+  "kw": {
+   "key": "20260916043156"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertRevocation",
+  "result": "SUCCESS",
+  "uuid": "41281670-e732-48cc-9415-b70e1a99fa65",
+  "when": "20260916043416Z",
+  "duration": "4.292544",
+  "kw": {
+   "key": "20260916043108"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertRevocation",
+  "result": "SUCCESS",
+  "uuid": "88c40978-b271-4790-a721-08b2cc115426",
+  "when": "20260916043416Z",
+  "duration": "4.531320",
+  "kw": {
+   "key": "20260916043200"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertmongerCA",
+  "result": "SUCCESS",
+  "uuid": "1f2b61f2-bbd9-404d-9911-fe52c769c158",
+  "when": "20260916043416Z",
+  "duration": "0.002571",
+  "kw": {
+   "key": "IPA"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertmongerCA",
+  "result": "SUCCESS",
+  "uuid": "57d43136-335d-4142-a244-325af3a065a2",
+  "when": "20260916043416Z",
+  "duration": "0.005097",
+  "kw": {
+   "key": "dogtag-ipa-ca-renew-agent"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertmongerCA",
+  "result": "SUCCESS",
+  "uuid": "2069fe7f-78ce-4f67-b529-392669fcb7e2",
+  "when": "20260916043416Z",
+  "duration": "0.007568",
+  "kw": {
+   "key": "dogtag-ipa-ca-renew-agent-reuse"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACAChainExpirationCheck",
+  "result": "SUCCESS",
+  "uuid": "792150c9-6044-4157-a236-c9c0f661d55c",
+  "when": "20260916043416Z",
+  "duration": "0.005764",
+  "kw": {
+   "path": "/etc/ipa/ca.crt",
+   "key": "CN=Certificate Authority,O=IPADIAGNOSE.TEST",
+   "days": 7304
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "CertmongerStuckCheck",
+  "result": "SUCCESS",
+  "uuid": "8bba6aff-f975-48c5-8328-3f7ed0650cd4",
+  "when": "20260916043416Z",
+  "duration": "0.026181",
+  "kw": {
+   "key": "no_stuck"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "CertmongerFIPSTokensCheck",
+  "result": "SUCCESS",
+  "uuid": "fda4c1b6-18d7-4e50-987f-47f355f57552",
+  "when": "20260916043416Z",
+  "duration": "0.106455",
+  "kw": {
+   "key": "fipstokencheck"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.config",
+  "check": "IPAkrbLastSuccessfulAuth",
+  "result": "SUCCESS",
+  "uuid": "7970189d-585f-4564-9065-3efd320f0ae4",
+  "when": "20260916043416Z",
+  "duration": "0.023215",
+  "kw": {
+   "key": "krbLastSuccessfulAuth"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.config",
+  "check": "SSSDAllowedUids389Check",
+  "result": "SUCCESS",
+  "uuid": "6a59d72a-3f7c-4c1f-97b4-15f57c1fa17c",
+  "when": "20260916043416Z",
+  "duration": "0.005716",
+  "kw": {
+   "key": "SSSD_allowed_uids"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.dna",
+  "check": "IPADNARangeCheck",
+  "result": "SUCCESS",
+  "uuid": "26f35428-6673-4af1-9f9e-2d7f1bf05758",
+  "when": "20260916043417Z",
+  "duration": "0.640357",
+  "kw": {
+   "range_start": 1803800002,
+   "range_max": 1803999999,
+   "next_start": 0,
+   "next_max": 0
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.idns",
+  "check": "IPADNSSystemRecordsCheck",
+  "result": "WARNING",
+  "uuid": "25ca5045-fe2b-4730-a749-888965cae6f4",
+  "when": "20260916043417Z",
+  "duration": "0.063978",
+  "kw": {
+   "msg": "Expected SRV record missing",
+   "key": "_ldap._tcp.ipadiagnose.test.:server.ipadiagnose.test."
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.idns",
+  "check": "IPADNSSystemRecordsCheck",
+  "result": "WARNING",
+  "uuid": "c5ea18b3-600c-4be7-bb1a-82c7961edd11",
+  "when": "20260916043417Z",
+  "duration": "0.086156",
+  "kw": {
+   "msg": "Expected SRV record missing",
+   "key": "_kerberos._tcp.ipadiagnose.test.:server.ipadiagnose.test."
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.idns",
+  "check": "IPADNSSystemRecordsCheck",
+  "result": "WARNING",
+  "uuid": "4b05dda9-3b11-4c3c-a74b-7955c4caee10",
+  "when": "20260916043417Z",
+  "duration": "0.110440",
+  "kw": {
+   "msg": "Expected SRV record missing",
+   "key": "_kerberos._udp.ipadiagnose.test.:server.ipadiagnose.test."
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.idns",
+  "check": "IPADNSSystemRecordsCheck",
+  "result": "WARNING",
+  "uuid": "92f9462f-3bbf-457f-8d17-0500013b8268",
+  "when": "20260916043417Z",
+  "duration": "0.132474",
+  "kw": {
+   "msg": "Expected SRV record missing",
+   "key": "_kerberos-master._tcp.ipadiagnose.test.:server.ipadiagnose.test."
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.idns",
+  "check": "IPADNSSystemRecordsCheck",
+  "result": "WARNING",
+  "uuid": "9746dc9f-94a8-43c9-8a39-e3469f4f273e",
+  "when": "20260916043417Z",
+  "duration": "0.152658",
+  "kw": {
+   "msg": "Expected SRV record missing",
+   "key": "_kerberos-master._udp.ipadiagnose.test.:server.ipadiagnose.test."
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.idns",
+  "check": "IPADNSSystemRecordsCheck",
+  "result": "WARNING",
+  "uuid": "6ffbf2b6-7d8b-4fbd-927a-243f6d21307f",
+  "when": "20260916043417Z",
+  "duration": "0.172832",
+  "kw": {
+   "msg": "Expected SRV record missing",
+   "key": "_kpasswd._tcp.ipadiagnose.test.:server.ipadiagnose.test."
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.idns",
+  "check": "IPADNSSystemRecordsCheck",
+  "result": "WARNING",
+  "uuid": "c3a1a470-8214-4c09-aa1b-22efe2852d7a",
+  "when": "20260916043417Z",
+  "duration": "0.190509",
+  "kw": {
+   "msg": "Expected SRV record missing",
+   "key": "_kpasswd._udp.ipadiagnose.test.:server.ipadiagnose.test."
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.idns",
+  "check": "IPADNSSystemRecordsCheck",
+  "result": "WARNING",
+  "uuid": "d5f4ef2d-06bd-445a-a465-077c63596f19",
+  "when": "20260916043417Z",
+  "duration": "0.208238",
+  "kw": {
+   "msg": "Expected URI record missing",
+   "key": "_kerberos.ipadiagnose.test.:krb5srv:m:tcp:server.ipadiagnose.test."
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.idns",
+  "check": "IPADNSSystemRecordsCheck",
+  "result": "WARNING",
+  "uuid": "ef21e703-0b78-445e-96d7-f66ae40a0288",
+  "when": "20260916043417Z",
+  "duration": "0.208279",
+  "kw": {
+   "msg": "Expected URI record missing",
+   "key": "_kerberos.ipadiagnose.test.:krb5srv:m:udp:server.ipadiagnose.test."
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.idns",
+  "check": "IPADNSSystemRecordsCheck",
+  "result": "WARNING",
+  "uuid": "c7563f39-a192-4e4d-9982-814a2d8e718c",
+  "when": "20260916043417Z",
+  "duration": "0.226337",
+  "kw": {
+   "msg": "Expected URI record missing",
+   "key": "_kpasswd.ipadiagnose.test.:krb5srv:m:tcp:server.ipadiagnose.test."
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.idns",
+  "check": "IPADNSSystemRecordsCheck",
+  "result": "WARNING",
+  "uuid": "e7ed31e1-ed75-4773-841e-9f9d3d225c67",
+  "when": "20260916043417Z",
+  "duration": "0.226380",
+  "kw": {
+   "msg": "Expected URI record missing",
+   "key": "_kpasswd.ipadiagnose.test.:krb5srv:m:udp:server.ipadiagnose.test."
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.idns",
+  "check": "IPADNSSystemRecordsCheck",
+  "result": "WARNING",
+  "uuid": "96565032-bf9c-46f0-80f2-89b58b020ca6",
+  "when": "20260916043417Z",
+  "duration": "0.279635",
+  "kw": {
+   "key": "ipa_ca_missing_server.ipadiagnose.test",
+   "server": "server.ipadiagnose.test",
+   "msg": "missing IP address for ipa-ca server {server}"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileNSSDBCheck",
+  "result": "SUCCESS",
+  "uuid": "23caa4d2-4490-454f-9026-d163716412bb",
+  "when": "20260916043417Z",
+  "duration": "0.000139",
+  "kw": {
+   "key": "_etc_dirsrv_slapd-IPADIAGNOSE-TEST_cert9.db_mode",
+   "type": "mode",
+   "path": "/etc/dirsrv/slapd-IPADIAGNOSE-TEST/cert9.db"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileNSSDBCheck",
+  "result": "SUCCESS",
+  "uuid": "2bdf023e-a07d-40ee-9a61-323c362c7ae7",
+  "when": "20260916043417Z",
+  "duration": "0.000268",
+  "kw": {
+   "key": "_etc_dirsrv_slapd-IPADIAGNOSE-TEST_cert9.db_mode",
+   "type": "owner",
+   "path": "/etc/dirsrv/slapd-IPADIAGNOSE-TEST/cert9.db"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileNSSDBCheck",
+  "result": "SUCCESS",
+  "uuid": "e3f8730f-6221-4d63-b0b0-b3cd782c25fb",
+  "when": "20260916043417Z",
+  "duration": "0.002252",
+  "kw": {
+   "key": "_etc_dirsrv_slapd-IPADIAGNOSE-TEST_cert9.db_mode",
+   "type": "group",
+   "path": "/etc/dirsrv/slapd-IPADIAGNOSE-TEST/cert9.db"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileNSSDBCheck",
+  "result": "SUCCESS",
+  "uuid": "4810281b-1f83-44d8-955f-5a0282ad1d1c",
+  "when": "20260916043417Z",
+  "duration": "0.002334",
+  "kw": {
+   "key": "_etc_dirsrv_slapd-IPADIAGNOSE-TEST_key4.db_mode",
+   "type": "mode",
+   "path": "/etc/dirsrv/slapd-IPADIAGNOSE-TEST/key4.db"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileNSSDBCheck",
+  "result": "SUCCESS",
+  "uuid": "bd383cec-7684-44a2-b57f-f834a8325b89",
+  "when": "20260916043417Z",
+  "duration": "0.002412",
+  "kw": {
+   "key": "_etc_dirsrv_slapd-IPADIAGNOSE-TEST_key4.db_mode",
+   "type": "owner",
+   "path": "/etc/dirsrv/slapd-IPADIAGNOSE-TEST/key4.db"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileNSSDBCheck",
+  "result": "SUCCESS",
+  "uuid": "e2b43905-1444-46e5-b057-ae69321a64c6",
+  "when": "20260916043417Z",
+  "duration": "0.002795",
+  "kw": {
+   "key": "_etc_dirsrv_slapd-IPADIAGNOSE-TEST_key4.db_mode",
+   "type": "group",
+   "path": "/etc/dirsrv/slapd-IPADIAGNOSE-TEST/key4.db"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileNSSDBCheck",
+  "result": "SUCCESS",
+  "uuid": "ed616633-22b5-453a-9bc8-d09833a601e9",
+  "when": "20260916043417Z",
+  "duration": "0.002867",
+  "kw": {
+   "key": "_etc_dirsrv_slapd-IPADIAGNOSE-TEST_pkcs11.txt_mode",
+   "type": "mode",
+   "path": "/etc/dirsrv/slapd-IPADIAGNOSE-TEST/pkcs11.txt"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileNSSDBCheck",
+  "result": "SUCCESS",
+  "uuid": "969c3aeb-fe34-4dfe-9551-cfa15f1bc0a9",
+  "when": "20260916043417Z",
+  "duration": "0.002937",
+  "kw": {
+   "key": "_etc_dirsrv_slapd-IPADIAGNOSE-TEST_pkcs11.txt_mode",
+   "type": "owner",
+   "path": "/etc/dirsrv/slapd-IPADIAGNOSE-TEST/pkcs11.txt"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileNSSDBCheck",
+  "result": "SUCCESS",
+  "uuid": "54062171-08b1-4db5-ac2c-d39a30c78286",
+  "when": "20260916043417Z",
+  "duration": "0.007626",
+  "kw": {
+   "key": "_etc_dirsrv_slapd-IPADIAGNOSE-TEST_pkcs11.txt_mode",
+   "type": "group",
+   "path": "/etc/dirsrv/slapd-IPADIAGNOSE-TEST/pkcs11.txt"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileNSSDBCheck",
+  "result": "SUCCESS",
+  "uuid": "4cf51895-533d-45e4-bda4-52cbc8e8b209",
+  "when": "20260916043417Z",
+  "duration": "0.007706",
+  "kw": {
+   "key": "_etc_pki_pki-tomcat_alias_cert9.db_mode",
+   "type": "mode",
+   "path": "/etc/pki/pki-tomcat/alias/cert9.db"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileNSSDBCheck",
+  "result": "SUCCESS",
+  "uuid": "97d4746a-628f-40e8-b000-2c680bc6de04",
+  "when": "20260916043417Z",
+  "duration": "0.007782",
+  "kw": {
+   "key": "_etc_pki_pki-tomcat_alias_cert9.db_mode",
+   "type": "owner",
+   "path": "/etc/pki/pki-tomcat/alias/cert9.db"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileNSSDBCheck",
+  "result": "SUCCESS",
+  "uuid": "c51932bc-b688-45cf-a567-9ab6771b4702",
+  "when": "20260916043417Z",
+  "duration": "0.011208",
+  "kw": {
+   "key": "_etc_pki_pki-tomcat_alias_cert9.db_mode",
+   "type": "group",
+   "path": "/etc/pki/pki-tomcat/alias/cert9.db"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileNSSDBCheck",
+  "result": "SUCCESS",
+  "uuid": "ed1719f5-35d9-4bf3-9d55-5bbbf300fbd3",
+  "when": "20260916043417Z",
+  "duration": "0.011291",
+  "kw": {
+   "key": "_etc_pki_pki-tomcat_alias_key4.db_mode",
+   "type": "mode",
+   "path": "/etc/pki/pki-tomcat/alias/key4.db"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileNSSDBCheck",
+  "result": "SUCCESS",
+  "uuid": "e323e877-c867-47ba-9188-d19935a9fa2b",
+  "when": "20260916043417Z",
+  "duration": "0.011369",
+  "kw": {
+   "key": "_etc_pki_pki-tomcat_alias_key4.db_mode",
+   "type": "owner",
+   "path": "/etc/pki/pki-tomcat/alias/key4.db"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileNSSDBCheck",
+  "result": "SUCCESS",
+  "uuid": "f80e9ccd-97ef-47f9-9df4-0a8cec26e109",
+  "when": "20260916043417Z",
+  "duration": "0.012631",
+  "kw": {
+   "key": "_etc_pki_pki-tomcat_alias_key4.db_mode",
+   "type": "group",
+   "path": "/etc/pki/pki-tomcat/alias/key4.db"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileNSSDBCheck",
+  "result": "SUCCESS",
+  "uuid": "d82ee377-b06e-4f3d-a6b5-47bd848bb71c",
+  "when": "20260916043417Z",
+  "duration": "0.012703",
+  "kw": {
+   "key": "_etc_pki_pki-tomcat_alias_pkcs11.txt_mode",
+   "type": "mode",
+   "path": "/etc/pki/pki-tomcat/alias/pkcs11.txt"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileNSSDBCheck",
+  "result": "SUCCESS",
+  "uuid": "bbc35f38-0d86-4ba1-aa46-9df9ddc31bcc",
+  "when": "20260916043417Z",
+  "duration": "0.012772",
+  "kw": {
+   "key": "_etc_pki_pki-tomcat_alias_pkcs11.txt_mode",
+   "type": "owner",
+   "path": "/etc/pki/pki-tomcat/alias/pkcs11.txt"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileNSSDBCheck",
+  "result": "SUCCESS",
+  "uuid": "e9b1d540-fac2-4afe-9ab0-ef648e92213e",
+  "when": "20260916043417Z",
+  "duration": "0.013963",
+  "kw": {
+   "key": "_etc_pki_pki-tomcat_alias_pkcs11.txt_mode",
+   "type": "group",
+   "path": "/etc/pki/pki-tomcat/alias/pkcs11.txt"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "8ae7c753-b301-49df-8832-c4e8724604b6",
+  "when": "20260916043417Z",
+  "duration": "0.000102",
+  "kw": {
+   "key": "_var_lib_ipa_ra-agent.pem_mode",
+   "type": "mode",
+   "path": "/var/lib/ipa/ra-agent.pem"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "ddc32fcd-578a-42a6-93f2-f7545daa908e",
+  "when": "20260916043417Z",
+  "duration": "0.000190",
+  "kw": {
+   "key": "_var_lib_ipa_ra-agent.pem_mode",
+   "type": "owner",
+   "path": "/var/lib/ipa/ra-agent.pem"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "9dd783aa-e9e3-49d6-af43-04b1655c3b17",
+  "when": "20260916043417Z",
+  "duration": "0.016813",
+  "kw": {
+   "key": "_var_lib_ipa_ra-agent.pem_mode",
+   "type": "group",
+   "path": "/var/lib/ipa/ra-agent.pem"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "54466be3-8b6d-4491-a908-21cf3217e71e",
+  "when": "20260916043417Z",
+  "duration": "0.017747",
+  "kw": {
+   "key": "_var_lib_ipa_ra-agent.key_mode",
+   "type": "mode",
+   "path": "/var/lib/ipa/ra-agent.key"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "a27db6f7-b7c1-4786-b429-c5c9a965eed7",
+  "when": "20260916043417Z",
+  "duration": "0.018902",
+  "kw": {
+   "key": "_var_lib_ipa_ra-agent.key_mode",
+   "type": "owner",
+   "path": "/var/lib/ipa/ra-agent.key"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "20b01f2f-2398-43dc-be8c-3b0c3a8fb145",
+  "when": "20260916043417Z",
+  "duration": "0.022971",
+  "kw": {
+   "key": "_var_lib_ipa_ra-agent.key_mode",
+   "type": "group",
+   "path": "/var/lib/ipa/ra-agent.key"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "f4d903dd-52e7-45bd-8605-7fa655c5a90d",
+  "when": "20260916043417Z",
+  "duration": "0.023061",
+  "kw": {
+   "key": "_var_kerberos_krb5kdc_kdc.crt_mode",
+   "type": "mode",
+   "path": "/var/kerberos/krb5kdc/kdc.crt"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "d5013cfd-d7c9-476d-a15d-29418827a24f",
+  "when": "20260916043417Z",
+  "duration": "0.023143",
+  "kw": {
+   "key": "_var_kerberos_krb5kdc_kdc.crt_mode",
+   "type": "owner",
+   "path": "/var/kerberos/krb5kdc/kdc.crt"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "79f06036-5959-4108-bcfa-34199c102fab",
+  "when": "20260916043417Z",
+  "duration": "0.023600",
+  "kw": {
+   "key": "_var_kerberos_krb5kdc_kdc.crt_mode",
+   "type": "group",
+   "path": "/var/kerberos/krb5kdc/kdc.crt"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "c888f20d-a0b1-4732-8536-09c5b760a6b6",
+  "when": "20260916043417Z",
+  "duration": "0.023668",
+  "kw": {
+   "key": "_var_kerberos_krb5kdc_kdc.key_mode",
+   "type": "mode",
+   "path": "/var/kerberos/krb5kdc/kdc.key"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "64ec9ca4-cfc9-4c89-bfc0-ce3dc60e75c1",
+  "when": "20260916043417Z",
+  "duration": "0.023733",
+  "kw": {
+   "key": "_var_kerberos_krb5kdc_kdc.key_mode",
+   "type": "owner",
+   "path": "/var/kerberos/krb5kdc/kdc.key"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "97afe051-d8a1-4c07-b7ba-b22b9577d9b1",
+  "when": "20260916043417Z",
+  "duration": "0.024131",
+  "kw": {
+   "key": "_var_kerberos_krb5kdc_kdc.key_mode",
+   "type": "group",
+   "path": "/var/kerberos/krb5kdc/kdc.key"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "431eeca9-53c8-4ed8-a25a-d3aef1fc7580",
+  "when": "20260916043417Z",
+  "duration": "0.024201",
+  "kw": {
+   "key": "_etc_httpd_alias_ipasession.key_mode",
+   "type": "mode",
+   "path": "/etc/httpd/alias/ipasession.key"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "5a5d32bf-b0d5-49b2-afc2-d7806c47b46c",
+  "when": "20260916043417Z",
+  "duration": "0.024313",
+  "kw": {
+   "key": "_etc_httpd_alias_ipasession.key_mode",
+   "type": "owner",
+   "path": "/etc/httpd/alias/ipasession.key"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "04ecdd50-0131-4f03-9f9c-f709e133ce4f",
+  "when": "20260916043417Z",
+  "duration": "0.024688",
+  "kw": {
+   "key": "_etc_httpd_alias_ipasession.key_mode",
+   "type": "group",
+   "path": "/etc/httpd/alias/ipasession.key"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "685889ce-ed51-44c4-9f7a-508027437c36",
+  "when": "20260916043417Z",
+  "duration": "0.024755",
+  "kw": {
+   "key": "_etc_dirsrv_ds.keytab_mode",
+   "type": "mode",
+   "path": "/etc/dirsrv/ds.keytab"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "ed6be433-b9bd-43da-8b2f-0a7e7417526e",
+  "when": "20260916043417Z",
+  "duration": "0.024826",
+  "kw": {
+   "key": "_etc_dirsrv_ds.keytab_mode",
+   "type": "owner",
+   "path": "/etc/dirsrv/ds.keytab"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "b678762c-ef79-4595-8689-e3ac8cdfbc91",
+  "when": "20260916043417Z",
+  "duration": "0.029304",
+  "kw": {
+   "key": "_etc_dirsrv_ds.keytab_mode",
+   "type": "group",
+   "path": "/etc/dirsrv/ds.keytab"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "2a711e0d-e6c9-4b82-9dc3-e87ce1e9b054",
+  "when": "20260916043417Z",
+  "duration": "0.029404",
+  "kw": {
+   "key": "_etc_ipa_ca.crt_mode",
+   "type": "mode",
+   "path": "/etc/ipa/ca.crt"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "ead15e8e-3675-40e8-9da6-8482daece1ce",
+  "when": "20260916043417Z",
+  "duration": "0.029505",
+  "kw": {
+   "key": "_etc_ipa_ca.crt_mode",
+   "type": "owner",
+   "path": "/etc/ipa/ca.crt"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "9a18280e-42c2-4615-82d0-cf7fc2e37db0",
+  "when": "20260916043417Z",
+  "duration": "0.029962",
+  "kw": {
+   "key": "_etc_ipa_ca.crt_mode",
+   "type": "group",
+   "path": "/etc/ipa/ca.crt"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "836fa6fa-9833-44a5-b3a2-911797a40633",
+  "when": "20260916043417Z",
+  "duration": "0.030030",
+  "kw": {
+   "key": "_etc_ipa_custodia_server.keys_mode",
+   "type": "mode",
+   "path": "/etc/ipa/custodia/server.keys"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "03ca843c-1c30-4d8d-929b-0df6e43fb9f8",
+  "when": "20260916043417Z",
+  "duration": "0.030096",
+  "kw": {
+   "key": "_etc_ipa_custodia_server.keys_mode",
+   "type": "owner",
+   "path": "/etc/ipa/custodia/server.keys"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "a3320e78-b851-4326-95f3-eb711722fc85",
+  "when": "20260916043417Z",
+  "duration": "0.030543",
+  "kw": {
+   "key": "_etc_ipa_custodia_server.keys_mode",
+   "type": "group",
+   "path": "/etc/ipa/custodia/server.keys"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "15c237fa-9768-4ab4-aa9a-695cb5f2ed4a",
+  "when": "20260916043417Z",
+  "duration": "0.030630",
+  "kw": {
+   "key": "_etc_resolv.conf_mode",
+   "type": "mode",
+   "path": "/etc/resolv.conf"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "766cdab2-15f6-44db-a412-7dc5e6befadb",
+  "when": "20260916043417Z",
+  "duration": "0.030716",
+  "kw": {
+   "key": "_etc_resolv.conf_mode",
+   "type": "owner",
+   "path": "/etc/resolv.conf"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "a651f122-ec18-43e4-bcfd-f1df296dcdb8",
+  "when": "20260916043417Z",
+  "duration": "0.031129",
+  "kw": {
+   "key": "_etc_resolv.conf_mode",
+   "type": "group",
+   "path": "/etc/resolv.conf"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "a1e76a25-4d91-4e10-9c77-20d00e2e5c5d",
+  "when": "20260916043417Z",
+  "duration": "0.031247",
+  "kw": {
+   "key": "_etc_hosts_mode",
+   "type": "mode",
+   "path": "/etc/hosts"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "1702c9ef-56ab-43cb-968b-f9508d0a5988",
+  "when": "20260916043417Z",
+  "duration": "0.031321",
+  "kw": {
+   "key": "_etc_hosts_mode",
+   "type": "owner",
+   "path": "/etc/hosts"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "eabfc350-6a0c-4db1-ab39-ccc89a4758b1",
+  "when": "20260916043417Z",
+  "duration": "0.031784",
+  "kw": {
+   "key": "_etc_hosts_mode",
+   "type": "group",
+   "path": "/etc/hosts"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "d218f93a-4361-4923-9224-f59ace8059f4",
+  "when": "20260916043417Z",
+  "duration": "0.031856",
+  "kw": {
+   "key": "_etc_pki_tls_certs_mode",
+   "type": "mode",
+   "path": "/etc/pki/tls/certs"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "61d14d87-f69d-44c6-a589-1ab3b9b5ee52",
+  "when": "20260916043417Z",
+  "duration": "0.031924",
+  "kw": {
+   "key": "_etc_pki_tls_certs_mode",
+   "type": "owner",
+   "path": "/etc/pki/tls/certs"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "34c0bd9f-40ff-44d2-a3ac-57c2098db1d4",
+  "when": "20260916043417Z",
+  "duration": "0.032345",
+  "kw": {
+   "key": "_etc_pki_tls_certs_mode",
+   "type": "group",
+   "path": "/etc/pki/tls/certs"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "af7453b5-d532-40ea-9cc0-a4e52c6c268c",
+  "when": "20260916043417Z",
+  "duration": "0.032412",
+  "kw": {
+   "key": "_var_log_ipaclient-install.log_mode",
+   "type": "mode",
+   "path": "/var/log/ipaclient-install.log"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "bb38df43-9632-4b9d-b38b-8d5210254d61",
+  "when": "20260916043417Z",
+  "duration": "0.032475",
+  "kw": {
+   "key": "_var_log_ipaclient-install.log_mode",
+   "type": "owner",
+   "path": "/var/log/ipaclient-install.log"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "4ee006d0-c5ef-4988-809c-e7cd223ca1d8",
+  "when": "20260916043417Z",
+  "duration": "0.032863",
+  "kw": {
+   "key": "_var_log_ipaclient-install.log_mode",
+   "type": "group",
+   "path": "/var/log/ipaclient-install.log"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "c7f77b2d-a091-4868-93d5-b103bf12dbae",
+  "when": "20260916043417Z",
+  "duration": "0.032926",
+  "kw": {
+   "key": "_var_log_ipaserver-install.log_mode",
+   "type": "mode",
+   "path": "/var/log/ipaserver-install.log"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "b59fb60a-6a91-4ded-8ab0-96f776b42452",
+  "when": "20260916043417Z",
+  "duration": "0.032987",
+  "kw": {
+   "key": "_var_log_ipaserver-install.log_mode",
+   "type": "owner",
+   "path": "/var/log/ipaserver-install.log"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "8791fcd9-bb46-49fe-9d2c-d1c8db8682b3",
+  "when": "20260916043418Z",
+  "duration": "0.033389",
+  "kw": {
+   "key": "_var_log_ipaserver-install.log_mode",
+   "type": "group",
+   "path": "/var/log/ipaserver-install.log"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "ca560a12-2ff7-4eda-9574-0872ba677cb2",
+  "when": "20260916043418Z",
+  "duration": "0.033455",
+  "kw": {
+   "key": "_var_log_ipa-custodia.audit.log_mode",
+   "type": "mode",
+   "path": "/var/log/ipa-custodia.audit.log"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "79644f87-d243-4bfb-b455-2ec5ee12a86d",
+  "when": "20260916043418Z",
+  "duration": "0.033557",
+  "kw": {
+   "key": "_var_log_ipa-custodia.audit.log_mode",
+   "type": "owner",
+   "path": "/var/log/ipa-custodia.audit.log"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "71d14a8c-4f7d-476c-a505-d5c8e1d48128",
+  "when": "20260916043418Z",
+  "duration": "0.033975",
+  "kw": {
+   "key": "_var_log_ipa-custodia.audit.log_mode",
+   "type": "group",
+   "path": "/var/log/ipa-custodia.audit.log"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "0d0d6651-0b4e-4d86-8227-10d56cf02d59",
+  "when": "20260916043418Z",
+  "duration": "0.034044",
+  "kw": {
+   "key": "_var_log_kadmind.log_mode",
+   "type": "mode",
+   "path": "/var/log/kadmind.log"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "0a0c7aca-31fa-4d73-88a2-df930cb45bae",
+  "when": "20260916043418Z",
+  "duration": "0.034127",
+  "kw": {
+   "key": "_var_log_kadmind.log_mode",
+   "type": "owner",
+   "path": "/var/log/kadmind.log"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "a4b31dc3-2b9e-4104-b75c-3cc49b01f863",
+  "when": "20260916043418Z",
+  "duration": "0.034967",
+  "kw": {
+   "key": "_var_log_kadmind.log_mode",
+   "type": "group",
+   "path": "/var/log/kadmind.log"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "cc869a84-56a0-4192-8496-21e27506011e",
+  "when": "20260916043418Z",
+  "duration": "0.035065",
+  "kw": {
+   "key": "_var_log_krb5kdc.log_mode",
+   "type": "mode",
+   "path": "/var/log/krb5kdc.log"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "86b82b89-a0dd-41c6-b817-de0ea8496a1b",
+  "when": "20260916043418Z",
+  "duration": "0.035159",
+  "kw": {
+   "key": "_var_log_krb5kdc.log_mode",
+   "type": "owner",
+   "path": "/var/log/krb5kdc.log"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "ccaefd8c-aae7-47ca-9f67-d133e2790536",
+  "when": "20260916043418Z",
+  "duration": "0.035577",
+  "kw": {
+   "key": "_var_log_krb5kdc.log_mode",
+   "type": "group",
+   "path": "/var/log/krb5kdc.log"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "01912e8e-86f5-44fc-9243-b75785319b19",
+  "when": "20260916043418Z",
+  "duration": "0.035664",
+  "kw": {
+   "key": "_var_log_dirsrv_slapd-IPADIAGNOSE-TEST_access_mode",
+   "type": "mode",
+   "path": "/var/log/dirsrv/slapd-IPADIAGNOSE-TEST/access"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "4205e400-b638-4bfe-ba63-18d0cc28d2ea",
+  "when": "20260916043418Z",
+  "duration": "0.035754",
+  "kw": {
+   "key": "_var_log_dirsrv_slapd-IPADIAGNOSE-TEST_access_mode",
+   "type": "owner",
+   "path": "/var/log/dirsrv/slapd-IPADIAGNOSE-TEST/access"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "22e3025c-ab85-452e-9937-66b203775781",
+  "when": "20260916043418Z",
+  "duration": "0.037482",
+  "kw": {
+   "key": "_var_log_dirsrv_slapd-IPADIAGNOSE-TEST_access_mode",
+   "type": "group",
+   "path": "/var/log/dirsrv/slapd-IPADIAGNOSE-TEST/access"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "5e924120-2e4e-4345-ac2e-102868f59512",
+  "when": "20260916043418Z",
+  "duration": "0.037564",
+  "kw": {
+   "key": "_var_log_dirsrv_slapd-IPADIAGNOSE-TEST_errors_mode",
+   "type": "mode",
+   "path": "/var/log/dirsrv/slapd-IPADIAGNOSE-TEST/errors"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "2ecf9b9f-9c6e-4186-afb0-58a2fc86d1c2",
+  "when": "20260916043418Z",
+  "duration": "0.037647",
+  "kw": {
+   "key": "_var_log_dirsrv_slapd-IPADIAGNOSE-TEST_errors_mode",
+   "type": "owner",
+   "path": "/var/log/dirsrv/slapd-IPADIAGNOSE-TEST/errors"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "b6372db5-72a6-44b0-90de-e234c1d2cad5",
+  "when": "20260916043418Z",
+  "duration": "0.039369",
+  "kw": {
+   "key": "_var_log_dirsrv_slapd-IPADIAGNOSE-TEST_errors_mode",
+   "type": "group",
+   "path": "/var/log/dirsrv/slapd-IPADIAGNOSE-TEST/errors"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "43c059f8-67c7-4d2f-b5d5-c693013f6c6a",
+  "when": "20260916043418Z",
+  "duration": "0.039452",
+  "kw": {
+   "key": "_var_log_httpd_error_log_mode",
+   "type": "mode",
+   "path": "/var/log/httpd/error_log"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "53222322-a366-441a-9164-1fd309f07667",
+  "when": "20260916043418Z",
+  "duration": "0.039527",
+  "kw": {
+   "key": "_var_log_httpd_error_log_mode",
+   "type": "owner",
+   "path": "/var/log/httpd/error_log"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "9bb332da-8bff-4309-850b-ab1232999cac",
+  "when": "20260916043418Z",
+  "duration": "0.039962",
+  "kw": {
+   "key": "_var_log_httpd_error_log_mode",
+   "type": "group",
+   "path": "/var/log/httpd/error_log"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "0a96a1cd-aa49-4119-b64e-6b75f72736e0",
+  "when": "20260916043418Z",
+  "duration": "0.040033",
+  "kw": {
+   "key": "_var_log_pki_pki-tomcat_ca_debug.2026-09-16.log_mode",
+   "type": "mode",
+   "path": "/var/log/pki/pki-tomcat/ca/debug.2026-09-16.log"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "171f7bd1-f830-43aa-9adb-c0bfc4995d2b",
+  "when": "20260916043418Z",
+  "duration": "0.040104",
+  "kw": {
+   "key": "_var_log_pki_pki-tomcat_ca_debug.2026-09-16.log_mode",
+   "type": "owner",
+   "path": "/var/log/pki/pki-tomcat/ca/debug.2026-09-16.log"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "2aef69ba-2115-4ea9-a9a6-026deb4abbe0",
+  "when": "20260916043418Z",
+  "duration": "0.041771",
+  "kw": {
+   "key": "_var_log_pki_pki-tomcat_ca_debug.2026-09-16.log_mode",
+   "type": "group",
+   "path": "/var/log/pki/pki-tomcat/ca/debug.2026-09-16.log"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "68c94a10-d9ee-4e4a-b254-92c7ed49d337",
+  "when": "20260916043418Z",
+  "duration": "0.041859",
+  "kw": {
+   "key": "_var_log_pki_pki-tomcat_ca_signedAudit_ca_audit_mode",
+   "type": "mode",
+   "path": "/var/log/pki/pki-tomcat/ca/signedAudit/ca_audit"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "0911ac10-be4e-47d5-994c-d454f37a7ca7",
+  "when": "20260916043418Z",
+  "duration": "0.041943",
+  "kw": {
+   "key": "_var_log_pki_pki-tomcat_ca_signedAudit_ca_audit_mode",
+   "type": "owner",
+   "path": "/var/log/pki/pki-tomcat/ca/signedAudit/ca_audit"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "34f2f15b-7e8b-4627-ab75-432d95779247",
+  "when": "20260916043418Z",
+  "duration": "0.043521",
+  "kw": {
+   "key": "_var_log_pki_pki-tomcat_ca_signedAudit_ca_audit_mode",
+   "type": "group",
+   "path": "/var/log/pki/pki-tomcat/ca/signedAudit/ca_audit"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "924fd691-9734-42af-bfc4-53ad92bcbd4c",
+  "when": "20260916043418Z",
+  "duration": "0.043600",
+  "kw": {
+   "key": "_var_log_pki_pki-tomcat_ca_selftests.log_mode",
+   "type": "mode",
+   "path": "/var/log/pki/pki-tomcat/ca/selftests.log"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "02f11407-aa63-4c3f-9b6d-b589f919da9d",
+  "when": "20260916043418Z",
+  "duration": "0.043677",
+  "kw": {
+   "key": "_var_log_pki_pki-tomcat_ca_selftests.log_mode",
+   "type": "owner",
+   "path": "/var/log/pki/pki-tomcat/ca/selftests.log"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "20d1d720-3b62-4644-be3e-fed797448113",
+  "when": "20260916043418Z",
+  "duration": "0.045150",
+  "kw": {
+   "key": "_var_log_pki_pki-tomcat_ca_selftests.log_mode",
+   "type": "group",
+   "path": "/var/log/pki/pki-tomcat/ca/selftests.log"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "952da9b7-e605-49d6-be8a-bdf1ecf3b812",
+  "when": "20260916043418Z",
+  "duration": "0.045248",
+  "kw": {
+   "key": "_var_log_pki_pki-tomcat_ca_system_mode",
+   "type": "mode",
+   "path": "/var/log/pki/pki-tomcat/ca/system",
+   "msg": "File does not exist"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "00b0fca4-d8d1-44a9-ac63-a80a54dbc947",
+  "when": "20260916043418Z",
+  "duration": "0.045277",
+  "kw": {
+   "key": "_var_log_pki_pki-tomcat_ca_system_owner",
+   "type": "owner",
+   "path": "/var/log/pki/pki-tomcat/ca/system",
+   "msg": "File does not exist"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "2dccbc73-99ff-471b-a740-9336a4ebbaf8",
+  "when": "20260916043418Z",
+  "duration": "0.045297",
+  "kw": {
+   "key": "_var_log_pki_pki-tomcat_ca_system_group",
+   "type": "group",
+   "path": "/var/log/pki/pki-tomcat/ca/system",
+   "msg": "File does not exist"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "dda62f9a-8c15-4ff9-aadd-90cdc261149d",
+  "when": "20260916043418Z",
+  "duration": "0.045337",
+  "kw": {
+   "key": "_var_log_pki_pki-tomcat_ca_transactions_mode",
+   "type": "mode",
+   "path": "/var/log/pki/pki-tomcat/ca/transactions",
+   "msg": "File does not exist"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "9c81f341-f9da-47aa-bbe2-59d56893ce30",
+  "when": "20260916043418Z",
+  "duration": "0.045357",
+  "kw": {
+   "key": "_var_log_pki_pki-tomcat_ca_transactions_owner",
+   "type": "owner",
+   "path": "/var/log/pki/pki-tomcat/ca/transactions",
+   "msg": "File does not exist"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "63fe3c00-b13e-454f-8a25-a44418fe98e2",
+  "when": "20260916043418Z",
+  "duration": "0.045374",
+  "kw": {
+   "key": "_var_log_pki_pki-tomcat_ca_transactions_group",
+   "type": "group",
+   "path": "/var/log/pki/pki-tomcat/ca/transactions",
+   "msg": "File does not exist"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "3656d572-6005-4244-aada-20117f4a47b7",
+  "when": "20260916043418Z",
+  "duration": "0.045405",
+  "kw": {
+   "key": "_var_log_pki_pki-tomcat_kra_selftests.log_mode",
+   "type": "mode",
+   "path": "/var/log/pki/pki-tomcat/kra/selftests.log",
+   "msg": "File does not exist"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "76147b5b-95be-4c6e-bdbe-ae5fbbb9ef87",
+  "when": "20260916043418Z",
+  "duration": "0.045424",
+  "kw": {
+   "key": "_var_log_pki_pki-tomcat_kra_selftests.log_owner",
+   "type": "owner",
+   "path": "/var/log/pki/pki-tomcat/kra/selftests.log",
+   "msg": "File does not exist"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "42baf41b-67b7-4711-b670-912e5fa96a90",
+  "when": "20260916043418Z",
+  "duration": "0.045440",
+  "kw": {
+   "key": "_var_log_pki_pki-tomcat_kra_selftests.log_group",
+   "type": "group",
+   "path": "/var/log/pki/pki-tomcat/kra/selftests.log",
+   "msg": "File does not exist"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "c3bac4c9-0e52-4667-8e85-6314bdf60ebe",
+  "when": "20260916043418Z",
+  "duration": "0.045470",
+  "kw": {
+   "key": "_var_log_pki_pki-tomcat_kra_system_mode",
+   "type": "mode",
+   "path": "/var/log/pki/pki-tomcat/kra/system",
+   "msg": "File does not exist"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "1434c3aa-8245-4eda-9d94-b26586b5f7cc",
+  "when": "20260916043418Z",
+  "duration": "0.045488",
+  "kw": {
+   "key": "_var_log_pki_pki-tomcat_kra_system_owner",
+   "type": "owner",
+   "path": "/var/log/pki/pki-tomcat/kra/system",
+   "msg": "File does not exist"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "a6fa5272-047c-43dc-a32a-2385ec43a0f5",
+  "when": "20260916043418Z",
+  "duration": "0.045505",
+  "kw": {
+   "key": "_var_log_pki_pki-tomcat_kra_system_group",
+   "type": "group",
+   "path": "/var/log/pki/pki-tomcat/kra/system",
+   "msg": "File does not exist"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "45fb12a6-3743-4b10-b756-3a27226014e0",
+  "when": "20260916043418Z",
+  "duration": "0.045535",
+  "kw": {
+   "key": "_var_log_pki_pki-tomcat_kra_transactions_mode",
+   "type": "mode",
+   "path": "/var/log/pki/pki-tomcat/kra/transactions",
+   "msg": "File does not exist"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "a3a9c9aa-4cf4-48fe-8dc7-8d8d4e0317e4",
+  "when": "20260916043418Z",
+  "duration": "0.045554",
+  "kw": {
+   "key": "_var_log_pki_pki-tomcat_kra_transactions_owner",
+   "type": "owner",
+   "path": "/var/log/pki/pki-tomcat/kra/transactions",
+   "msg": "File does not exist"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "0b5f09d9-ab08-4c3b-b101-e93c50a6978a",
+  "when": "20260916043418Z",
+  "duration": "0.045572",
+  "kw": {
+   "key": "_var_log_pki_pki-tomcat_kra_transactions_group",
+   "type": "group",
+   "path": "/var/log/pki/pki-tomcat/kra/transactions",
+   "msg": "File does not exist"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "fbad6b30-e88d-4c71-a5a7-dc8a13b645b5",
+  "when": "20260916043418Z",
+  "duration": "0.045614",
+  "kw": {
+   "key": "_run_ipa_ccaches_mode",
+   "type": "mode",
+   "path": "/run/ipa/ccaches"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "d9c3e7e1-eec2-4911-861e-c5838594d940",
+  "when": "20260916043418Z",
+  "duration": "0.045688",
+  "kw": {
+   "key": "_run_ipa_ccaches_mode",
+   "type": "owner",
+   "path": "/run/ipa/ccaches"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "a3cbe8bc-a61b-4dfa-88f1-aef5d329a412",
+  "when": "20260916043418Z",
+  "duration": "0.047262",
+  "kw": {
+   "key": "_run_ipa_ccaches_mode",
+   "type": "group",
+   "path": "/run/ipa/ccaches"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "32a12d1b-33c4-46e4-91b1-ef4f82fa075b",
+  "when": "20260916043418Z",
+  "duration": "0.047330",
+  "kw": {
+   "key": "_run_ipa_renewal.lock_mode",
+   "type": "mode",
+   "path": "/run/ipa/renewal.lock"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "7d770b14-099f-455d-bf94-e45eb0ef4b7e",
+  "when": "20260916043418Z",
+  "duration": "0.047407",
+  "kw": {
+   "key": "_run_ipa_renewal.lock_mode",
+   "type": "owner",
+   "path": "/run/ipa/renewal.lock"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "7c940836-7a0a-4672-8c32-88efb5fa24bb",
+  "when": "20260916043418Z",
+  "duration": "0.047833",
+  "kw": {
+   "key": "_run_ipa_renewal.lock_mode",
+   "type": "group",
+   "path": "/run/ipa/renewal.lock"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "abb047bb-d349-45e1-9798-e8eb424c55b2",
+  "when": "20260916043418Z",
+  "duration": "0.047892",
+  "kw": {
+   "key": "_run_ipa_services.list_mode",
+   "type": "mode",
+   "path": "/run/ipa/services.list"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "0d9a2fc0-fcb9-4e27-814e-3a54260ed1a3",
+  "when": "20260916043418Z",
+  "duration": "0.047957",
+  "kw": {
+   "key": "_run_ipa_services.list_mode",
+   "type": "owner",
+   "path": "/run/ipa/services.list"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "SUCCESS",
+  "uuid": "13eb83ec-672d-4bdd-8bb5-4eae5ed60156",
+  "when": "20260916043418Z",
+  "duration": "0.048362",
+  "kw": {
+   "key": "_run_ipa_services.list_mode",
+   "type": "group",
+   "path": "/run/ipa/services.list"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "TomcatFileCheck",
+  "result": "SUCCESS",
+  "uuid": "7d8e40e8-45a8-4a15-a469-b5b115a5c05d",
+  "when": "20260916043418Z",
+  "duration": "0.000070",
+  "kw": {
+   "key": "_etc_pki_pki-tomcat_password.conf_mode",
+   "type": "mode",
+   "path": "/etc/pki/pki-tomcat/password.conf"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "TomcatFileCheck",
+  "result": "SUCCESS",
+  "uuid": "a24461bf-a69d-44e6-8dd5-23e637bca633",
+  "when": "20260916043418Z",
+  "duration": "0.000142",
+  "kw": {
+   "key": "_etc_pki_pki-tomcat_password.conf_mode",
+   "type": "owner",
+   "path": "/etc/pki/pki-tomcat/password.conf"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "TomcatFileCheck",
+  "result": "SUCCESS",
+  "uuid": "c2257a90-264a-4b6e-9d1a-a3656bd07820",
+  "when": "20260916043418Z",
+  "duration": "0.002012",
+  "kw": {
+   "key": "_etc_pki_pki-tomcat_password.conf_mode",
+   "type": "group",
+   "path": "/etc/pki/pki-tomcat/password.conf"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "TomcatFileCheck",
+  "result": "WARNING",
+  "uuid": "e4f1aea9-9e59-49e0-b170-bc93254c9323",
+  "when": "20260916043418Z",
+  "duration": "0.002166",
+  "kw": {
+   "key": "_var_lib_pki_pki-tomcat_conf_ca_CS.cfg_mode",
+   "path": "/var/lib/pki/pki-tomcat/conf/ca/CS.cfg",
+   "type": "mode",
+   "expected": "0660",
+   "got": "0664",
+   "msg": "Permissions of /var/lib/pki/pki-tomcat/conf/ca/CS.cfg are too permissive: 0664 and should be 0660"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "TomcatFileCheck",
+  "result": "SUCCESS",
+  "uuid": "88643773-fb8a-485b-81f6-03ee7b583d19",
+  "when": "20260916043418Z",
+  "duration": "0.002261",
+  "kw": {
+   "key": "_var_lib_pki_pki-tomcat_conf_ca_CS.cfg_mode",
+   "type": "owner",
+   "path": "/var/lib/pki/pki-tomcat/conf/ca/CS.cfg"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "TomcatFileCheck",
+  "result": "SUCCESS",
+  "uuid": "93f0a969-a3cb-4581-bab5-cffd83d6dc10",
+  "when": "20260916043418Z",
+  "duration": "0.003925",
+  "kw": {
+   "key": "_var_lib_pki_pki-tomcat_conf_ca_CS.cfg_mode",
+   "type": "group",
+   "path": "/var/lib/pki/pki-tomcat/conf/ca/CS.cfg"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "TomcatFileCheck",
+  "result": "SUCCESS",
+  "uuid": "f947d087-3e4b-417a-9105-e6c955283f91",
+  "when": "20260916043418Z",
+  "duration": "0.004007",
+  "kw": {
+   "key": "_etc_pki_pki-tomcat_server.xml_mode",
+   "type": "mode",
+   "path": "/etc/pki/pki-tomcat/server.xml"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "TomcatFileCheck",
+  "result": "SUCCESS",
+  "uuid": "c17e1f7b-77be-43c8-9dd3-211b770e0091",
+  "when": "20260916043418Z",
+  "duration": "0.004085",
+  "kw": {
+   "key": "_etc_pki_pki-tomcat_server.xml_mode",
+   "type": "owner",
+   "path": "/etc/pki/pki-tomcat/server.xml"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "TomcatFileCheck",
+  "result": "SUCCESS",
+  "uuid": "01421a4e-5260-4752-b124-d16fc8ad39d5",
+  "when": "20260916043418Z",
+  "duration": "0.005619",
+  "kw": {
+   "key": "_etc_pki_pki-tomcat_server.xml_mode",
+   "type": "group",
+   "path": "/etc/pki/pki-tomcat/server.xml"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.host",
+  "check": "IPAHostKeytab",
+  "result": "SUCCESS",
+  "uuid": "d36ddfcb-4b55-4157-b022-0b0b72812e1e",
+  "when": "20260916043418Z",
+  "duration": "0.042891",
+  "kw": {}
+ },
+ {
+  "source": "ipahealthcheck.ipa.host",
+  "check": "DSKeytab",
+  "result": "SUCCESS",
+  "uuid": "3284ebaf-be06-46a9-8511-8d28694aeced",
+  "when": "20260916043418Z",
+  "duration": "0.029857",
+  "kw": {}
+ },
+ {
+  "source": "ipahealthcheck.ipa.host",
+  "check": "HTTPKeytab",
+  "result": "SUCCESS",
+  "uuid": "c704c89d-acaa-425b-aa1a-2573debd7af8",
+  "when": "20260916043418Z",
+  "duration": "0.031799",
+  "kw": {}
+ },
+ {
+  "source": "ipahealthcheck.ipa.kdc",
+  "check": "KDCWorkersCheck",
+  "result": "SUCCESS",
+  "uuid": "5836c6df-16e0-492b-b58f-f252f5e4a7ea",
+  "when": "20260916043418Z",
+  "duration": "0.000217",
+  "kw": {
+   "key": "workers"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.meta",
+  "check": "IPAMetaCheck",
+  "result": "SUCCESS",
+  "uuid": "69f0c714-69fe-46ab-8c93-f4fbe122c973",
+  "when": "20260916043418Z",
+  "duration": "0.003673",
+  "kw": {
+   "masters": [
+    "server.ipadiagnose.test"
+   ]
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.nss",
+  "check": "IPAGroupMemberCheck",
+  "result": "SUCCESS",
+  "uuid": "75e97b6d-aa42-455f-b346-58a987926f64",
+  "when": "20260916043418Z",
+  "duration": "0.001506",
+  "kw": {
+   "key": "ipaapi",
+   "member": "apache"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.proxy",
+  "check": "IPAProxySecretCheck",
+  "result": "SUCCESS",
+  "uuid": "c7f5e7eb-f217-4e5c-a49a-1e2c1cf24e7b",
+  "when": "20260916043418Z",
+  "duration": "0.000922",
+  "kw": {
+   "key": "proxy_secrets"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.roles",
+  "check": "IPACRLManagerCheck",
+  "result": "SUCCESS",
+  "uuid": "8d04d12f-c49e-4814-806e-931ee471fe60",
+  "when": "20260916043418Z",
+  "duration": "0.001787",
+  "kw": {
+   "key": "crl_manager",
+   "crlgen_enabled": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.roles",
+  "check": "IPARenewalMasterCheck",
+  "result": "SUCCESS",
+  "uuid": "49021d87-3911-4e63-b5b9-931a25202740",
+  "when": "20260916043418Z",
+  "duration": "0.018340",
+  "kw": {
+   "key": "renewal_master",
+   "master": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.roles",
+  "check": "IPARenewalMasterHasKRACheck",
+  "result": "SUCCESS",
+  "uuid": "b0362490-6da2-4806-b667-9df58cecb53f",
+  "when": "20260916043418Z",
+  "duration": "0.613271",
+  "kw": {
+   "key": "kra_renewal_master"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.topology",
+  "check": "IPATopologyDomainCheck",
+  "result": "SUCCESS",
+  "uuid": "c61599a4-4fcf-44c0-8abf-c22a1b37cbbd",
+  "when": "20260916043418Z",
+  "duration": "0.013745",
+  "kw": {
+   "suffix": "domain"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.topology",
+  "check": "IPATopologyDomainCheck",
+  "result": "SUCCESS",
+  "uuid": "e4007a80-b8f2-4d6b-b17e-5845c43377dc",
+  "when": "20260916043418Z",
+  "duration": "0.029250",
+  "kw": {
+   "suffix": "ca"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.trust",
+  "check": "IPATrustAgentCheck",
+  "result": "SUCCESS",
+  "uuid": "91c155b7-003c-4a7a-a68f-1813749b4b09",
+  "when": "20260916043418Z",
+  "duration": "0.000036",
+  "kw": {
+   "msg": "Skipped. Not a trust agent"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.trust",
+  "check": "IPATrustDomainsCheck",
+  "result": "SUCCESS",
+  "uuid": "35c7328a-fa1f-437e-be24-343a94d24501",
+  "when": "20260916043418Z",
+  "duration": "0.000025",
+  "kw": {
+   "msg": "Skipped. Not a trust agent"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.trust",
+  "check": "IPADomainCheck",
+  "result": "SUCCESS",
+  "uuid": "4a20d87c-0ea8-4dcd-986b-c415aca8c292",
+  "when": "20260916043418Z",
+  "duration": "0.035208",
+  "kw": {
+   "key": "domain-check"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.trust",
+  "check": "IPATrustCatalogCheck",
+  "result": "SUCCESS",
+  "uuid": "b5a03e60-6321-43e9-a18b-27aa0c2e2d0e",
+  "when": "20260916043418Z",
+  "duration": "0.000044",
+  "kw": {
+   "msg": "Skipped. Not a trust agent"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.trust",
+  "check": "IPAsidgenpluginCheck",
+  "result": "SUCCESS",
+  "uuid": "8fe19617-510c-41fb-b431-a814b0ff1afc",
+  "when": "20260916043418Z",
+  "duration": "0.000031",
+  "kw": {
+   "msg": "Skipped. Not a trust agent"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.trust",
+  "check": "IPATrustAgentMemberCheck",
+  "result": "SUCCESS",
+  "uuid": "e22d4034-3412-43a1-b628-d22540dfccc5",
+  "when": "20260916043418Z",
+  "duration": "0.000025",
+  "kw": {
+   "msg": "Skipped. Not a trust agent"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.trust",
+  "check": "IPATrustControllerPrincipalCheck",
+  "result": "SUCCESS",
+  "uuid": "4d48a8d7-0aff-4e71-9256-97172430594f",
+  "when": "20260916043418Z",
+  "duration": "0.000026",
+  "kw": {
+   "msg": "Skipped. Not a trust controller"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.trust",
+  "check": "IPATrustControllerServiceCheck",
+  "result": "SUCCESS",
+  "uuid": "f1a4f9e9-9073-43ba-921c-ff075a1b2bef",
+  "when": "20260916043418Z",
+  "duration": "0.000025",
+  "kw": {
+   "msg": "Skipped. Not a trust controller"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.trust",
+  "check": "IPATrustControllerConfCheck",
+  "result": "SUCCESS",
+  "uuid": "8e2f9f40-5ca0-49ee-bedb-206d461cdeec",
+  "when": "20260916043418Z",
+  "duration": "0.000022",
+  "kw": {
+   "msg": "Skipped. Not a trust controller"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.trust",
+  "check": "IPATrustControllerGroupSIDCheck",
+  "result": "SUCCESS",
+  "uuid": "eb40451f-25ca-42d1-af14-51d72680c85d",
+  "when": "20260916043418Z",
+  "duration": "0.000023",
+  "kw": {
+   "msg": "Skipped. Not a trust controller"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.trust",
+  "check": "IPATrustControllerAdminSIDCheck",
+  "result": "SUCCESS",
+  "uuid": "4f9ecc4e-10d5-45d7-9648-5cda484f45cf",
+  "when": "20260916043418Z",
+  "duration": "0.000023",
+  "kw": {
+   "msg": "Skipped. Not a trust controller"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.trust",
+  "check": "IPATrustPackageCheck",
+  "result": "SUCCESS",
+  "uuid": "aec8d150-7476-4899-a05e-0a2ad17a7767",
+  "when": "20260916043418Z",
+  "duration": "0.000023",
+  "kw": {
+   "msg": "Skipped. Not a trust agent"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.trust",
+  "check": "IPAauthzdatapacCheck",
+  "result": "SUCCESS",
+  "uuid": "6d46b45a-e654-49b3-a094-243750920f7d",
+  "when": "20260916043418Z",
+  "duration": "0.004123",
+  "kw": {
+   "key": "MS-PAC"
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.core",
+  "check": "MetaCheck",
+  "result": "WARNING",
+  "uuid": "891018c5-d2a7-4846-8f9e-b8e704810506",
+  "when": "20260916043423Z",
+  "duration": "4.181944",
+  "kw": {
+   "key": "meta",
+   "fqdn": "server.ipadiagnose.test",
+   "fips": "missing /proc/sys/crypto/fips_enabled",
+   "acme": "disabled",
+   "ipa_version": "4.13.3",
+   "ipa_api_version": "2.257"
+  }
+ },
+ {
+  "source": "ipahealthcheck.system.filesystemspace",
+  "check": "FileSystemSpaceCheck",
+  "result": "SUCCESS",
+  "uuid": "1f7d3f64-7fdd-4e7f-83ef-0504817a58a2",
+  "when": "20260916043423Z",
+  "duration": "0.000130",
+  "kw": {
+   "key": "/var/lib/dirsrv/",
+   "msg": "/var/lib/dirsrv/: free space percentage within limits: 83% >= 20%",
+   "store": "/var/lib/dirsrv/",
+   "percent_free": 83,
+   "threshold": 20
+  }
+ },
+ {
+  "source": "ipahealthcheck.system.filesystemspace",
+  "check": "FileSystemSpaceCheck",
+  "result": "SUCCESS",
+  "uuid": "0ab76ecc-0917-4d87-91d9-851faabd90d7",
+  "when": "20260916043423Z",
+  "duration": "0.000236",
+  "kw": {
+   "key": "/var/lib/dirsrv/",
+   "msg": "/var/lib/dirsrv/: free space within limits: 859158 MiB >= 1024 MiB",
+   "store": "/var/lib/dirsrv/",
+   "free_space": 859158,
+   "threshold": 1024
+  }
+ },
+ {
+  "source": "ipahealthcheck.system.filesystemspace",
+  "check": "FileSystemSpaceCheck",
+  "result": "SUCCESS",
+  "uuid": "330ea1c2-7c74-4bf4-82d8-d929815313fd",
+  "when": "20260916043423Z",
+  "duration": "0.000335",
+  "kw": {
+   "key": "/var/lib/ipa/backup/",
+   "msg": "/var/lib/ipa/backup/: free space percentage within limits: 83% >= 20%",
+   "store": "/var/lib/ipa/backup/",
+   "percent_free": 83,
+   "threshold": 20
+  }
+ },
+ {
+  "source": "ipahealthcheck.system.filesystemspace",
+  "check": "FileSystemSpaceCheck",
+  "result": "SUCCESS",
+  "uuid": "c04d853c-da45-4468-aa29-e222b93a5c97",
+  "when": "20260916043423Z",
+  "duration": "0.000441",
+  "kw": {
+   "key": "/var/lib/ipa/backup/",
+   "msg": "/var/lib/ipa/backup/: free space within limits: 859158 MiB >= 512 MiB",
+   "store": "/var/lib/ipa/backup/",
+   "free_space": 859158,
+   "threshold": 512
+  }
+ },
+ {
+  "source": "ipahealthcheck.system.filesystemspace",
+  "check": "FileSystemSpaceCheck",
+  "result": "SUCCESS",
+  "uuid": "50e16fcc-1f31-433c-83d6-63a71e302178",
+  "when": "20260916043423Z",
+  "duration": "0.000517",
+  "kw": {
+   "key": "/var/log/",
+   "msg": "/var/log/: free space percentage within limits: 83% >= 20%",
+   "store": "/var/log/",
+   "percent_free": 83,
+   "threshold": 20
+  }
+ },
+ {
+  "source": "ipahealthcheck.system.filesystemspace",
+  "check": "FileSystemSpaceCheck",
+  "result": "SUCCESS",
+  "uuid": "c3004337-2834-4b07-b9ea-3d8f10e47f2b",
+  "when": "20260916043423Z",
+  "duration": "0.000669",
+  "kw": {
+   "key": "/var/log/",
+   "msg": "/var/log/: free space within limits: 859158 MiB >= 1024 MiB",
+   "store": "/var/log/",
+   "free_space": 859158,
+   "threshold": 1024
+  }
+ },
+ {
+  "source": "ipahealthcheck.system.filesystemspace",
+  "check": "FileSystemSpaceCheck",
+  "result": "SUCCESS",
+  "uuid": "c9be6041-59bd-4868-b50d-16755c42f7c0",
+  "when": "20260916043423Z",
+  "duration": "0.000775",
+  "kw": {
+   "key": "/var/tmp/",
+   "msg": "/var/tmp/: free space percentage within limits: 99% >= 20%",
+   "store": "/var/tmp/",
+   "percent_free": 99,
+   "threshold": 20
+  }
+ },
+ {
+  "source": "ipahealthcheck.system.filesystemspace",
+  "check": "FileSystemSpaceCheck",
+  "result": "SUCCESS",
+  "uuid": "f31bb911-a47e-430b-b886-b80ac202f3e2",
+  "when": "20260916043423Z",
+  "duration": "0.000857",
+  "kw": {
+   "key": "/var/tmp/",
+   "msg": "/var/tmp/: free space within limits: 3925 MiB >= 512 MiB",
+   "store": "/var/tmp/",
+   "free_space": 3925,
+   "threshold": 512
+  }
+ },
+ {
+  "source": "ipahealthcheck.system.filesystemspace",
+  "check": "FileSystemSpaceCheck",
+  "result": "SUCCESS",
+  "uuid": "7186a71e-d3d0-4721-a0fa-4c86f0551f20",
+  "when": "20260916043423Z",
+  "duration": "0.000933",
+  "kw": {
+   "key": "/tmp",
+   "msg": "/tmp: free space percentage within limits: 99% >= 20%",
+   "store": "/tmp",
+   "percent_free": 99,
+   "threshold": 20
+  }
+ },
+ {
+  "source": "ipahealthcheck.system.filesystemspace",
+  "check": "FileSystemSpaceCheck",
+  "result": "SUCCESS",
+  "uuid": "afe464ed-319f-4278-b8f6-026a61504b65",
+  "when": "20260916043423Z",
+  "duration": "0.001093",
+  "kw": {
+   "key": "/tmp",
+   "msg": "/tmp: free space within limits: 3925 MiB >= 512 MiB",
+   "store": "/tmp",
+   "free_space": 3925,
+   "threshold": 512
+  }
+ },
+ {
+  "source": "pki.server.healthcheck.certs.expiration",
+  "check": "CASystemCertExpiryCheck",
+  "result": "SUCCESS",
+  "uuid": "e60099f9-803d-4ba0-af15-19c584cb0bda",
+  "when": "20260916043423Z",
+  "duration": "0.293796",
+  "kw": {
+   "cert_id": "signing",
+   "expiry_date": "Sep 16 2046"
+  }
+ },
+ {
+  "source": "pki.server.healthcheck.certs.expiration",
+  "check": "CASystemCertExpiryCheck",
+  "result": "SUCCESS",
+  "uuid": "b1229a6c-75a5-46c4-82c0-cfaa19eceb11",
+  "when": "20260916043423Z",
+  "duration": "0.684314",
+  "kw": {
+   "cert_id": "ocsp_signing",
+   "expiry_date": "Sep 05 2028"
+  }
+ },
+ {
+  "source": "pki.server.healthcheck.certs.expiration",
+  "check": "CASystemCertExpiryCheck",
+  "result": "SUCCESS",
+  "uuid": "258c7305-31ac-446e-ac7d-ed1dd12d0516",
+  "when": "20260916043423Z",
+  "duration": "0.868368",
+  "kw": {
+   "cert_id": "sslserver",
+   "expiry_date": "Sep 05 2028"
+  }
+ },
+ {
+  "source": "pki.server.healthcheck.certs.expiration",
+  "check": "CASystemCertExpiryCheck",
+  "result": "SUCCESS",
+  "uuid": "8e5e410e-8a81-4e88-b109-7d728f9593d0",
+  "when": "20260916043424Z",
+  "duration": "0.994721",
+  "kw": {
+   "cert_id": "subsystem",
+   "expiry_date": "Sep 05 2028"
+  }
+ },
+ {
+  "source": "pki.server.healthcheck.certs.expiration",
+  "check": "CASystemCertExpiryCheck",
+  "result": "SUCCESS",
+  "uuid": "aa394112-0b07-4334-b7f5-f553ba63e67b",
+  "when": "20260916043424Z",
+  "duration": "1.139081",
+  "kw": {
+   "cert_id": "audit_signing",
+   "expiry_date": "Sep 05 2028"
+  }
+ },
+ {
+  "source": "pki.server.healthcheck.certs.expiration",
+  "check": "KRASystemCertExpiryCheck",
+  "result": "SUCCESS",
+  "uuid": "e6ba765c-c781-42c1-a36c-285a7c3f0ddc",
+  "when": "20260916043424Z",
+  "duration": "0.003391",
+  "kw": {}
+ },
+ {
+  "source": "pki.server.healthcheck.certs.expiration",
+  "check": "OCSPSystemCertExpiryCheck",
+  "result": "SUCCESS",
+  "uuid": "9cb89263-8c03-4d95-bb92-346a94de98f6",
+  "when": "20260916043424Z",
+  "duration": "0.003179",
+  "kw": {}
+ },
+ {
+  "source": "pki.server.healthcheck.certs.expiration",
+  "check": "TKSSystemCertExpiryCheck",
+  "result": "SUCCESS",
+  "uuid": "96addde2-53eb-4515-b1b8-e005b9309755",
+  "when": "20260916043424Z",
+  "duration": "0.003215",
+  "kw": {}
+ },
+ {
+  "source": "pki.server.healthcheck.certs.expiration",
+  "check": "TPSSystemCertExpiryCheck",
+  "result": "SUCCESS",
+  "uuid": "33a9c186-c4f9-4ace-b8b4-b88f7c435500",
+  "when": "20260916043424Z",
+  "duration": "0.003237",
+  "kw": {}
+ },
+ {
+  "source": "pki.server.healthcheck.certs.trustflags",
+  "check": "CASystemCertTrustFlagCheck",
+  "result": "SUCCESS",
+  "uuid": "138381c0-fc2f-4214-80f9-887694a8b807",
+  "when": "20260916043424Z",
+  "duration": "0.173477",
+  "kw": {
+   "cert_id": "signing",
+   "nickname": "caSigningCert cert-pki-ca"
+  }
+ },
+ {
+  "source": "pki.server.healthcheck.certs.trustflags",
+  "check": "CASystemCertTrustFlagCheck",
+  "result": "SUCCESS",
+  "uuid": "98daf75d-b57d-482b-b911-f2c4039b4fc5",
+  "when": "20260916043424Z",
+  "duration": "0.350539",
+  "kw": {
+   "cert_id": "ocsp_signing",
+   "nickname": "ocspSigningCert cert-pki-ca"
+  }
+ },
+ {
+  "source": "pki.server.healthcheck.certs.trustflags",
+  "check": "CASystemCertTrustFlagCheck",
+  "result": "SUCCESS",
+  "uuid": "bff38953-0476-46cc-9ede-401c73da41ef",
+  "when": "20260916043424Z",
+  "duration": "0.504819",
+  "kw": {
+   "cert_id": "sslserver",
+   "nickname": "Server-Cert cert-pki-ca"
+  }
+ },
+ {
+  "source": "pki.server.healthcheck.certs.trustflags",
+  "check": "CASystemCertTrustFlagCheck",
+  "result": "SUCCESS",
+  "uuid": "38ab83ba-cd0a-476e-a535-5b69206a40f6",
+  "when": "20260916043424Z",
+  "duration": "0.715495",
+  "kw": {
+   "cert_id": "subsystem",
+   "nickname": "subsystemCert cert-pki-ca"
+  }
+ },
+ {
+  "source": "pki.server.healthcheck.certs.trustflags",
+  "check": "CASystemCertTrustFlagCheck",
+  "result": "SUCCESS",
+  "uuid": "479420f0-f79f-4908-a2cd-4596515e5c38",
+  "when": "20260916043425Z",
+  "duration": "1.143749",
+  "kw": {
+   "cert_id": "audit_signing",
+   "nickname": "auditSigningCert cert-pki-ca"
+  }
+ },
+ {
+  "source": "pki.server.healthcheck.certs.trustflags",
+  "check": "KRASystemCertTrustFlagCheck",
+  "result": "SUCCESS",
+  "uuid": "6775f442-b387-4daf-98e8-78eec9b0cc9a",
+  "when": "20260916043425Z",
+  "duration": "0.015230",
+  "kw": {}
+ },
+ {
+  "source": "pki.server.healthcheck.certs.trustflags",
+  "check": "OCSPSystemCertTrustFlagCheck",
+  "result": "SUCCESS",
+  "uuid": "0ace8fcf-4c4c-4859-aa2d-ea1bcc43da8d",
+  "when": "20260916043425Z",
+  "duration": "0.016733",
+  "kw": {}
+ },
+ {
+  "source": "pki.server.healthcheck.certs.trustflags",
+  "check": "TKSSystemCertTrustFlagCheck",
+  "result": "SUCCESS",
+  "uuid": "947ebdc6-6909-440d-bb33-0f646d66bb0a",
+  "when": "20260916043425Z",
+  "duration": "0.005117",
+  "kw": {}
+ },
+ {
+  "source": "pki.server.healthcheck.certs.trustflags",
+  "check": "TPSSystemCertTrustFlagCheck",
+  "result": "SUCCESS",
+  "uuid": "c2e42800-7c1f-4dc3-8056-488de234fb4e",
+  "when": "20260916043425Z",
+  "duration": "0.015609",
+  "kw": {}
+ },
+ {
+  "source": "pki.server.healthcheck.meta.connectivity",
+  "check": "DogtagCACertsConnectivityCheck",
+  "result": "SUCCESS",
+  "uuid": "d66919a0-cc46-4e51-b41e-a7ee54095d62",
+  "when": "20260916043425Z",
+  "duration": "0.330937",
+  "kw": {
+   "serial_number": "0x94c4b21d9884e383e4d5e69cf0c80ba5",
+   "subject_dn": "CN=Certificate Authority,O=IPADIAGNOSE.TEST"
+  }
+ },
+ {
+  "source": "pki.server.healthcheck.meta.connectivity",
+  "check": "DogtagKRAConnectivityCheck",
+  "result": "SUCCESS",
+  "uuid": "0627a6c2-6847-4c40-bee9-81e7b9daf600",
+  "when": "20260916043425Z",
+  "duration": "0.018069",
+  "kw": {}
+ },
+ {
+  "source": "pki.server.healthcheck.meta.connectivity",
+  "check": "DogtagOCSPConnectivityCheck",
+  "result": "SUCCESS",
+  "uuid": "9d812ecb-ee5e-4507-afe7-fd5bf71c02ba",
+  "when": "20260916043425Z",
+  "duration": "0.029266",
+  "kw": {}
+ },
+ {
+  "source": "pki.server.healthcheck.meta.connectivity",
+  "check": "DogtagTKSConnectivityCheck",
+  "result": "SUCCESS",
+  "uuid": "d411e69a-9a4b-485a-a137-86bcdc4050d9",
+  "when": "20260916043425Z",
+  "duration": "0.017311",
+  "kw": {}
+ },
+ {
+  "source": "pki.server.healthcheck.meta.connectivity",
+  "check": "DogtagTPSConnectivityCheck",
+  "result": "SUCCESS",
+  "uuid": "a23fa61f-2e8e-455c-a629-42cd201dce72",
+  "when": "20260916043425Z",
+  "duration": "0.017241",
+  "kw": {}
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPARAAgent",
+  "result": "ERROR",
+  "uuid": "rt-ra",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "key": "description_mismatch",
+   "expected": "2;7;CN=Certificate Authority,O=EXAMPLE.TEST;CN=IPA RA,O=EXAMPLE.TEST",
+   "got": "2;5;CN=Certificate Authority,O=EXAMPLE.TEST;CN=IPA RA,O=EXAMPLE.TEST",
+   "msg": "RA agent description does not match. Found {got} in LDAP and expected {expected}"
+  }
+ }
+]

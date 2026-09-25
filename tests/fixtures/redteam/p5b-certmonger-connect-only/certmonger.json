@@ -1,0 +1,11 @@
+[
+ {
+  "request_id": "20260101000001",
+  "nickname": "auditSigningCert cert-pki-ca",
+  "ca": "dogtag-ipa-ca-renew-agent",
+  "state": "CA_UNREACHABLE",
+  "stuck": "no",
+  "ca_error": "Error 7 connecting to https://ipa01.example.test:8443/ca/agent/ca/profileReview: Couldn't connect to server.",
+  "not_valid_after": "2026-10-10 00:00:00 UTC"
+ }
+]

@@ -11,8 +11,8 @@
     {
       "diagnosis_id": "dns.srv-autodiscovery",
       "status": "DIAGNOSED",
-      "priority": "SECONDARY_INDEPENDENT_PROBLEM"
+      "priority": "RELATED_SYMPTOM"
     }
   ],
-  "notes": "journal_named shows the documented LDAP 'Insufficient access' signature under cn=dns, so named-service-down fires with upstream_candidates=['directory-server'] and HIGH confidence. Because named being down also breaks live resolution of the system records, IPADNSSystemRecordsCheck independently reports ERROR and dns_lookup corroborates broken SRV/A records, so srv-autodiscovery also fires (DIAGNOSED, HIGH) as a second, independent-scoring diagnosis within the same pack - it is not demoted to RELATED_SYMPTOM because upstream_candidates demotion only applies across packs, not within one pack's own rules. named-service-down outscores it (CRITICAL vs ERROR severity) and takes PRIMARY_PROBLEM."
+  "notes": "journal_named shows the documented LDAP 'Insufficient access' signature under cn=dns, so named-service-down fires with upstream_candidates=['directory-server'] and HIGH confidence and takes PRIMARY_PROBLEM. Because named being down also breaks live resolution of the system records, IPADNSSystemRecordsCheck reports ERROR and dns_lookup shows the records failing, so srv-autodiscovery fires too - but since Slice 1 hardening it is RELATED_SYMPTOM of the stopped named (same-pack causality, engine/correlate.py _IMPLICIT_RULE_UPSTREAMS): with this server's named down its records cannot be resolved at all, so they are a symptom, not an independent problem. v0.1.3 showed it as SECONDARY_INDEPENDENT_PROBLEM (see tests/data/GOLDEN_CHANGES.md)."
 }

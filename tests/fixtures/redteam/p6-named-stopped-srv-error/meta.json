@@ -1,0 +1,4 @@
+{
+ "hostname": "ipa01.example.test",
+ "scenario": "CONSTRUCTED (red-team probe, Slice 1 hardening): p6-named-stopped-srv-error"
+}

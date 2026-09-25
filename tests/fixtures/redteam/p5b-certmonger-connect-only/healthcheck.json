@@ -1,0 +1,11 @@
+[
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertmongerExpirationCheck",
+  "result": "SUCCESS",
+  "uuid": "rt-exp",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {}
+ }
+]

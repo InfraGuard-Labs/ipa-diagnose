@@ -1299,8 +1299,10 @@
     "limitations": "ipahealthcheck's IPADNSSystemRecordsCheck (and this pack's own dns_lookup collector) only resolve against resolver(s) reachable from this one host. In a multi-server IPA DNS topology, a clean result here does not confirm every IPA DNS server serves correct records - freeipa.org's DNS troubleshooting page documents this as a known blind spot. Spot-check `dig` against every known IPA DNS server before considering DNS fully verified. If the original symptom was a downstream Kerberos discovery failure, re-run the kerberos pack's checks after this fix for true end-to-end verification.",
     "next_diagnostic_step": null,
     "pack_id": "dns",
-    "priority": "SECONDARY_INDEPENDENT_PROBLEM",
-    "related_to_titles": [],
+    "priority": "RELATED_SYMPTOM",
+    "related_to_titles": [
+     "named failed to start: missing LDAP ACI for the DNS service principal"
+    ],
     "rule_id": "srv-autodiscovery",
     "severity": "ERROR",
     "status": "DIAGNOSED",
@@ -1314,7 +1316,7 @@
       ]
      }
     ],
-    "why": "IPADNSSystemRecordsCheck reported ERROR (SRV record _ldap._tcp.example.test. required for LDAP autodiscovery could not be resolved), and an independent live `dig` lookup confirms the affected record is actually missing or resolving incorrectly."
+    "why": "IPADNSSystemRecordsCheck reported ERROR (SRV record _ldap._tcp.example.test. required for LDAP autodiscovery could not be resolved), and an independent live `dig` lookup confirms the affected record is actually missing or resolving incorrectly.\n\nLikely a downstream symptom of the dns problem reported above."
    },
    {
     "actions": [

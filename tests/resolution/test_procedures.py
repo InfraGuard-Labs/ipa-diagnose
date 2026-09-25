@@ -254,7 +254,7 @@ def stat(mode="0664", owner="pkiuser", group="pkiuser", symlink=False, exists=Tr
     if not exists:
         return ok({"exists": False})
     return ok({"exists": True, "is_symlink": symlink, "is_regular": True, "is_dir": False, "mode": mode,
-               "owner": owner, "group": group, "canonical": True, "realpath": real, "target": real, "realpath_allowed": allowed, "container_data_mirror": False})
+               "owner": owner, "group": group, "mode_a": mode.lstrip("0") or "0", "links": 1, "canonical": True, "realpath": real, "target": real, "realpath_allowed": allowed, "container_data_mirror": False})
 
 
 def test_file_mode_procedure_offered_with_exact_command_and_rollback():
@@ -678,6 +678,18 @@ def test_local_offset_inside_kerberos_tolerance_gets_no_clock_fix():
     results = {**CHRONY_OK, "chrony.tracking|": ok({"offset_seconds": 2.0, "offset_abs": 2.0, "direction": "ahead of",
                                                      "leap_status": "Normal", "synchronized": True, "reference": "10.0.0.5"})}
     r = res_of(report_for(KEYTAB_SKEW, results, items=small)[0], "kerberos.clock-skew")
+    # A 2 s local offset is not evidence of local skew: the diagnosis is "KDC-reported skew" (no deterministic
+    # fix - the wrong clock may be elsewhere), never the local clock fix.
+    assert r.status == NONE and not r.steps and r.procedure_id == "none.time.kdc-reported-skew"
+
+
+def test_clock_procedure_withholds_below_the_window_when_it_does_apply():
+    """The procedure's own 240 s gate still holds when the diagnosis rests on a big measured offset that has
+    since become small (checked fresh)."""
+    big = [EvidenceItem(item_id="clk", kind="clock_sync", summary="c", data={"method": "chronyc", "ntp_synchronized": False, "offset_seconds": 421.0})]
+    results = {**CHRONY_OK, "chrony.tracking|": ok({"offset_seconds": 2.0, "offset_abs": 2.0, "direction": "ahead of",
+                                                     "leap_status": "Normal", "synchronized": True, "reference": "10.0.0.5"})}
+    r = res_of(report_for(KEYTAB_SKEW, results, items=big)[0], "kerberos.clock-skew")
     assert r.status == WITHHELD and not r.steps and any("300 s tolerance" in x for x in r.reasons)
 
 

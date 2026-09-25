@@ -1,0 +1,4 @@
+{
+ "hostname": "server.ipadiagnose.test",
+ "scenario": "CONSTRUCTED (red-team probe, Slice 1 hardening): p2r-real-healthy-plus-ra-desync"
+}

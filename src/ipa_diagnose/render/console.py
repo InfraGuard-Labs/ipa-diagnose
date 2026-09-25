@@ -298,6 +298,11 @@ def _render_resolution(d: Diagnosis, r, console: Console, *, details: bool) -> N
                   "run by you (ipa-diagnose never runs a fix itself).")
     if not r.definitive:
         console.print(f"[yellow]{escape(r.verification_label)}[/yellow]")
+    if r.confirm_first:
+        console.print("  [bold]First confirm[/bold] (read-only) that nothing changed since the checks above; "
+                      "if the output differs, do not run the fix - run ipa-diagnose again:")
+        for c in r.confirm_first:
+            console.print(f"       [cyan]{escape(shlex.join(c['argv']))}[/cyan]   [dim]expected: {escape(c['expect'])}[/dim]")
     for i, st in enumerate(r.steps, 1):
         console.print(f"  {i}. {escape(st.text)}")
         console.print(f"       [bold cyan]{escape(st.command)}[/bold cyan]")
@@ -406,6 +411,7 @@ _VERIFY_STYLE = {
     "STILL_PRESENT": ("red", "✗"),
     "PARTIALLY_RESOLVED": ("yellow", "≈"),
     "UNABLE_TO_VERIFY": ("dim", "?"),
+    "CHANGED": ("yellow", "~"),
 }
 
 

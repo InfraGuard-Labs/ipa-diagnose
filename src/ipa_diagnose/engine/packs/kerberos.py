@@ -31,6 +31,7 @@ isn't present at all - a healthy system produces zero kerberos diagnoses.
 
 from __future__ import annotations
 
+import math
 import re
 from typing import List, Optional
 
@@ -124,18 +125,21 @@ class ClockSkewRule(DiagnosticRule):
         # A KDC journal line names SOME client's skew, not necessarily this host: on its own (with an unrelated
         # keytab failure) it must not become a diagnosis. Require this host's own clock evidence or a
         # clock-shaped keytab failure as well.
-        if journal_hits and not desync_hits and not any(_is_clock_style(f.message or "") for f in keytab_findings):
+        # Local NTP being merely "unsynchronised" (common on VMs), or a few seconds of offset, says nothing about
+        # skew: Kerberos tolerates 300 s. This host's clock only counts when it is measured at/over that window.
+        big_offset = any(
+            isinstance(i.data.get("offset_seconds"), (int, float)) and not isinstance(i.data["offset_seconds"], bool)
+            and math.isfinite(i.data["offset_seconds"]) and abs(i.data["offset_seconds"]) >= 300
+            for i in desync_hits
+        )
+        clock_keytab = any(_is_clock_style(f.message or "") for f in keytab_findings)
+        # On an IPA server the KDC is local: a krb5kdc skew line is about SOME client (its principal/address is
+        # in the line), not this host. It supports a diagnosis only together with this host's own clock-shaped
+        # kinit failure or a local offset that really is outside the window (red-team round, Slice 1 hardening).
+        if not big_offset and not clock_keytab:
             return None
-        if not journal_hits:
-            # Local NTP being merely "unsynchronised" (common on VMs), or a few seconds
-            # of offset, says nothing about skew: Kerberos tolerates 300 s. Require a
-            # clock-shaped keytab failure or an offset at/over the real window.
-            big_offset = any(
-                isinstance(i.data.get("offset_seconds"), (int, float)) and abs(i.data["offset_seconds"]) >= 300
-                for i in desync_hits
-            )
-            if not big_offset and not any(_is_clock_style(f.message or "") for f in keytab_findings):
-                return None
+        if not big_offset:
+            desync_hits = []  # "not synchronised" with a small offset is not evidence for this diagnosis
         evidence_for: List[EvidenceRef] = [
             EvidenceRef(
                 f.finding_id,

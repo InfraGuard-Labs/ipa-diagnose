@@ -123,7 +123,14 @@ def report_to_dict(report: DiagnosisReport, ai_explanations: Dict[str, str] = No
         ],
         # 1.0 additions: v1 keys above are frozen; everything new lives under "v2".
         "report_schema_version": 2,
-        "v2": {"resolutions": [resolution_to_dict(r) for r in (report.resolutions or {}).values()]},
+        "v2": {
+            "resolutions": [resolution_to_dict(r) for r in (report.resolutions or {}).values()],
+            # what `verify` may rely on later (see resolution.engine.rebuild_verify); display data above is not used
+            "verify_baseline": {"schema": 1, "fixes": [
+                dict(r.baseline, diagnosis_id=r.diagnosis_id)
+                for r in (report.resolutions or {}).values() if r.status == "OFFERED" and r.baseline
+            ]},
+        },
     }
 
 
@@ -148,6 +155,8 @@ def resolution_to_dict(r) -> Dict[str, Any]:
         "what_changes": list(r.what_changes),
         "risk": r.risk if r.steps else None,
         "rollback": [dict(x, command=shlex.join(x["argv"]) if x.get("argv") else None) for x in r.rollback],
+        "confirm_first": [{"text": c["text"], "argv": c["argv"], "command": shlex.join(c["argv"]), "expected": c["expect"]}
+                          for c in r.confirm_first],
         "verify": list(r.verify),
         "applies_to": r.applies_to,
         "tier": r.tier,

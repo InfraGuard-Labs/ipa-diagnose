@@ -348,15 +348,21 @@ def _permission_targets(findings: List[Finding]) -> dict:
     return out
 
 
+_DS_PATH_PREFIXES = ("/etc/dirsrv/", "/var/lib/dirsrv/", "/var/log/dirsrv/", "/run/dirsrv/", "/usr/lib64/dirsrv/")
+
+
 def _is_key_material(path: str) -> bool:
     """Files whose ownership is never changed automatically (keys, key databases, stash and password files)."""
 
-    name = path.rsplit("/", 1)[-1]
-    return ("/private/" in path or "/custodia/" in path or "/dnssec/" in path or "/backup/" in path
-            or name.startswith(".") or "ccache" in name or "softhsm_pin" in name
-            or name.endswith((".key", ".keytab", "-key.pem", ".keys", ".p12", ".pin"))
-            # also their backup/temporary/journal siblings (dse.ldif.bak, key4.db-journal, pwdfile.txt.orig, ...)
-            or name.startswith(("key4.db", "key3.db", "password.conf", "pwdfile", "pin.txt", "dse.ldif", "sssd.conf")))
+    # Deliberately broad and case-insensitive: a file wrongly treated as key material only means no ownership
+    # fix is shown (a mode fix, which only removes permissions, is still possible).
+    low = path.lower()
+    parts = low.split("/")
+    name = parts[-1]
+    secret_dirs = {"private", "custodia", "dnssec", "backup", "passwds", "keys", "secrets", "tokens"}
+    secret_words = ("key", "pass", "pwd", "pin", "secret", "token", "ccache", "cred", "stash", "authtok", "p12", "pfx")
+    return (bool(secret_dirs & set(parts[:-1])) or name.startswith(".") or any(w in name for w in secret_words)
+            or name.startswith("dse.ldif") or low.startswith("/etc/sssd/"))
 
 
 def _mode_delta(got, expected) -> dict:
@@ -492,6 +498,12 @@ class OwnershipSelinuxMismatchRule(DiagnosticRule):
                 upstream_candidates=[],
                 resolution_key="directory-server.ipa-file-permissions",
                 bindings=_permission_targets(file_findings),
+                # Only Directory Server's own files (or dirsrv logging permission errors) can break DS and so
+                # explain other packs' symptoms; a PKI/httpd/IPA file mode cannot.
+                evidence_severity=worst.severity,
+                explains_downstream=bool(permission_journal) or any(
+                    str((f.keywords if isinstance(f.keywords, dict) else {}).get("path") or "").startswith(_DS_PATH_PREFIXES)
+                    for f in file_findings),
             )
 
         # No IPAFileCheck-style finding naming an exact wrong value - just a

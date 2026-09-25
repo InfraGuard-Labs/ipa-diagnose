@@ -343,6 +343,92 @@
      "type": "list"
     }
    },
+   "confirm_first": [
+    {
+     "command": [
+      "readlink",
+      "-f",
+      {
+       "item": "path",
+       "type": "ipa_path"
+      }
+     ],
+     "expect": "{ref.stat.realpath}",
+     "for_each": "targets_mode",
+     "text": "{item.path} still leads to the file that was checked"
+    },
+    {
+     "command": [
+      "readlink",
+      "-f",
+      {
+       "item": "path",
+       "type": "ipa_path"
+      }
+     ],
+     "expect": "{ref.stat.realpath}",
+     "for_each": "targets_owner",
+     "text": "{item.path} still leads to the file that was checked"
+    },
+    {
+     "command": [
+      "readlink",
+      "-f",
+      {
+       "item": "path",
+       "type": "ipa_path"
+      }
+     ],
+     "expect": "{ref.stat.realpath}",
+     "for_each": "targets_group",
+     "text": "{item.path} still leads to the file that was checked"
+    },
+    {
+     "command": [
+      "stat",
+      "-c",
+      "%a:%U:%G:%h",
+      {
+       "field": "target",
+       "ref": "stat",
+       "type": "ipa_path"
+      }
+     ],
+     "expect": "{ref.stat.mode_a}:{ref.stat.owner}:{ref.stat.group}:1",
+     "for_each": "targets_mode",
+     "text": "mode, owner, group and hard-link count are still as checked"
+    },
+    {
+     "command": [
+      "stat",
+      "-c",
+      "%a:%U:%G:%h",
+      {
+       "field": "target",
+       "ref": "stat",
+       "type": "ipa_path"
+      }
+     ],
+     "expect": "{ref.stat.mode_a}:{ref.stat.owner}:{ref.stat.group}:1",
+     "for_each": "targets_owner",
+     "text": "mode, owner, group and hard-link count are still as checked"
+    },
+    {
+     "command": [
+      "stat",
+      "-c",
+      "%a:%U:%G:%h",
+      {
+       "field": "target",
+       "ref": "stat",
+       "type": "ipa_path"
+      }
+     ],
+     "expect": "{ref.stat.mode_a}:{ref.stat.owner}:{ref.stat.group}:1",
+     "for_each": "targets_group",
+     "text": "mode, owner, group and hard-link count are still as checked"
+    }
+   ],
    "id": "proc.files.restore-expected-permissions",
    "impact_note": "A file that is too permissive can expose secrets in it to local users; one with the wrong owner or group can stop the IPA service that needs it from reading it.",
    "investigate": [

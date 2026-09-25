@@ -36,10 +36,11 @@ _COMMAND_LIKE = re.compile(
     r"(ipa[\w-]*|getcert|kinit|klist|kvno|dsconf|dsctl|ldapmodify|ldapsearch|ldapadd|ldapdelete|"
     r"systemctl|service|reboot|shutdown|halt|poweroff|init\s+0|"
     r"rm\b|mkfs[\w.]*|dd\b|userdel|groupdel|usermod|passwd|iptables|firewall-cmd|"
-    r"dnf|yum|rpm\b|certutil|pk12util|openssl|pki\b|db2index[\w.]*|chmod|chown|chgrp|kill(?:all)?|"
-    r"curl|wget|python[\w.]*|perl|bash|sh\b|nc\b|ncat|ssh|scp|crontab|tee\b|sed\s+-i|"
-    r"chronyc|ntpdate|hwclock|timedatectl|date\s+(?:-s|--set)|setenforce|semanage|setfacl|restorecon|"
-    r"kadmin[\w.]*|kdb5_util|mv\b|cp\b|ln\b)\b",
+    r"dnf|yum|rpm\b|certutil|pk12util|openssl|pki\b|db2index[\w.]*|chmod|chown|chgrp|p?kill(?:all)?|"
+    r"curl|wget|python[\w.]*|perl|bash|sh\b|nc\b|ncat|ssh|scp|crontab|tee\b|sed\s+-i|truncate|shred|"
+    r"chronyc|chronyd(?=\s+-)|ntpdate|ntpd(?=\s+-)|hwclock|timedatectl|date\s+(?:-\w+\s+)*(?:-s|--set)|setenforce|semanage|"
+    r"setfacl|restorecon|journalctl|sss_cache|sssctl|ldappasswd|ldapmodrdn|ldapdelete|"
+    r"kadmin[\w.]*|kdb5_util|ktutil|mv\b|cp\b|ln\b)\b",
     re.IGNORECASE,
 )
 _CODE_SPAN = re.compile(r"`([^`\n]{1,200})`")
@@ -108,11 +109,13 @@ def sanitize_explanation(text: str, diagnosis: Diagnosis) -> Optional[str]:
         if not _looks_approved(span_match.group(1), approved_commands):
             return None
 
-    covered = _approved_spans(text, approved_commands)
-    for match in _COMMAND_LIKE.finditer(text):
+    # Backticks do not end a command phrase: "`chronyc` makestep" is the command "chronyc makestep".
+    flat = text.replace("`", " ")
+    covered = _approved_spans(flat, approved_commands)
+    for match in _COMMAND_LIKE.finditer(flat):
         if any(a <= match.start() < b for a, b in covered):
             continue
-        rest = text[match.start():]
+        rest = flat[match.start():]
         end = _PHRASE_END.search(rest)
         if not _looks_approved(rest[:end.start()] if end else rest, approved_commands):
             return None

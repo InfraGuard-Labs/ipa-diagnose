@@ -48,7 +48,7 @@ _IPACTL_SERVICES = {
     "dirsrv", "krb5kdc", "kadmin", "named", "named-pkcs11", "httpd", "ipa-custodia", "pki-tomcatd",
     "ipa-otpd", "ipa-dnskeysyncd", "ipa",
 }
-_CORE_SERVICES = {"dirsrv", "krb5kdc", "kadmin", "httpd", "named", "named-pkcs11", "pki-tomcatd"}
+_CORE_SERVICES = {"dirsrv", "krb5kdc", "kadmin", "httpd", "named", "named-pkcs11", "pki-tomcatd", "pki_tomcatd"}
 _MAX_GROUPED = 6
 # Packs whose stopped service can explain a pile of unexplained/crashed checks.
 _SERVICE_UPSTREAMS = ("directory-server", "kerberos", "dns", "certificates")

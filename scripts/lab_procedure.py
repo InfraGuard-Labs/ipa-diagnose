@@ -67,6 +67,19 @@ def cmd_apply(json_file, procedure_id, container, log) -> int:
         return 1
     rc_all = 0
     with open(log, "w", encoding="utf-8") as fh:
+        # The administrator's CONFIRM FIRST: run each printed read-only command and compare with the expected output.
+        for c in r.get("confirm_first") or []:
+            if c["argv"][0] not in ("stat", "readlink"):
+                record(False, f"{procedure_id}: confirm command {c['argv'][0]!r} is not read-only")
+                return 1
+            proc = subprocess.run(["docker", "exec", container] + list(c["argv"]),  # noqa: S603
+                                  capture_output=True, text=True, timeout=60)
+            got = proc.stdout.strip()
+            fh.write(f"$ {c['command']}\n{got}\n(expected {c['expected']})\n")
+            ok = proc.returncode == 0 and got == c["expected"]
+            record(ok, f"{procedure_id}: confirm-first {c['argv']} printed {got!r}, expected {c['expected']!r}")
+            if not ok:
+                return 1
         for step in r["steps"]:
             argv = ["docker", "exec", container] + list(step["argv"])
             fh.write(f"$ {' '.join(step['argv'])}\n")

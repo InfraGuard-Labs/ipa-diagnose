@@ -13,7 +13,7 @@ from ipa_diagnose.render.console import render_report, render_verify
 from ipa_diagnose.render.json_output import report_to_dict
 from ipa_diagnose.resolution import checks as C
 from ipa_diagnose.resolution import knowledge as K
-from ipa_diagnose.resolution.engine import stored_verify_matches
+from ipa_diagnose.resolution.engine import criteria_digest, rebuild_verify
 from ipa_diagnose.verify import VerifyOutcome, compare, load_previous_report
 
 from tests.resolution.test_procedures import (
@@ -33,37 +33,55 @@ def _verify(prev, fresh_stat):
     return compare(prev, after, runner=FakeRunner({f"file.stat|path={CS}": fresh_stat}))
 
 
-def test_untampered_criteria_match_the_catalogue():
-    _, res = _prev_with_fix()
-    assert stored_verify_matches(res["procedure_id"], res["verify"])
+def _fix(prev):
+    return prev["v2"]["verify_baseline"]["fixes"][0]
+
+
+def test_untampered_baseline_rebuilds_the_same_criteria():
+    prev, res = _prev_with_fix()
+    criteria, problem, _ = rebuild_verify(_fix(prev), FakeRunner({f"file.stat|path={CS}": stat()}))
+    assert problem == "" and criteria_digest(criteria) == criteria_digest(res["verify"])
 
 
 @pytest.mark.parametrize("tamper", [
     lambda r: r["verify"][0]["when"].update(op="ne"),
-    lambda r: r["verify"][0]["when"].update(right="0664"),  # still a mode, but see below: type-valid values pass shape
+    lambda r: r["verify"][0]["when"].update(right="0664"),
     lambda r: r["verify"][0].update(check="host.privilege"),
-    lambda r: r["verify"][0]["when"].update(right="no-such-mode"),
     lambda r: r["verify"].clear(),
-    lambda r: r.update(procedure_id="proc.unknown"),
-    lambda r: r["verify"][0].update(extra=1),
+    lambda r: r.update(status="WITHHELD", procedure_id="proc.unknown", steps=[], risk="LOW"),
 ])
-def test_tampered_criteria_are_not_run(tamper):
+def test_display_copy_of_the_fix_is_never_used_by_verify(tamper):
+    """v2.resolutions (criteria, status, commands, risk) is display data only: tampering it changes nothing."""
     prev, res = _prev_with_fix()
     tamper(res)
-    out = _verify(prev, stat(mode="0664"))
-    item = out.items[0]
-    if item.outcome == VerifyOutcome.RESOLVED:
-        # only a type-valid value of the same criterion can survive the shape check; the fresh mode must equal it
-        assert res["verify"][0]["when"]["right"] == "0664"
-    else:
-        assert item.outcome in (VerifyOutcome.UNABLE_TO_VERIFY, VerifyOutcome.PARTIALLY_RESOLVED)
+    assert _verify(prev, stat(mode="0664")).items[0].outcome == VerifyOutcome.PARTIALLY_RESOLVED
+    assert _verify(prev, stat(mode="0660")).items[0].outcome == VerifyOutcome.RESOLVED
 
 
-def test_op_tamper_that_used_to_pass_is_unable_to_verify():
-    prev, res = _prev_with_fix()
-    res["verify"][0]["when"] = {"left": {"ref": "this", "field": "mode"}, "op": "ne", "right": "no-such-mode"}
-    item = _verify(prev, stat(mode="0664")).items[0]
-    assert item.outcome == VerifyOutcome.UNABLE_TO_VERIFY and "do not match" in item.detail
+@pytest.mark.parametrize("tamper,expected", [
+    (lambda f: f.update(procedure_id="proc.unknown"), VerifyOutcome.UNABLE_TO_VERIFY),
+    (lambda f: f.update(procedure_digest="0" * 64), VerifyOutcome.UNABLE_TO_VERIFY),
+    (lambda f: f.update(bindings="x"), VerifyOutcome.UNABLE_TO_VERIFY),
+    (lambda f: f["bindings"]["targets_mode"][0].update(expected="0777; reboot"), VerifyOutcome.UNABLE_TO_VERIFY),
+    (lambda f: f["bindings"]["targets_mode"].clear(), VerifyOutcome.UNABLE_TO_VERIFY),
+    (lambda f: f["bindings"]["targets_mode"][0].update(expected="0664"), VerifyOutcome.CHANGED),  # valid, but not what was shown
+    (lambda f: f.update(criteria_digest="0" * 64), VerifyOutcome.CHANGED),
+    (lambda f: f.clear(), VerifyOutcome.UNABLE_TO_VERIFY),  # record unusable, but the fix was listed as shown
+])
+def test_tampered_or_corrupt_baseline_never_gives_resolved(tamper, expected):
+    prev, _ = _prev_with_fix()
+    tamper(_fix(prev))
+    assert _verify(prev, stat(mode="0664")).items[0].outcome == expected
+
+
+def test_fix_target_moved_since_the_fix_was_shown_is_changed_not_resolved():
+    prev, _ = _prev_with_fix()
+    # after the "fix" the reported path now resolves to another (already correct) file
+    moved = stat(mode="0660", real="/etc/pki/pki-tomcat/other/CS.cfg")
+    after, _ = report_for([], {**ROOT_OK})
+    out = compare(prev, after, runner=FakeRunner({f"file.stat|path={CS}": moved,
+                                                  "file.stat|path=/etc/pki/pki-tomcat/other/CS.cfg": moved}))
+    assert out.items[0].outcome == VerifyOutcome.CHANGED
 
 
 def test_replay_verify_says_the_checks_were_recorded():
@@ -175,3 +193,36 @@ def test_withheld_fix_keeps_v013_confidence_limitations_and_verify_hint_in_detai
     assert "CONFIDENCE" in text and "sudo ipa-diagnose verify" in text
     if d.limitations:
         assert "LIMITATIONS" in text
+
+
+@pytest.mark.parametrize("tamper", [
+    lambda p: p["v2"].pop("verify_baseline"),
+    lambda p: p.pop("v2"),
+    lambda p: p["v2"]["verify_baseline"].update(fixes="x"),
+    lambda p: p["v2"]["verify_baseline"].update(schema=9),
+])
+def test_schema2_report_without_a_valid_baseline_is_damaged(tamper):
+    prev, _ = _prev_with_fix()
+    tamper(prev)
+    assert _verify(prev, stat(mode="0664")).items[0].outcome == VerifyOutcome.UNABLE_TO_VERIFY
+    assert _verify(prev, stat(mode="0660")).items[0].outcome == VerifyOutcome.UNABLE_TO_VERIFY
+
+
+def test_other_host_or_mode_or_unknown_diagnosis_is_unable_to_verify():
+    prev, _ = _prev_with_fix()
+    other = copy.deepcopy(prev)
+    other["hostname"] = "ipa99.elsewhere.test"
+    assert _verify(other, stat(mode="0660")).items[0].outcome == VerifyOutcome.UNABLE_TO_VERIFY
+    replayed = copy.deepcopy(prev)
+    replayed["replay_source"] = "tests/fixtures/x"
+    assert _verify(replayed, stat(mode="0660")).items[0].outcome == VerifyOutcome.UNABLE_TO_VERIFY
+    bogus = copy.deepcopy(prev)
+    bogus["diagnoses"][0]["diagnosis_id"] = "directory-server.renamed-in-a-later-version"
+    assert _verify(bogus, stat(mode="0660")).items[0].outcome == VerifyOutcome.UNABLE_TO_VERIFY
+
+
+def test_v013_report_without_v2_is_compared_as_before():
+    prev, _ = _prev_with_fix()
+    prev.pop("v2")
+    prev.pop("report_schema_version")
+    assert _verify(prev, stat(mode="0664")).items[0].outcome == VerifyOutcome.RESOLVED  # v0.1.3 semantics

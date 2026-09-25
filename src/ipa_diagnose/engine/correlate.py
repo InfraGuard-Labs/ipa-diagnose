@@ -56,9 +56,13 @@ CONFIDENCE_WEIGHT: Dict[ConfidenceLevel, float] = {
 }
 
 
+def _evidence_rank(d: Diagnosis) -> int:
+    return d.severity.rank if d.evidence_severity is None else min(d.severity.rank, d.evidence_severity.rank)
+
+
 def _score(d: Diagnosis) -> float:
     return (
-        (d.severity.rank + 1)
+        (_evidence_rank(d) + 1)
         * STATUS_WEIGHT[d.status]
         * CONFIDENCE_WEIGHT[d.confidence.level]
         * (1.0 + 0.05 * min(d.confidence.corroborating_evidence_count, 6))
@@ -85,6 +89,7 @@ _SERVICE_PACK = {
     "named": "dns",
     "named-pkcs11": "dns",
     "pki-tomcatd": "certificates",
+    "pki_tomcatd": "certificates",  # the spelling ipa-healthcheck's service check uses (real captures)
     "certmonger": "certificates",
 }
 
@@ -99,15 +104,31 @@ def _effective_pack(d: Diagnosis) -> str:
     return d.pack_id
 
 
+# Causality that holds whatever a rule declares (kept here so the rules' published upstream_candidates, part of
+# the frozen v1 JSON, do not change): krb5kdc reads its principals from Directory Server, so with dirsrv down
+# "no KDC could be reached" is a symptom of that, not a DNS finding (red-team round, Slice 1 hardening).
+_IMPLICIT_UPSTREAMS = {"kerberos.kdc-discovery-failure": ("directory-server",)}
+# Same-pack causality, by diagnosis id: with this server's named stopped its records cannot be resolved at
+# all, so "records broken" is a symptom of the stopped service, not an independent problem.
+_IMPLICIT_RULE_UPSTREAMS = {
+    "dns.srv-autodiscovery": ("dns.named-service-down", "healthcheck.service-not-running-named",
+                              "healthcheck.service-not-running-named-pkcs11"),
+}
+
+
 def _demote_via_causality(diagnoses: List[Diagnosis]) -> Dict[str, List[str]]:
     """Returns {diagnosis_id: [causing_pack_ids]} for diagnoses whose declared
     upstream_candidates actually fired - as a REAL problem, not merely any
     diagnosis at all - in this same report."""
 
-    fired_packs = {_effective_pack(d) for d in diagnoses if _is_real_problem(d)}
+    fired_packs = {_effective_pack(d) for d in diagnoses if _is_real_problem(d) and d.explains_downstream}
     demotions: Dict[str, List[str]] = {}
     for d in diagnoses:
-        causing = [p for p in d.upstream_candidates if p in fired_packs and p != d.pack_id]
+        upstream = list(d.upstream_candidates) + [p for p in _IMPLICIT_UPSTREAMS.get(d.diagnosis_id, ()) if p not in d.upstream_candidates]
+        causing = [p for p in upstream if p in fired_packs and p != d.pack_id]
+        causing += [_effective_pack(u) for u in diagnoses
+                    if u.diagnosis_id in _IMPLICIT_RULE_UPSTREAMS.get(d.diagnosis_id, ()) and _is_real_problem(u)
+                    and _effective_pack(u) not in causing]
         if causing:
             demotions[d.diagnosis_id] = causing
     return demotions
@@ -130,7 +151,7 @@ def build_report(
         if d.diagnosis_id in demotions:
             causes = demotions[d.diagnosis_id]
             d.priority = PriorityBucket.RELATED_SYMPTOM
-            d.related_to_titles = [t for pack in causes for t in titles_by_pack.get(pack, [])]
+            d.related_to_titles = [t for pack in causes for t in titles_by_pack.get(pack, []) if t != d.title]
             cause_note = " and ".join(causes)
             if d.status == DiagnosisStatus.DIAGNOSED:
                 d.why = f"{d.why}\n\nLikely a downstream symptom of the {cause_note} problem reported above."
@@ -141,7 +162,9 @@ def build_report(
         else:
             root_candidates.append(d)
 
-    root_candidates.sort(key=_score, reverse=True)
+    # A diagnosis resting only on WARNING-level evidence never becomes PRIMARY while a candidate backed by
+    # ERROR/CRITICAL evidence exists, even an undiagnosed one (red-team round, Slice 1 hardening).
+    root_candidates.sort(key=lambda d: (_evidence_rank(d) >= Severity.ERROR.rank, _score(d)), reverse=True)
     for idx, d in enumerate(root_candidates):
         d.priority = PriorityBucket.PRIMARY if idx == 0 else PriorityBucket.SECONDARY_INDEPENDENT
 
@@ -241,6 +264,7 @@ def _undiagnosed_findings(bundle: EvidenceBundle, diagnoses: List[Diagnosis]) ->
 
 _CAPABILITY_LABELS = {
     "ipa-healthcheck": "ipa-healthcheck (base health evidence)",
+    "ipa-healthcheck-coverage": "ipa-healthcheck coverage (Directory Server and IPA checks)",
     "replication_agreements": "Replication agreements / RUV",
 }
 

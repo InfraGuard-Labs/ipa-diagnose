@@ -153,6 +153,16 @@ def _ra_agent_cleared(bundle: EvidenceBundle) -> bool:
     return hc_clear and cm_clear
 
 
+def _local_ca_service_stopped(bundle: EvidenceBundle) -> bool:
+    """ipa-healthcheck's service check reports this server's own CA (pki-tomcatd) as not running."""
+
+    for f in bundle.findings:
+        if (f.source.endswith("meta.services") and f.check in ("pki_tomcatd", "pki-tomcatd")
+                and f.severity.rank >= Severity.ERROR.rank):
+            return True
+    return False
+
+
 class CertmongerTrackingStuckRule(DiagnosticRule):
     rule_id = "certmonger-tracking-stuck"
     summary = "A certmonger tracking request is stuck in a CA failure state (renewal will not happen)."
@@ -163,6 +173,7 @@ class CertmongerTrackingStuckRule(DiagnosticRule):
             return None
 
         evidence_for: List[EvidenceRef] = []
+        local_ca_stopped = _local_ca_service_stopped(bundle)
         network_hit = False
         trust_hit = False
         informative_error = None
@@ -182,7 +193,8 @@ class CertmongerTrackingStuckRule(DiagnosticRule):
                 continue
             # Both are evaluated independently: text matching both families supports neither.
             # "Unable to communicate with CMS (Connection refused)": the CA's own service refusing, not a network path.
-            if any(h in err for h in _NETWORK_HINTS) and "cms" not in err:
+            # A local CA service reported stopped explains "couldn't connect" on its own: that is not a network path.
+            if any(h in err for h in _NETWORK_HINTS) and "cms" not in err and not local_ca_stopped:
                 network_hit = True
                 informative_error = item.data.get("ca_error")
             if any(h in err for h in _TRUST_HINTS):

@@ -16,6 +16,7 @@ Only then is the procedure OFFERED. Everything that ran is kept as "checked for 
 from __future__ import annotations
 
 import dataclasses
+import hashlib
 import json
 import math
 import re
@@ -87,6 +88,10 @@ class Resolution:
     impact_note: str = ""
     replay: bool = False
     """True when check results came from a replay fixture (recorded), not from this host now."""
+    confirm_first: List[Dict[str, Any]] = dataclasses.field(default_factory=list)
+    """Read-only commands to run right before the fix, with the output they must show (what was checked)."""
+    baseline: Optional[Dict[str, Any]] = None
+    """For an OFFERED fix: the minimal record `verify` needs (see rebuild_verify)."""
 
 
 def _version(text: Optional[str]) -> Optional[Tuple[int, ...]]:
@@ -425,6 +430,11 @@ def resolve_diagnosis(d: Diagnosis, env: Optional[EnvironmentInfo], runner: Runn
         return item_scopes(entry["for_each"]) if entry.get("for_each") else [base]
 
     try:
+        for c in proc.get("confirm_first", []):
+            for sc in scopes(c):
+                r.confirm_first.append({"text": _text(c["text"], sc), "argv": _argv(c["command"], sc),
+                                        "expect": _text(c["expect"], sc)})
+        r.confirm_first = _dedupe(r.confirm_first, lambda x: tuple(x["argv"]))
         for s in proc["steps"]:
             for sc in scopes(s):
                 if "only_if" in s and not _pred(s["only_if"], sc):
@@ -441,15 +451,9 @@ def resolve_diagnosis(d: Diagnosis, env: Optional[EnvironmentInfo], runner: Runn
                         r.what_changes.append(text)
                     else:
                         r.rollback.append({"text": text, "argv": _argv(entry["command"], sc) if "command" in entry else None})
-        for v in proc["verify"]:
-            for sc in scopes(v):
-                r.verify.append({
-                    "text": _text(v["text"], sc), "check": v["check"],
-                    "params": {k: _concrete(val, sc) for k, val in v["params"].items()},
-                    "when": _concrete_pred(v["when"], sc),
-                })
+        r.verify = _build_verify(proc, scopes)
     except _Unknown as e:
-        r.steps, r.what_changes, r.rollback, r.verify = [], [], [], []
+        r.steps, r.what_changes, r.rollback, r.verify, r.confirm_first = [], [], [], [], []
         r.reasons.append(f"A value needed for the fix could not be established safely: {e.why}")
         return r
     if not r.steps:
@@ -461,7 +465,7 @@ def resolve_diagnosis(d: Diagnosis, env: Optional[EnvironmentInfo], runner: Runn
     for st in r.steps:
         k = (st.step_id, st.argv[-1])
         if k in seen and seen[k] != st.argv:
-            r.steps, r.what_changes, r.rollback, r.verify = [], [], [], []
+            r.steps, r.what_changes, r.rollback, r.verify, r.confirm_first = [], [], [], [], []
             r.reasons.append(f"Two findings expect different values for the same file ({sanitize_text(st.argv[-1], 160)}), "
                              "so ipa-diagnose cannot tell which one is right.")
             return r
@@ -469,11 +473,89 @@ def resolve_diagnosis(d: Diagnosis, env: Optional[EnvironmentInfo], runner: Runn
     r.steps = _dedupe(r.steps, lambda s: (s.step_id, tuple(s.argv)))
     r.what_changes = _dedupe(r.what_changes, lambda x: x)
     r.rollback = _dedupe(r.rollback, lambda x: tuple(x["argv"]) if x["argv"] else x["text"])
-    r.verify = _dedupe(r.verify, lambda x: json.dumps({k: x[k] for k in ("check", "params", "when")}, sort_keys=True))
     r.risk = max((s.risk for s in r.steps), key=lambda x: RISK_RANK[x])
     r.definitive, r.verification_label = _label(proc, env)
+    # Minimal verify baseline: which procedure (and exact definition), the typed values it was filled with, and
+    # a digest of the criteria they produced. `verify` rebuilds the criteria from the CURRENT catalogue and
+    # FRESH read-only checks; it never runs criteria, commands or statuses read back from the saved report.
+    r.baseline = {"procedure_id": proc["id"], "procedure_digest": procedure_digest(proc),
+                  "bindings": json.loads(json.dumps(bindings)), "criteria_digest": criteria_digest(r.verify)}
     r.status = OFFERED
     return r
+
+
+def _build_verify(proc: Dict[str, Any], scopes) -> List[Dict[str, Any]]:
+    out = []
+    for v in proc["verify"]:
+        for sc in scopes(v):
+            out.append({
+                "text": _text(v["text"], sc), "check": v["check"],
+                "params": {k: _concrete(val, sc) for k, val in v["params"].items()},
+                "when": _concrete_pred(v["when"], sc),
+            })
+    return _dedupe(out, lambda x: json.dumps({k: x[k] for k in ("check", "params", "when")}, sort_keys=True))
+
+
+def procedure_digest(proc: Dict[str, Any]) -> str:
+    return hashlib.sha256(json.dumps(proc, sort_keys=True, ensure_ascii=True).encode()).hexdigest()
+
+
+def criteria_digest(criteria: List[Dict[str, Any]]) -> str:
+    core = [{k: c[k] for k in ("check", "params", "when")} for c in criteria]
+    return hashlib.sha256(json.dumps(core, sort_keys=True, ensure_ascii=True).encode()).hexdigest()
+
+
+# outcomes of rebuild_verify besides success
+REBUILD_UNKNOWN = "UNKNOWN"      # cannot rebuild: no such procedure, changed definition, invalid values, check failed
+REBUILD_CHANGED = "CHANGED"      # rebuilt, but the fix now points at something else than when it was offered
+
+
+def rebuild_verify(fix: Any, runner: Runner) -> Tuple[Optional[List[Dict[str, Any]]], str, str]:
+    """Rebuild a fix's verification criteria from the CURRENT catalogue, the saved typed values and FRESH
+    read-only checks: (criteria or None, "" / REBUILD_UNKNOWN / REBUILD_CHANGED, reason)."""
+
+    try:
+        if not isinstance(fix, dict):
+            return None, REBUILD_UNKNOWN, "the saved fix record is malformed"
+        catalogue, _ = load_catalogue()
+        proc = next((p for p in catalogue if p.get("id") == fix.get("procedure_id") and p.get("kind") != "no_procedure"), None)
+        if proc is None:
+            return None, REBUILD_UNKNOWN, "this version of ipa-diagnose has no such fix procedure"
+        if fix.get("procedure_digest") != procedure_digest(proc):
+            return None, REBUILD_UNKNOWN, ("the fix procedure is not the one that was shown (ipa-diagnose or its "
+                                           "procedure catalogue changed since)")
+        saved = fix.get("bindings")
+        reasons: List[str] = []
+        bindings = _bindings(proc, _SavedValues(saved if isinstance(saved, dict) else {}), reasons)
+        list_names = [n for n, sp in proc["bindings"].items() if sp["type"] == "list"]
+        if bindings is None or reasons or any(len(bindings[n]) != len(saved.get(n) or []) for n in list_names):
+            return None, REBUILD_UNKNOWN, "the values saved for the fix are not valid values of their type"
+        lists = {n: list(bindings[n]) for n in list_names}
+        lchecks: Dict[str, List[Dict[str, CheckResult]]] = {n: [{} for _ in v] for n, v in lists.items()}
+        global_checks: Dict[str, CheckResult] = {}
+        base = _Scope(bindings, global_checks)
+
+        def item_scopes(name: str) -> List[_Scope]:
+            return [_Scope(bindings, global_checks, it, ic) for it, ic in zip(lists[name], lchecks[name])]
+
+        for inv in proc.get("investigate", []):
+            for sc in item_scopes(inv["for_each"]) if inv.get("for_each") else [base]:
+                params = {k: sc.value(v) for k, v in inv["params"].items()}
+                (sc.item_checks if inv.get("for_each") else global_checks)[inv["id"]] = runner.run(inv["check"], params)
+        criteria = _build_verify(proc, lambda e: item_scopes(e["for_each"]) if e.get("for_each") else [base])
+    except _Unknown as e:
+        return None, REBUILD_UNKNOWN, f"a fresh check needed to rebuild the fix's criteria failed: {e.why}"
+    except Exception as e:  # noqa: BLE001 - a corrupt baseline must never crash verify or pass
+        return None, REBUILD_UNKNOWN, f"the saved fix record could not be used ({type(e).__name__})"
+    if criteria_digest(criteria) != fix.get("criteria_digest"):
+        return criteria, REBUILD_CHANGED, ("the fix's target is no longer what it was when the fix was shown "
+                                           "(for example the file now resolves to another location)")
+    return criteria, "", ""
+
+
+class _SavedValues:
+    def __init__(self, bindings: Dict[str, Any]):
+        self.bindings = bindings
 
 
 def resolve_report(report, runner: Runner) -> Dict[str, Resolution]:
@@ -537,58 +619,3 @@ def evaluate_verify(criteria: List[Dict[str, Any]], runner: Runner) -> List[Tupl
             results.append((sanitize_text(c.get("text", "") if isinstance(c, dict) else "", 200), None, why))
     return results
 
-
-_SCALAR = (str, int, float, bool)
-
-
-def _shape_matches(tmpl: Any, stored: Any, type_of) -> bool:
-    """`stored` is `tmpl` with its bind/item/ref values filled in (each a scalar of the declared type)."""
-
-    if isinstance(tmpl, dict) and ({"bind", "item", "ref"} & set(tmpl)) and tmpl.get("ref") != "this":
-        if not isinstance(stored, _SCALAR) or isinstance(stored, float) and not math.isfinite(stored):
-            return False
-        t = type_of(tmpl)
-        return t is None or T.validate(t, stored) == stored
-    if isinstance(tmpl, dict):
-        return isinstance(stored, dict) and set(tmpl) == set(stored) and all(
-            _shape_matches(tmpl[k], stored[k], type_of) for k in tmpl)
-    if isinstance(tmpl, list):
-        return isinstance(stored, list) and len(tmpl) == len(stored) and all(
-            _shape_matches(a, b, type_of) for a, b in zip(tmpl, stored))
-    return type(tmpl) is type(stored) and tmpl == stored
-
-
-def stored_verify_matches(procedure_id: Any, criteria: Any) -> bool:
-    """Verify criteria read back from the state file must be exactly the catalogue procedure's own criteria
-    (only the values it filled in may differ, and those must be valid values of their type)."""
-
-    catalogue, _ = load_catalogue()
-    proc = next((p for p in catalogue if p.get("id") == procedure_id and p.get("kind") != "no_procedure"), None)
-    if proc is None or not isinstance(criteria, list) or not criteria:
-        return False
-
-    def typer(entry):
-        def type_of(ref):
-            if "bind" in ref:
-                spec = proc["bindings"].get(ref["bind"], {})
-                return spec.get("type") if spec.get("type") != "list" else None
-            if "item" in ref and entry.get("for_each"):
-                item = proc["bindings"].get(entry["for_each"], {}).get("item", {})
-                t = item.get(ref["item"])
-                return None if t == "any_text" else t
-            return None
-        return type_of
-
-    templates = proc["verify"]
-    used = set()
-    for c in criteria:
-        if not isinstance(c, dict) or set(c) != {"text", "check", "params", "when"}:
-            return False
-        hit = [i for i, t in enumerate(templates)
-               if c["check"] == t["check"] and _shape_matches(t["params"], c["params"], typer(t))
-               and _shape_matches(t["when"], c["when"], typer(t))]
-        if not hit:
-            return False
-        used.update(hit)
-    # criteria cannot be dropped: every template that is not per-target must be present
-    return all(i in used for i, t in enumerate(templates) if not t.get("for_each"))

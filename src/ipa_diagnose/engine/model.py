@@ -157,6 +157,14 @@ class Diagnosis:
     bindings: Dict[str, Any] = dataclasses.field(default_factory=dict)
     """Structured values from the evidence that a procedure may use (validated
     again by type before any of them can reach a printed command)."""
+    evidence_severity: Optional["Severity"] = None
+    """Worst severity of the evidence itself when a rule reports a higher diagnosis severity (e.g. a file-mode
+    WARNING reported as an ERROR-level diagnosis). Ranking uses the lower of the two, so such a diagnosis never
+    outranks one backed by ERROR/CRITICAL evidence."""
+    explains_downstream: bool = True
+    """Whether this diagnosis, as a real problem, can be the upstream cause of other packs' symptoms
+    (correlate.py). False for conditions that cannot break other subsystems, e.g. a too-permissive
+    mode on a PKI (Tomcat) file filed under the directory-server pack."""
 
     def __post_init__(self) -> None:
         if not self.diagnosis_id:

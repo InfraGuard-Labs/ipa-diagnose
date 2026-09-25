@@ -58,6 +58,19 @@ def collect_evidence(*, replay_dir: Optional[str] = None) -> EvidenceBundle:
     return bundle
 
 
+def healthcheck_coverage_gap(findings) -> Optional[str]:
+    """A full ipa-healthcheck run on a server always reports Directory Server (ipahealthcheck.ds.*) and IPA
+    (ipahealthcheck.ipa.*) checks. Output without either family (for example restricted to the service
+    checks) must not be read as a healthy server."""
+
+    sources = {str(f.source) for f in findings}
+    missing = [fam for fam in ("ipahealthcheck.ds.", "ipahealthcheck.ipa.") if not any(s.startswith(fam) for s in sources)]
+    if missing:
+        return ("ipa-healthcheck reported no " + " and no ".join(m + "* checks" for m in missing)
+                + "; a full run always does, so health cannot be verified from this output")
+    return None
+
+
 def _resolve_hostname(fixture_path: Optional[pathlib.Path]) -> str:
     if fixture_path is not None:
         meta_file = fixture_path / "meta.json"
@@ -150,6 +163,10 @@ def _collect_healthcheck(bundle: EvidenceBundle, *, live: bool, fixture_path: Op
                     message="ipa-healthcheck did not report the core service checks (incomplete output)",
                 )
             )
+        gap = healthcheck_coverage_gap(parsed)
+        if gap:
+            # Not a collection failure (what was reported is still used), but health cannot be "complete".
+            bundle.collection_errors.append(CollectionError(collector="ipa-healthcheck-coverage", message=gap))
     else:
         hc_file = fixture_path / "healthcheck.json"
         if not hc_file.exists():

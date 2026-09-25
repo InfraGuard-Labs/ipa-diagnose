@@ -169,6 +169,16 @@ _LOG_SECRET = re.compile(
     r"[\w.-]*[\"']?\s*[=:]\s*)(\"[^\"]*\"|'[^']*'|\S+)")
 _LOG_OPTION = re.compile(r"(?i)((?:^|\s)(?:-w|-y|--password|--bind-password|--dm-password|--admin-password|-p)[=\s]+)\S+")
 _LOG_HEADER = re.compile(r"(?i)(\b(?:authorization|proxy-authorization|cookie|set-cookie)\s*[:=]\s*).*")
+_LOG_PW_KEY = re.compile(r"(?i)(\bpw\s*[=:]\s*)\S+")
+# Plain prose ("the password is X", "with password X"). Words that describe the secret instead of being it
+# ("the password is expired") are kept, so the evidence stays readable.
+_NOT_A_SECRET = (r"(?!(?:expired|incorrect|invalid|wrong|required|missing|not|too|empty|set|valid|about|going|"
+                 r"changed|correct|locked|unknown|null|none)\b)")
+_LOG_PROSE = re.compile(
+    r"(?i)(\b(?:pass(?:word|wd|phrase)|secret|token|pin)\s+(?:is|was|of|set\s+to)\s+[\"']?)" + _NOT_A_SECRET + r"[^\s\"']+")
+_LOG_PROSE_WITH = re.compile(
+    r"(?i)(\b(?:with|using)\s+(?:the\s+)?(?:pass(?:word|wd|phrase)|secret|token)\s+[\"']?)" + _NOT_A_SECRET + r"[^\s\"']+")
+_LOG_URL_CRED = re.compile(r"(?i)(\b[a-z][a-z0-9+.-]*://[^\s:@/]+:)[^\s@/]+@")
 
 
 def _redact_log_line(line: str) -> str:
@@ -177,6 +187,10 @@ def _redact_log_line(line: str) -> str:
     line = _LOG_HEADER.sub(lambda m: m.group(1) + "[REDACTED:header]", line)
     line = _LOG_SECRET.sub(lambda m: m.group(1) + "[REDACTED:secret]", line)
     line = _LOG_OPTION.sub(lambda m: m.group(1) + "[REDACTED:secret]", line)
+    line = _LOG_PW_KEY.sub(lambda m: m.group(1) + "[REDACTED:secret]", line)
+    line = _LOG_PROSE.sub(lambda m: m.group(1) + "[REDACTED:secret]", line)
+    line = _LOG_PROSE_WITH.sub(lambda m: m.group(1) + "[REDACTED:secret]", line)
+    line = _LOG_URL_CRED.sub(lambda m: m.group(1) + "[REDACTED:secret]@", line)
     return redact_text(line).redacted_text
 
 
@@ -285,6 +299,7 @@ def _file_stat(params):
     fields = {
         "exists": True, "is_symlink": _stat.S_ISLNK(st.st_mode), "is_regular": _stat.S_ISREG(st.st_mode),
         "is_dir": _stat.S_ISDIR(st.st_mode), "mode": "%04o" % (st.st_mode & 0o7777),
+        "mode_a": "%o" % (st.st_mode & 0o7777), "links": st.st_nlink,
         # Real location (parent directories may be symlinks: on FreeIPA /var/lib/pki/pki-tomcat/conf -> /etc/pki/pki-tomcat).
         # Commands act on "target" (the real file, named by an IPA-managed path), and only if realpath_allowed.
         "canonical": real == path,

@@ -173,7 +173,7 @@ def cmd_verify(args: argparse.Namespace, console: Console) -> int:
         result.new_conditions
     ):
         return fresh if fresh in (1, 2, 3) else 1  # a problem remains: never a clean 0
-    if any(i.outcome == VerifyOutcome.UNABLE_TO_VERIFY for i in result.items) or (
+    if any(i.outcome in (VerifyOutcome.UNABLE_TO_VERIFY, VerifyOutcome.CHANGED) for i in result.items) or (
         report.evidence_completeness.level != "complete"
     ):
         return 4  # verification is incomplete: never a clean 0

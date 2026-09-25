@@ -1,0 +1,14 @@
+[
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "pki_tomcatd",
+  "result": "ERROR",
+  "uuid": "rt-pki",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": false,
+   "msg": "pki_tomcatd: not running"
+  }
+ }
+]
