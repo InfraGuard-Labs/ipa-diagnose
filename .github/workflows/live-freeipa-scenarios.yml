@@ -54,7 +54,13 @@ jobs:
             sleep 10
             if docker exec ipa-s systemctl is-active ipa.service 2>/dev/null | grep -qx active; then echo "active after ~$((i*10))s"; sleep 20; break; fi
           done
-          docker exec ipa-s ipactl status || { docker logs ipa-s 2>&1 | tail -60; exit 1; }
+          if ! docker exec ipa-s ipactl status; then
+            mkdir -p out
+            docker logs ipa-s > out/boot-container.log 2>&1
+            for f in ipaserver-install.log ipaclient-install.log; do docker cp ipa-s:/data/var/log/$f out/$f 2>/dev/null || docker cp ipa-s:/var/log/$f out/$f 2>/dev/null; done
+            tail -60 out/boot-container.log; grep -n "ERROR\|Error\|error" out/ipa*-install.log 2>/dev/null | tail -30
+            exit 1
+          fi
 
       - name: Install ipa-diagnose
         run: |
@@ -364,5 +370,6 @@ jobs:
           name: live-scenarios-evidence-${{ inputs.image || 'fedora-43' }}
           path: |
             env.txt
+            image.txt
             out/
           retention-days: 30
