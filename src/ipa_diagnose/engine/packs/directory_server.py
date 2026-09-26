@@ -101,6 +101,25 @@ def _disk_findings(bundle: EvidenceBundle) -> List[Finding]:
     return [f for f in found if "not mounted" not in (f.message or "").lower()]
 
 
+def _disk_really_full(f: Finding) -> bool:
+    """An ERROR+ result that shows Directory Server's data store is actually out of space: its own disk check at
+    ERROR+, a failed absolute free-space result, or <= 5 % free on the data store."""
+
+    if f.severity.rank < Severity.ERROR.rank:
+        return False
+    if f.source == "ipahealthcheck.ds.disk_space":
+        return True
+    kw = f.keywords if isinstance(f.keywords, dict) else {}
+    if str(kw.get("store", kw.get("key", ""))).rstrip("/") not in _DS_DATA_STORES:
+        return False
+    if "free_space" in kw:
+        return True
+    try:
+        return float(kw.get("percent_free")) <= 5
+    except (TypeError, ValueError):
+        return False
+
+
 def _recheck_disk_space(bundle: EvidenceBundle) -> bool:
     findings = _disk_findings(bundle)
     if any(f.severity.rank >= Severity.WARNING.rank for f in findings):
@@ -122,11 +141,10 @@ class DiskSpaceExhaustionRule(DiagnosticRule):
             # Only a full file system that Directory Server writes its database to (or DS's own disk check, or DS
             # logging "no space") can break DS and so explain other subsystems' failures; a full backup or log
             # directory cannot (red-team round 4).
-            relevant = _at_least_warning(_disk_findings(bundle))
+            # Hard evidence only (red-team round 5): upstream reports ERROR below 20 % free, which is ordinary on a
+            # busy server with plenty of space left, so percent_free alone must be really low.
             d.explains_downstream = bool(_items_by_category(bundle, "dirsrv_journal_line", "disk_space")) or any(
-                f.source == "ipahealthcheck.ds.disk_space"
-                or str((f.keywords if isinstance(f.keywords, dict) else {}).get("store", "")).rstrip("/") in _DS_DATA_STORES
-                for f in relevant)
+                _disk_really_full(f) for f in _disk_findings(bundle))
         return d
 
     def _evaluate(self, bundle: EvidenceBundle) -> Optional[Diagnosis]:

@@ -163,6 +163,7 @@ class PeerConnectivityBreakRule(DiagnosticRule):
                 # "connection refused" / "no route to host": the peer's name resolved and the host was reached,
                 # so DNS is not the cause either (red-team round 4).
                 d.not_caused_by.append("dns")
+                d.not_caused_by.append("directory-server")  # a peer refusing TCP is not a local-disk symptom
         return d
 
     def _evaluate(self, bundle: EvidenceBundle) -> Optional[Diagnosis]:

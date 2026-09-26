@@ -1,0 +1,41 @@
+{
+ "binary.present|name=ipactl": {
+  "command": "",
+  "display": "ipactl: installed",
+  "fields": {
+   "present": true
+  },
+  "status": "OK"
+ },
+ "host.privilege|": {
+  "command": "",
+  "display": "running as root",
+  "fields": {
+   "is_root": true
+  },
+  "status": "OK"
+ },
+ "systemd.journal_tail|unit=dirsrv@EXAMPLE-TEST.service": {
+  "command": "",
+  "display": "last log line: segfault",
+  "fields": {
+   "last_line": "ns-slapd[1234]: segfault at 0 ip 00007f... in libback-ldbm.so",
+   "lines": 12
+  },
+  "status": "OK"
+ },
+ "systemd.unit|service=dirsrv": {
+  "command": "systemctl show dirsrv@EXAMPLE-TEST.service",
+  "display": "dirsrv@EXAMPLE-TEST.service: failed",
+  "fields": {
+   "active_state": "failed",
+   "load_state": "loaded",
+   "result": "core-dump",
+   "start_method": "ipactl",
+   "sub_state": "failed",
+   "unit": "dirsrv@EXAMPLE-TEST.service",
+   "unit_file_state": "enabled"
+  },
+  "status": "OK"
+ }
+}

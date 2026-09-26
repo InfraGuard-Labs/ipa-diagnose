@@ -170,7 +170,8 @@ class CertmongerTrackingStuckRule(DiagnosticRule):
     def evaluate(self, bundle: EvidenceBundle) -> Optional[Diagnosis]:
         d = self._evaluate(bundle)
         if d is not None and any(any(h in str(i.data.get("ca_error") or "").lower() for h in _TRUST_HINTS)
-                                 for i in _cm_items(bundle)):
+                                 for i in _cm_items(bundle)
+                                 if str(i.data.get("state", "")).upper() in FAILURE_STATES):
             # A certificate-chain validation failure is not what a stopped CA looks like (a stopped CA refuses the
             # connection), so it is not absorbed as that CA's symptom (red-team round 4).
             d.not_caused_by = ["certificates"]
