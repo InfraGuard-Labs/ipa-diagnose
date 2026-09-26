@@ -80,7 +80,7 @@ Notes that belong with the rows:
 
 | Tier | What | Where |
 |---|---|---|
-| FIXTURE | 54 v0.1.3 replay fixtures (packs, coverage, real-freeipa-capture) with byte-identical console and v1 JSON goldens. Deliberate changes are listed in tests/data/GOLDEN_CHANGES.md | tests/fixtures/*, tests/unit/test_*_compat.py |
+| FIXTURE | 32 v0.1.3 replay fixtures (packs, coverage, real-freeipa-capture) with v0.1.3 console and v1 JSON goldens (byte-identical where no procedure is involved). Deliberate changes are listed in tests/data/GOLDEN_CHANGES.md | tests/fixtures/*, tests/unit/test_*_compat.py |
 | FIXTURE | 88 red-team fixtures from 8 fresh red-team rounds, each pinned to the true outcome | tests/fixtures/redteam*/, tests/adversarial/test_redteam*_slice1_hardening.py |
 | FIXTURE | the 4 Slice 1 procedures: positive, wrong-version, look-alike, contradiction, hostile values | tests/resolution/*.py |
 | SYNTHETIC | verify state trust (tampered, corrupt, foreign, other host, replay/live, carried records), AI filter, redaction, CONFIRM FIRST, symlink, hard-link and key-material handling | tests/resolution/test_round*_*.py |
