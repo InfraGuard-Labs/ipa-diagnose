@@ -17,10 +17,12 @@ import enum
 import json
 import os
 import pathlib
+import re
 from typing import Any, Dict, List, Optional
 
 from ipa_diagnose.engine.model import Diagnosis, DiagnosisReport, DiagnosisStatus, PriorityBucket
 from ipa_diagnose.render.json_output import report_to_dict
+from ipa_diagnose.textsafe import sanitize_text
 
 _ROOT_TIER = {PriorityBucket.PRIMARY, PriorityBucket.SECONDARY_INDEPENDENT}
 
@@ -30,6 +32,8 @@ class VerifyOutcome(enum.Enum):
     STILL_PRESENT = "STILL_PRESENT"
     PARTIALLY_RESOLVED = "PARTIALLY_RESOLVED"
     UNABLE_TO_VERIFY = "UNABLE_TO_VERIFY"
+    CHANGED = "CHANGED"
+    """The problem as diagnosed is gone, but what the fix pointed at is no longer the same - re-diagnose."""
 
 
 @dataclasses.dataclass
@@ -46,6 +50,14 @@ class VerifyResult:
     new_conditions: List[Diagnosis]
     previous_generated_at: Optional[str]
     current_report: DiagnosisReport
+
+    @property
+    def keep_baseline(self) -> bool:
+        """Something previously found was neither confirmed resolved nor is it in the fresh report: the saved
+        baseline must be kept, or the next verify would silently lose it (round-6 review)."""
+
+        fresh = {d.diagnosis_id for d in self.current_report.diagnoses} if self.current_report else set()
+        return any(i.outcome != VerifyOutcome.RESOLVED and i.diagnosis_id not in fresh for i in self.items)
 
 
 def default_state_path() -> pathlib.Path:
@@ -64,38 +76,224 @@ def save_report(state_path: pathlib.Path, report: DiagnosisReport) -> None:
     # the AI-redaction pipeline, which only applies to outbound AI payloads)
     # - restricted to owner-only, not left at the default-umask 0644/0755
     # (found in security review).
-    if os.path.islink(state_path) or os.path.islink(state_path.parent):
-        return  # never follow a symlink when writing as root (best-effort state only)
+    if not _state_location_ok(state_path):
+        return  # never write through a symlink or into a directory another user owns (best-effort state only)
     try:
         state_path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         os.chmod(state_path.parent, 0o700)
-        state_path.write_text(json.dumps(report_to_dict(report), indent=2), encoding="utf-8")
-        os.chmod(state_path, 0o600)
+        data = json.dumps(report_to_dict(report), indent=2).encode("utf-8")
+        # Atomic: a full disk or a crash leaves the previous file intact, never a truncated one (round-7 review).
+        tmp = state_path.with_name(f".{state_path.name}.{os.getpid()}.tmp")
+        fd = os.open(str(tmp), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        try:
+            with os.fdopen(fd, "wb") as fh:
+                fh.write(data)
+                fh.flush()
+                os.fsync(fh.fileno())
+            os.replace(str(tmp), str(state_path))
+        finally:
+            if tmp.exists():
+                tmp.unlink()
     except OSError:
         pass  # Saving state is best-effort; `verify` degrades to UNABLE_TO_VERIFY without it.
 
 
-def load_previous_report(state_path: pathlib.Path) -> Optional[Dict[str, Any]]:
-    if not state_path.exists():
+def carry_forward_fixes(previous: Optional[Dict[str, Any]], report: DiagnosisReport,
+                        confirmed: Optional[set] = None, runner=None) -> List[Dict[str, Any]]:
+    """Fix records to keep in the next baseline, until a verify confirms them: a fix shown earlier whose diagnosis
+    is still present but not shown again (round 7), or whose diagnosis is gone without a verify having confirmed
+    the fix (round 10: a plain run in between must not forget it). `confirmed` = diagnosis ids a verify has just
+    confirmed RESOLVED. The gone diagnoses themselves are kept too (see carried_diagnoses). Only from a usable
+    baseline of this same host and mode."""
+
+    if previous is None or _baseline_problem(previous, report) or _baseline_damage(previous):
+        return []
+    confirmed = confirmed or set()
+    fresh_ids = {d.diagnosis_id for d in report.diagnoses}
+    shown_now = {rid for rid, r in (report.resolutions or {}).items() if getattr(r, "status", None) == "OFFERED"}
+    kept = []
+    for did, f in _baseline_fixes(previous).items():
+        if did in shown_now or did in confirmed:
+            continue
+        if did not in fresh_ids and runner is not None and not _still_unfixed(f, runner):
+            # A plain run re-checks (read-only) a fix whose diagnosis is gone: keep it only while the fix's own
+            # check still fails. A record that can no longer be checked at all (changed or damaged; verify already
+            # said "run ipa-diagnose again") or whose checks now pass is dropped - otherwise it would be reported
+            # as CHANGED forever (live-lab lesson).
+            continue
+        kept.append(f)
+    return kept
+
+
+def _still_unfixed(fix: Dict[str, Any], runner) -> bool:
+    from ipa_diagnose.resolution.engine import evaluate_verify, rebuild_verify
+
+    criteria, problem, _ = rebuild_verify(fix, runner)
+    if criteria is None or problem:
+        return False
+    return any(ok is not True for _, ok, _ in evaluate_verify(criteria, runner))
+
+
+def carried_diagnoses(previous: Optional[Dict[str, Any]], report: DiagnosisReport, carried: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """The saved diagnosis entries of carried fix records whose diagnosis is not in this run's results."""
+
+    if previous is None:
+        return []
+    fresh_ids = {d.diagnosis_id for d in report.diagnoses}
+    wanted = {f.get("diagnosis_id") for f in carried} - fresh_ids
+    pool = list(previous.get("diagnoses", []))
+    v2 = previous.get("v2") if isinstance(previous.get("v2"), dict) else {}
+    pool += [d for d in (v2.get("carried_diagnoses") if isinstance(v2.get("carried_diagnoses"), list) else [])
+             if isinstance(d, dict)]
+    out, seen = [], set()
+    for d in pool:
+        did = d.get("diagnosis_id")
+        if isinstance(did, str) and did in wanted and did not in seen:
+            seen.add(did)
+            out.append(d)
+    return out
+
+
+class UnreadableBaseline(Exception):
+    """The saved diagnosis exists but cannot be read: verification is impossible, not "nothing to verify"."""
+
+
+def _state_location_ok(state_path: pathlib.Path) -> bool:
+    """The state file is only trusted, and only written, where no symlink is involved and the directory (and the
+    file, if present) belong to the user running ipa-diagnose (round-8 review: root with a user's HOME)."""
+
+    try:
+        parent = state_path.parent.absolute()
+        if os.path.islink(state_path):
+            return False
+        if hasattr(os, "geteuid"):
+            euid = os.geteuid()
+            # A symlink on the way is fine only if root or this user owns it (the freeipa container keeps /root on
+            # its /data volume through a root-owned link); a link another user controls is not (round-8 review).
+            prefix = pathlib.Path(parent.anchor)
+            for part in parent.parts[1:]:
+                prefix = prefix / part
+                if os.path.islink(prefix) and os.lstat(prefix).st_uid not in (0, euid):
+                    return False
+            if parent.exists() and parent.stat().st_uid != euid:
+                return False
+            if state_path.exists() and os.lstat(state_path).st_uid != euid:
+                return False
+    except OSError:
+        return False
+    return True
+
+
+def load_previous_report(state_path: pathlib.Path, strict: bool = False) -> Optional[Dict[str, Any]]:
+    if not state_path.exists() and not os.path.islink(state_path):
         return None
     try:
+        if not _state_location_ok(state_path):
+            raise ValueError("state file location is not trusted")
         data = json.loads(state_path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict) or not isinstance(data.get("diagnoses", []), list):
+            raise ValueError("not a saved ipa-diagnose report")
     except (json.JSONDecodeError, OSError, ValueError, RecursionError):
-        return None
-    # A corrupt/hand-edited state file must degrade to "no baseline", never crash.
-    if not isinstance(data, dict) or not isinstance(data.get("diagnoses", []), list):
+        if strict:
+            raise UnreadableBaseline(str(state_path))
         return None
     data["diagnoses"] = [
         d for d in data.get("diagnoses", []) if isinstance(d, dict) and isinstance(d.get("diagnosis_id"), str)
     ]
+    for d in data["diagnoses"]:
+        # Hand-edited values are never printed as multi-line text and never reach comparisons as non-strings.
+        d["diagnosis_id"] = sanitize_text(d["diagnosis_id"], 160)
+        d["title"] = sanitize_text(d["title"], 160) if isinstance(d.get("title"), str) else d["diagnosis_id"]
+        for key in ("pack_id", "priority", "status"):
+            if not isinstance(d.get(key), str):
+                d[key] = ""
+    if not isinstance(data.get("generated_at"), str):
+        data["generated_at"] = "an unknown time"
     return data
 
 
-def compare(previous: Optional[Dict[str, Any]], current: DiagnosisReport) -> VerifyResult:
+def _baseline_fixes(previous: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    """diagnosis_id -> the minimal fix record saved for verify (v2.verify_baseline). Nothing else about a fix
+    (its status, commands, risk, criteria or expected results) is read back from the saved report."""
+
+    v2 = previous.get("v2") if isinstance(previous.get("v2"), dict) else {}
+    base = v2.get("verify_baseline") if isinstance(v2.get("verify_baseline"), dict) else {}
+    out = {}
+    for f in base.get("fixes", []) if isinstance(base.get("fixes"), list) else []:
+        if isinstance(f, dict) and isinstance(f.get("diagnosis_id"), str):
+            out[f["diagnosis_id"]] = f
+    return out
+
+
+def _baseline_damage(previous: Dict[str, Any]) -> Optional[str]:
+    """A report written by this schema always carries a well-formed verify baseline; one without it is damaged."""
+
+    if previous.get("report_schema_version") != 2 and "v2" not in previous:
+        return None  # a v0.1.3 report: compared exactly as v0.1.3 did
+    v2 = previous.get("v2")
+    base = v2.get("verify_baseline") if isinstance(v2, dict) else None
+    if not isinstance(base, dict) or base.get("schema") != 1 or not isinstance(base.get("fixes"), list):
+        return "The saved diagnosis is damaged (its verification data is missing or malformed). Run ipa-diagnose again."
+    if not isinstance(previous.get("hostname"), str) or not previous["hostname"].strip():
+        return "The saved diagnosis is damaged (it does not say which host it is from). Run ipa-diagnose again."
+    return None
+
+
+def _offered_without_record(previous: Dict[str, Any], fixes: Dict[str, Dict[str, Any]]) -> set:
+    v2 = previous.get("v2") if isinstance(previous.get("v2"), dict) else {}
+    shown = v2.get("resolutions") if isinstance(v2.get("resolutions"), list) else []
+    return {r["diagnosis_id"] for r in shown if isinstance(r, dict) and r.get("status") == "OFFERED"
+            and isinstance(r.get("diagnosis_id"), str) and r["diagnosis_id"] not in fixes}
+
+
+def known_diagnosis_id(diag_id: str) -> bool:
+    """A diagnosis this version of ipa-diagnose can produce (so its absence from fresh results means something)."""
+
+    from ipa_diagnose.engine import unexplained
+    from ipa_diagnose.engine.registry import all_packs
+
+    known = {f"{p.pack_id}.{r.rule_id}" for p in all_packs() for r in p.rules}
+    known |= {f"{unexplained.PACK_ID}.healthcheck-check-failed", f"{unexplained.PACK_ID}.unexplained-findings"}
+    if diag_id in known:
+        return True
+    prefix = f"{unexplained.PACK_ID}.service-not-running-"
+    return diag_id.startswith(prefix) and bool(_SERVICE_NAME_RE.fullmatch(diag_id[len(prefix):]))
+
+
+_SERVICE_NAME_RE = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_.@-]{0,80}")
+
+
+def _baseline_problem(previous: Dict[str, Any], current: DiagnosisReport) -> Optional[str]:
+    """Why the saved report cannot be a baseline for this run at all (other host, other mode), or None."""
+
+    prev_host = previous.get("hostname")
+    if isinstance(prev_host, str) and prev_host and current.hostname and prev_host != current.hostname:
+        return (f"The saved diagnosis is from host {sanitize_text(prev_host, 80)}, not this host "
+                f"({sanitize_text(current.hostname, 80)}). Run ipa-diagnose here first.")
+    prev_replay = bool(previous.get("replay_source"))
+    if prev_replay != bool(current.replay_source):
+        return ("The saved diagnosis came from " + ("a replay fixture" if prev_replay else "a live run")
+                + ", but this run is " + ("a replay" if current.replay_source else "live") + ". Run ipa-diagnose again.")
+    return None
+
+
+def compare(previous: Optional[Dict[str, Any]], current: DiagnosisReport, runner=None) -> VerifyResult:
     if previous is None:
         return VerifyResult(items=[], new_conditions=[], previous_generated_at=None, current_report=current)
 
     prev_by_id = {d["diagnosis_id"]: d for d in previous.get("diagnoses", [])}
+    # diagnoses kept only because a fix shown for them has not been confirmed yet (carried by a plain run)
+    v2c = previous.get("v2") if isinstance(previous.get("v2"), dict) else {}
+    for d in v2c.get("carried_diagnoses") if isinstance(v2c.get("carried_diagnoses"), list) else []:
+        if isinstance(d, dict) and isinstance(d.get("diagnosis_id"), str) and d["diagnosis_id"] not in prev_by_id:
+            d = dict(d)
+            d["diagnosis_id"] = sanitize_text(d["diagnosis_id"], 160)
+            d["title"] = sanitize_text(d["title"], 160) if isinstance(d.get("title"), str) else d["diagnosis_id"]
+            for key in ("pack_id", "priority", "status"):
+                if not isinstance(d.get(key), str):
+                    d[key] = ""
+            prev_by_id[d["diagnosis_id"]] = d
+    fixes = _baseline_fixes(previous)
     curr_by_id = {d.diagnosis_id: d for d in current.diagnoses}
     affected_packs_with_errors = {
         err.split(":", 1)[0].strip() for err in current.collection_errors
@@ -108,11 +306,27 @@ def compare(previous: Optional[Dict[str, Any]], current: DiagnosisReport) -> Ver
     pack_collectors = {
         p.pack_id: set(p.additional_collectors) | set(p.unconditional_collectors) for p in all_packs()
     }
-    healthcheck_missing = not current.evidence_completeness.healthcheck_collected
+    # A fresh run that did not include the full set of ipa-healthcheck checks cannot show that anything cleared
+    # (round-9 review): the check that found it may simply not have run.
+    healthcheck_missing = not current.evidence_completeness.healthcheck_collected or any(
+        e.startswith("ipa-healthcheck-coverage") for e in current.collection_errors)
     crashed_checks = any(d.rule_id == "healthcheck-check-failed" for d in current.diagnoses)
+    not_a_baseline = _baseline_problem(previous, current) or _baseline_damage(previous)
+    missing_record = _offered_without_record(previous, fixes)
 
     items: List[VerifyItem] = []
     for diag_id, prev_d in prev_by_id.items():
+        title = prev_d.get("title", diag_id)
+        if not_a_baseline:
+            items.append(VerifyItem(diagnosis_id=diag_id, title=title, outcome=VerifyOutcome.UNABLE_TO_VERIFY,
+                                    detail=not_a_baseline))
+            continue
+        if not known_diagnosis_id(diag_id):
+            items.append(VerifyItem(
+                diagnosis_id=diag_id, title=title, outcome=VerifyOutcome.UNABLE_TO_VERIFY,
+                detail="This version of ipa-diagnose does not produce this diagnosis any more (or the saved report "
+                       "is damaged), so its absence proves nothing. Run ipa-diagnose again."))
+            continue
         pack_id = prev_d.get("pack_id", "")
         pack_gap = pack_id and (
             any(pack_id in err_source for err_source in affected_packs_with_errors)
@@ -122,10 +336,10 @@ def compare(previous: Optional[Dict[str, Any]], current: DiagnosisReport) -> Ver
             items.append(
                 VerifyItem(
                     diagnosis_id=diag_id,
-                    title=prev_d.get("title", diag_id),
+                    title=title,
                     outcome=VerifyOutcome.UNABLE_TO_VERIFY,
                     detail=(
-                        "ipa-healthcheck could not run this time, so nothing can be confirmed resolved."
+                        "ipa-healthcheck could not run (or did not run its full set of checks) this time, so nothing can be confirmed resolved."
                         if healthcheck_missing
                         else "Fresh evidence for this pack could not be collected this run."
                     ),
@@ -138,21 +352,20 @@ def compare(previous: Optional[Dict[str, Any]], current: DiagnosisReport) -> Ver
             items.append(
                 VerifyItem(
                     diagnosis_id=diag_id,
-                    title=prev_d.get("title", diag_id),
+                    title=title,
                     outcome=VerifyOutcome.UNABLE_TO_VERIFY,
                     detail="Some ipa-healthcheck checks failed to run this time, so this cannot be confirmed resolved.",
                 )
             )
             continue
+        if curr_d is None and diag_id in missing_record:
+            items.append(VerifyItem(
+                diagnosis_id=diag_id, title=title, outcome=VerifyOutcome.UNABLE_TO_VERIFY,
+                detail="A fix was shown for this, but the saved record needed to check it is missing. Run ipa-diagnose again."))
+            continue
         if curr_d is None:
-            items.append(
-                VerifyItem(
-                    diagnosis_id=diag_id,
-                    title=prev_d.get("title", diag_id),
-                    outcome=VerifyOutcome.RESOLVED,
-                    detail="The condition that triggered this diagnosis is no longer present in fresh evidence.",
-                )
-            )
+            outcome, detail = _fix_outcome(fixes.get(diag_id), runner)
+            items.append(VerifyItem(diagnosis_id=diag_id, title=title, outcome=outcome, detail=detail))
             continue
 
         prev_root_tier = prev_d.get("priority") in {b.value for b in _ROOT_TIER}
@@ -188,6 +401,17 @@ def compare(previous: Optional[Dict[str, Any]], current: DiagnosisReport) -> Ver
                 )
             )
 
+    # A fix record (or an OFFERED fix) saved for a diagnosis that is not in the saved report: damaged state,
+    # never silently "nothing to verify" (round-8 review).
+    v2 = previous.get("v2") if isinstance(previous.get("v2"), dict) else {}
+    shown = {r.get("diagnosis_id") for r in (v2.get("resolutions") if isinstance(v2.get("resolutions"), list) else [])
+             if isinstance(r, dict) and r.get("status") == "OFFERED" and isinstance(r.get("diagnosis_id"), str)}
+    for did in sorted((set(fixes) | {x for x in shown if isinstance(x, str)}) - set(prev_by_id)):
+        items.append(VerifyItem(diagnosis_id=sanitize_text(did, 160), title=sanitize_text(did, 160),
+                                outcome=VerifyOutcome.UNABLE_TO_VERIFY,
+                                detail="The saved diagnosis is damaged: a fix was saved for this, but the diagnosis "
+                                       "itself is missing. Run ipa-diagnose again."))
+
     new_conditions = [
         d
         for diag_id, d in curr_by_id.items()
@@ -200,3 +424,30 @@ def compare(previous: Optional[Dict[str, Any]], current: DiagnosisReport) -> Ver
         previous_generated_at=previous.get("generated_at"),
         current_report=current,
     )
+
+
+def _fix_outcome(fix: Optional[Dict[str, Any]], runner) -> "tuple":
+    """Outcome for a diagnosis that is gone from fresh evidence. Without a saved fix record (or without a runner)
+    this is the v0.1.3 comparison. With one, the fix's criteria are REBUILT from the current procedure catalogue,
+    the saved typed values and fresh read-only checks, then evaluated with fresh checks."""
+
+    gone = "The condition that triggered this diagnosis is no longer present in fresh evidence."
+    if fix is None or runner is None:
+        return VerifyOutcome.RESOLVED, gone
+    from ipa_diagnose.resolution.engine import REBUILD_CHANGED, evaluate_verify, rebuild_verify
+
+    criteria, problem, why = rebuild_verify(fix, runner)
+    if criteria is None:
+        return VerifyOutcome.UNABLE_TO_VERIFY, (
+            f"The diagnosis is gone, but the fix that was shown cannot be checked: {why}. Run ipa-diagnose again.")
+    if problem == REBUILD_CHANGED:
+        return VerifyOutcome.CHANGED, f"The diagnosis is gone, but {why}. Run ipa-diagnose again."
+    results = evaluate_verify(criteria, runner)
+    lines = [f"{'✓' if ok else ('✗' if ok is False else '?')} {text}" for text, ok, _ in results]
+    own = ("the fix's own checks (recorded in the replay fixture, not run now)" if getattr(runner, "replay", False)
+           else "the fix's own checks")
+    if not results or any(ok is None for _, ok, _ in results):
+        return VerifyOutcome.UNABLE_TO_VERIFY, f"The diagnosis is gone, but {own} could not all be run: " + "; ".join(lines)
+    if all(ok for _, ok, _ in results):
+        return VerifyOutcome.RESOLVED, f"The diagnosis is gone and {own} pass: " + "; ".join(lines)
+    return VerifyOutcome.PARTIALLY_RESOLVED, f"The diagnosis is gone, but not every one of {own} passes yet: " + "; ".join(lines)

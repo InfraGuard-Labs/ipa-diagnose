@@ -1,0 +1,68 @@
+[
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "dirsrv",
+  "result": "SUCCESS",
+  "uuid": "res-svc-dirsrv",
+  "when": "20260924120000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "krb5kdc",
+  "result": "SUCCESS",
+  "uuid": "res-svc-krb5kdc",
+  "when": "20260924120000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "httpd",
+  "result": "SUCCESS",
+  "uuid": "res-svc-httpd",
+  "when": "20260924120000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "certmonger",
+  "result": "SUCCESS",
+  "uuid": "res-svc-certmonger",
+  "when": "20260924120000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "chronyd",
+  "result": "SUCCESS",
+  "uuid": "res-svc-chronyd",
+  "when": "20260924120000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.host",
+  "check": "IPAHostKeytab",
+  "result": "ERROR",
+  "uuid": "res-keytab",
+  "when": "20260924120000Z",
+  "duration": "0.01",
+  "kw": {
+   "msg": "Failed to obtain host TGT: Keytab contains no suitable keys for host/ipa01.lab.test@LAB.TEST while getting initial credentials"
+  }
+ }
+]

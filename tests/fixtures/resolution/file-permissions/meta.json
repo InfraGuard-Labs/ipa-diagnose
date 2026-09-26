@@ -1,0 +1,14 @@
+{
+ "hostname": "ipa01.lab.test",
+ "scenario": "CONSTRUCTED (upstream-shaped): CS.cfg mode 0664, expected 0660",
+ "expected_overall_status": "DEGRADED",
+ "expected_resolution": "proc.files.restore-expected-permissions",
+ "environment": {
+  "distro": "fedora",
+  "distro_version": "43",
+  "freeipa_version": "4.13.3-2.fc43",
+  "ipa_healthcheck_version": "0.19-2.fc43",
+  "directory_server_version": "3.1.4-9.fc43"
+ },
+ "expected_diagnoses": []
+}

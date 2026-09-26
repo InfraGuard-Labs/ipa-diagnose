@@ -1,0 +1,35 @@
+[
+ {
+  "source": "ipahealthcheck.ipa.host",
+  "check": "IPAHostKeytab",
+  "result": "ERROR",
+  "uuid": "rt-keytab",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "msg": "Failed to obtain host TGT: Preauthentication failed while getting initial credentials"
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "krb5kdc",
+  "result": "SUCCESS",
+  "uuid": "rt-kdc",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "chronyd",
+  "result": "SUCCESS",
+  "uuid": "rt-chrony",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ }
+]

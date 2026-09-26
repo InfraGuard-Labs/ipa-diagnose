@@ -1,0 +1,8 @@
+{
+ "kvno_comparison": {
+  "principal": "host/ipa01.example.test@EXAMPLE.TEST",
+  "kdc_kvno": 3,
+  "keytab_kvno": 2,
+  "match": false
+ }
+}

@@ -1,0 +1,8 @@
+[
+ {
+  "unit": "dirsrv@EXAMPLE-TEST.service",
+  "timestamp": "Sep 25 09:58:02",
+  "message": "libdb: BDB0142 write: No space left on device",
+  "category": "disk_space"
+ }
+]

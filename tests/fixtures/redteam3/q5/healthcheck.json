@@ -1,0 +1,10 @@
+[
+  {"source": "ipahealthcheck.ipa.certs", "check": "IPACertmongerExpirationCheck", "result": "ERROR", "uuid": "ex1", "when": "20260915120000Z", "duration": "0.04",
+   "kw": {"msg": "Request id '20250801000000' status MONITORING expired on 2026-08-01 00:00:00 UTC", "key": "Server-Cert", "days": -45}},
+  {"source": "ipahealthcheck.ipa.certs", "check": "IPACertRevocation", "result": "CRITICAL", "uuid": "rev1", "when": "20260915120000Z", "duration": "0.04",
+   "kw": {"key": "20240101000001", "revocation_reason": "keyCompromise", "msg": "Certificate tracked by {key} is revoked {revocation_reason}"}},
+  {"source": "ipahealthcheck.ipa.certs", "check": "IPACertNSSTrust", "result": "ERROR", "uuid": "tr1", "when": "20260915120000Z", "duration": "0.04",
+   "kw": {"key": "caSigningCert cert-pki-ca", "expected": "CTu,Cu,Cu", "got": "u,u,u", "nickname": "caSigningCert cert-pki-ca", "dbdir": "/etc/pki/pki-tomcat/alias", "msg": "Incorrect NSS trust for {nickname} in {dbdir}. Got {got} expected {expected}."}},
+  {"source": "ipahealthcheck.meta.services", "check": "dirsrv", "result": "SUCCESS", "uuid": "s1", "when": "20260101000000Z", "duration": "0.01", "kw": {"status": true}},
+  {"source": "ipahealthcheck.meta.services", "check": "certmonger", "result": "SUCCESS", "uuid": "s2", "when": "20260101000000Z", "duration": "0.01", "kw": {"status": true}}
+]

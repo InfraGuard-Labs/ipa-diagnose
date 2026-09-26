@@ -1,0 +1,4 @@
+{
+ "hostname": "ipa01.example.test",
+ "scenario": "CONSTRUCTED (red-team round 2 probe, Slice 1 hardening): h1-control-p2"
+}

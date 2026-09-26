@@ -1,0 +1,9 @@
+{
+ "agreements": [
+  {
+   "peer": "ipa02.example.test",
+   "status": "red",
+   "last_update_status": "Error (-1) Can't contact LDAP server"
+  }
+ ]
+}

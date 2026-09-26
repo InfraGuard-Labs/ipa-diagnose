@@ -72,7 +72,7 @@ def _entry(source, check, result, msg="", **kw):
     }
 
 
-GOOD_HC = json.dumps([_entry("ipahealthcheck.meta.services", "dirsrv", "SUCCESS")])
+GOOD_HC = json.dumps([_entry("ipahealthcheck.meta.services", "dirsrv", "SUCCESS"), _entry("ipahealthcheck.ds.replication", "ReplicationCheck", "SUCCESS"), _entry("ipahealthcheck.ipa.certs", "IPACertmongerExpirationCheck", "SUCCESS")])
 UNKNOWN_SRC = "ipahealthcheck.zzz.futurecheck"  # no pack rule claims this source
 DISK_SRC = "ipahealthcheck.ds.disk_space"  # claimed by DiskSpaceExhaustionRule
 
@@ -278,7 +278,7 @@ def test_idns_warning_on_ipv4_only_healthy_server_is_not_a_dns_diagnosis(monkeyp
     exclude AAAA queries from `_looks_broken` when the healthcheck warning is the only trigger."""
     hc = json.dumps(
         [
-            _entry("ipahealthcheck.meta.services", "dirsrv", "SUCCESS"),
+            _entry("ipahealthcheck.meta.services", "dirsrv", "SUCCESS"), _entry("ipahealthcheck.ds.replication", "ReplicationCheck", "SUCCESS"), _entry("ipahealthcheck.ipa.certs", "IPACertmongerExpirationCheck", "SUCCESS"),
             _entry("ipahealthcheck.ipa.idns", "IPADNSSystemRecordsCheck", "WARNING", "Expected SRV/AAAA record missing"),
         ]
     )
@@ -376,7 +376,7 @@ def test_huge_replica_id_digits_in_ruv_finding_do_not_crash_the_rule(monkeypatch
     Minimal fix: wrap in try/except ValueError (and bound the digits, `\\d{1,9}`)."""
     hc = json.dumps(
         [
-            _entry("ipahealthcheck.meta.services", "dirsrv", "SUCCESS"),
+            _entry("ipahealthcheck.meta.services", "dirsrv", "SUCCESS"), _entry("ipahealthcheck.ds.replication", "ReplicationCheck", "SUCCESS"), _entry("ipahealthcheck.ipa.certs", "IPACertmongerExpirationCheck", "SUCCESS"),
             _entry("ipahealthcheck.ds.ruv", "RUVCheck", "ERROR", "Replica ID " + "9" * 5000 + " has no corresponding live server"),
         ]
     )

@@ -1,0 +1,8 @@
+[
+  {"source": "ipahealthcheck.meta.services", "check": "certmonger", "result": "ERROR", "uuid": "s2", "when": "20260101000000Z", "duration": "0.01", "kw": {"status": false, "msg": "certmonger: not running"}},
+  {"source": "ipahealthcheck.ipa.certs", "check": "IPACertRevocation", "result": "CRITICAL", "uuid": "rev1", "when": "20260915120000Z", "duration": "0.04",
+   "kw": {"key": "20240101000001", "revocation_reason": "keyCompromise", "msg": "Certificate tracked by {key} is revoked {revocation_reason}"}},
+  {"source": "ipahealthcheck.dogtag.ca", "check": "DogtagCertsConfigCheck", "result": "ERROR", "uuid": "dc1", "when": "20260915120000Z", "duration": "0.04",
+   "kw": {"key": "ocspSigningCert cert-pki-ca", "directive": "ca.ocsp_signing.cert", "configfile": "/var/lib/pki/pki-tomcat/conf/ca/CS.cfg", "msg": "Certificate {key} does not match the value of {directive} in {configfile}"}},
+  {"source": "ipahealthcheck.meta.services", "check": "dirsrv", "result": "SUCCESS", "uuid": "s1", "when": "20260101000000Z", "duration": "0.01", "kw": {"status": true}}
+]

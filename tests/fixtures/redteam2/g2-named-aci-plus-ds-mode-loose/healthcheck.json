@@ -1,0 +1,42 @@
+[
+ {
+  "source": "ipahealthcheck.ipa.idns",
+  "check": "IPADNSSystemRecordsCheck",
+  "result": "ERROR",
+  "uuid": "d2222222-2222-2222-2222-222222222222",
+  "when": "20260915100000Z",
+  "duration": "2.031",
+  "kw": {
+   "msg": "SRV record _ldap._tcp.example.test. required for LDAP autodiscovery could not be resolved",
+   "key": "_ldap._tcp.example.test"
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "IpaHealthCheckServicesCheck",
+  "result": "CRITICAL",
+  "uuid": "d2222222-2222-2222-2222-222222222223",
+  "when": "20260915100000Z",
+  "duration": "0.050",
+  "kw": {
+   "msg": "named service is not running",
+   "service": "named"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileNSSDBCheck",
+  "result": "WARNING",
+  "uuid": "fm",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "key": "_etc_dirsrv_slapd-EXAMPLE-TEST_cert9.db_mode",
+   "path": "/etc/dirsrv/slapd-EXAMPLE-TEST/cert9.db",
+   "type": "mode",
+   "expected": "0640",
+   "got": "0644",
+   "msg": "Permissions of /etc/dirsrv/slapd-EXAMPLE-TEST/cert9.db are too permissive: 0644 and should be 0640"
+  }
+ }
+]

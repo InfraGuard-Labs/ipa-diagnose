@@ -24,7 +24,7 @@ Design rationale (see docs/architecture.md for the full writeup):
 from __future__ import annotations
 
 import re
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from ipa_diagnose.engine.model import (
     ConfidenceLevel,
@@ -56,9 +56,13 @@ CONFIDENCE_WEIGHT: Dict[ConfidenceLevel, float] = {
 }
 
 
+def _evidence_rank(d: Diagnosis) -> int:
+    return d.severity.rank if d.evidence_severity is None else min(d.severity.rank, d.evidence_severity.rank)
+
+
 def _score(d: Diagnosis) -> float:
     return (
-        (d.severity.rank + 1)
+        (_evidence_rank(d) + 1)
         * STATUS_WEIGHT[d.status]
         * CONFIDENCE_WEIGHT[d.confidence.level]
         * (1.0 + 0.05 * min(d.confidence.corroborating_evidence_count, 6))
@@ -85,6 +89,7 @@ _SERVICE_PACK = {
     "named": "dns",
     "named-pkcs11": "dns",
     "pki-tomcatd": "certificates",
+    "pki_tomcatd": "certificates",  # the spelling ipa-healthcheck's service check uses (real captures)
     "certmonger": "certificates",
 }
 
@@ -99,18 +104,121 @@ def _effective_pack(d: Diagnosis) -> str:
     return d.pack_id
 
 
-def _demote_via_causality(diagnoses: List[Diagnosis]) -> Dict[str, List[str]]:
+# Specific causality by diagnosis id (a trailing * matches a prefix), in addition to the rules' declared
+# pack-level upstream_candidates (which are part of the frozen v1 JSON and so not changed):
+# - krb5kdc reads its principals from Directory Server: with dirsrv NOT RUNNING, "no KDC could be reached" is a
+#   symptom of that (only a stopped dirsrv - not any directory-server finding such as a full backup directory);
+# - with this server's named stopped its records cannot be resolved at all, so "records broken" is a symptom.
+_IMPLICIT_RULE_UPSTREAMS = {
+    "kerberos.kdc-discovery-failure": ("healthcheck.service-not-running-dirsrv*",),
+    "dns.srv-autodiscovery": ("dns.named-service-down", "healthcheck.service-not-running-named",
+                              "healthcheck.service-not-running-named-pkcs11"),
+    # this server's CA stopped: certmonger cannot reach it and RA/Dogtag calls fail - its symptoms, not new problems
+    "certificates.certmonger-tracking-stuck": ("healthcheck.service-not-running-pki-tomcatd*", "healthcheck.service-not-running-pki_tomcatd*"),
+    "certificates.ra-agent-desync": ("healthcheck.service-not-running-pki-tomcatd*", "healthcheck.service-not-running-pki_tomcatd*"),
+    # the file system holding Directory Server's database is full: dirsrv stopping is its symptom
+    # (only a disk diagnosis that can break DS - explains_downstream - counts; red-team round 4)
+    "healthcheck.service-not-running-dirsrv*": ("directory-server.disk-space-exhaustion",),
+}
+
+
+_SAFETY_NETS = ("healthcheck-check-failed", "unexplained-findings")
+
+
+# ipa-healthcheck checks whose answer comes from the service itself (so a stopped service explains their result)
+_CHECKS_ASKING_SERVICE = {
+    # only what the live capture proves: with certmonger stopped, IPACertmongerCA ran and said "CA missing"
+    # (the other certificate checks crash instead; a result they return came from a running certmonger)
+    "certmonger": ("IPACertmongerCA",),
+}
+
+
+def _is_service_down(u: Diagnosis) -> bool:
+    return (u.pack_id == "healthcheck" and u.rule_id.startswith("service-not-running-")) or u.diagnosis_id == "dns.named-service-down"
+
+
+def _explains_source(u: Diagnosis, key: str, crashed: bool) -> bool:
+    """Whether a stopped service `u` explains a crashed (or, if not `crashed`, unexplained) finding `key`
+    ("source::check")."""
+
+    source, _, check = key.partition("::")
+    if source.startswith("ipahealthcheck.system.filesystemspace"):
+        return False  # disk space is never a symptom of a stopped service
+    dirsrv = u.pack_id == "healthcheck" and u.rule_id[len("service-not-running-"):].split("@")[0] == "dirsrv"
+    if dirsrv and crashed:
+        return True  # Directory Server underlies every IPA check: with it stopped, any check can crash
+    if source.startswith("ipahealthcheck.meta.services"):
+        return True  # a service check failing is explained by a stopped service
+    if not crashed:
+        # A check that RAN and returned a result is evidence about what it checked, not a symptom of the stopped
+        # service - unless the check asks that service itself (live capture: with certmonger stopped,
+        # IPACertmongerCA reports "Certmonger CA missing"; a revoked certificate is not such a symptom).
+        service = u.rule_id[len("service-not-running-"):].split("@")[0] if u.rule_id.startswith("service-not-running-") else ""
+        return check in _CHECKS_ASKING_SERVICE.get(service, ())
+    return any(source.startswith(p) for p in _pack_sources(_effective_pack(u)))
+
+
+def _pack_sources(pack_id: str) -> List[str]:
+    from ipa_diagnose.engine.registry import all_packs
+
+    return [s for p in all_packs() if p.pack_id == pack_id for s in p.healthcheck_sources]
+
+
+# diagnosis_id -> titles of the diagnoses that actually caused its demotion (filled by _demote_via_causality)
+cause_titles: Dict[str, List[str]] = {}
+
+
+def _demote_via_causality(diagnoses: List[Diagnosis], finding_sources: Optional[Dict[str, str]] = None) -> Dict[str, List[str]]:
     """Returns {diagnosis_id: [causing_pack_ids]} for diagnoses whose declared
     upstream_candidates actually fired - as a REAL problem, not merely any
     diagnosis at all - in this same report."""
 
-    fired_packs = {_effective_pack(d) for d in diagnoses if _is_real_problem(d)}
+    # Only a real problem backed by ERROR/CRITICAL evidence that can break other subsystems may explain other
+    # packs' symptoms (a WARNING-level finding reported at ERROR severity cannot).
+    finding_sources = finding_sources or {}
+    cause_titles.clear()
+    causes = [u for u in diagnoses if _is_real_problem(u) and u.explains_downstream and _evidence_rank(u) >= Severity.ERROR.rank]
     demotions: Dict[str, List[str]] = {}
     for d in diagnoses:
-        causing = [p for p in d.upstream_candidates if p in fired_packs and p != d.pack_id]
-        if causing:
-            demotions[d.diagnosis_id] = causing
+        upstream = list(d.upstream_candidates)
+        candidates = [u for u in causes if _effective_pack(u) in upstream and _effective_pack(u) != d.pack_id
+                      and _effective_pack(u) not in d.not_caused_by]
+        candidates += [u for u in diagnoses if _implicit_cause(d, u) and _is_real_problem(u) and u not in candidates
+                       and _effective_pack(u) not in d.not_caused_by]
+        if d.pack_id == "healthcheck" and d.rule_id in _SAFETY_NETS:
+            # Crashed/unexplained ipa-healthcheck findings are absorbed only by a confirmed upstream problem whose
+            # pack owns every one of those checks (a stopped certmonger explains crashed ipa.certs checks, not an
+            # unrelated trust-agent CRITICAL).
+            # Only a stopped service absorbs them. Crashed checks (a check that could not run) are absorbed by the
+            # stopped service that owns them; findings that did run (an unexplained result) only by a stopped
+            # service at least as severe, never across to e.g. file-system space results (red-team round 3).
+            srcs = [finding_sources.get(r.evidence_id, "") for r in d.evidence_for if r.kind == "finding"]
+            crashed = d.rule_id == "healthcheck-check-failed"
+            candidates = [u for u in candidates if u.status == DiagnosisStatus.DIAGNOSED and _is_service_down(u) and srcs
+                          and all(_explains_source(u, s, crashed) for s in srcs)
+                          and (crashed or _evidence_rank(u) >= _evidence_rank(d))]
+        else:
+            # An unconfirmed (UNKNOWN_*) upstream never hides a confidently DIAGNOSED problem, and one unconfirmed
+            # problem absorbs another only if it is at least as severe (red-team rounds 2-3, Slice 1 hardening).
+            candidates = [u for u in candidates if u.status == DiagnosisStatus.DIAGNOSED
+                          or (d.status != DiagnosisStatus.DIAGNOSED and _evidence_rank(u) >= _evidence_rank(d))]
+        packs: List[str] = []
+        for u in candidates:
+            if _effective_pack(u) not in packs:
+                packs.append(_effective_pack(u))
+        if packs:
+            demotions[d.diagnosis_id] = packs
+            cause_titles[d.diagnosis_id] = [u.title for u in candidates if u.title != d.title]
     return demotions
+
+
+def _implicit_cause(d: Diagnosis, u: Diagnosis) -> bool:
+    def match(pattern: str, value: str) -> bool:
+        return value == pattern or (pattern.endswith("*") and value.startswith(pattern[:-1]))
+
+    return u.explains_downstream and any(
+        match(c, u.diagnosis_id) for key, causes in _IMPLICIT_RULE_UPSTREAMS.items() if match(key, d.diagnosis_id)
+        for c in causes)
 
 
 def build_report(
@@ -119,7 +227,15 @@ def build_report(
     packs_evaluated: List[str],
 ) -> DiagnosisReport:
     diagnoses = list(diagnoses)
-    demotions = _demote_via_causality(diagnoses)
+    if any("certmonger was not running" in s for s in bundle.side_effects):
+        # ipa-healthcheck started certmonger during this run: "not running" was true at check time and is not now
+        # (truth review) - keep it visible, but not as a current outage.
+        for d in diagnoses:
+            if d.pack_id == "healthcheck" and d.rule_id == "service-not-running-certmonger":
+                d.why = (f"{d.why}\n\nNote: certmonger is running now - ipa-healthcheck's certificate checks started it "
+                         "during this run (see the note at the top). If it had been stopped on purpose, stop or mask it again.")
+                d.severity = Severity.WARNING
+    demotions = _demote_via_causality(diagnoses, {f.finding_id: f"{f.source}::{f.check}" for f in bundle.findings})
     titles_by_pack: Dict[str, List[str]] = {}
     for d in diagnoses:
         if _is_real_problem(d):
@@ -130,7 +246,8 @@ def build_report(
         if d.diagnosis_id in demotions:
             causes = demotions[d.diagnosis_id]
             d.priority = PriorityBucket.RELATED_SYMPTOM
-            d.related_to_titles = [t for pack in causes for t in titles_by_pack.get(pack, [])]
+            # the diagnoses that actually explain it - not every problem of their pack (red-team round 4)
+            d.related_to_titles = list(dict.fromkeys(cause_titles.get(d.diagnosis_id, [])))
             cause_note = " and ".join(causes)
             if d.status == DiagnosisStatus.DIAGNOSED:
                 d.why = f"{d.why}\n\nLikely a downstream symptom of the {cause_note} problem reported above."
@@ -141,7 +258,9 @@ def build_report(
         else:
             root_candidates.append(d)
 
-    root_candidates.sort(key=_score, reverse=True)
+    # A diagnosis resting only on WARNING-level evidence never becomes PRIMARY while a candidate backed by
+    # ERROR/CRITICAL evidence exists, even an undiagnosed one (red-team round, Slice 1 hardening).
+    root_candidates.sort(key=lambda d: (_evidence_rank(d) >= Severity.ERROR.rank, _score(d)), reverse=True)
     for idx, d in enumerate(root_candidates):
         d.priority = PriorityBucket.PRIMARY if idx == 0 else PriorityBucket.SECONDARY_INDEPENDENT
 
@@ -165,6 +284,8 @@ def build_report(
         packs_evaluated=packs_evaluated,
         replay_source=bundle.replay_source,
         environment=bundle.environment,
+        service_states=dict(bundle.service_states),
+        side_effects=list(bundle.side_effects),
         unknown_severity_findings=_unknown_severity_notes(bundle),
     )
 
@@ -241,6 +362,7 @@ def _undiagnosed_findings(bundle: EvidenceBundle, diagnoses: List[Diagnosis]) ->
 
 _CAPABILITY_LABELS = {
     "ipa-healthcheck": "ipa-healthcheck (base health evidence)",
+    "ipa-healthcheck-coverage": "ipa-healthcheck coverage (Directory Server and IPA checks)",
     "replication_agreements": "Replication agreements / RUV",
 }
 

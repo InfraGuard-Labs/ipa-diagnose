@@ -1,0 +1,42 @@
+[
+ {
+  "source": "ipahealthcheck.ipa.idns",
+  "check": "IPADNSSystemRecordsCheck",
+  "result": "ERROR",
+  "uuid": "d2222222-2222-2222-2222-222222222222",
+  "when": "20260915100000Z",
+  "duration": "2.031",
+  "kw": {
+   "msg": "SRV record _ldap._tcp.example.test. required for LDAP autodiscovery could not be resolved",
+   "key": "_ldap._tcp.example.test"
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "IpaHealthCheckServicesCheck",
+  "result": "CRITICAL",
+  "uuid": "d2222222-2222-2222-2222-222222222223",
+  "when": "20260915100000Z",
+  "duration": "0.050",
+  "kw": {
+   "msg": "named service is not running",
+   "service": "named"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "TomcatFileCheck",
+  "result": "WARNING",
+  "uuid": "rt-cscfg-mode",
+  "when": "20260916043418Z",
+  "duration": "0.002",
+  "kw": {
+   "key": "_var_lib_pki_pki-tomcat_conf_ca_CS.cfg_mode",
+   "path": "/var/lib/pki/pki-tomcat/conf/ca/CS.cfg",
+   "type": "mode",
+   "expected": "0660",
+   "got": "0664",
+   "msg": "Permissions of /var/lib/pki/pki-tomcat/conf/ca/CS.cfg are too permissive: 0664 and should be 0660"
+  }
+ }
+]

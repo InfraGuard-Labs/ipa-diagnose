@@ -1,0 +1,13 @@
+[
+  {
+    "item_id": "journal_named.0000",
+    "kind": "named_journal_line",
+    "summary": "named-pkcs11[3310]: bind-dyndb-ldap: forward zone 'corp.example.test' overlaps built-in empty zone '16.172.in-addr.arpa' and was not loaded",
+    "data": {
+      "unit": "named-pkcs11",
+      "raw_line": "Sep 15 11:12:40 ipa01 named-pkcs11[3310]: bind-dyndb-ldap: forward zone 'corp.example.test' overlaps built-in empty zone '16.172.in-addr.arpa' and was not loaded",
+      "timestamp": "Sep 15 11:12:40"
+    },
+    "severity": "ERROR"
+  }
+]

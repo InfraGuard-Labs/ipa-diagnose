@@ -1,0 +1,32 @@
+[
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPARAAgent",
+  "result": "ERROR",
+  "uuid": "rt-ra",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "key": "description_mismatch",
+   "expected": "2;7;CN=Certificate Authority,O=EXAMPLE.TEST;CN=IPA RA,O=EXAMPLE.TEST",
+   "got": "2;5;CN=Certificate Authority,O=EXAMPLE.TEST;CN=IPA RA,O=EXAMPLE.TEST",
+   "msg": "RA agent description does not match. Found {got} in LDAP and expected {expected}"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "TomcatFileCheck",
+  "result": "WARNING",
+  "uuid": "rt-cscfg-mode",
+  "when": "20260916043418Z",
+  "duration": "0.002",
+  "kw": {
+   "key": "_var_lib_pki_pki-tomcat_conf_ca_CS.cfg_mode",
+   "path": "/var/lib/pki/pki-tomcat/conf/ca/CS.cfg",
+   "type": "mode",
+   "expected": "0660",
+   "got": "0664",
+   "msg": "Permissions of /var/lib/pki/pki-tomcat/conf/ca/CS.cfg are too permissive: 0664 and should be 0660"
+  }
+ }
+]

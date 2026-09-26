@@ -1,0 +1,6 @@
+[
+ {
+  "timestamp": "2026-09-25T09:58:01Z",
+  "line": "krb5kdc[1421](Error): AS_REQ (4 etypes {18 17 16 23}) 198.51.100.77: NEEDED_PREAUTH: alice@EXAMPLE.TEST for krbtgt/EXAMPLE.TEST@EXAMPLE.TEST, Clock skew too great"
+ }
+]

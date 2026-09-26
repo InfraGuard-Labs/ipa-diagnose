@@ -153,16 +153,37 @@ def _ra_agent_cleared(bundle: EvidenceBundle) -> bool:
     return hc_clear and cm_clear
 
 
+def _local_ca_service_stopped(bundle: EvidenceBundle) -> bool:
+    """ipa-healthcheck's service check reports this server's own CA (pki-tomcatd) as not running."""
+
+    for f in bundle.findings:
+        if (f.source.endswith("meta.services") and f.check in ("pki_tomcatd", "pki-tomcatd")
+                and f.severity.rank >= Severity.ERROR.rank):
+            return True
+    return False
+
+
 class CertmongerTrackingStuckRule(DiagnosticRule):
     rule_id = "certmonger-tracking-stuck"
     summary = "A certmonger tracking request is stuck in a CA failure state (renewal will not happen)."
 
     def evaluate(self, bundle: EvidenceBundle) -> Optional[Diagnosis]:
+        d = self._evaluate(bundle)
+        if d is not None and any(any(h in str(i.data.get("ca_error") or "").lower() for h in _TRUST_HINTS)
+                                 for i in _cm_items(bundle)
+                                 if str(i.data.get("state", "")).upper() in FAILURE_STATES):
+            # A certificate-chain validation failure is not what a stopped CA looks like (a stopped CA refuses the
+            # connection), so it is not absorbed as that CA's symptom (red-team round 4).
+            d.not_caused_by = ["certificates"]
+        return d
+
+    def _evaluate(self, bundle: EvidenceBundle) -> Optional[Diagnosis]:
         failing = [i for i in _cm_items(bundle) if str(i.data.get("state", "")).upper() in FAILURE_STATES]
         if not failing:
             return None
 
         evidence_for: List[EvidenceRef] = []
+        local_ca_stopped = _local_ca_service_stopped(bundle)
         network_hit = False
         trust_hit = False
         informative_error = None
@@ -182,7 +203,8 @@ class CertmongerTrackingStuckRule(DiagnosticRule):
                 continue
             # Both are evaluated independently: text matching both families supports neither.
             # "Unable to communicate with CMS (Connection refused)": the CA's own service refusing, not a network path.
-            if any(h in err for h in _NETWORK_HINTS) and "cms" not in err:
+            # A local CA service reported stopped explains "couldn't connect" on its own: that is not a network path.
+            if any(h in err for h in _NETWORK_HINTS) and "cms" not in err and not local_ca_stopped:
                 network_hit = True
                 informative_error = item.data.get("ca_error")
             if any(h in err for h in _TRUST_HINTS):
@@ -516,6 +538,16 @@ class RaAgentDesyncRule(DiagnosticRule):
     summary = "Dogtag/RA-agent connectivity or auth failures suggesting the RA agent certificate is out of sync with o=ipaca."
 
     def evaluate(self, bundle: EvidenceBundle) -> Optional[Diagnosis]:
+        d = self._evaluate(bundle)
+        if d is not None and any(
+                str((f.keywords if isinstance(f.keywords, dict) else {}).get("key", "")) in _RA_DESYNC_KEYS
+                for f in bundle.findings if f.check == "IPARAAgent"):
+            # A description/LDAP mismatch compares LDAP with the certificate file: it does not need the CA
+            # process, so a stopped local CA does not explain it (red-team round 4).
+            d.not_caused_by = ["certificates"]
+        return d
+
+    def _evaluate(self, bundle: EvidenceBundle) -> Optional[Diagnosis]:
         hc_findings = [
             f
             for f in _cert_findings(bundle, sources=("ipahealthcheck.dogtag.ca", "ipahealthcheck.ipa.certs"), checks=_RA_HEALTHCHECK_CHECKS)
@@ -701,6 +733,7 @@ class RenewalMasterUnreachableRule(DiagnosticRule):
             rule_id=self.rule_id,
             status=DiagnosisStatus.UNKNOWN_INSUFFICIENT_EVIDENCE,
             title="Certificate nearing expiry with no local certmonger error - possible CA renewal master issue",
+            evidence_severity=Severity.WARNING,  # built only from WARNING "approaching expiry" results
             why=(
                 "This certificate is inside ipa-healthcheck's pre-expiry warning window, and certmonger on this "
                 "host reports no error at all (state MONITORING, no ca-error) - it is not stuck locally. In "

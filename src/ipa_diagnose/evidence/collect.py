@@ -20,7 +20,7 @@ import pathlib
 import shutil
 import socket
 import subprocess
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from ipa_diagnose.evidence.collectors.base import CollectorError, run_collector
 from ipa_diagnose.evidence.collectors.registry import get as get_collector
@@ -53,9 +53,75 @@ def collect_evidence(*, replay_dir: Optional[str] = None) -> EvidenceBundle:
             CollectionError(collector="ipa-healthcheck", message=f"replay directory not found: {fixture_path}")
         )
 
+    before = _unit_state("certmonger.service") if live else None
     _collect_healthcheck(bundle, live=live, fixture_path=fixture_path)
+    if live and any(e.collector == "ipa-healthcheck" for e in bundle.collection_errors):
+        bundle.service_states = _ipa_unit_states()
     _collect_staged(bundle, fixture_path=fixture_path)
+    if live:
+        # measured after every collector (getcert can activate certmonger over D-Bus too - round-9 review)
+        after = _unit_state("certmonger.service")
+        if before in ("inactive", "failed") and after == "active":
+            # Upstream ipalib's certmonger client starts certmonger when it is not running, and ipa-healthcheck's
+            # certificate checks use it. ipa-diagnose itself changed nothing, but the administrator must know.
+            bundle.side_effects.append(
+                "certmonger was not running when ipa-diagnose started and is running now: ipa-healthcheck's "
+                "certificate checks (or getcert) start it (upstream FreeIPA behaviour). ipa-diagnose itself changed "
+                "nothing.")
     return bundle
+
+
+_STATE_RE = __import__("re").compile(r"^[a-z-]{1,20}$")
+
+
+def _unit_state(unit: str) -> Optional[str]:
+    """ActiveState of a unit that exists (`systemctl show`, read-only). None when it cannot be read or the unit is
+    not loaded - systemd reports "inactive" for a unit that does not exist at all (round-9 review)."""
+
+    if shutil.which("systemctl") is None:
+        return None
+    try:
+        proc = subprocess.run(["systemctl", "show", "-p", "LoadState,ActiveState", unit], capture_output=True,
+                              text=True, timeout=10, stdin=subprocess.DEVNULL, errors="replace")
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return None
+    fields = dict(ln.split("=", 1) for ln in (proc.stdout or "").splitlines() if "=" in ln)
+    if fields.get("LoadState") != "loaded":
+        return None
+    state = fields.get("ActiveState", "")
+    return state if _STATE_RE.fullmatch(state) else None
+
+
+def _ipa_unit_states() -> Dict[str, str]:
+    """When ipa-healthcheck produced nothing, ipa-diagnose still reads (never changes) the state of the IPA
+    units itself, so a stopped service is named instead of hidden behind "could not be verified"."""
+
+    units = ["krb5kdc.service", "kadmin.service", "httpd.service", "named.service", "named-pkcs11.service",
+             "ipa-custodia.service", "pki-tomcatd@pki-tomcat.service", "certmonger.service", "sssd.service"]
+    try:
+        units = [f"dirsrv@{p.name[len('slapd-'):]}.service" for p in sorted(pathlib.Path("/etc/dirsrv").glob("slapd-*"))
+                 if p.name != "slapd-snmp"] + units
+    except OSError:
+        pass
+    out: Dict[str, str] = {}
+    for u in units:
+        state = _unit_state(u)
+        if state is not None and state != "unknown":
+            out[u] = state
+    return out
+
+
+def healthcheck_coverage_gap(findings) -> Optional[str]:
+    """A full ipa-healthcheck run on a server always reports Directory Server (ipahealthcheck.ds.*) and IPA
+    (ipahealthcheck.ipa.*) checks. Output without either family (for example restricted to the service
+    checks) must not be read as a healthy server."""
+
+    sources = {str(f.source) for f in findings}
+    missing = [fam for fam in ("ipahealthcheck.ds.", "ipahealthcheck.ipa.") if not any(s.startswith(fam) for s in sources)]
+    if missing:
+        return ("ipa-healthcheck reported no " + " and no ".join(m + "* checks" for m in missing)
+                + "; a full run always does, so health cannot be verified from this output")
+    return None
 
 
 def _resolve_hostname(fixture_path: Optional[pathlib.Path]) -> str:
@@ -150,6 +216,10 @@ def _collect_healthcheck(bundle: EvidenceBundle, *, live: bool, fixture_path: Op
                     message="ipa-healthcheck did not report the core service checks (incomplete output)",
                 )
             )
+        gap = healthcheck_coverage_gap(parsed)
+        if gap:
+            # Not a collection failure (what was reported is still used), but health cannot be "complete".
+            bundle.collection_errors.append(CollectionError(collector="ipa-healthcheck-coverage", message=gap))
     else:
         hc_file = fixture_path / "healthcheck.json"
         if not hc_file.exists():

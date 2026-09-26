@@ -1,0 +1,11 @@
+{
+ "hostname": "ipa01.example.test",
+ "scenario": "CONSTRUCTED (red-team round 8 probe, Slice 1 hardening): p1_aci_reallyfull",
+ "environment": {
+  "distro": "fedora",
+  "distro_version": "43",
+  "freeipa_version": "4.13.3-2.fc43",
+  "ipa_healthcheck_version": "0.19-2.fc43",
+  "directory_server_version": "3.1.4-9.fc43"
+ }
+}

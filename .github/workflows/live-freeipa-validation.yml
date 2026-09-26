@@ -38,6 +38,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
+      - uses: actions/checkout@v4
+
       - name: Record environment
         run: |
           echo "=== Host environment ===" | tee env-report.txt
@@ -83,9 +85,14 @@ jobs:
               sleep 15
             done
             python3 -m pip install pipx
-            python3 -m pipx install ipa-diagnose
-            /root/.local/bin/ipa-diagnose --version
           " | tee -a env-report.txt
+          if [ "$INSTALL_SOURCE" = "source" ]; then
+            docker cp "$GITHUB_WORKSPACE" ipa-primary:/ipa-diagnose-source
+            docker exec ipa-primary bash -c "python3 -m pipx install /ipa-diagnose-source"
+          else
+            docker exec ipa-primary bash -c "python3 -m pipx install ipa-diagnose"
+          fi
+          docker exec ipa-primary /root/.local/bin/ipa-diagnose --version | tee -a env-report.txt
 
       - name: Real ipa-healthcheck + real ipa-diagnose on the healthy server
         run: |
@@ -98,6 +105,8 @@ jobs:
           echo "=== ipa-diagnose --json ===" | tee healthy-diagnose.json
           docker exec ipa-primary /root/.local/bin/ipa-diagnose --json > healthy-diagnose.json 2>&1 || true
           cat healthy-diagnose.json
+          # Truth row (recorded; the Fedora image's CS.cfg 0664 quirk is a real finding, so DEGRADED is expected here)
+          python3 scripts/lab_truth.py check H1-single-server-fresh-install healthy-diagnose.json '{"overall_not": ["CRITICAL", "UNKNOWN"], "no_diagnosed": ["clock skew", "expired", "replication", "not running", "records", "keytab"]}' || true
 
       - name: Repeat 3x to check for nondeterminism/false positives on a healthy server
         run: |
@@ -147,6 +156,7 @@ jobs:
         with:
           name: baseline-healthy-evidence
           path: |
+            out/truth/
             env-report.txt
             baseline-ipaserver-install.log
             healthy-healthcheck.json
@@ -298,6 +308,7 @@ jobs:
           docker exec ipa-a cp /etc/resolv.conf.ipa-backup /etc/resolv.conf
           docker exec ipa-a /root/.local/bin/ipa-diagnose --details | tee healthy-topology-diagnose-A.txt || true
           docker exec ipa-a /root/.local/bin/ipa-diagnose --json > healthy-topology-diagnose-A.json 2>/dev/null || true
+          python3 scripts/lab_truth.py check H2-two-node-healthy-topology healthy-topology-diagnose-A.json '{"overall_not": ["CRITICAL", "UNKNOWN"], "ruv_state_in": ["VERIFIED"], "no_diagnosed": ["replication", "stale", "not running", "clock skew", "expired"]}' || true
 
       - name: Probe RUV read access on the real two-node topology (BEFORE failure)
         run: |
@@ -326,7 +337,9 @@ jobs:
           docker exec ipa-a ipa-replica-manage list > stale-ruv-registered-list-A.txt 2>&1 || true
           docker exec ipa-a ipa-healthcheck --output-type json > stale-ruv-registered-healthcheck-A.json 2>&1 || true
           docker exec ipa-a /root/.local/bin/ipa-diagnose --details > stale-ruv-registered-diagnose-A.txt 2>&1 || true
-          docker exec ipa-a /root/.local/bin/ipa-diagnose --json > stale-ruv-registered-diagnose-A.json 2>&1 || true
+          docker exec ipa-a /root/.local/bin/ipa-diagnose --json > stale-ruv-registered-diagnose-A.json 2>/dev/null || true
+          # A replica that is down but still registered: must never be HEALTHY; the peer must be named correctly.
+          python3 scripts/lab_truth.py check R1-replica-down-still-registered stale-ruv-registered-diagnose-A.json '{"overall_not": ["HEALTHY"], "no_diagnosed": ["clock skew", "expired"]}' || true
           cat stale-ruv-registered-list-A.txt; head -30 stale-ruv-registered-diagnose-A.txt
 
       - name: Decommission B from the topology WITHOUT cleaning its RUV (lab-only, admin ticket)
@@ -390,7 +403,9 @@ jobs:
           docker exec ipa-a /root/.local/bin/ipa-diagnose --details > stale-ruv-diagnose-A.txt 2>&1 || true
           cat stale-ruv-diagnose-A.txt
           echo "=== ipa-diagnose --json ===" | tee stale-ruv-diagnose-A.json
-          docker exec ipa-a /root/.local/bin/ipa-diagnose --json > stale-ruv-diagnose-A.json 2>&1 || true
+          docker exec ipa-a /root/.local/bin/ipa-diagnose --json > stale-ruv-diagnose-A.json 2>/dev/null || true
+          # Recorded, not forced: whether a stale RUV really exists here is decided from list-ruv evidence above.
+          python3 scripts/lab_truth.py check R2-after-replica-removal stale-ruv-diagnose-A.json '{"no_diagnosed": ["clock skew", "expired"]}' || true
           echo "=== overall_status extracted ==="
           grep -o '"overall_status":[^,]*' stale-ruv-diagnose-A.json || true
 
@@ -411,6 +426,7 @@ jobs:
         with:
           name: stale-ruv-live-evidence
           path: |
+            out/truth/
             server-a-install.log
             server-b-install.log
             server-b-container.log

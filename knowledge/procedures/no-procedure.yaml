@@ -1,0 +1,22 @@
+# Diagnoses that are certain but for which ipa-diagnose deliberately shows no fix.
+- kind: no_procedure
+  id: none.certs.expired-ds-certificate
+  resolves:
+    diagnosis: directory-server.certificate-expiry
+    variant: expired
+  reason: >-
+    The Directory Server certificate has already expired. Recovering expired IPA system certificates
+    (ipa-cert-fix on the CA renewal master, then restarting the other servers) is a high-risk procedure
+    that ipa-diagnose has not verified, so it shows no fix. Follow the documented procedure for your
+    FreeIPA version.
+  reference: https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/managing_certificates_in_idm/renewing-expired-system-certificates-when-idm-is-offline_managing-certificates-in-idm
+
+- kind: no_procedure
+  id: none.time.kdc-reported-skew
+  resolves:
+    diagnosis: kerberos.clock-skew
+    variant: kdc-reported
+  reason: >-
+    The KDC reported clock skew, but this host's own clock was not measured as out of sync. The clock
+    that is wrong may be on another machine, so ipa-diagnose shows no fix here. Compare 'chronyc tracking'
+    on both machines.

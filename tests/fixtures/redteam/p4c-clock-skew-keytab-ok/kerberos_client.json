@@ -1,0 +1,8 @@
+{
+ "clock_sync": {
+  "method": "chronyc",
+  "ntp_synchronized": false,
+  "offset_seconds": 0.004,
+  "raw": "Leap status     : Not synchronised\nSystem time     : 0.004000 seconds fast of NTP time"
+ }
+}

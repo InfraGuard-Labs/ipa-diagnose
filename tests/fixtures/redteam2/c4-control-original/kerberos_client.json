@@ -1,0 +1,8 @@
+{
+ "clock_sync": {
+  "method": "chronyc",
+  "ntp_synchronized": true,
+  "offset_seconds": 421.2,
+  "raw": "System time     : 421.200000 seconds fast of NTP time"
+ }
+}

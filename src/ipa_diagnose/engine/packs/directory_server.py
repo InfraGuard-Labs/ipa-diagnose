@@ -16,6 +16,7 @@ Four rules, one per well-documented root-cause cluster for this domain:
 
 from __future__ import annotations
 
+import re
 from typing import List, Optional, Tuple
 
 from ipa_diagnose.textsafe import safe_token
@@ -79,6 +80,7 @@ _DISK_SOURCES: Tuple[str, ...] = ("ipahealthcheck.system.filesystemspace", "ipah
 
 
 _DS_STORES = {"/var/lib/dirsrv", "/dev/shm", "/var/log/dirsrv", "/var/lib/ipa/backup"}
+_DS_DATA_STORES = {"/var/lib/dirsrv", "/dev/shm"}
 
 
 def _disk_findings(bundle: EvidenceBundle) -> List[Finding]:
@@ -99,6 +101,49 @@ def _disk_findings(bundle: EvidenceBundle) -> List[Finding]:
     return [f for f in found if "not mounted" not in (f.message or "").lower()]
 
 
+_REALLY_FULL_MIB = 200  # an absolute free-space reading at or below this is out of space for Directory Server
+
+
+def _disk_really_full(f: Finding, all_findings: Optional[List[Finding]] = None) -> bool:
+    """Whether result `f` shows that a Directory Server DATA store is actually out of space. One rule per store
+    (red-team rounds 5-7): if an absolute free-space reading exists for the store, it alone decides (<= 200 MiB);
+    otherwise the percentage does (<= 5 % at ERROR+). Directory Server's own disk check (which fires at 90 % used
+    on any DS partition) counts only when it names the database partition, through the same rule."""
+
+    if f.severity.rank < Severity.ERROR.rank:
+        return False
+    findings = all_findings or [f]
+    if f.source == "ipahealthcheck.ds.disk_space":
+        text = f"{f.message or ''} {(f.keywords or {}).get('msg', '') if isinstance(f.keywords, dict) else ''}"
+        return "/var/lib/dirsrv" in text and _store_full("/var/lib/dirsrv", findings, pct_fallback=False)
+    kw = f.keywords if isinstance(f.keywords, dict) else {}
+    store = str(kw.get("store", kw.get("key", ""))).rstrip("/")
+    return store in _DS_DATA_STORES and _store_full(store, findings, pct_fallback=True)
+
+
+def _store_full(store: str, findings: List[Finding], pct_fallback: bool) -> bool:
+    def number(v):
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return None
+
+    def kw(g):
+        return g.keywords if isinstance(g.keywords, dict) else {}
+
+    same = [g for g in findings if g.source == "ipahealthcheck.system.filesystemspace"
+            and str(kw(g).get("store", kw(g).get("key", ""))).rstrip("/") == store]
+    absolute = [number(kw(g).get("free_space")) for g in same if "free_space" in kw(g)]
+    absolute = [a for a in absolute if a is not None]
+    if absolute:
+        return min(absolute) <= _REALLY_FULL_MIB
+    if not pct_fallback:
+        return False
+    pct = [number(kw(g).get("percent_free")) for g in same if g.severity.rank >= Severity.ERROR.rank]
+    pct = [p for p in pct if p is not None]
+    return bool(pct) and min(pct) <= 5
+
+
 def _recheck_disk_space(bundle: EvidenceBundle) -> bool:
     findings = _disk_findings(bundle)
     if any(f.severity.rank >= Severity.WARNING.rank for f in findings):
@@ -115,6 +160,19 @@ class DiskSpaceExhaustionRule(DiagnosticRule):
     summary = "Disk space exhaustion on a Directory Server-critical path (data, logs, /dev/shm, backups)."
 
     def evaluate(self, bundle: EvidenceBundle) -> Optional[Diagnosis]:
+        d = self._evaluate(bundle)
+        if d is not None:
+            # Only a full file system that Directory Server writes its database to (or DS's own disk check, or DS
+            # logging "no space") can break DS and so explain other subsystems' failures; a full backup or log
+            # directory cannot (red-team round 4).
+            # Hard evidence only (red-team round 5): upstream reports ERROR below 20 % free, which is ordinary on a
+            # busy server with plenty of space left, so percent_free alone must be really low.
+            findings = _disk_findings(bundle)
+            d.explains_downstream = bool(_items_by_category(bundle, "dirsrv_journal_line", "disk_space")) or any(
+                _disk_really_full(f, findings) for f in findings)
+        return d
+
+    def _evaluate(self, bundle: EvidenceBundle) -> Optional[Diagnosis]:
         relevant = _at_least_warning(_disk_findings(bundle))
         if not relevant:
             return None
@@ -311,12 +369,125 @@ def _file_findings(bundle: EvidenceBundle) -> List[Finding]:
         # Allowlist: upstream's owner/group/mode results carry type, path, expected and got.
         if str(kw.get("type", "")).lower() not in ("owner", "group", "mode"):
             continue
-        if not all(k in kw for k in ("path", "expected", "got")):
-            continue
+        if not all(isinstance(kw.get(k), str) for k in ("path", "expected", "got")):
+            continue  # a malformed (non-text) value is not an owner/group/mode result we can reason about
         if str(kw.get("got", "")).lower().startswith("unknown "):  # 'Unknown uid 1234': no such account, not a mismatch of a known owner
             continue
         out.append(f)
     return out
+
+
+def _permission_targets(findings: List[Finding]) -> dict:
+    """Structured (path, expected, got) from ipa-healthcheck's own owner/group/mode results, one list per kind.
+    Values are passed on as-is; the resolution engine validates each one by type."""
+
+    out: dict = {"targets_mode": [], "targets_owner": [], "targets_group": []}
+    seen: dict = {}
+    for f in findings:
+        kw = f.keywords if isinstance(f.keywords, dict) else {}
+        kind = str(kw.get("type", ""))
+        if kind not in ("mode", "owner", "group"):
+            continue
+        item = {k: kw.get(k) for k in ("path", "expected", "got")}
+        key = (kind, item["path"])
+        if key in seen:
+            # Two results for the same file and attribute: identical ones are merged; different expected
+            # values make the item unusable (never pick one).
+            if seen[key]["expected"] != item["expected"]:
+                seen[key]["withhold_reason"] = (f"ipa-healthcheck reported conflicting expected values "
+                                                f"({seen[key]['expected']} / {item['expected']}), so none is chosen")
+                seen[key]["expected"] = None
+            continue
+        if kind == "mode":
+            item.update(_mode_delta(item["got"], item["expected"]))
+        elif _is_key_material(str(item["path"])):
+            item["withhold_reason"] = ("it holds keys or secrets, so ipa-diagnose never suggests changing its owner or "
+                                       "group - review it and change it yourself if appropriate")
+            item["expected"] = None
+        seen[key] = item
+        out[f"targets_{kind}"].append(item)
+    return out
+
+
+_DS_PATH_PREFIXES = ("/etc/dirsrv/", "/var/lib/dirsrv/", "/var/log/dirsrv/", "/run/dirsrv/", "/usr/lib64/dirsrv/")
+
+
+def _file_impact(findings: List[Finding]) -> str:
+    """What the reported mismatch can actually do. A mode that is only too PERMISSIVE exposes the file to more
+    local users but cannot stop a service from reading it (live lab: every fresh container install reports
+    CS.cfg 0664 vs 0660) - it must not be described as an outage risk."""
+
+    def permissive(f: Finding) -> bool:
+        kw = f.keywords if isinstance(f.keywords, dict) else {}
+        return (str(kw.get("type", "")).lower() == "mode"
+                and _mode_delta(str(kw.get("got")), str(kw.get("expected"))).get("loosens") == "no")
+
+    if findings and all(permissive(f) for f in findings):
+        return ("The file is readable or writable by more local users than it should be, which can expose what it "
+                "contains. This does not stop any service from working; it is a security finding.")
+    return ("dirsrv (or the RA agent / Tomcat/PKI NSS DB it depends on) can fail to start or fail to "
+            "read its own certificate material until ownership/mode is corrected.")
+
+
+def _names_any(item: EvidenceItem, paths: List[str]) -> bool:
+    text = str(item.data.get("message") or item.data.get("line") or item.summary or "")
+    for p in paths:
+        parent = p.rsplit("/", 1)[0] + "/"
+        # the parent only counts when it is a specific directory (/etc/dirsrv/slapd-X/, not /etc/)
+        if p and (p in text or (parent.count("/") >= 4 and parent in text)):
+            return True
+    return False
+
+
+def _can_break_ds(f: Finding) -> bool:
+    """A Directory Server file whose owner/group is wrong, or whose mode is too RESTRICTIVE, can stop DS from
+    reading it. A too-permissive mode cannot (it is a security problem, not an outage cause)."""
+
+    kw = f.keywords if isinstance(f.keywords, dict) else {}
+    if not str(kw.get("path") or "").startswith(_DS_PATH_PREFIXES):
+        return False
+    kind = str(kw.get("type", "")).lower()
+    if kind in ("owner", "group"):
+        return True
+    return kind == "mode" and _mode_delta(str(kw.get("got")), str(kw.get("expected"))).get("loosens") != "no"
+
+
+def _is_key_material(path: str) -> bool:
+    """Files whose ownership is never changed automatically (keys, key databases, stash and password files)."""
+
+    # Deliberately broad and case-insensitive: a file wrongly treated as key material only means no ownership
+    # fix is shown (a mode fix, which only removes permissions, is still possible).
+    low = path.lower()
+    parts = low.split("/")
+    name = parts[-1]
+    secret_dirs = {"private", "custodia", "dnssec", "backup", "passwds", "keys", "secrets", "tokens"}
+    secret_words = ("key", "pass", "pwd", "pin", "secret", "token", "ccache", "cred", "stash", "authtok", "p12", "pfx")
+    return (bool(secret_dirs & set(parts[:-1])) or name.startswith(".") or any(w in name for w in secret_words)
+            or name.startswith("dse.ldif") or low.startswith("/etc/sssd/"))
+
+
+def _mode_delta(got, expected) -> dict:
+    """Symbolic chmod that only REMOVES permissions (never adds): chmod through a swapped symlink can then only
+    tighten the target. ``loosens`` is "yes" when the expected mode would add any permission."""
+
+    import re as _re
+
+    if not (isinstance(got, str) and isinstance(expected, str) and _re.fullmatch(r"0?[0-7]{3}", got)
+            and _re.fullmatch(r"0?[0-7]{3}", expected)):
+        return {"remove": "none", "restore": "none", "loosens": "unknown"}
+    g, e = int(got, 8), int(expected, 8)
+    removed, added = g & ~e & 0o777, e & ~g & 0o777
+
+    def symbolic(bits: int, sign: str) -> str:
+        parts = []
+        for who, shift in (("u", 6), ("g", 3), ("o", 0)):
+            b = (bits >> shift) & 7
+            letters = "".join(ch for ch, v in (("r", 4), ("w", 2), ("x", 1)) if b & v)
+            if letters:
+                parts.append(f"{who}{sign}{letters}")
+        return ",".join(parts) or "none"
+
+    return {"remove": symbolic(removed, "-"), "restore": symbolic(removed, "+"), "loosens": "yes" if added else "no"}
 
 
 def _recheck_ownership(bundle: EvidenceBundle) -> bool:
@@ -352,7 +523,12 @@ class OwnershipSelinuxMismatchRule(DiagnosticRule):
         ]
 
         if file_findings:
-            corroborated = bool(permission_journal or selinux_journal)
+            # A dirsrv journal line only corroborates a reported file it actually names (or its directory); an
+            # unrelated permission error must not vouch for, say, a Tomcat file (red-team round 2).
+            paths = [str((f.keywords if isinstance(f.keywords, dict) else {}).get("path") or "") for f in file_findings]
+            relevant = [i for i in permission_journal + selinux_journal if _names_any(i, paths)]
+            evidence_for = [r for r in evidence_for if r.kind == "finding" or any(r.evidence_id == i.item_id for i in relevant)]
+            corroborated = bool(relevant)
             worst = max(file_findings, key=lambda f: f.severity.rank)
             return Diagnosis(
                 pack_id=PACK_ID,
@@ -383,10 +559,7 @@ class OwnershipSelinuxMismatchRule(DiagnosticRule):
                 ),
                 severity=Severity.CRITICAL if worst.severity == Severity.CRITICAL else Severity.ERROR,
                 evidence_for=evidence_for,
-                impact=(
-                    "dirsrv (or the RA agent / Tomcat/PKI NSS DB it depends on) can fail to start or fail to "
-                    "read its own certificate material until ownership/mode is corrected."
-                ),
+                impact=_file_impact(file_findings),
                 actions=[
                     Action(
                         description="Confirm the current owner/group/mode and SELinux context of the reported path before changing anything.",
@@ -426,6 +599,12 @@ class OwnershipSelinuxMismatchRule(DiagnosticRule):
                     "administrator via `ausearch -m avc -ts recent`, not by this tool."
                 ),
                 upstream_candidates=[],
+                resolution_key="directory-server.ipa-file-permissions",
+                bindings=_permission_targets(file_findings),
+                # Only Directory Server's own files (or dirsrv logging permission errors) can break DS and so
+                # explain other packs' symptoms; a PKI/httpd/IPA file mode cannot.
+                evidence_severity=worst.severity,
+                explains_downstream=bool(relevant) or any(_can_break_ds(f) for f in file_findings),
             )
 
         # No IPAFileCheck-style finding naming an exact wrong value - just a
@@ -818,6 +997,13 @@ class DsCertificateExpiryRule(DiagnosticRule):
 
         any_expired = any(_expired(f) for f in relevant)
         worst = max(relevant, key=lambda f: f.severity.rank)
+        keys = {str(f.keywords.get("key", "")) if isinstance(f.keywords, dict) else "" for f in relevant}
+        # The procedure variant is decided by lib389's own result key, never by message wording.
+        variant = "expired" if "DSCERTLE0002" in keys else ("expiring" if keys == {"DSCERTLE0001"} else None)
+        nickname = None
+        if len(relevant) == 1:
+            m = re.match(r"^\s*The certificate \(([^)]{1,64})\) (?:will expire|has expired)", relevant[0].message or "")
+            nickname = m.group(1) if m else None
         state = "has EXPIRED" if any_expired else "expires within 30 days"
         return Diagnosis(
             pack_id=PACK_ID,
@@ -863,6 +1049,9 @@ class DsCertificateExpiryRule(DiagnosticRule):
             ],
             limitations="This does not establish WHY the certificate was not renewed; check certmonger and the CA next.",
             upstream_candidates=[],
+            resolution_key="directory-server.certificate-expiry",
+            variant=variant,
+            bindings={"nickname": nickname} if nickname else {},
         )
 
 

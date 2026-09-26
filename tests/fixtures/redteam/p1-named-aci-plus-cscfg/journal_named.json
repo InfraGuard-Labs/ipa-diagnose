@@ -1,0 +1,35 @@
+[
+ {
+  "item_id": "journal_named.0000",
+  "kind": "named_journal_line",
+  "summary": "named-pkcs11[2044]: bind-dyndb-ldap: could not update list of zones, error: LDAP error: Insufficient access (50) - err=50, matched DN cn=dns,dc=example,dc=test",
+  "data": {
+   "unit": "named-pkcs11",
+   "raw_line": "Sep 15 09:58:02 ipa01 named-pkcs11[2044]: bind-dyndb-ldap: could not update list of zones, error: LDAP error: Insufficient access (50) - err=50, matched DN cn=dns,dc=example,dc=test",
+   "timestamp": "Sep 15 09:58:02"
+  },
+  "severity": "ERROR"
+ },
+ {
+  "item_id": "journal_named.0001",
+  "kind": "named_journal_line",
+  "summary": "named-pkcs11[2044]: could not configure any DNS interfaces",
+  "data": {
+   "unit": "named-pkcs11",
+   "raw_line": "Sep 15 09:58:03 ipa01 named-pkcs11[2044]: could not configure any DNS interfaces",
+   "timestamp": "Sep 15 09:58:03"
+  },
+  "severity": "CRITICAL"
+ },
+ {
+  "item_id": "journal_named.0002",
+  "kind": "named_journal_line",
+  "summary": "systemd[1]: named-pkcs11.service: Failed to start, unit entered failed state",
+  "data": {
+   "unit": "named-pkcs11",
+   "raw_line": "Sep 15 09:58:03 ipa01 systemd[1]: named-pkcs11.service: Failed to start, unit entered failed state",
+   "timestamp": "Sep 15 09:58:03"
+  },
+  "severity": "CRITICAL"
+ }
+]

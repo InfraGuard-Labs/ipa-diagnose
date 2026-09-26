@@ -1,0 +1,126 @@
+[
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "dirsrv",
+  "result": "SUCCESS",
+  "uuid": "svc-dirsrv",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "krb5kdc",
+  "result": "SUCCESS",
+  "uuid": "svc-krb5kdc",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "kadmin",
+  "result": "SUCCESS",
+  "uuid": "svc-kadmin",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "httpd",
+  "result": "SUCCESS",
+  "uuid": "svc-httpd",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "named",
+  "result": "SUCCESS",
+  "uuid": "svc-named",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "pki_tomcatd",
+  "result": "SUCCESS",
+  "uuid": "svc-pki_tomcatd",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "certmonger",
+  "result": "ERROR",
+  "uuid": "svc-certmonger",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": false,
+   "msg": "certmonger: not running"
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "chronyd",
+  "result": "SUCCESS",
+  "uuid": "svc-chronyd",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "ipa_custodia",
+  "result": "SUCCESS",
+  "uuid": "svc-ipa_custodia",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "sssd",
+  "result": "SUCCESS",
+  "uuid": "svc-sssd",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPACertRevocation",
+  "result": "ERROR",
+  "uuid": "rev",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "key": "20240101000000",
+   "revocation_reason": "keyCompromise",
+   "msg": "Certificate tracked by 20240101000000 is revoked keyCompromise"
+  }
+ }
+]

@@ -1,0 +1,124 @@
+[
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "dirsrv",
+  "result": "SUCCESS",
+  "uuid": "svc-dirsrv",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "krb5kdc",
+  "result": "SUCCESS",
+  "uuid": "svc-krb5kdc",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "kadmin",
+  "result": "SUCCESS",
+  "uuid": "svc-kadmin",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "httpd",
+  "result": "SUCCESS",
+  "uuid": "svc-httpd",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "named",
+  "result": "SUCCESS",
+  "uuid": "svc-named",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "pki_tomcatd",
+  "result": "ERROR",
+  "uuid": "svc-pki_tomcatd",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": false,
+   "msg": "pki_tomcatd: not running"
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "certmonger",
+  "result": "SUCCESS",
+  "uuid": "svc-certmonger",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "chronyd",
+  "result": "SUCCESS",
+  "uuid": "svc-chronyd",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "ipa_custodia",
+  "result": "SUCCESS",
+  "uuid": "svc-ipa_custodia",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "sssd",
+  "result": "SUCCESS",
+  "uuid": "svc-sssd",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.dogtag.ca",
+  "check": "DogtagCertsConnectivityCheck",
+  "result": "ERROR",
+  "uuid": "dog",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "msg": "Request for certificate failed, [Errno 111] Connection refused"
+  }
+ }
+]

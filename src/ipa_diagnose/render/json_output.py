@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shlex
 from typing import Any, Dict
 
 from ipa_diagnose.engine.model import Action, Diagnosis, DiagnosisReport, EvidenceRef, VerificationCondition
@@ -120,4 +121,51 @@ def report_to_dict(report: DiagnosisReport, ai_explanations: Dict[str, str] = No
         "diagnoses": [
             _diagnosis_to_dict(d, ai_explanations.get(d.diagnosis_id)) for d in report.diagnoses
         ],
+        # 1.0 additions: v1 keys above are frozen; everything new lives under "v2".
+        "report_schema_version": 2,
+        "v2": {
+            "service_states": dict(report.service_states or {}),
+            "side_effects": list(report.side_effects or []),
+            "resolutions": [resolution_to_dict(r) for r in (report.resolutions or {}).values()],
+            # what `verify` may rely on later (see resolution.engine.rebuild_verify); display data above is not used
+            "verify_baseline": {"schema": 1, "fixes": [
+                dict(r.baseline, diagnosis_id=r.diagnosis_id)
+                for r in (report.resolutions or {}).values() if r.status == "OFFERED" and r.baseline
+            ] + list(report.carried_fixes or [])},
+            "carried_diagnoses": list(report.carried_diagnoses or []),
+        },
+    }
+
+
+def resolution_to_dict(r) -> Dict[str, Any]:
+    return {
+        "diagnosis_id": r.diagnosis_id,
+        "status": r.status,
+        "procedure_id": r.procedure_id,
+        "title": r.title,
+        "reasons": list(r.reasons),
+        "checked": [
+            {"label": label, "check": c.check_id, "status": c.status, "result": c.display, "command": c.command,
+             "source": "recorded" if r.replay else "live"}
+            for label, c in r.checks
+        ],
+        "prerequisites": [{"text": p.text, "state": p.state} for p in r.prerequisites],
+        "steps": [
+            {"id": s.step_id, "text": s.text, "argv": list(s.argv), "command": s.command, "risk": s.risk,
+             "changes": list(s.changes), "expected": s.expected, "run_on": s.run_on}
+            for s in r.steps
+        ],
+        "what_changes": list(r.what_changes),
+        "risk": r.risk if r.steps else None,
+        "rollback": [dict(x, command=shlex.join(x["argv"]) if x.get("argv") else None) for x in r.rollback],
+        "confirm_first": [{"text": c["text"], "argv": c["argv"], "command": shlex.join(c["argv"]), "expected": c["expect"]}
+                          for c in r.confirm_first],
+        "verify": list(r.verify),
+        "applies_to": r.applies_to,
+        "tier": r.tier,
+        "definitive": r.definitive,
+        "verification_label": r.verification_label,
+        "limitations": r.limitations,
+        "reference": r.reference,
+        "impact_note": r.impact_note,
     }

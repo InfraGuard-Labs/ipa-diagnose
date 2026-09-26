@@ -1,0 +1,28 @@
+[
+ {
+  "item_id": "dns_lookup.srv_ldap_tcp",
+  "kind": "dns_srv_record",
+  "summary": "_ldap._tcp.example.test SRV: UNKNOWN, 0 record(s)",
+  "data": {
+   "query": "_ldap._tcp.example.test",
+   "qtype": "SRV",
+   "resolver": null,
+   "rcode": "UNKNOWN",
+   "answers": []
+  },
+  "severity": "ERROR"
+ },
+ {
+  "item_id": "dns_lookup.srv_kerberos_udp",
+  "kind": "dns_srv_record",
+  "summary": "_kerberos._udp.example.test SRV: UNKNOWN, 0 record(s)",
+  "data": {
+   "query": "_kerberos._udp.example.test",
+   "qtype": "SRV",
+   "resolver": null,
+   "rcode": "UNKNOWN",
+   "answers": []
+  },
+  "severity": "ERROR"
+ }
+]

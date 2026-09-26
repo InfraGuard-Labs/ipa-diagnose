@@ -1,0 +1,32 @@
+[
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPARAAgent",
+  "result": "ERROR",
+  "uuid": "rt-ra",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "key": "description_mismatch",
+   "expected": "2;7;CN=Certificate Authority,O=EXAMPLE.TEST;CN=IPA RA,O=EXAMPLE.TEST",
+   "got": "2;5;CN=Certificate Authority,O=EXAMPLE.TEST;CN=IPA RA,O=EXAMPLE.TEST",
+   "msg": "RA agent description does not match. Found {got} in LDAP and expected {expected}"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileCheck",
+  "result": "ERROR",
+  "uuid": "rt-cscfg-mode",
+  "when": "20260916043418Z",
+  "duration": "0.002",
+  "kw": {
+   "key": "_etc_krb5.keytab_mode",
+   "path": "/etc/krb5.keytab",
+   "type": "mode",
+   "expected": "0600",
+   "got": "0400",
+   "msg": "Permissions of /etc/krb5.keytab are too restrictive: 0400 and should be 0600"
+  }
+ }
+]

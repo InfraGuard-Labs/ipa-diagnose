@@ -1,0 +1,11 @@
+[
+ {
+  "path": "/var/lib/dirsrv/",
+  "filesystem": "/dev/vdb",
+  "mounted_on": "/var/lib/dirsrv",
+  "size_bytes": 1000,
+  "used_bytes": 1000,
+  "avail_bytes": 0,
+  "used_percent": 100
+ }
+]

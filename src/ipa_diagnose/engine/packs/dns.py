@@ -155,11 +155,30 @@ class NamedServiceDownRule(DiagnosticRule):
     summary = "named/bind-dyndb-ldap is not running or failed to start"
 
     def evaluate(self, bundle: EvidenceBundle) -> Optional[Diagnosis]:
+        d = self._evaluate(bundle)
+        dirsrv_down = any(f.source.endswith("meta.services") and f.check.split("@")[0] == "dirsrv"
+                          and f.severity.rank >= Severity.ERROR.rank for f in bundle.findings)
+        if d is not None and "missing LDAP ACI" in d.title and not dirsrv_down:
+            # err=50 is an access-control ANSWER from a running Directory Server: not a symptom of a full disk or
+            # other DS trouble while dirsrv runs (red-team round 8)
+            d.not_caused_by = ["directory-server"]
+        return d
+
+    def _evaluate(self, bundle: EvidenceBundle) -> Optional[Diagnosis]:
         journal_lines = _journal_lines(bundle)
         aci_lines = [i for i in journal_lines if _is_aci_error(i)]
         crash_lines = [i for i in journal_lines if _is_strong_crash(i)]
         service_findings_early = _service_down_findings(bundle)
-        if not crash_lines and not service_findings_early:
+        named_running_now = not service_findings_early and any(
+            f.source.endswith("meta.services") and f.check in ("named", "named-pkcs11") and f.severity == Severity.SUCCESS
+            for f in bundle.findings)
+        if named_running_now and (crash_lines or aci_lines):
+            # ipa-healthcheck's own service check says named runs NOW: journal lines from the last 30 minutes show a
+            # past failure (e.g. before a restart), not that named is down - ambiguous trouble at most, never a
+            # confident "named is down / missing ACI" (red-team round 6).
+            aci_lines, crash_lines = [], []
+            ambiguous_aci = [i for i in journal_lines if _is_aci_error(i) or _is_strong_crash(i)]
+        elif not crash_lines and not service_findings_early:
             # An LDAP denial line alone (possibly stale, from a healthy named) does not show named is down or
             # failed to start: keep it as ambiguous trouble, never a confident ACI diagnosis.
             ambiguous_aci, aci_lines = aci_lines, []
@@ -439,6 +458,8 @@ class ForwardZoneConflictRule(DiagnosticRule):
                 ],
                 limitations=_SINGLE_RESOLVER_LIMITATION,
                 upstream_candidates=[],
+                # an unloaded forward zone affects only names in that zone, never IPA's own records or peers
+                explains_downstream=False,
             )
 
         # Generic forwarding trouble without the specific collision signature -
@@ -476,6 +497,8 @@ class ForwardZoneConflictRule(DiagnosticRule):
             ),
             limitations=_SINGLE_RESOLVER_LIMITATION,
             upstream_candidates=[],
+                # an unloaded forward zone affects only names in that zone, never IPA's own records or peers
+                explains_downstream=False,
         )
 
 

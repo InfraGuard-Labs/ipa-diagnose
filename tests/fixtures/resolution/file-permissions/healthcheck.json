@@ -1,0 +1,73 @@
+[
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "dirsrv",
+  "result": "SUCCESS",
+  "uuid": "res-svc-dirsrv",
+  "when": "20260924120000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "krb5kdc",
+  "result": "SUCCESS",
+  "uuid": "res-svc-krb5kdc",
+  "when": "20260924120000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "httpd",
+  "result": "SUCCESS",
+  "uuid": "res-svc-httpd",
+  "when": "20260924120000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "certmonger",
+  "result": "SUCCESS",
+  "uuid": "res-svc-certmonger",
+  "when": "20260924120000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "chronyd",
+  "result": "SUCCESS",
+  "uuid": "res-svc-chronyd",
+  "when": "20260924120000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "TomcatFileCheck",
+  "result": "WARNING",
+  "uuid": "res-tomcat",
+  "when": "20260924120000Z",
+  "duration": "0.01",
+  "kw": {
+   "key": "_var_lib_pki_pki-tomcat_conf_ca_CS.cfg_mode",
+   "path": "/var/lib/pki/pki-tomcat/conf/ca/CS.cfg",
+   "type": "mode",
+   "expected": "0660",
+   "got": "0664",
+   "msg": "Permissions of /var/lib/pki/pki-tomcat/conf/ca/CS.cfg are too permissive: 0664 and should be 0660"
+  }
+ }
+]

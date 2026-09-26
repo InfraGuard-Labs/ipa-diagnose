@@ -15,12 +15,14 @@ misleading than falling back to the deterministic `why` text).
 from __future__ import annotations
 
 import re
+import unicodedata
 from typing import Optional
 
 from ipa_diagnose.ai.provider import AIProvider, AIRequest, ProviderError
 from ipa_diagnose.engine.model import Diagnosis
 from ipa_diagnose.evidence.model import EvidenceBundle
 from ipa_diagnose.privacy.minimize import build_ai_payload
+from ipa_diagnose.textsafe import clean_multiline
 
 # Deliberately NOT anchored to line-start (an earlier version was - a
 # security review found that let prose-embedded suggestions like "you could
@@ -29,57 +31,70 @@ from ipa_diagnose.privacy.minimize import build_ai_payload
 # "reject anything command-shaped we don't recognize as approved," not
 # "recognize every dangerous command by name."
 _COMMAND_LIKE = re.compile(
-    # Zero-width lookbehind for the boundary (start-of-string, whitespace, or
-    # a backtick) rather than a consuming group - otherwise match.group(0)
-    # includes the boundary character and would never equal an approved
-    # command string during comparison.
-    r"(?<![^\s`])(?:\$\s*)?(?:sudo\s+)?(?:/usr/(?:s?bin)/)?"
-    r"(ipa[\w-]*|getcert|kinit|klist|kvno|dsconf|dsctl|ldapmodify|ldapsearch|"
-    r"systemctl|service|reboot|shutdown|halt|poweroff|init\s+0|"
-    r"rm\b|mkfs[\w.]*|dd\b|userdel|groupdel|iptables|firewall-cmd|"
-    r"dnf|yum|rpm\b|certutil|db2index[\w.]*|chmod|chown|kill(?:all)?|"
-    r"curl|wget|python[\w.]*|perl|bash|sh\b|nc\b|ncat)\b",
-    re.IGNORECASE,
+    # Zero-width lookbehind for the boundary (anything but a word, path or dot
+    # character: quotes, brackets, '**', '|', '&&' all count) rather than a
+    # consuming group, and any path prefix (/bin/, /usr/sbin/, ...).
+    r"(?<![\w./-])(?:\$\s*)?(?:sudo\s+)?(?:/(?:usr/)?(?:local/)?s?bin/)?"
+    r"(ipa[\w-]*|getcert|kinit|klist|kvno|dsconf|dsctl|ldapmodify|ldapsearch|ldapadd|ldapdelete|"
+    r"systemctl|service\s+[\w@.-]+\s+(?:start|stop|restart|reload|status|condrestart)|reboot|shutdown|halt|poweroff|init\s+0|"
+    r"rm\b|mkfs[\w.]*|dd\b|userdel|groupdel|usermod|passwd|iptables|firewall-cmd|"
+    r"dnf|yum|rpm\b|certutil|pk12util|openssl|pki\b|db2index[\w.]*|chmod|chown|chgrp|p?kill(?:all)?|"
+    r"curl|wget|python[\w.]*|perl|bash|sh\b|nc\b|ncat|ssh|scp|crontab|tee\b|sed\s+-i|truncate|shred|"
+    r"chronyc|chronyd(?=\s+-)|ntpdate|ntpd(?=\s+-)|hwclock|timedatectl|date\s+(?:-\w+\s+)*(?:-s|--set)|setenforce|semanage|"
+    r"setfacl|restorecon|journalctl|sss_cache|sssctl|ldappasswd|ldapmodrdn|ldapdelete|"
+    r"kadmin[\w.]*|kdb5_util|ktutil|kdestroy|mv\b|cp\b|ln\b|unlink|useradd|groupadd|nmcli|authselect|setsebool|"
+    r"bak2db|ldif2db|db2ldif|db2bak|dscreate|dsctl|pkispawn|pkidestroy|rndc|named-checkconf|"
+    r"init\s+[0-6]|telinit|realm\s+(?:leave|join|deny|permit)|fixfiles|podman|docker|nft|kexec|mount|umount|"
+    r"swapoff|sysctl\s+-w|hostnamectl|update-crypto-policies|authconfig|"
+    r"sudo|su|doas|pkexec|dsidm|sss_override|kpasswd|gpasswd|chpasswd|visudo)\b",
+    # case-sensitive on purpose: commands are typed in lower case, while prose says "IPA", "PKI", "Service"
 )
-_CODE_SPAN = re.compile(r"`([^`\n]{1,200})`")
+_WORD_BREAK = re.compile(r"\w\\\w|(?<![\w:])//")  # "sys\temctl" (the shell drops the backslash), "//usr/bin/..."
+# An instruction to run something, whatever it is called: "run realm leave", "execute the command foo bar".
+_IMPERATIVE = re.compile(r"(?i)\b(?:run|execute|invoke|type|issue|enter)\s+(?:the\s+)?(?:command\s+)?[a-z][\w.-]*\s+[a-z0-9-]")
+_INVISIBLE = re.compile("[­​-‏⁠-⁤﻿]")
+_SHAPE = re.compile(r"(?<![\w./-])([A-Za-z][A-Za-z0-9_.+-]{0,40})\s+(?:--?[A-Za-z]|/[\w.-])")
+_REDIRECT = re.compile(r"(?<![-=<])>{1,2}\s*[/~$]|\|\s*[A-Za-z]|\$\(|&&|;\s*[a-z]+\s+-")
+_PROSE_WORDS = frozenset(
+    "a an the in at on under from to of into inside within for with and or is are was were be as by via see "
+    "file files directory directories dir path paths folder named called its their your this that these those "
+    "not only both also like such than then when while if because between over below above near "
+    "config configuration database log logs keytab keytabs certificate certificates socket link symlink "
+    "mode owner group permissions exists missing location copy entry key keys store stored lives points "
+    "reads writes uses check see inspect review read open look examine compare confirm".split()
+)
 _MAX_EXPLANATION_CHARS = 4000
 
 
-def _looks_approved(candidate: str, approved_commands: set) -> bool:
-    candidate = candidate.strip()
-    # The span must be (part of) an approved command - never an approved
-    # command with extra text appended.
-    return any(candidate in cmd for cmd in approved_commands)
-
-
 def sanitize_explanation(text: str, diagnosis: Diagnosis) -> Optional[str]:
-    """Returns the explanation if it looks like prose only, else None (caller
-    must fall back to the deterministic `why` text).
-
-    Two independent checks, either of which rejects the whole response:
-    1. Any command-shaped token (see _COMMAND_LIKE) appearing anywhere in
-       the text, not just at a line's start.
-    2. Any markdown-style inline code span (`` `...` ``) whose content isn't
-       one of the diagnosis's own approved commands - this catches the
-       common AI phrasing "run `<command>`" regardless of whether the
-       command inside the backticks matches a known binary name.
+    """Returns the explanation if it is prose only, else None (the caller falls back to the deterministic
+    `why` text). An explanation may not contain any command at all - not even the diagnosis's own read-only
+    ones: no backticks or code blocks, no known program name, no word followed by an option or an absolute
+    path, no redirect, pipe, `$(`, `&&`, backslash-split word or `//` path. The text checked is exactly the
+    text displayed. This is a filter, not a proof: never run a command that appears only in AI text.
     """
 
     if not text or not text.strip():
         return None
     if len(text) > _MAX_EXPLANATION_CHARS:
         return None
+    # Filter exactly what will be displayed: terminal escapes removed (they could split a command so the filter
+    # misses it while the terminal shows it joined - round-7 review), compatibility forms folded (NFKC: full-width
+    # letters), invisible characters dropped, and look-alike letters from other scripts refused outright.
+    text = unicodedata.normalize("NFKC", clean_multiline(_INVISIBLE.sub("", text)))
+    if any(ch.isalpha() and not ch.isascii() for ch in text):
+        return None
 
-    approved_commands = {a.command for a in diagnosis.actions if a.command}
-
-    for span_match in _CODE_SPAN.finditer(text):
-        if not _looks_approved(span_match.group(1), approved_commands):
+    # No command text at all (round-8 review): allowing even the diagnosis's own read-only commands let an
+    # explanation append options to one ("... --output-file /etc/krb5.conf") or drop its safety flag ("ipa
+    # dns-update-system-records" without --dry-run). Commands are only ever shown by ipa-diagnose itself.
+    if "`" in text or _WORD_BREAK.search(text) or _REDIRECT.search(text):
+        return None
+    for m in _SHAPE.finditer(text):
+        if m.group(1).lower() not in _PROSE_WORDS:
             return None
-
-    for match in _COMMAND_LIKE.finditer(text):
-        if not _looks_approved(match.group(0), approved_commands):
-            return None
-
+    if _COMMAND_LIKE.search(text) or _IMPERATIVE.search(text):
+        return None
     return text.strip()
 
 

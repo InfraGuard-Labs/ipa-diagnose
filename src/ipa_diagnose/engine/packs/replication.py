@@ -121,11 +121,52 @@ def _disk_space_signal(bundle: EvidenceBundle) -> bool:
     )
 
 
+_NETWORK_FAILURE = ("can't contact ldap server", "cannot contact ldap server", "connection refused", "timed out",
+                    "no route to host", "network is unreachable", "name or service not known")
+_AUTH_FAILURE = ("sasl", "gssapi", "kerberos", "invalid credentials", "preauth", "kvno", "keytab", "ticket")
+
+
+def _failure_text(bundle: EvidenceBundle) -> str:
+    texts = [str(f.message or "") for f in bundle.findings if f.source == REPLICATION_SOURCE]
+    texts += [str(i.data.get("error") or i.data.get("message") or "") for i in bundle.items_by_kind("keytab_bind_check")
+              if not i.data.get("bind_ok", True)]
+    texts += [str(i.data.get("last_update_status") or i.data.get("status_message") or "")
+              for i in bundle.items_by_kind("replication_agreement")]
+    return " ".join(texts).lower()
+
+
+def _name_resolved(bundle: EvidenceBundle) -> bool:
+    low = _failure_text(bundle)
+    return any(p in low for p in ("connection refused", "no route to host", "connection reset")) and not any(
+        p in low for p in ("name or service not known", "could not resolve", "unknown host", "nxdomain"))
+
+
+def _network_only_failure(bundle: EvidenceBundle) -> bool:
+    texts = [str(f.message or "") for f in bundle.findings if f.source == REPLICATION_SOURCE]
+    texts += [str(i.data.get("error") or i.data.get("message") or "") for i in bundle.items_by_kind("keytab_bind_check")
+              if not i.data.get("bind_ok", True)]
+    low = " ".join(texts).lower()
+    return any(n in low for n in _NETWORK_FAILURE) and not any(a in low for a in _AUTH_FAILURE)
+
+
 class PeerConnectivityBreakRule(DiagnosticRule):
     rule_id = "peer-connectivity-break"
     summary = "Replication agreement stalled due to peer unreachability or a broken keytab/GSSAPI bind."
 
     def evaluate(self, bundle: EvidenceBundle) -> Optional[Diagnosis]:
+        d = self._evaluate(bundle)
+        if d is not None and _network_only_failure(bundle):
+            # "Can't contact LDAP server" / refused / timed out: the peer is not reachable at all, which a
+            # Kerberos key problem cannot cause (red-team round 2, Slice 1 hardening).
+            d.not_caused_by = ["kerberos"]
+            if _name_resolved(bundle):
+                # "connection refused" / "no route to host": the peer's name resolved and the host was reached,
+                # so DNS is not the cause either (red-team round 4).
+                d.not_caused_by.append("dns")
+                d.not_caused_by.append("directory-server")  # a peer refusing TCP is not a local-disk symptom
+        return d
+
+    def _evaluate(self, bundle: EvidenceBundle) -> Optional[Diagnosis]:
         trigger_findings = [
             f
             for f in bundle.findings

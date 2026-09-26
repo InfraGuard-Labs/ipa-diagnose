@@ -64,9 +64,19 @@ def _ai_config_from_args(args: argparse.Namespace) -> AIConfig:
     return AIConfig.from_env_and_args(no_ai=args.no_ai, provider_arg=args.ai_provider)
 
 
+def _runner(args: argparse.Namespace):
+    from ipa_diagnose.resolution.checks import LiveRunner, ReplayRunner
+
+    return ReplayRunner(args.replay) if args.replay else LiveRunner()
+
+
 def _collect_and_diagnose(args: argparse.Namespace) -> tuple[EvidenceBundle, DiagnosisReport]:
+    from ipa_diagnose.resolution.engine import resolve_report
+
     bundle = collect_evidence(replay_dir=args.replay)
     report = run_diagnosis(bundle)
+    # Read-only checks + procedure selection; never changes the diagnosis or the overall status.
+    resolve_report(report, _runner(args))
     return bundle, report
 
 
@@ -91,6 +101,10 @@ def _maybe_explain(
     for d in report.diagnoses:
         if d.priority not in _EXPLAINABLE_PRIORITIES:
             continue
+        res = (report.resolutions or {}).get(d.diagnosis_id)
+        if res is not None and res.status in ("WITHHELD", "NONE"):
+            # A fix was deliberately not shown: no AI rewording at all, so nothing can bring one back.
+            continue
         text = explain_diagnosis(d, bundle, provider)
         if text:
             explanations[d.diagnosis_id] = text
@@ -109,11 +123,17 @@ def _state_path(args: argparse.Namespace):
     return path.with_name("last_report.replay.json") if getattr(args, "replay", None) else path
 
 
-def _save_baseline(report: DiagnosisReport, args: argparse.Namespace) -> None:
+def _save_baseline(report: DiagnosisReport, args: argparse.Namespace, confirmed: Optional[set] = None) -> None:
     """An incomplete run (ipa-healthcheck itself unavailable) must not
-    overwrite the last good baseline that `verify` compares against."""
+    overwrite the last good baseline that `verify` compares against. Fix records not yet confirmed by a verify
+    (and the diagnoses they belong to) are carried into the new baseline."""
 
     if report.evidence_completeness.healthcheck_collected:
+        from ipa_diagnose.verify import carried_diagnoses, carry_forward_fixes
+
+        previous = load_previous_report(_state_path(args))
+        report.carried_fixes = carry_forward_fixes(previous, report, confirmed, runner=_runner(args))
+        report.carried_diagnoses = carried_diagnoses(previous, report, report.carried_fixes)
         save_report(_state_path(args), report)
 
 
@@ -132,8 +152,20 @@ def cmd_diagnose(args: argparse.Namespace, console: Console) -> int:
 
 def cmd_verify(args: argparse.Namespace, console: Console) -> int:
     bundle, report = _collect_and_diagnose(args)
-    previous = load_previous_report(_state_path(args))
-    result = compare(previous, report)
+    from ipa_diagnose.verify import UnreadableBaseline
+
+    try:
+        previous = load_previous_report(_state_path(args), strict=True)
+    except UnreadableBaseline:
+        msg = ("The saved diagnosis exists but cannot be read (damaged or truncated), so nothing can be verified. "
+               "Run ipa-diagnose to create a new baseline.")
+        if args.json:
+            print(json.dumps({"previous_generated_at": None, "baseline_unreadable": True, "items": [],
+                              "new_conditions": [], "current_report": report_to_dict(report)}, indent=2))
+        else:
+            console.print(f"[yellow]{msg}[/yellow]")
+        return 4
+    result = compare(previous, report, runner=_runner(args))
 
     if args.json:
         print(
@@ -153,7 +185,14 @@ def cmd_verify(args: argparse.Namespace, console: Console) -> int:
     else:
         render_verify(result, console)
 
-    _save_baseline(report, args)
+    if result.keep_baseline:
+        if not args.json:
+            console.print("[dim]The previous diagnosis stays the baseline for the next verify, because not everything "
+                          "in it was confirmed resolved.[/dim]")
+    else:
+        from ipa_diagnose.verify import VerifyOutcome as _VO
+
+        _save_baseline(report, args, confirmed={i.diagnosis_id for i in result.items if i.outcome == _VO.RESOLVED})
     from ipa_diagnose.verify import VerifyOutcome
 
     fresh = _exit_code_for(report)
@@ -163,7 +202,7 @@ def cmd_verify(args: argparse.Namespace, console: Console) -> int:
         result.new_conditions
     ):
         return fresh if fresh in (1, 2, 3) else 1  # a problem remains: never a clean 0
-    if any(i.outcome == VerifyOutcome.UNABLE_TO_VERIFY for i in result.items) or (
+    if any(i.outcome in (VerifyOutcome.UNABLE_TO_VERIFY, VerifyOutcome.CHANGED) for i in result.items) or (
         report.evidence_completeness.level != "complete"
     ):
         return 4  # verification is incomplete: never a clean 0

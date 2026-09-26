@@ -1,0 +1,8 @@
+{
+ "keytab_bind": {
+  "principal": "ldap/ipa01.example.test@EXAMPLE.TEST",
+  "target": "ipa02.example.test",
+  "bind_ok": false,
+  "error": "Connection refused"
+ }
+}

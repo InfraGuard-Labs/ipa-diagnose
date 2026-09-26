@@ -1,0 +1,16 @@
+[
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPARAAgent",
+  "result": "ERROR",
+  "uuid": "rt-ra",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "key": "description_mismatch",
+   "expected": "2;7;CN=Certificate Authority,O=EXAMPLE.TEST;CN=IPA RA,O=EXAMPLE.TEST",
+   "got": "2;5;CN=Certificate Authority,O=EXAMPLE.TEST;CN=IPA RA,O=EXAMPLE.TEST",
+   "msg": "RA agent description does not match. Found {got} in LDAP and expected {expected}"
+  }
+ }
+]

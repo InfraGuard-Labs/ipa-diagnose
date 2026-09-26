@@ -1,0 +1,8 @@
+[
+  {"source": "ipahealthcheck.ipa.idns", "check": "IPADNSSystemRecordsCheck", "result": "ERROR", "uuid": "d4", "when": "20260915120500Z", "duration": "1.2",
+   "kw": {"msg": "SRV record _kerberos._udp.example.test. required for Kerberos autodiscovery could not be resolved (NXDOMAIN)", "key": "_kerberos._udp.example.test"}},
+  {"source": "ipahealthcheck.meta.services", "check": "dirsrv", "result": "SUCCESS", "uuid": "s1", "when": "20260101000000Z", "duration": "0.01", "kw": {"status": true}},
+  {"source": "ipahealthcheck.meta.services", "check": "krb5kdc", "result": "SUCCESS", "uuid": "s2", "when": "20260101000000Z", "duration": "0.01", "kw": {"status": true}},
+  {"source": "ipahealthcheck.ipa.host", "check": "IPAHostKeytab", "result": "ERROR", "uuid": "kt", "when": "20260915120500Z", "duration": "0.01",
+   "kw": {"msg": "Failed to obtain host TGT: Cannot resolve network address for KDC in realm \"EXAMPLE.TEST\" while getting initial credentials"}}
+]

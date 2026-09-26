@@ -1,0 +1,129 @@
+[
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "dirsrv",
+  "result": "SUCCESS",
+  "uuid": "svc-dirsrv",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "krb5kdc",
+  "result": "SUCCESS",
+  "uuid": "svc-krb5kdc",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "kadmin",
+  "result": "SUCCESS",
+  "uuid": "svc-kadmin",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "httpd",
+  "result": "SUCCESS",
+  "uuid": "svc-httpd",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "certmonger",
+  "result": "SUCCESS",
+  "uuid": "svc-certmonger",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "chronyd",
+  "result": "SUCCESS",
+  "uuid": "svc-chronyd",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "named",
+  "result": "SUCCESS",
+  "uuid": "svc-named",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "pki_tomcatd",
+  "result": "SUCCESS",
+  "uuid": "svc-pki_tomcatd",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "ipa-custodia",
+  "result": "SUCCESS",
+  "uuid": "svc-ipa-custodia",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.files",
+  "check": "IPAFileNSSDBCheck",
+  "result": "WARNING",
+  "uuid": "fm",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "key": "_etc_dirsrv_slapd-EXAMPLE-TEST_cert9.db_mode",
+   "path": "/etc/dirsrv/slapd-EXAMPLE-TEST/cert9.db",
+   "type": "mode",
+   "expected": "0640",
+   "got": "0644",
+   "msg": "Permissions of /etc/dirsrv/slapd-EXAMPLE-TEST/cert9.db are too permissive: 0644 and should be 0640"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.trust",
+  "check": "IPATrustAgentCheck",
+  "result": "CRITICAL",
+  "uuid": "tr",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "key": "sidgen",
+   "msg": "The AD trust agent is not configured: sidgen plugin missing"
+  }
+ }
+]
