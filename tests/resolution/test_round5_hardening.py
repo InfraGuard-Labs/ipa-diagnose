@@ -507,3 +507,33 @@ def test_round9_verify_with_missing_check_families_is_unable():
 
     out = compare(prev, after, runner=FakeRunner({f"file.stat|path={CS}": stat(mode="0660")}))
     assert all(i.outcome == VerifyOutcome.UNABLE_TO_VERIFY for i in out.items)
+
+
+def test_state_reached_through_a_root_owned_link_is_trusted(tmp_path, monkeypatch):
+    """Live lab (freeipa container): /root is a root-owned symlink into /data. That must keep working."""
+    import os
+
+    from ipa_diagnose import verify as V
+
+    if not hasattr(os, "geteuid"):
+        pytest.skip("POSIX only")
+    real = tmp_path / "data" / "root" / ".cache" / "ipa-diagnose"
+    real.mkdir(parents=True)
+    link = tmp_path / "root"
+    link.symlink_to(tmp_path / "data" / "root")
+    p = link / ".cache" / "ipa-diagnose" / "last_report.json"
+    p.write_text('{"generated_at": "x", "diagnoses": []}', encoding="utf-8")
+    assert V.load_previous_report(p, strict=True) is not None
+    # the same link owned by another user is refused
+    real_lstat = os.lstat
+
+    def fake_lstat(q, *a, **k):
+        st = real_lstat(q, *a, **k)
+        if str(q) == str(link):
+            return os.stat_result((st.st_mode, st.st_ino, st.st_dev, st.st_nlink, st.st_uid + 4242, st.st_gid, st.st_size,
+                                   int(st.st_atime), int(st.st_mtime), int(st.st_ctime)))
+        return st
+
+    monkeypatch.setattr(V.os, "lstat", fake_lstat)
+    with pytest.raises(V.UnreadableBaseline):
+        V.load_previous_report(p, strict=True)

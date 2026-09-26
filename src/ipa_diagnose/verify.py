@@ -119,11 +119,18 @@ def _state_location_ok(state_path: pathlib.Path) -> bool:
     file, if present) belong to the user running ipa-diagnose (round-8 review: root with a user's HOME)."""
 
     try:
-        parent = state_path.parent
-        if os.path.islink(state_path) or (parent.exists() and os.path.realpath(parent) != str(parent.absolute())):
+        parent = state_path.parent.absolute()
+        if os.path.islink(state_path):
             return False
         if hasattr(os, "geteuid"):
             euid = os.geteuid()
+            # A symlink on the way is fine only if root or this user owns it (the freeipa container keeps /root on
+            # its /data volume through a root-owned link); a link another user controls is not (round-8 review).
+            prefix = pathlib.Path(parent.anchor)
+            for part in parent.parts[1:]:
+                prefix = prefix / part
+                if os.path.islink(prefix) and os.lstat(prefix).st_uid not in (0, euid):
+                    return False
             if parent.exists() and parent.stat().st_uid != euid:
                 return False
             if state_path.exists() and os.lstat(state_path).st_uid != euid:

@@ -153,7 +153,9 @@ def verify_check(scenario: str, path: str, spec: dict):
     if "verify_outcome_in" in spec:
         c.append((bool(items) and all(o in spec["verify_outcome_in"] for o in outs), f"verify outcomes {outs} all in {spec['verify_outcome_in']}"))
     if "verify_not" in spec:
-        c.append((not any(o in spec["verify_not"] for o in outs), f"verify outcomes {outs} contain none of {spec['verify_not']}"))
+        # never vacuous: a verify that compared nothing proves nothing (live-lab lesson)
+        c.append((bool(items) and not any(o in spec["verify_not"] for o in outs),
+                  f"verify outcomes {outs} non-empty and contain none of {spec['verify_not']}"))
     vi = spec.get("verify_item")
     if vi:
         hit = [i for i in items if vi["contains"].lower() in str(i.get("title", "")).lower()]
