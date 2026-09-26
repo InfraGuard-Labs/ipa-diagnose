@@ -21,6 +21,7 @@ SPEC keys (all optional):
   resolution:           {procedure, status, argv, no_argv0: [..], reason_contains}
   no_offered:           true            no v2 resolution is OFFERED
   no_diagnoses:         true            no diagnosis at all
+  side_effect_contains: text            v2.side_effects mentions this text
   undiagnosed_only:     [checks]        every undiagnosed ipa-healthcheck finding is one of these checks
   verify_item:          {contains, outcome_in / outcome_not}   (verify only) the item whose title contains the text
   verify_outcome_in:    [outcomes]      (verify only) every item's outcome is in this list
@@ -112,6 +113,9 @@ def check(scenario: str, path: str, spec: dict) -> list:
         c.append((comp.get("level") != spec["completeness_not"], f"completeness {comp.get('level')} != {spec['completeness_not']}"))
     if "ruv_state_in" in spec:
         c.append((comp.get("ruv_state") in spec["ruv_state_in"], f"RUV state {comp.get('ruv_state')} in {spec['ruv_state_in']}"))
+    if "side_effect_contains" in spec:
+        se = (report.get("v2") or {}).get("side_effects") or []
+        c.append((any(_has(x, spec["side_effect_contains"]) for x in se), f"side effect reported: {spec['side_effect_contains']!r} (got {se})"))
     if spec.get("no_diagnoses"):
         c.append((not diags, f"no diagnoses (got {[d.get('title') for d in diags]})"))
     if "undiagnosed_only" in spec:

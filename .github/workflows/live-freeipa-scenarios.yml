@@ -334,15 +334,17 @@ jobs:
           $T verify S7-restored-verify out/s7-verify.json '{"verify_not": ["STILL_PRESENT", "CHANGED"]}'
           head -30 out/s7-multi.txt
 
-      - name: S7b two independent stopped services (krb5kdc + certmonger) -> both diagnosed, both fixes offered
+      - name: S7b krb5kdc + certmonger stopped (live-observed - ipa-healthcheck restarts certmonger itself; must be disclosed)
         run: |
           set +e
           docker exec ipa-s systemctl stop krb5kdc.service certmonger.service || true
           sleep 5
-          $D --details > out/s7b-multi.txt 2>&1; echo "exit=$?" >> out/s7b-multi.txt || true
+          # JSON first: this first run is the one in which ipa-healthcheck's certificate checks start certmonger
           $D --json > out/s7b-multi.json 2>/dev/null || true
-          $T check S7b-krb5kdc-and-certmonger-down out/s7b-multi.json '{"diagnosed_contains": ["krb5kdc", "certmonger"], "no_diagnosed": ["clock skew", "expired", "network"], "resolution": {"procedure": "proc.service.start-stopped-service", "status": "OFFERED", "argv": ["systemctl", "start", "krb5kdc.service"], "no_argv0": ["ipactl"]}}'
-          $T check S7b-certmonger-fix-offered out/s7b-multi.json '{"resolution": {"procedure": "proc.service.start-stopped-service", "status": "OFFERED", "argv": ["systemctl", "start", "certmonger.service"]}}'
+          docker exec ipa-s systemctl is-active certmonger.service > out/s7b-certmonger-after-first-run.txt 2>&1
+          $D --details > out/s7b-multi.txt 2>&1; echo "exit=$?" >> out/s7b-multi.txt || true
+          $T check S7b-krb5kdc-and-certmonger-down out/s7b-multi.json '{"diagnosed_contains": ["krb5kdc"], "no_diagnosed": ["clock skew", "expired", "network"], "resolution": {"procedure": "proc.service.start-stopped-service", "status": "OFFERED", "argv": ["systemctl", "start", "krb5kdc.service"], "no_argv0": ["ipactl"]}}'
+          $T check S7b-certmonger-restart-disclosed out/s7b-multi.json '{"side_effect_contains": "certmonger was not running"}'
           docker exec ipa-s systemctl start krb5kdc.service certmonger.service || true
           sleep 20
           $D verify --json > out/s7b-verify.json 2>/dev/null
