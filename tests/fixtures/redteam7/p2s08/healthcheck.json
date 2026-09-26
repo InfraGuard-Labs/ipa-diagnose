@@ -1,0 +1,173 @@
+[
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "dirsrv",
+  "result": "SUCCESS",
+  "uuid": "svc-dirsrv",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "krb5kdc",
+  "result": "SUCCESS",
+  "uuid": "svc-krb5kdc",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "kadmin",
+  "result": "SUCCESS",
+  "uuid": "svc-kadmin",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "httpd",
+  "result": "SUCCESS",
+  "uuid": "svc-httpd",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "named",
+  "result": "SUCCESS",
+  "uuid": "svc-named",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "pki_tomcatd",
+  "result": "SUCCESS",
+  "uuid": "svc-pki_tomcatd",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "certmonger",
+  "result": "SUCCESS",
+  "uuid": "svc-certmonger",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "chronyd",
+  "result": "SUCCESS",
+  "uuid": "svc-chronyd",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "ipa_custodia",
+  "result": "SUCCESS",
+  "uuid": "svc-ipa_custodia",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.meta.services",
+  "check": "sssd",
+  "result": "SUCCESS",
+  "uuid": "svc-sssd",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "status": true
+  }
+ },
+ {
+  "source": "ipahealthcheck.ipa.certs",
+  "check": "IPARAAgent",
+  "result": "ERROR",
+  "uuid": "ra",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "key": "description_mismatch",
+   "expected": "2;7;CN=Certificate Authority,O=EXAMPLE.TEST;CN=IPA RA,O=EXAMPLE.TEST",
+   "got": "2;9;CN=...",
+   "msg": "RA agent description does not match. Found 2;9 in LDAP and expected 2;7"
+  }
+ },
+ {
+  "source": "ipahealthcheck.system.filesystemspace",
+  "check": "FileSystemSpaceCheck",
+  "result": "ERROR",
+  "uuid": "fs/var/lib/dirsrv/['msg', 'percent_free', 'threshold']",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "key": "/var/lib/dirsrv/",
+   "store": "/var/lib/dirsrv/",
+   "percent_free": 9,
+   "threshold": 20,
+   "msg": "/var/lib/dirsrv/: free space percentage under threshold: 9% < 20%"
+  }
+ },
+ {
+  "source": "ipahealthcheck.system.filesystemspace",
+  "check": "FileSystemSpaceCheck",
+  "result": "SUCCESS",
+  "uuid": "fs/var/lib/dirsrv/['free_space', 'msg', 'threshold']",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "key": "/var/lib/dirsrv/",
+   "store": "/var/lib/dirsrv/",
+   "free_space": 92160,
+   "threshold": 1024,
+   "msg": "/var/lib/dirsrv/: free space within limits: 92160 MiB >= 1024 MiB"
+  }
+ },
+ {
+  "source": "ipahealthcheck.ds.disk_space",
+  "check": "DiskSpaceCheck",
+  "result": "ERROR",
+  "uuid": "dsdisk",
+  "when": "20260925100000Z",
+  "duration": "0.01",
+  "kw": {
+   "key": "DSDSLE0001",
+   "items": [
+    "Server",
+    "cn=config",
+    "/var/lib/dirsrv/slapd-EXAMPLE-TEST/db"
+   ],
+   "msg": "The disk partition used by the server (/var/lib/dirsrv/slapd-EXAMPLE-TEST/db), either for the database, the configuration files, or the logs is over 90% full."
+  }
+ }
+]

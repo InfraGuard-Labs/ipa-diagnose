@@ -105,34 +105,43 @@ _REALLY_FULL_MIB = 200  # an absolute free-space reading at or below this is out
 
 
 def _disk_really_full(f: Finding, all_findings: Optional[List[Finding]] = None) -> bool:
-    """An ERROR+ result that shows Directory Server's data store is actually out of space: its own disk check at
-    ERROR+, an absolute free-space reading at or below 200 MiB, or <= 5 % free - and never when an absolute
-    reading for the same store passed (a large disk can be at 4 % with tens of GiB free; red-team round 6)."""
+    """Whether result `f` shows that a Directory Server DATA store is actually out of space. One rule per store
+    (red-team rounds 5-7): if an absolute free-space reading exists for the store, it alone decides (<= 200 MiB);
+    otherwise the percentage does (<= 5 % at ERROR+). Directory Server's own disk check (which fires at 90 % used
+    on any DS partition) counts only when it names the database partition, through the same rule."""
 
     if f.severity.rank < Severity.ERROR.rank:
         return False
+    findings = all_findings or [f]
     if f.source == "ipahealthcheck.ds.disk_space":
-        return True
+        text = f"{f.message or ''} {(f.keywords or {}).get('msg', '') if isinstance(f.keywords, dict) else ''}"
+        return "/var/lib/dirsrv" in text and _store_full("/var/lib/dirsrv", findings, pct_fallback=False)
     kw = f.keywords if isinstance(f.keywords, dict) else {}
     store = str(kw.get("store", kw.get("key", ""))).rstrip("/")
-    if store not in _DS_DATA_STORES:
-        return False
+    return store in _DS_DATA_STORES and _store_full(store, findings, pct_fallback=True)
 
+
+def _store_full(store: str, findings: List[Finding], pct_fallback: bool) -> bool:
     def number(v):
         try:
             return float(v)
         except (TypeError, ValueError):
             return None
 
-    same_store_abs = [g for g in (all_findings or []) if "free_space" in (g.keywords if isinstance(g.keywords, dict) else {})
-                      and str(g.keywords.get("store", g.keywords.get("key", ""))).rstrip("/") == store]
-    if any(g.severity.rank < Severity.WARNING.rank for g in same_store_abs):
+    def kw(g):
+        return g.keywords if isinstance(g.keywords, dict) else {}
+
+    same = [g for g in findings if g.source == "ipahealthcheck.system.filesystemspace"
+            and str(kw(g).get("store", kw(g).get("key", ""))).rstrip("/") == store]
+    absolute = [number(kw(g).get("free_space")) for g in same if "free_space" in kw(g)]
+    absolute = [a for a in absolute if a is not None]
+    if absolute:
+        return min(absolute) <= _REALLY_FULL_MIB
+    if not pct_fallback:
         return False
-    if "free_space" in kw:
-        mib = number(kw.get("free_space"))
-        return mib is not None and mib <= _REALLY_FULL_MIB
-    pct = number(kw.get("percent_free"))
-    return pct is not None and pct <= 5
+    pct = [number(kw(g).get("percent_free")) for g in same if g.severity.rank >= Severity.ERROR.rank]
+    pct = [p for p in pct if p is not None]
+    return bool(pct) and min(pct) <= 5
 
 
 def _recheck_disk_space(bundle: EvidenceBundle) -> bool:
