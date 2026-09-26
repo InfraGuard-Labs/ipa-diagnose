@@ -126,8 +126,11 @@ diagnosis is one this version no longer produces; a fix was shown but its record
 was removed or changed (for example after a package upgrade); the saved values are not valid for their type; a
 fix record has no diagnosis; the file is not a saved report, is not owned by the user running ipa-diagnose, or
 is reached through a symlink. A saved report that exists but cannot be read gives exit 4, never "nothing to
-verify". While anything is left unconfirmed, verify keeps the old baseline, and a fix record is carried forward
-while its diagnosis is still present, so a later run cannot silently forget it.
+verify". While anything is left unconfirmed, verify keeps the old baseline. A plain `ipa-diagnose` run keeps a
+fix record (and its diagnosis) until a verify confirms it: while the diagnosis is still reported, or - if the
+diagnosis is gone - while the fix's own read-only check still fails. A record that can no longer be checked at
+all, or whose check now passes, is dropped, so a later verify neither forgets an unapplied fix nor keeps
+reporting a damaged one.
 
 Limits: a report written by v0.1.3 (no `v2` data) is compared the v0.1.3 way (the diagnosis is gone ->
 RESOLVED). The digests detect corruption, catalogue changes and moved records; they are not a signature -
