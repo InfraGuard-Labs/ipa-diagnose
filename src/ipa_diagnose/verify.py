@@ -99,7 +99,7 @@ def save_report(state_path: pathlib.Path, report: DiagnosisReport) -> None:
 
 
 def carry_forward_fixes(previous: Optional[Dict[str, Any]], report: DiagnosisReport,
-                        confirmed: Optional[set] = None) -> List[Dict[str, Any]]:
+                        confirmed: Optional[set] = None, runner=None) -> List[Dict[str, Any]]:
     """Fix records to keep in the next baseline, until a verify confirms them: a fix shown earlier whose diagnosis
     is still present but not shown again (round 7), or whose diagnosis is gone without a verify having confirmed
     the fix (round 10: a plain run in between must not forget it). `confirmed` = diagnosis ids a verify has just
@@ -109,8 +109,29 @@ def carry_forward_fixes(previous: Optional[Dict[str, Any]], report: DiagnosisRep
     if previous is None or _baseline_problem(previous, report) or _baseline_damage(previous):
         return []
     confirmed = confirmed or set()
+    fresh_ids = {d.diagnosis_id for d in report.diagnoses}
     shown_now = {rid for rid, r in (report.resolutions or {}).items() if getattr(r, "status", None) == "OFFERED"}
-    return [f for did, f in _baseline_fixes(previous).items() if did not in shown_now and did not in confirmed]
+    kept = []
+    for did, f in _baseline_fixes(previous).items():
+        if did in shown_now or did in confirmed:
+            continue
+        if did not in fresh_ids and runner is not None and not _still_unfixed(f, runner):
+            # A plain run re-checks (read-only) a fix whose diagnosis is gone: keep it only while the fix's own
+            # check still fails. A record that can no longer be checked at all (changed or damaged; verify already
+            # said "run ipa-diagnose again") or whose checks now pass is dropped - otherwise it would be reported
+            # as CHANGED forever (live-lab lesson).
+            continue
+        kept.append(f)
+    return kept
+
+
+def _still_unfixed(fix: Dict[str, Any], runner) -> bool:
+    from ipa_diagnose.resolution.engine import evaluate_verify, rebuild_verify
+
+    criteria, problem, _ = rebuild_verify(fix, runner)
+    if criteria is None or problem:
+        return False
+    return any(ok is not True for _, ok, _ in evaluate_verify(criteria, runner))
 
 
 def carried_diagnoses(previous: Optional[Dict[str, Any]], report: DiagnosisReport, carried: List[Dict[str, Any]]) -> List[Dict[str, Any]]:

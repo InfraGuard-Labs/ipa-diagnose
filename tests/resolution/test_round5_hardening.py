@@ -558,6 +558,7 @@ def test_plain_run_between_fix_and_verify_does_not_forget_the_fix(tmp_path, monk
     first, _ = report_for([perm()], {**ROOT_OK, f"file.stat|path={CS}": stat()})
     cli._save_baseline(first, args)
     # 2. plain run: the finding is no longer reported (e.g. excluded), the file was NOT fixed
+    monkeypatch.setattr(cli, "_runner", lambda a: FakeRunner({f"file.stat|path={CS}": stat(mode="0664")}))
     plain, _ = report_for([], {**ROOT_OK})
     cli._save_baseline(plain, args)
     # 3. verify: the carried fix's own check runs and fails -> never RESOLVED / exit 0
@@ -579,3 +580,43 @@ def test_round10_ai_sudo_and_admin_tools_rejected(text):
     from ipa_diagnose.ai.prompt import sanitize_explanation
 
     assert sanitize_explanation(text, _ai_diag("chronyc tracking")) is None
+
+
+def test_plain_run_drops_an_unverifiable_record_so_verify_does_not_say_changed_forever(tmp_path, monkeypatch):
+    """Live lab: a tampered fix record was carried by every plain run, so every later verify said CHANGED."""
+    import argparse
+
+    from ipa_diagnose import cli
+
+    from tests.resolution.test_procedures import FakeRunner
+
+    state = tmp_path / "last_report.json"
+    monkeypatch.setattr(cli, "_state_path", lambda args: state)
+    args = argparse.Namespace(json=False, replay=None)
+    first, _ = report_for([perm()], {**ROOT_OK, f"file.stat|path={CS}": stat()})
+    cli._save_baseline(first, args)
+    data = json.loads(state.read_text(encoding="utf-8"))
+    data["v2"]["verify_baseline"]["fixes"][0]["criteria_digest"] = "0" * 64  # damaged record
+    state.write_text(json.dumps(data), encoding="utf-8")
+    monkeypatch.setattr(cli, "_runner", lambda a: FakeRunner({f"file.stat|path={CS}": stat(mode="0664")}))
+    plain, _ = report_for([], {**ROOT_OK})
+    cli._save_baseline(plain, args)
+    assert json.loads(state.read_text(encoding="utf-8"))["v2"]["verify_baseline"]["fixes"] == []
+
+
+def test_plain_run_drops_a_record_whose_fix_now_passes(tmp_path, monkeypatch):
+    import argparse
+
+    from ipa_diagnose import cli
+
+    from tests.resolution.test_procedures import FakeRunner
+
+    state = tmp_path / "last_report.json"
+    monkeypatch.setattr(cli, "_state_path", lambda args: state)
+    args = argparse.Namespace(json=False, replay=None)
+    first, _ = report_for([perm()], {**ROOT_OK, f"file.stat|path={CS}": stat()})
+    cli._save_baseline(first, args)
+    monkeypatch.setattr(cli, "_runner", lambda a: FakeRunner({f"file.stat|path={CS}": stat(mode="0660")}))
+    plain, _ = report_for([], {**ROOT_OK})
+    cli._save_baseline(plain, args)
+    assert json.loads(state.read_text(encoding="utf-8"))["v2"]["verify_baseline"]["fixes"] == []

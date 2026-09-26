@@ -132,7 +132,7 @@ def _save_baseline(report: DiagnosisReport, args: argparse.Namespace, confirmed:
         from ipa_diagnose.verify import carried_diagnoses, carry_forward_fixes
 
         previous = load_previous_report(_state_path(args))
-        report.carried_fixes = carry_forward_fixes(previous, report, confirmed)
+        report.carried_fixes = carry_forward_fixes(previous, report, confirmed, runner=_runner(args))
         report.carried_diagnoses = carried_diagnoses(previous, report, report.carried_fixes)
         save_report(_state_path(args), report)
 
