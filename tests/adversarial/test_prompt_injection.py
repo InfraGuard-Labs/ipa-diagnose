@@ -55,7 +55,9 @@ def test_ai_response_repeating_the_approved_command_is_allowed():
         "This looks like a replication connectivity problem. As a first step, run "
         "`ipa-replica-manage list` to see the current agreement status."
     )
-    assert sanitize_explanation(benign_response, diagnosis) == benign_response.strip()
+    # Since Slice 1 hardening (round 8) AI text may not contain any command, not even an approved read-only one:
+    # quoting one let an explanation append options or drop a safety flag. ipa-diagnose shows commands itself.
+    assert sanitize_explanation(benign_response, diagnosis) is None
 
 
 def test_ai_response_with_prompt_injection_attempt_but_no_command_passes_sanitizer():

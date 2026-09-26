@@ -107,7 +107,6 @@ def test_ai_text_cannot_carry_state_changing_commands(text):
                   actions=[Action(description="a", risk=RiskLevel.SAFE, command="chronyc tracking"),
                            Action(description="b", risk=RiskLevel.SAFE, command="ipactl status")])
     assert sanitize_explanation(text, d) is None
-    assert sanitize_explanation("Run `chronyc tracking` to see the offset.", d) is not None
 
 
 @pytest.mark.parametrize("where", ["steps", "rollback"])
@@ -152,7 +151,6 @@ def test_ai_text_with_any_command_shape_is_rejected(text):
 @pytest.mark.parametrize("text", [
     "Directory Server cannot start because the file /etc/dirsrv/slapd-X/dse.ldif is unreadable.",
     "The certificate stored in /etc/pki/pki-tomcat/alias expires soon; the mode 0664 -> 0660 change is small.",
-    "Check `ipactl status` to see which services are running.",
 ])
 def test_ai_prose_mentioning_paths_is_kept(text):
     from ipa_diagnose.ai.prompt import sanitize_explanation
@@ -272,7 +270,6 @@ def test_ai_text_obfuscation_and_unlisted_programs_are_rejected(text):
     "The Directory Server service stopped earlier today.",
     "The PKI subsystem uses its own certificate database.",
     "Check /var/log/krb5kdc.log for the rejection.",
-    "Run `chronyc tracking` to see the offset.",
 ])
 def test_ai_read_only_prose_is_kept(text):
     from ipa_diagnose.ai.prompt import sanitize_explanation
@@ -371,3 +368,76 @@ def test_container_mirror_refused_when_the_standard_path_is_itself_a_link(monkey
     monkeypatch.setattr(C.os.path, "realpath", lambda p: real if p in (std, real) else p)
     monkeypatch.setattr(C.os.path, "islink", lambda p: p == std)
     assert C._command_target(real)[1] is False
+
+
+@pytest.mark.parametrize("text", [
+    "Re-run ipa-healthcheck --source ipahealthcheck.ipa.certs --check IPACertTracking --failures-only --output-file /etc/krb5.conf to see full detail.",
+    "To repair the records, run ipa dns-update-system-records.",
+    "The fix is simple (ipa dns-update-system-records) and safe.",
+    "Then run //usr/bin/systemctl stop krb5kdc to settle it.",
+    r"Then run sys\temctl stop krb5kdc to settle it.",
+    "Run `chronyc tracking` to see the offset.",
+])
+def test_ai_text_never_contains_any_command_even_an_approved_one(text):
+    from ipa_diagnose.ai.prompt import sanitize_explanation
+
+    assert sanitize_explanation(text, _ai_diag("chronyc tracking", "ipa dns-update-system-records --dry-run",
+                                               "ipa-healthcheck --source ipahealthcheck.ipa.certs --check IPACertTracking --failures-only")) is None
+
+
+# --- round 8 review + fresh-user check -------------------------------------------------------------------------------
+
+@pytest.mark.parametrize("content", ["[]", "null", '"x"', '{"diagnoses": null}', '{"diagnoses": {}}'])
+def test_valid_json_but_not_a_report_is_unreadable_not_no_baseline(tmp_path, monkeypatch, content):
+    import argparse
+    import io
+
+    from rich.console import Console
+
+    from ipa_diagnose import cli
+
+    report, _ = report_for([], {**ROOT_OK})
+    state = tmp_path / "last_report.json"
+    state.write_text(content, encoding="utf-8")
+    monkeypatch.setattr(cli, "_collect_and_diagnose", lambda args: (None, report))
+    monkeypatch.setattr(cli, "_state_path", lambda args: state)
+    assert cli.cmd_verify(argparse.Namespace(json=False, replay=None), Console(file=io.StringIO())) == 4
+
+
+def test_fix_record_without_its_diagnosis_is_damage_not_nothing_to_verify():
+    from ipa_diagnose.render.json_output import report_to_dict
+    from ipa_diagnose.verify import VerifyOutcome, compare
+
+    from tests.resolution.test_procedures import FakeRunner
+
+    before, _ = report_for([perm()], {**ROOT_OK, f"file.stat|path={CS}": stat()})
+    prev = json.loads(json.dumps(report_to_dict(before)))
+    prev["diagnoses"] = []
+    after, _ = report_for([], {**ROOT_OK})
+    out = compare(prev, after, runner=FakeRunner({f"file.stat|path={CS}": stat(mode="0664")}))
+    assert [i.outcome for i in out.items] == [VerifyOutcome.UNABLE_TO_VERIFY]
+
+
+def test_state_in_a_directory_owned_by_another_user_is_not_trusted(tmp_path, monkeypatch):
+    import os
+
+    from ipa_diagnose import verify as V
+
+    if not hasattr(os, "geteuid"):
+        pytest.skip("POSIX only")
+    monkeypatch.setattr(V.os, "geteuid", lambda: os.stat(tmp_path).st_uid + 1)
+    p = tmp_path / "last_report.json"
+    p.write_text('{"generated_at": "x", "diagnoses": []}', encoding="utf-8")
+    assert V.load_previous_report(p) is None
+    with pytest.raises(V.UnreadableBaseline):
+        V.load_previous_report(p, strict=True)
+
+
+def test_key_material_skip_reason_is_plain():
+    path = "/var/lib/ipa/ra-agent.key"
+    entry = perm(path=path, kind="group", expected="ipaapi", got="root", check="IPAFileCheck")
+    results = {**ROOT_OK, f"file.stat|path={path}": stat(group="root", real=path), "account.group|name=ipaapi": ok({"exists": True})}
+    r = res_of(report_for([entry], results)[0], FP)
+    assert r.status == "WITHHELD"
+    assert any("holds keys or secrets" in x for x in r.reasons)
+    assert not any("not a single value" in x or "(ownership of key material" in x for x in r.reasons)

@@ -116,6 +116,9 @@ _IMPLICIT_RULE_UPSTREAMS = {
     # this server's CA stopped: certmonger cannot reach it and RA/Dogtag calls fail - its symptoms, not new problems
     "certificates.certmonger-tracking-stuck": ("healthcheck.service-not-running-pki-tomcatd*", "healthcheck.service-not-running-pki_tomcatd*"),
     "certificates.ra-agent-desync": ("healthcheck.service-not-running-pki-tomcatd*", "healthcheck.service-not-running-pki_tomcatd*"),
+    # the file system holding Directory Server's database is full: dirsrv stopping is its symptom
+    # (only a disk diagnosis that can break DS - explains_downstream - counts; red-team round 4)
+    "healthcheck.service-not-running-dirsrv*": ("directory-server.disk-space-exhaustion",),
 }
 
 
@@ -147,6 +150,10 @@ def _pack_sources(pack_id: str) -> List[str]:
     return [s for p in all_packs() if p.pack_id == pack_id for s in p.healthcheck_sources]
 
 
+# diagnosis_id -> titles of the diagnoses that actually caused its demotion (filled by _demote_via_causality)
+cause_titles: Dict[str, List[str]] = {}
+
+
 def _demote_via_causality(diagnoses: List[Diagnosis], finding_sources: Optional[Dict[str, str]] = None) -> Dict[str, List[str]]:
     """Returns {diagnosis_id: [causing_pack_ids]} for diagnoses whose declared
     upstream_candidates actually fired - as a REAL problem, not merely any
@@ -155,13 +162,15 @@ def _demote_via_causality(diagnoses: List[Diagnosis], finding_sources: Optional[
     # Only a real problem backed by ERROR/CRITICAL evidence that can break other subsystems may explain other
     # packs' symptoms (a WARNING-level finding reported at ERROR severity cannot).
     finding_sources = finding_sources or {}
+    cause_titles.clear()
     causes = [u for u in diagnoses if _is_real_problem(u) and u.explains_downstream and _evidence_rank(u) >= Severity.ERROR.rank]
     demotions: Dict[str, List[str]] = {}
     for d in diagnoses:
         upstream = list(d.upstream_candidates)
         candidates = [u for u in causes if _effective_pack(u) in upstream and _effective_pack(u) != d.pack_id
                       and _effective_pack(u) not in d.not_caused_by]
-        candidates += [u for u in diagnoses if _implicit_cause(d, u) and _is_real_problem(u) and u not in candidates]
+        candidates += [u for u in diagnoses if _implicit_cause(d, u) and _is_real_problem(u) and u not in candidates
+                       and _effective_pack(u) not in d.not_caused_by]
         if d.pack_id == "healthcheck" and d.rule_id in _SAFETY_NETS:
             # Crashed/unexplained ipa-healthcheck findings are absorbed only by a confirmed upstream problem whose
             # pack owns every one of those checks (a stopped certmonger explains crashed ipa.certs checks, not an
@@ -185,12 +194,17 @@ def _demote_via_causality(diagnoses: List[Diagnosis], finding_sources: Optional[
                 packs.append(_effective_pack(u))
         if packs:
             demotions[d.diagnosis_id] = packs
+            cause_titles[d.diagnosis_id] = [u.title for u in candidates if u.title != d.title]
     return demotions
 
 
 def _implicit_cause(d: Diagnosis, u: Diagnosis) -> bool:
-    return any(u.diagnosis_id == c or (c.endswith("*") and u.diagnosis_id.startswith(c[:-1]))
-               for c in _IMPLICIT_RULE_UPSTREAMS.get(d.diagnosis_id, ()))
+    def match(pattern: str, value: str) -> bool:
+        return value == pattern or (pattern.endswith("*") and value.startswith(pattern[:-1]))
+
+    return u.explains_downstream and any(
+        match(c, u.diagnosis_id) for key, causes in _IMPLICIT_RULE_UPSTREAMS.items() if match(key, d.diagnosis_id)
+        for c in causes)
 
 
 def build_report(
@@ -210,7 +224,8 @@ def build_report(
         if d.diagnosis_id in demotions:
             causes = demotions[d.diagnosis_id]
             d.priority = PriorityBucket.RELATED_SYMPTOM
-            d.related_to_titles = [t for pack in causes for t in titles_by_pack.get(pack, []) if t != d.title]
+            # the diagnoses that actually explain it - not every problem of their pack (red-team round 4)
+            d.related_to_titles = list(dict.fromkeys(cause_titles.get(d.diagnosis_id, [])))
             cause_note = " and ".join(causes)
             if d.status == DiagnosisStatus.DIAGNOSED:
                 d.why = f"{d.why}\n\nLikely a downstream symptom of the {cause_note} problem reported above."
@@ -247,6 +262,8 @@ def build_report(
         packs_evaluated=packs_evaluated,
         replay_source=bundle.replay_source,
         environment=bundle.environment,
+        service_states=dict(bundle.service_states),
+        side_effects=list(bundle.side_effects),
         unknown_severity_findings=_unknown_severity_notes(bundle),
     )
 

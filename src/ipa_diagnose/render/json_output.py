@@ -124,6 +124,8 @@ def report_to_dict(report: DiagnosisReport, ai_explanations: Dict[str, str] = No
         # 1.0 additions: v1 keys above are frozen; everything new lives under "v2".
         "report_schema_version": 2,
         "v2": {
+            "service_states": dict(report.service_states or {}),
+            "side_effects": list(report.side_effects or []),
             "resolutions": [resolution_to_dict(r) for r in (report.resolutions or {}).values()],
             # what `verify` may rely on later (see resolution.engine.rebuild_verify); display data above is not used
             "verify_baseline": {"schema": 1, "fixes": [

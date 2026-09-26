@@ -67,6 +67,14 @@ def render_report(
     status_style = _STATUS_STYLE[report.overall_status]
     console.print(Text.assemble(("Overall: ", "bold"), (report.overall_status.value, status_style)))
     _print_evidence_banner(report, console)
+    for note in report.side_effects:
+        console.print(f"[yellow]Note:[/yellow] {escape(note)}")
+    if report.service_states:
+        stopped = [f"{u}: {s}" for u, s in report.service_states.items() if s != "active"]
+        console.print(Text("Service state, read by ipa-diagnose itself (ipa-healthcheck gave no results):", style="bold"))
+        console.print("  " + escape(", ".join(stopped)) if stopped else "  all IPA units it checked are active")
+        if stopped:
+            console.print("  [dim]A stopped DNS, LDAP or Kerberos service can itself keep ipa-healthcheck from finishing.[/dim]")
     if report.overall_status == OverallStatus.NOT_FULLY_VERIFIED and report.undiagnosed_findings:
         console.print(
             f"[yellow]Not fully verified:[/yellow] {len(report.undiagnosed_findings)} ipa-healthcheck finding(s) "
@@ -87,6 +95,11 @@ def render_report(
                     "[bold green]No problems detected.[/bold green] All ipa-healthcheck checks passed and "
                     "all expected evidence was collected."
                 )
+        elif not report.evidence_completeness.healthcheck_collected:
+            console.print(
+                "[bold yellow]ipa-healthcheck produced no results, so its checks tell nothing about this server. "
+                "This is NOT a healthy result.[/bold yellow]"
+            )
         else:
             console.print(
                 "[bold yellow]No problem was observed, but health could NOT be fully verified[/bold yellow] "

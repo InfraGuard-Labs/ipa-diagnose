@@ -272,6 +272,10 @@ class DiagnosisReport:
     resolutions: Dict[str, Any] = dataclasses.field(default_factory=dict)
     """diagnosis_id -> resolution.engine.Resolution, filled by resolve_report (1.0 Slice 1)."""
     carried_fixes: List[Dict[str, Any]] = dataclasses.field(default_factory=list)
+    service_states: Dict[str, str] = dataclasses.field(default_factory=dict)
+    """unit -> systemd state, read by ipa-diagnose itself when ipa-healthcheck gave no results (live only)."""
+    side_effects: List[str] = dataclasses.field(default_factory=list)
+    """State changes observed during collection that ipa-diagnose itself did not make."""
     """Verify-baseline fix records carried over from the previous run (see verify.carry_forward_fixes)."""
     unknown_severity_findings: List[str] = dataclasses.field(default_factory=list)
     """Human-readable notes for any Finding whose raw ipa-healthcheck

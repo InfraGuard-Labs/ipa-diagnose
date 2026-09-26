@@ -1350,8 +1350,7 @@
     "pack_id": "healthcheck",
     "priority": "RELATED_SYMPTOM",
     "related_to_titles": [
-     "named failed to start: missing LDAP ACI for the DNS service principal",
-     "DNS record(s) required for Kerberos/LDAP autodiscovery are broken"
+     "named failed to start: missing LDAP ACI for the DNS service principal"
     ],
     "rule_id": "unexplained-findings",
     "severity": "CRITICAL",
@@ -2348,7 +2347,6 @@
     "pack_id": "healthcheck",
     "priority": "RELATED_SYMPTOM",
     "related_to_titles": [
-     "File ownership/mode mismatch on an IPA-managed security-critical file",
      "Required service 'dirsrv' is not running"
     ],
     "rule_id": "healthcheck-check-failed",
@@ -2545,7 +2543,6 @@
     "pack_id": "healthcheck",
     "priority": "RELATED_SYMPTOM",
     "related_to_titles": [
-     "File ownership/mode mismatch on an IPA-managed security-critical file",
      "Required service 'dirsrv' is not running"
     ],
     "rule_id": "healthcheck-check-failed",

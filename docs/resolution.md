@@ -7,9 +7,14 @@ how to fix it, in a fixed order:
 ROOT CAUSE -> WHY -> CHECKED FOR YOU -> IMPACT -> FIX -> PREREQUISITES -> WHAT THIS CHANGES -> RISK -> ROLLBACK -> VERIFY
 ```
 
-**ipa-diagnose never runs a fix.** It runs only *read-only* checks (listed under CHECKED FOR YOU) so you are
+**ipa-diagnose never runs a fix.** Its own checks are *read-only* (listed under CHECKED FOR YOU) so you are
 not told to run troubleshooting commands the tool could run itself. Every step under FIX is printed for you
-to run, after you have read it.
+to run, after you have read it. It does run `ipa-healthcheck`, and upstream FreeIPA's certmonger client used by
+its certificate checks starts certmonger if it is stopped and not masked; the report says when that happened.
+
+A diagnosis shown as a RELATED symptom of another problem never gets a fix of its own: fix the cause first (for
+example, Directory Server stopped because the disk holding its database is full - starting it again is not the
+fix).
 
 ## When a fix is shown - and when it is not
 
@@ -75,11 +80,20 @@ it (nothing that prints a command for later can): run the commands right after c
 
 ## AI explanations
 
-When an AI provider is configured, it may reword WHY. It never produces the FIX section, and its text is shown
-only if it passes a deterministic filter: no command-shaped text (a known program name anywhere, or any word
-followed by an option or an absolute path, a redirect, a pipe, `$(`, `&&`) except the diagnosis's own
-read-only (SAFE) commands, word for word. Otherwise the deterministic WHY is shown. This is a filter, not a
-proof - never run a command that appears only in AI text.
+When an AI provider is configured, it may reword WHY. It never produces the FIX section, and it is not asked at
+all for a diagnosis whose fix was withheld or has no procedure. Its text is shown only if it contains **no
+command at all** - not even the diagnosis's own read-only ones: no backticks or code blocks, no known program
+name, no word followed by an option or an absolute path, no redirect, pipe, `$(`, `&&`, backslash-split word
+or `//` path, no letters outside ASCII (look-alikes); invisible characters and terminal escapes are removed
+first, and the text checked is exactly the text shown. Otherwise the deterministic WHY is shown. This is a
+filter, not a proof - never run a command that appears only in AI text.
+
+## When ipa-healthcheck gives no results
+
+If ipa-healthcheck cannot run or does not finish (for example this server's own DNS is stopped, so the checks
+hang), the report says plainly that this is not a healthy result, and ipa-diagnose reads the state of the IPA
+systemd units itself (`systemctl is-active`, read-only) and lists any that are not active. No cause is claimed
+from that list.
 
 ## Journal redaction
 
@@ -108,8 +122,11 @@ Verify rebuilds the fix's checks from those, never from saved criteria, statuses
 report cannot be used, and every earlier finding is UNABLE_TO_VERIFY, when: it is from another host; it came
 from a replay but this run is live (or the reverse); its verification data is missing or malformed; the
 diagnosis is one this version no longer produces; a fix was shown but its record is missing; the procedure
-was removed or changed (for example after a package upgrade); the saved values are not valid for their type.
-While anything is left unconfirmed, verify keeps the old baseline, so a second run cannot silently forget it.
+was removed or changed (for example after a package upgrade); the saved values are not valid for their type; a
+fix record has no diagnosis; the file is not a saved report, is not owned by the user running ipa-diagnose, or
+is reached through a symlink. A saved report that exists but cannot be read gives exit 4, never "nothing to
+verify". While anything is left unconfirmed, verify keeps the old baseline, and a fix record is carried forward
+while its diagnosis is still present, so a later run cannot silently forget it.
 
 Limits: a report written by v0.1.3 (no `v2` data) is compared the v0.1.3 way (the diagnosis is gone ->
 RESOLVED). The digests detect corruption, catalogue changes and moved records; they are not a signature -

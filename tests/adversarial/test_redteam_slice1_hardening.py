@@ -104,3 +104,48 @@ def test_live_services_only_output_is_never_healthy(monkeypatch):
     assert report.overall_status.value != "HEALTHY"
     assert report.evidence_completeness.level != "complete"
     assert any(u.collector == "ipa-healthcheck-coverage" for u in report.evidence_completeness.unverified)
+
+
+def test_when_healthcheck_gives_nothing_ipa_diagnose_names_stopped_units_itself(monkeypatch):
+    import io
+    import subprocess
+
+    from rich.console import Console
+
+    from ipa_diagnose.render.console import render_report
+    from tests.adversarial import test_false_reassurance as fr
+
+    def systemctl(args):
+        return (3, "inactive\n", "") if args[-1] == "named.service" else (0, "active\n", "")
+
+    fr._install(monkeypatch, healthcheck=subprocess.TimeoutExpired(["ipa-healthcheck"], 120), extra={"systemctl": systemctl})
+    report = fr._diagnose()
+    assert report.overall_status.value == "UNKNOWN"
+    assert report.service_states.get("named.service") == "inactive"
+    buf = io.StringIO()
+    render_report(report, Console(file=buf, width=200, color_system=None))
+    text = buf.getvalue()
+    assert "named.service: inactive" in text and "NOT a healthy result" in text and "No problem was observed" not in text
+
+
+def test_certmonger_started_by_healthcheck_is_disclosed(monkeypatch):
+    import io
+
+    from rich.console import Console
+
+    from ipa_diagnose.render.console import render_report
+    from tests.adversarial import test_false_reassurance as fr
+
+    calls = []
+
+    def systemctl(args):
+        calls.append(args[-1])
+        # stopped before ipa-healthcheck ran, running afterwards (ipalib starts it)
+        return (3, "inactive\n", "") if calls.count("certmonger.service") == 1 else (0, "active\n", "")
+
+    fr._install(monkeypatch, extra={"systemctl": systemctl})
+    report = fr._diagnose()
+    assert any("certmonger was not running" in s for s in report.side_effects)
+    buf = io.StringIO()
+    render_report(report, Console(file=buf, width=200, color_system=None))
+    assert "ipa-diagnose itself changed nothing" in buf.getvalue()

@@ -81,7 +81,9 @@ Rules you must follow exactly:
   to you. You are explaining, not diagnosing.
 - Do not invent hostnames, error messages, dates, or numbers.
 - Do not suggest any command that is not already listed in the provided
-  actions.
+  actions. Better: do not write any command, program name or code at all -
+  ipa-diagnose prints the commands itself, and an explanation that contains
+  one is discarded.
 - If something in the input is unclear, say the diagnosis is unclear rather
   than guessing at what it might mean.
 - Keep your explanation under 200 words, plain language, no markdown headers.

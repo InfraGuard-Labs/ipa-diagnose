@@ -164,6 +164,11 @@ class EvidenceBundle:
     environment: Optional[EnvironmentInfo] = None
     replay_source: Optional[str] = None
     """Set to the fixture directory path when running under --replay."""
+    service_states: Dict[str, str] = dataclasses.field(default_factory=dict)
+    """unit -> systemd active state, read by ipa-diagnose itself (live) when ipa-healthcheck gave no results."""
+    side_effects: List[str] = dataclasses.field(default_factory=list)
+    """State changes observed during collection that ipa-diagnose did not make (e.g. ipa-healthcheck starting
+    certmonger)."""
 
     def findings_by_source_prefix(self, prefix: str) -> List[Finding]:
         return [f for f in self.findings if f.source.startswith(prefix)]

@@ -1,0 +1,4 @@
+{
+ "hostname": "ipa01.example.test",
+ "scenario": "CONSTRUCTED (red-team round 4 probe, Slice 1 hardening): c6-kdc-down-plus-expired"
+}

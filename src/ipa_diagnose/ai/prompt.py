@@ -19,7 +19,7 @@ import unicodedata
 from typing import Optional
 
 from ipa_diagnose.ai.provider import AIProvider, AIRequest, ProviderError
-from ipa_diagnose.engine.model import Diagnosis, RiskLevel
+from ipa_diagnose.engine.model import Diagnosis
 from ipa_diagnose.evidence.model import EvidenceBundle
 from ipa_diagnose.privacy.minimize import build_ai_payload
 from ipa_diagnose.textsafe import clean_multiline
@@ -46,8 +46,7 @@ _COMMAND_LIKE = re.compile(
     r"bak2db|ldif2db|db2ldif|db2bak|dscreate|dsctl|pkispawn|pkidestroy|rndc|named-checkconf)\b",
     # case-sensitive on purpose: commands are typed in lower case, while prose says "IPA", "PKI", "Service"
 )
-_CODE_SPAN = re.compile(r"`([^`\n]{1,200})`")
-_FENCED = re.compile(r"```[^\n]*\n?(.*?)```", re.DOTALL)
+_WORD_BREAK = re.compile(r"\w\\\w|(?<![\w:])//")  # "sys\temctl" (the shell drops the backslash), "//usr/bin/..."
 _INVISIBLE = re.compile("[­​-‏⁠-⁤﻿]")
 _SHAPE = re.compile(r"(?<![\w./-])([A-Za-z][A-Za-z0-9_.+-]{0,40})\s+(?:--?[A-Za-z]|/[\w.-])")
 _REDIRECT = re.compile(r"(?<![-=<])>{1,2}\s*[/~$]|\|\s*[A-Za-z]|\$\(|&&|;\s*[a-z]+\s+-")
@@ -62,55 +61,12 @@ _PROSE_WORDS = frozenset(
 _MAX_EXPLANATION_CHARS = 4000
 
 
-# Where the phrase started by a command-shaped word ends (code-span edge, line end, clause punctuation).
-_PHRASE_END = re.compile(r"[`\n;,()]|\.(?:\s|$)|:\s")
-_LEAD = re.compile(r"^(?:\$\s*)?(?:sudo\s+)?")
-
-
-def _tokens(text: str) -> list:
-    return _LEAD.sub("", text.strip()).split()
-
-
-def _looks_approved(candidate: str, approved_commands: set) -> bool:
-    """The candidate is an approved command, or its leading whole words (e.g. just the program name).
-
-    Never an approved command with anything appended, and never a substring match: a bare
-    `systemctl` inside an approved command must not approve `systemctl stop krb5kdc`."""
-
-    got = _tokens(candidate)
-    if not got:
-        return True
-    return any(got == _tokens(cmd)[:len(got)] for cmd in approved_commands)
-
-
-def _approved_spans(text: str, approved_commands: set) -> list:
-    """Character ranges where an approved command appears verbatim (followed by a word boundary)."""
-
-    spans = []
-    for cmd in approved_commands:
-        start = text.find(cmd)
-        while start != -1:
-            end = start + len(cmd)
-            if end == len(text) or not (text[end].isalnum() or text[end] in "-_/=@"):
-                spans.append((start, end))
-            start = text.find(cmd, start + 1)
-    return spans
-
-
 def sanitize_explanation(text: str, diagnosis: Diagnosis) -> Optional[str]:
-    """Returns the explanation if it looks like prose only, else None (caller
-    must fall back to the deterministic `why` text).
-
-    Only the diagnosis's own SAFE (read-only) actions count as approved: an AI
-    explanation must never bring back a state-changing command, in particular
-    one the resolution framework withheld. Two independent checks, either of
-    which rejects the whole response:
-    1. Any markdown-style inline code span (`` `...` ``) that is not an
-       approved command or its leading words - this catches the common AI
-       phrasing "run `<command>`" whatever binary it names.
-    2. Any command-shaped token (see _COMMAND_LIKE) anywhere in the text that
-       is not inside a verbatim approved command: the phrase it starts must be
-       an approved command or its leading words.
+    """Returns the explanation if it is prose only, else None (the caller falls back to the deterministic
+    `why` text). An explanation may not contain any command at all - not even the diagnosis's own read-only
+    ones: no backticks or code blocks, no known program name, no word followed by an option or an absolute
+    path, no redirect, pipe, `$(`, `&&`, backslash-split word or `//` path. The text checked is exactly the
+    text displayed. This is a filter, not a proof: never run a command that appears only in AI text.
     """
 
     if not text or not text.strip():
@@ -124,38 +80,16 @@ def sanitize_explanation(text: str, diagnosis: Diagnosis) -> Optional[str]:
     if any(ch.isalpha() and not ch.isascii() for ch in text):
         return None
 
-    approved_commands = {a.command for a in diagnosis.actions if a.command and a.risk == RiskLevel.SAFE}
-
-    for block in _FENCED.finditer(text):
-        for line in block.group(1).splitlines():
-            if line.strip() and not _looks_approved(line, approved_commands):
-                return None
-    text_wo_fences = _FENCED.sub(" ", text)
-    for span_match in _CODE_SPAN.finditer(text_wo_fences):
-        if not _looks_approved(span_match.group(1), approved_commands):
-            return None
-
-    # Backticks do not end a command phrase: "`chronyc` makestep" is the command "chronyc makestep".
-    flat = text.replace("`", " ")
-    covered = _approved_spans(flat, approved_commands)
-
-    # Generic command shapes, whatever the program is called (a name list alone cannot be complete - round-6
-    # review: bak2db, ldif2db, setsebool, kdestroy -A, ...): a word followed by an option or an absolute path,
-    # a redirect to a path, or a pipe into a word. Ordinary prose ("the file /etc/krb5.conf") is exempt.
-    for m in _SHAPE.finditer(flat):
-        if m.group(1).lower() in _PROSE_WORDS or any(a <= m.start() < b for a, b in covered):
-            continue
+    # No command text at all (round-8 review): allowing even the diagnosis's own read-only commands let an
+    # explanation append options to one ("... --output-file /etc/krb5.conf") or drop its safety flag ("ipa
+    # dns-update-system-records" without --dry-run). Commands are only ever shown by ipa-diagnose itself.
+    if "`" in text or _WORD_BREAK.search(text) or _REDIRECT.search(text):
         return None
-    if _REDIRECT.search(flat):
-        return None
-    for match in _COMMAND_LIKE.finditer(flat):
-        if any(a <= match.start() < b for a, b in covered):
-            continue
-        rest = flat[match.start():]
-        end = _PHRASE_END.search(rest)
-        if not _looks_approved(rest[:end.start()] if end else rest, approved_commands):
+    for m in _SHAPE.finditer(text):
+        if m.group(1).lower() not in _PROSE_WORDS:
             return None
-
+    if _COMMAND_LIKE.search(text):
+        return None
     return text.strip()
 
 

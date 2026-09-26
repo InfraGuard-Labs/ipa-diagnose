@@ -80,6 +80,7 @@ _DISK_SOURCES: Tuple[str, ...] = ("ipahealthcheck.system.filesystemspace", "ipah
 
 
 _DS_STORES = {"/var/lib/dirsrv", "/dev/shm", "/var/log/dirsrv", "/var/lib/ipa/backup"}
+_DS_DATA_STORES = {"/var/lib/dirsrv", "/dev/shm"}
 
 
 def _disk_findings(bundle: EvidenceBundle) -> List[Finding]:
@@ -116,6 +117,19 @@ class DiskSpaceExhaustionRule(DiagnosticRule):
     summary = "Disk space exhaustion on a Directory Server-critical path (data, logs, /dev/shm, backups)."
 
     def evaluate(self, bundle: EvidenceBundle) -> Optional[Diagnosis]:
+        d = self._evaluate(bundle)
+        if d is not None:
+            # Only a full file system that Directory Server writes its database to (or DS's own disk check, or DS
+            # logging "no space") can break DS and so explain other subsystems' failures; a full backup or log
+            # directory cannot (red-team round 4).
+            relevant = _at_least_warning(_disk_findings(bundle))
+            d.explains_downstream = bool(_items_by_category(bundle, "dirsrv_journal_line", "disk_space")) or any(
+                f.source == "ipahealthcheck.ds.disk_space"
+                or str((f.keywords if isinstance(f.keywords, dict) else {}).get("store", "")).rstrip("/") in _DS_DATA_STORES
+                for f in relevant)
+        return d
+
+    def _evaluate(self, bundle: EvidenceBundle) -> Optional[Diagnosis]:
         relevant = _at_least_warning(_disk_findings(bundle))
         if not relevant:
             return None
@@ -337,12 +351,16 @@ def _permission_targets(findings: List[Finding]) -> dict:
             # Two results for the same file and attribute: identical ones are merged; different expected
             # values make the item unusable (never pick one).
             if seen[key]["expected"] != item["expected"]:
-                seen[key]["expected"] = f"(conflicting results: {seen[key]['expected']} / {item['expected']})"
+                seen[key]["withhold_reason"] = (f"ipa-healthcheck reported conflicting expected values "
+                                                f"({seen[key]['expected']} / {item['expected']}), so none is chosen")
+                seen[key]["expected"] = None
             continue
         if kind == "mode":
             item.update(_mode_delta(item["got"], item["expected"]))
         elif _is_key_material(str(item["path"])):
-            item["expected"] = "(ownership of key material is not changed automatically)"
+            item["withhold_reason"] = ("it holds keys or secrets, so ipa-diagnose never suggests changing its owner or "
+                                       "group - review it and change it yourself if appropriate")
+            item["expected"] = None
         seen[key] = item
         out[f"targets_{kind}"].append(item)
     return out

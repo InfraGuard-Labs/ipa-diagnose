@@ -270,11 +270,13 @@ def _bindings(proc: Dict[str, Any], d: Diagnosis, reasons: List[str]) -> Optiona
                         good = None
                         break
                 if good is None:
-                    shown = sanitize_text(it.get("expected", ""), 60)
-                    reasons.append(
-                        f"Skipped {sanitize_text(it.get('path', 'a reported item'), 120)}: the reported value"
-                        + (f" ({shown})" if shown else "") + " is not a single value that can be used safely."
-                    )
+                    where = sanitize_text(it.get("path", "a reported item"), 120)
+                    if isinstance(it.get("withhold_reason"), str):
+                        reasons.append(f"Skipped {where}: {sanitize_text(it['withhold_reason'], 200)}.")
+                    else:
+                        shown = sanitize_text(it.get("expected", ""), 60)
+                        reasons.append(f"Skipped {where}: the reported value" + (f" ({shown})" if shown else "")
+                                       + " is not a single value that can be used safely.")
                 else:
                     items.append(good)
             out[name] = items
@@ -315,7 +317,7 @@ def _label(proc: Dict[str, Any], env: Optional[EnvironmentInfo]) -> Tuple[bool, 
     if live and not matched:
         return False, f"Verified in a live lab on {where} only - not yet on this FreeIPA version/OS. Check each step before running it."
     if live:
-        return False, (f"Verified in a live lab on {where} (not yet marked fully verified by the maintainer). "
+        return False, (f"Verified in a live lab on {where} (the maintainer has not promoted it to built-in verified). "
                        "Check each step before running it.")
     return False, "Not yet verified on a live FreeIPA server (tested against recorded evidence only). Check each step before running it."
 
@@ -338,8 +340,16 @@ def resolve_diagnosis(d: Diagnosis, env: Optional[EnvironmentInfo], runner: Runn
                    tier=proc["provenance"]["tier"], limitations=proc.get("limitations", ""),
                    impact_note=proc.get("impact_note", ""), replay=bool(getattr(runner, "replay", False)))
     fmin = proc["applies_to"].get("freeipa_min")
-    r.applies_to = f"FreeIPA server {fmin} or later" if fmin else "FreeIPA server"
+    fbel = proc["applies_to"].get("freeipa_below")
+    r.applies_to = ("FreeIPA server " + (f"{fmin} or later" if fmin else "") + (f", below {fbel}" if fbel else "")).strip()
 
+    # 1b. a symptom gets no fix of its own: its cause is reported above and must be fixed first (for example
+    # dirsrv stopped because its database disk is full - starting it again is not the fix; red-team round 4)
+    if getattr(d.priority, "value", "") == "RELATED_SYMPTOM":
+        causes = "; ".join(d.related_to_titles) or "another problem reported above"
+        r.reasons.append(f"This is reported as a symptom of: {sanitize_text(causes, 200)}. Fix that first, then run "
+                         "ipa-diagnose again.")
+        return r
     # 2. confidence
     need = 2 if proc["min_confidence"] == "HIGH" else 1
     if d.status != DiagnosisStatus.DIAGNOSED or _CONF_RANK.get(d.confidence.level, 0) < need:
@@ -348,7 +358,8 @@ def resolve_diagnosis(d: Diagnosis, env: Optional[EnvironmentInfo], runner: Runn
     # 3. bindings
     bindings = _bindings(proc, d, r.reasons)
     if bindings is None:
-        r.reasons.append("The evidence does not name values that can be used safely in a command.")
+        r.reasons.append("No reported item can be changed safely (see above)." if r.reasons
+                         else "The evidence does not name values that can be used safely in a command.")
         return r
     # 4. applicability
     # "ipa-server" role = the freeipa-server package is installed (its version is what we read).
@@ -569,8 +580,9 @@ def rebuild_verify(fix: Any, runner: Runner) -> Tuple[Optional[List[Dict[str, An
     except Exception as e:  # noqa: BLE001 - a corrupt baseline must never crash verify or pass
         return None, REBUILD_UNKNOWN, f"the saved fix record could not be used ({type(e).__name__})"
     if criteria_digest(criteria, str(fix.get("diagnosis_id", ""))) != fix.get("criteria_digest"):
-        return criteria, REBUILD_CHANGED, ("the fix's target is no longer what it was when the fix was shown "
-                                           "(for example the file now resolves to another location)")
+        return criteria, REBUILD_CHANGED, ("the fix's checks no longer match what was saved when the fix was shown: "
+                                           "either its target changed (for example another file location or "
+                                           "instance) or the saved diagnosis was modified")
     return criteria, "", ""
 
 

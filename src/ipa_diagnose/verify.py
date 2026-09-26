@@ -76,8 +76,8 @@ def save_report(state_path: pathlib.Path, report: DiagnosisReport) -> None:
     # the AI-redaction pipeline, which only applies to outbound AI payloads)
     # - restricted to owner-only, not left at the default-umask 0644/0755
     # (found in security review).
-    if os.path.islink(state_path) or os.path.islink(state_path.parent):
-        return  # never follow a symlink when writing as root (best-effort state only)
+    if not _state_location_ok(state_path):
+        return  # never write through a symlink or into a directory another user owns (best-effort state only)
     try:
         state_path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         os.chmod(state_path.parent, 0o700)
@@ -114,17 +114,37 @@ class UnreadableBaseline(Exception):
     """The saved diagnosis exists but cannot be read: verification is impossible, not "nothing to verify"."""
 
 
+def _state_location_ok(state_path: pathlib.Path) -> bool:
+    """The state file is only trusted, and only written, where no symlink is involved and the directory (and the
+    file, if present) belong to the user running ipa-diagnose (round-8 review: root with a user's HOME)."""
+
+    try:
+        parent = state_path.parent
+        if os.path.islink(state_path) or (parent.exists() and os.path.realpath(parent) != str(parent.absolute())):
+            return False
+        if hasattr(os, "geteuid"):
+            euid = os.geteuid()
+            if parent.exists() and parent.stat().st_uid != euid:
+                return False
+            if state_path.exists() and os.lstat(state_path).st_uid != euid:
+                return False
+    except OSError:
+        return False
+    return True
+
+
 def load_previous_report(state_path: pathlib.Path, strict: bool = False) -> Optional[Dict[str, Any]]:
-    if not state_path.exists():
+    if not state_path.exists() and not os.path.islink(state_path):
         return None
     try:
+        if not _state_location_ok(state_path):
+            raise ValueError("state file location is not trusted")
         data = json.loads(state_path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict) or not isinstance(data.get("diagnoses", []), list):
+            raise ValueError("not a saved ipa-diagnose report")
     except (json.JSONDecodeError, OSError, ValueError, RecursionError):
         if strict:
             raise UnreadableBaseline(str(state_path))
-        return None
-    # A corrupt/hand-edited state file must degrade to "no baseline", never crash.
-    if not isinstance(data, dict) or not isinstance(data.get("diagnoses", []), list):
         return None
     data["diagnoses"] = [
         d for d in data.get("diagnoses", []) if isinstance(d, dict) and isinstance(d.get("diagnosis_id"), str)
@@ -315,6 +335,17 @@ def compare(previous: Optional[Dict[str, Any]], current: DiagnosisReport, runner
                     detail="Fresh evidence still shows this condition.",
                 )
             )
+
+    # A fix record (or an OFFERED fix) saved for a diagnosis that is not in the saved report: damaged state,
+    # never silently "nothing to verify" (round-8 review).
+    v2 = previous.get("v2") if isinstance(previous.get("v2"), dict) else {}
+    shown = {r.get("diagnosis_id") for r in (v2.get("resolutions") if isinstance(v2.get("resolutions"), list) else [])
+             if isinstance(r, dict) and r.get("status") == "OFFERED"}
+    for did in sorted((set(fixes) | {x for x in shown if isinstance(x, str)}) - set(prev_by_id)):
+        items.append(VerifyItem(diagnosis_id=sanitize_text(did, 160), title=sanitize_text(did, 160),
+                                outcome=VerifyOutcome.UNABLE_TO_VERIFY,
+                                detail="The saved diagnosis is damaged: a fix was saved for this, but the diagnosis "
+                                       "itself is missing. Run ipa-diagnose again."))
 
     new_conditions = [
         d

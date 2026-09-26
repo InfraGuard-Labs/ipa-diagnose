@@ -20,7 +20,7 @@ import pathlib
 import shutil
 import socket
 import subprocess
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from ipa_diagnose.evidence.collectors.base import CollectorError, run_collector
 from ipa_diagnose.evidence.collectors.registry import get as get_collector
@@ -53,9 +53,56 @@ def collect_evidence(*, replay_dir: Optional[str] = None) -> EvidenceBundle:
             CollectionError(collector="ipa-healthcheck", message=f"replay directory not found: {fixture_path}")
         )
 
+    before = _unit_state("certmonger.service") if live else None
     _collect_healthcheck(bundle, live=live, fixture_path=fixture_path)
+    if live:
+        after = _unit_state("certmonger.service")
+        if before in ("inactive", "failed") and after == "active":
+            # Upstream ipalib's certmonger client starts certmonger when it is not running, and ipa-healthcheck's
+            # certificate checks use it. ipa-diagnose itself changed nothing, but the administrator must know.
+            bundle.side_effects.append(
+                "certmonger was not running when ipa-diagnose started and is running now: ipa-healthcheck's "
+                "certificate checks start it (upstream FreeIPA behaviour). ipa-diagnose itself changed nothing.")
+        if any(e.collector == "ipa-healthcheck" for e in bundle.collection_errors):
+            bundle.service_states = _ipa_unit_states()
     _collect_staged(bundle, fixture_path=fixture_path)
     return bundle
+
+
+_STATE_RE = __import__("re").compile(r"^[a-z-]{1,20}$")
+
+
+def _unit_state(unit: str) -> Optional[str]:
+    """`systemctl is-active <unit>` (read-only). None when it cannot be read."""
+
+    if shutil.which("systemctl") is None:
+        return None
+    try:
+        proc = subprocess.run(["systemctl", "is-active", unit], capture_output=True, text=True, timeout=10,
+                              stdin=subprocess.DEVNULL, errors="replace")
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return None
+    state = (proc.stdout or "").strip().splitlines()[0] if (proc.stdout or "").strip() else ""
+    return state if _STATE_RE.fullmatch(state) else None
+
+
+def _ipa_unit_states() -> Dict[str, str]:
+    """When ipa-healthcheck produced nothing, ipa-diagnose still reads (never changes) the state of the IPA
+    units itself, so a stopped service is named instead of hidden behind "could not be verified"."""
+
+    units = ["krb5kdc.service", "kadmin.service", "httpd.service", "named.service", "named-pkcs11.service",
+             "ipa-custodia.service", "pki-tomcatd@pki-tomcat.service", "certmonger.service", "sssd.service"]
+    try:
+        units = [f"dirsrv@{p.name[len('slapd-'):]}.service" for p in sorted(pathlib.Path("/etc/dirsrv").glob("slapd-*"))
+                 if p.name != "slapd-snmp"] + units
+    except OSError:
+        pass
+    out: Dict[str, str] = {}
+    for u in units:
+        state = _unit_state(u)
+        if state is not None and state != "unknown":
+            out[u] = state
+    return out
 
 
 def healthcheck_coverage_gap(findings) -> Optional[str]:

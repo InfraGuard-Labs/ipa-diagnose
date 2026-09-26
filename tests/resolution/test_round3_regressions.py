@@ -144,14 +144,14 @@ def test_ai_text_with_non_approved_commands_is_rejected(text):
     assert sanitize_explanation(text, d) is None
 
 
-def test_ai_text_quoting_a_safe_command_is_still_allowed():
+def test_ai_text_quoting_even_a_safe_command_is_rejected():
+    """Round 8: no command at all in AI text (the deterministic sections show commands)."""
     d = _diag((RiskLevel.SAFE, "systemctl status chronyd"))
     for text in ("Check `systemctl status chronyd` to see whether chronyd runs.",
-                 "Running systemctl status chronyd shows whether it is active."):
-        assert sanitize_explanation(text, d) == text
-    # A bare program name followed by more words is treated as a command ("`chronyc` makestep" has the same
-    # shape), so such an explanation falls back to the deterministic text.
-    assert sanitize_explanation("The `systemctl` output will tell you.", d) is None
+                 "Running systemctl status chronyd shows whether it is active.",
+                 "The `systemctl` output will tell you."):
+        assert sanitize_explanation(text, d) is None
+    assert sanitize_explanation("chronyd keeps the clock in step; the status shown above says whether it runs.", d)
 
 
 def test_ai_text_for_the_real_withheld_clock_diagnosis_is_rejected():

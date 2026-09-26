@@ -197,7 +197,10 @@ sudo ipa-diagnose --no-ai         # never contact any AI provider (also the defa
 
 `ipa-diagnose` must run as **root on the IPA server** (it reads root-only
 FreeIPA/389-DS state). It never changes anything itself: every suggested step
-is only *printed*, and labelled:
+is only *printed*. One upstream side effect to know about: ipa-diagnose runs
+`ipa-healthcheck`, whose certificate checks use FreeIPA's certmonger client, and
+that client **starts certmonger if it is stopped** (unless the unit is masked).
+When that happens, the report says so. Suggested steps are labelled:
 
 - **SAFE** - read-only, changes nothing.
 - **CAUTION** - changes state, but is reversible and scoped. Never run for you.
@@ -402,7 +405,8 @@ possible the RUV is shown as `NOT VERIFIED` with what to do.
 
 ## Files written
 
-`ipa-diagnose` is read-only towards FreeIPA. The only file it writes is the
+`ipa-diagnose` is read-only towards FreeIPA (see the certmonger note above for
+what `ipa-healthcheck` itself may start). The only file it writes is the
 saved last report used by `verify` (mode 0600, directory 0700): under
 `/var/lib/ipa-diagnose/` if that directory exists and is writable, otherwise
 `~/.cache/ipa-diagnose/` (for root: `/root/.cache/ipa-diagnose/`). `--replay`

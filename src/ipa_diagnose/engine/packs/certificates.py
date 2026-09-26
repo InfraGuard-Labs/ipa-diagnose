@@ -168,6 +168,15 @@ class CertmongerTrackingStuckRule(DiagnosticRule):
     summary = "A certmonger tracking request is stuck in a CA failure state (renewal will not happen)."
 
     def evaluate(self, bundle: EvidenceBundle) -> Optional[Diagnosis]:
+        d = self._evaluate(bundle)
+        if d is not None and any(any(h in str(i.data.get("ca_error") or "").lower() for h in _TRUST_HINTS)
+                                 for i in _cm_items(bundle)):
+            # A certificate-chain validation failure is not what a stopped CA looks like (a stopped CA refuses the
+            # connection), so it is not absorbed as that CA's symptom (red-team round 4).
+            d.not_caused_by = ["certificates"]
+        return d
+
+    def _evaluate(self, bundle: EvidenceBundle) -> Optional[Diagnosis]:
         failing = [i for i in _cm_items(bundle) if str(i.data.get("state", "")).upper() in FAILURE_STATES]
         if not failing:
             return None
@@ -528,6 +537,16 @@ class RaAgentDesyncRule(DiagnosticRule):
     summary = "Dogtag/RA-agent connectivity or auth failures suggesting the RA agent certificate is out of sync with o=ipaca."
 
     def evaluate(self, bundle: EvidenceBundle) -> Optional[Diagnosis]:
+        d = self._evaluate(bundle)
+        if d is not None and any(
+                str((f.keywords if isinstance(f.keywords, dict) else {}).get("key", "")) in _RA_DESYNC_KEYS
+                for f in bundle.findings if f.check == "IPARAAgent"):
+            # A description/LDAP mismatch compares LDAP with the certificate file: it does not need the CA
+            # process, so a stopped local CA does not explain it (red-team round 4).
+            d.not_caused_by = ["certificates"]
+        return d
+
+    def _evaluate(self, bundle: EvidenceBundle) -> Optional[Diagnosis]:
         hc_findings = [
             f
             for f in _cert_findings(bundle, sources=("ipahealthcheck.dogtag.ca", "ipahealthcheck.ipa.certs"), checks=_RA_HEALTHCHECK_CHECKS)
