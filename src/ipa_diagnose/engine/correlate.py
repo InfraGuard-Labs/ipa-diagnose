@@ -125,13 +125,21 @@ _IMPLICIT_RULE_UPSTREAMS = {
 _SAFETY_NETS = ("healthcheck-check-failed", "unexplained-findings")
 
 
+# ipa-healthcheck checks whose answer comes from the service itself (so a stopped service explains their result)
+_CHECKS_ASKING_SERVICE = {
+    "certmonger": ("IPACertmongerCA", "IPACertTracking", "CertmongerStuckCheck", "IPACertmongerExpirationCheck"),
+}
+
+
 def _is_service_down(u: Diagnosis) -> bool:
     return (u.pack_id == "healthcheck" and u.rule_id.startswith("service-not-running-")) or u.diagnosis_id == "dns.named-service-down"
 
 
-def _explains_source(u: Diagnosis, source: str, crashed: bool) -> bool:
-    """Whether a stopped service `u` explains a crashed (or, if not `crashed`, unexplained) finding from `source`."""
+def _explains_source(u: Diagnosis, key: str, crashed: bool) -> bool:
+    """Whether a stopped service `u` explains a crashed (or, if not `crashed`, unexplained) finding `key`
+    ("source::check")."""
 
+    source, _, check = key.partition("::")
     if source.startswith("ipahealthcheck.system.filesystemspace"):
         return False  # disk space is never a symptom of a stopped service
     dirsrv = u.pack_id == "healthcheck" and u.rule_id[len("service-not-running-"):].split("@")[0] == "dirsrv"
@@ -139,8 +147,12 @@ def _explains_source(u: Diagnosis, source: str, crashed: bool) -> bool:
         return True  # Directory Server underlies every IPA check: with it stopped, any check can crash
     if source.startswith("ipahealthcheck.meta.services"):
         return True  # a service check failing is explained by a stopped service
-    if dirsrv and source.startswith("ipahealthcheck.ds."):
-        return True
+    if not crashed:
+        # A check that RAN and returned a result is evidence about what it checked, not a symptom of the stopped
+        # service - unless the check asks that service itself (live capture: with certmonger stopped,
+        # IPACertmongerCA reports "Certmonger CA missing"; a revoked certificate is not such a symptom).
+        service = u.rule_id[len("service-not-running-"):].split("@")[0] if u.rule_id.startswith("service-not-running-") else ""
+        return check in _CHECKS_ASKING_SERVICE.get(service, ())
     return any(source.startswith(p) for p in _pack_sources(_effective_pack(u)))
 
 
@@ -213,7 +225,7 @@ def build_report(
     packs_evaluated: List[str],
 ) -> DiagnosisReport:
     diagnoses = list(diagnoses)
-    demotions = _demote_via_causality(diagnoses, {f.finding_id: str(f.source) for f in bundle.findings})
+    demotions = _demote_via_causality(diagnoses, {f.finding_id: f"{f.source}::{f.check}" for f in bundle.findings})
     titles_by_pack: Dict[str, List[str]] = {}
     for d in diagnoses:
         if _is_real_problem(d):

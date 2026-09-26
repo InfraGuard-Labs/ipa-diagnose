@@ -537,3 +537,45 @@ def test_state_reached_through_a_root_owned_link_is_trusted(tmp_path, monkeypatc
     monkeypatch.setattr(V.os, "lstat", fake_lstat)
     with pytest.raises(V.UnreadableBaseline):
         V.load_previous_report(p, strict=True)
+
+
+# --- round 10 review -------------------------------------------------------------------------------------------------
+
+def test_plain_run_between_fix_and_verify_does_not_forget_the_fix(tmp_path, monkeypatch):
+    import argparse
+    import io
+
+    from rich.console import Console
+
+    from ipa_diagnose import cli
+
+    from tests.resolution.test_procedures import FakeRunner
+
+    state = tmp_path / "last_report.json"
+    monkeypatch.setattr(cli, "_state_path", lambda args: state)
+    args = argparse.Namespace(json=False, replay=None)
+    # 1. diagnose: fix offered and saved
+    first, _ = report_for([perm()], {**ROOT_OK, f"file.stat|path={CS}": stat()})
+    cli._save_baseline(first, args)
+    # 2. plain run: the finding is no longer reported (e.g. excluded), the file was NOT fixed
+    plain, _ = report_for([], {**ROOT_OK})
+    cli._save_baseline(plain, args)
+    # 3. verify: the carried fix's own check runs and fails -> never RESOLVED / exit 0
+    after, _ = report_for([], {**ROOT_OK})
+    monkeypatch.setattr(cli, "_collect_and_diagnose", lambda a: (None, after))
+    monkeypatch.setattr(cli, "_runner", lambda a: FakeRunner({f"file.stat|path={CS}": stat(mode="0664")}))
+    buf = io.StringIO()
+    rc = cli.cmd_verify(args, Console(file=buf, width=200))
+    assert rc != 0 and "PARTIALLY_RESOLVED" in buf.getvalue()
+
+
+@pytest.mark.parametrize("text", [
+    "To fix this, sudo dsidm localhost user delete admin will remove the stale account.",
+    "Use dsidm localhost account unlock admin to unlock it.",
+    "Try sss_override user-del admin next.",
+    "Please do sudo su and then kpasswd admin.",
+])
+def test_round10_ai_sudo_and_admin_tools_rejected(text):
+    from ipa_diagnose.ai.prompt import sanitize_explanation
+
+    assert sanitize_explanation(text, _ai_diag("chronyc tracking")) is None

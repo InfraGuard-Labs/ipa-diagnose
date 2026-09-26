@@ -98,16 +98,39 @@ def save_report(state_path: pathlib.Path, report: DiagnosisReport) -> None:
         pass  # Saving state is best-effort; `verify` degrades to UNABLE_TO_VERIFY without it.
 
 
-def carry_forward_fixes(previous: Optional[Dict[str, Any]], report: DiagnosisReport) -> List[Dict[str, Any]]:
-    """Fix records to keep in the next baseline: a fix shown earlier whose diagnosis is still present now but is
-    not shown again this run (for example a check could not run). Without this, a later verify would compare
-    without the fix's own checks (round-7 review). Only from a usable baseline of this same host and mode."""
+def carry_forward_fixes(previous: Optional[Dict[str, Any]], report: DiagnosisReport,
+                        confirmed: Optional[set] = None) -> List[Dict[str, Any]]:
+    """Fix records to keep in the next baseline, until a verify confirms them: a fix shown earlier whose diagnosis
+    is still present but not shown again (round 7), or whose diagnosis is gone without a verify having confirmed
+    the fix (round 10: a plain run in between must not forget it). `confirmed` = diagnosis ids a verify has just
+    confirmed RESOLVED. The gone diagnoses themselves are kept too (see carried_diagnoses). Only from a usable
+    baseline of this same host and mode."""
 
     if previous is None or _baseline_problem(previous, report) or _baseline_damage(previous):
         return []
-    fresh_ids = {d.diagnosis_id for d in report.diagnoses}
+    confirmed = confirmed or set()
     shown_now = {rid for rid, r in (report.resolutions or {}).items() if getattr(r, "status", None) == "OFFERED"}
-    return [f for did, f in _baseline_fixes(previous).items() if did in fresh_ids and did not in shown_now]
+    return [f for did, f in _baseline_fixes(previous).items() if did not in shown_now and did not in confirmed]
+
+
+def carried_diagnoses(previous: Optional[Dict[str, Any]], report: DiagnosisReport, carried: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """The saved diagnosis entries of carried fix records whose diagnosis is not in this run's results."""
+
+    if previous is None:
+        return []
+    fresh_ids = {d.diagnosis_id for d in report.diagnoses}
+    wanted = {f.get("diagnosis_id") for f in carried} - fresh_ids
+    pool = list(previous.get("diagnoses", []))
+    v2 = previous.get("v2") if isinstance(previous.get("v2"), dict) else {}
+    pool += [d for d in (v2.get("carried_diagnoses") if isinstance(v2.get("carried_diagnoses"), list) else [])
+             if isinstance(d, dict)]
+    out, seen = [], set()
+    for d in pool:
+        did = d.get("diagnosis_id")
+        if isinstance(did, str) and did in wanted and did not in seen:
+            seen.add(did)
+            out.append(d)
+    return out
 
 
 class UnreadableBaseline(Exception):
@@ -238,6 +261,17 @@ def compare(previous: Optional[Dict[str, Any]], current: DiagnosisReport, runner
         return VerifyResult(items=[], new_conditions=[], previous_generated_at=None, current_report=current)
 
     prev_by_id = {d["diagnosis_id"]: d for d in previous.get("diagnoses", [])}
+    # diagnoses kept only because a fix shown for them has not been confirmed yet (carried by a plain run)
+    v2c = previous.get("v2") if isinstance(previous.get("v2"), dict) else {}
+    for d in v2c.get("carried_diagnoses") if isinstance(v2c.get("carried_diagnoses"), list) else []:
+        if isinstance(d, dict) and isinstance(d.get("diagnosis_id"), str) and d["diagnosis_id"] not in prev_by_id:
+            d = dict(d)
+            d["diagnosis_id"] = sanitize_text(d["diagnosis_id"], 160)
+            d["title"] = sanitize_text(d["title"], 160) if isinstance(d.get("title"), str) else d["diagnosis_id"]
+            for key in ("pack_id", "priority", "status"):
+                if not isinstance(d.get(key), str):
+                    d[key] = ""
+            prev_by_id[d["diagnosis_id"]] = d
     fixes = _baseline_fixes(previous)
     curr_by_id = {d.diagnosis_id: d for d in current.diagnoses}
     affected_packs_with_errors = {

@@ -1,0 +1,1 @@
+[{"item_id": "journal_named.0000", "kind": "named_journal_line", "summary": "systemd[1]: named-pkcs11.service: Failed to start, unit entered failed state", "data": {"unit": "named-pkcs11", "raw_line": "Sep 20 09:58:02 ipa01 systemd[1]: named-pkcs11.service: Failed to start, unit entered failed state", "timestamp": "Sep 20 09:58:02"}, "severity": "CRITICAL"}]

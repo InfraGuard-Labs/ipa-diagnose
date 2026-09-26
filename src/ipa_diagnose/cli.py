@@ -123,14 +123,17 @@ def _state_path(args: argparse.Namespace):
     return path.with_name("last_report.replay.json") if getattr(args, "replay", None) else path
 
 
-def _save_baseline(report: DiagnosisReport, args: argparse.Namespace) -> None:
+def _save_baseline(report: DiagnosisReport, args: argparse.Namespace, confirmed: Optional[set] = None) -> None:
     """An incomplete run (ipa-healthcheck itself unavailable) must not
-    overwrite the last good baseline that `verify` compares against."""
+    overwrite the last good baseline that `verify` compares against. Fix records not yet confirmed by a verify
+    (and the diagnoses they belong to) are carried into the new baseline."""
 
     if report.evidence_completeness.healthcheck_collected:
-        from ipa_diagnose.verify import carry_forward_fixes
+        from ipa_diagnose.verify import carried_diagnoses, carry_forward_fixes
 
-        report.carried_fixes = carry_forward_fixes(load_previous_report(_state_path(args)), report)
+        previous = load_previous_report(_state_path(args))
+        report.carried_fixes = carry_forward_fixes(previous, report, confirmed)
+        report.carried_diagnoses = carried_diagnoses(previous, report, report.carried_fixes)
         save_report(_state_path(args), report)
 
 
@@ -187,7 +190,9 @@ def cmd_verify(args: argparse.Namespace, console: Console) -> int:
             console.print("[dim]The previous diagnosis stays the baseline for the next verify, because not everything "
                           "in it was confirmed resolved.[/dim]")
     else:
-        _save_baseline(report, args)
+        from ipa_diagnose.verify import VerifyOutcome as _VO
+
+        _save_baseline(report, args, confirmed={i.diagnosis_id for i in result.items if i.outcome == _VO.RESOLVED})
     from ipa_diagnose.verify import VerifyOutcome
 
     fresh = _exit_code_for(report)

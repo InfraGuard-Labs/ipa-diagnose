@@ -132,6 +132,7 @@ def report_to_dict(report: DiagnosisReport, ai_explanations: Dict[str, str] = No
                 dict(r.baseline, diagnosis_id=r.diagnosis_id)
                 for r in (report.resolutions or {}).values() if r.status == "OFFERED" and r.baseline
             ] + list(report.carried_fixes or [])},
+            "carried_diagnoses": list(report.carried_diagnoses or []),
         },
     }
 

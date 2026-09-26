@@ -45,7 +45,8 @@ _COMMAND_LIKE = re.compile(
     r"kadmin[\w.]*|kdb5_util|ktutil|kdestroy|mv\b|cp\b|ln\b|unlink|useradd|groupadd|nmcli|authselect|setsebool|"
     r"bak2db|ldif2db|db2ldif|db2bak|dscreate|dsctl|pkispawn|pkidestroy|rndc|named-checkconf|"
     r"init\s+[0-6]|telinit|realm\s+(?:leave|join|deny|permit)|fixfiles|podman|docker|nft|kexec|mount|umount|"
-    r"swapoff|sysctl\s+-w|hostnamectl|update-crypto-policies|authconfig)\b",
+    r"swapoff|sysctl\s+-w|hostnamectl|update-crypto-policies|authconfig|"
+    r"sudo|su|doas|pkexec|dsidm|sss_override|kpasswd|gpasswd|chpasswd|visudo)\b",
     # case-sensitive on purpose: commands are typed in lower case, while prose says "IPA", "PKI", "Service"
 )
 _WORD_BREAK = re.compile(r"\w\\\w|(?<![\w:])//")  # "sys\temctl" (the shell drops the backslash), "//usr/bin/..."
