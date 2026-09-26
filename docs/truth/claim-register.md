@@ -46,3 +46,8 @@ there is **no** live evidence for EL8/EL9/RHEL.
 
 
 When quoting commands: generalise the lab names (`LAB-TEST`, `/data/...`); present a rollback such as `chmod o+r` as "restores the state ipa-healthcheck flagged - normally not needed".
+
+**Procedure tiers after the maintainer's close-out decision:** service start `BUILT_IN_VERIFIED`, definitive only on
+FreeIPA 4.13.3 / Fedora 43, with applicability unchanged; file permissions `LIVE_VERIFIED`; clock skew and expiring
+DS certificate `FIXTURE_ONLY`; expired DS certificate has no deterministic fix. Safe wording: "built-in verified on
+FreeIPA 4.13.3 / Fedora 43". Overclaim to avoid: "built-in verified" without that scope.

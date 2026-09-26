@@ -1120,6 +1120,12 @@
       "date": "2026-09-24",
       "independent": true,
       "scope": "adversarial rounds 1-10 and red teams 1-8 plus a final truth review: tried to make ipa-diagnose offer a wrong or unsafe procedure or report a false RESOLVED; all blockers fixed and regression-tested"
+     },
+     {
+      "by": "Azeem Siddiqui (maintainer)",
+      "date": "2026-09-26",
+      "independent": false,
+      "scope": "promotion decision: LIVE_VERIFIED -> BUILT_IN_VERIFIED, definitive only for the live-verified FreeIPA 4.13.3 / fedora-43; no change to applicability"
      }
     ],
     "sources": [
@@ -1138,7 +1144,7 @@
      "tests/resolution/test_procedures.py",
      "tests/resolution/test_round3_regressions.py"
     ],
-    "tier": "LIVE_VERIFIED",
+    "tier": "BUILT_IN_VERIFIED",
     "verified_on": [
      {
       "date": "2026-09-26",

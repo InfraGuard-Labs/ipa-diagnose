@@ -190,7 +190,9 @@ def test_service_procedure_offered_with_exact_command():
     r = res_of(report_for(DIRSRV_DOWN, SERVICE_OK)[0], "healthcheck.service-not-running")
     assert r.status == OFFERED and [s.argv for s in r.steps] == [["systemctl", "start", "dirsrv@LAB-TEST.service"]]
     assert r.rollback[0]["argv"] == ["systemctl", "stop", "dirsrv@LAB-TEST.service"]
-    assert r.risk == "MEDIUM" and r.verify and not r.definitive
+    # ENV is the live-verified FreeIPA 4.13.3 / Fedora 43, where the maintainer promoted this procedure to
+    # BUILT_IN_VERIFIED; other environments stay non-definitive (tests/resolution/test_service_promotion.py)
+    assert r.risk == "MEDIUM" and r.verify and r.definitive and r.tier == "BUILT_IN_VERIFIED"
 
 
 def test_systemctl_managed_service_uses_its_validated_unit():

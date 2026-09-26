@@ -48,15 +48,19 @@ a high-risk procedure that ipa-diagnose has not verified, so it points to the do
 
 ### Verification status
 
-- **Required service not running** and **IPA file permission mismatch**: `LIVE_VERIFIED`. In the free
-  GitHub-hosted live lab (FreeIPA 4.13.3 on Fedora 43, a disposable container) the printed commands were run
-  verbatim and `ipa-diagnose verify` reported RESOLVED with the fix's own checks. Live lab details, and exactly
-  which cases were applied, are in [docs/truth/truth-matrix.md](truth/truth-matrix.md).
+- **Required service not running**: `BUILT_IN_VERIFIED`, promoted by the maintainer after the Slice 1 truth
+  validation. It rests on the live record below plus independent review, and its "verified" label is definitive
+  **only on the live-verified FreeIPA 4.13.3 / Fedora 43**. On any other FreeIPA version or OS it is still offered
+  within its normal gates (FreeIPA 4.9 up to 5.0, IPA server, all read-only checks passing), labelled "not yet on
+  this FreeIPA version/OS". The tier never changes when a fix is shown.
+- **IPA file permission mismatch**: `LIVE_VERIFIED` (deliberately not promoted yet).
+- For both: in the free GitHub-hosted live lab (FreeIPA 4.13.3 on Fedora 43, a disposable container) the printed
+  commands were run verbatim and `ipa-diagnose verify` reported RESOLVED with the fix's own checks. Live lab details,
+  and exactly which cases were applied, are in [docs/truth/truth-matrix.md](truth/truth-matrix.md).
 - **Clock skew** and **expiring DS certificate**: `FIXTURE_ONLY` - tested against recorded evidence. A
   container shares the runner's wall clock (Linux time namespaces cannot offset it), so stepping a lab clock
   would step the CI host; a near-expiry DS certificate needs a short-lived certificate profile. Neither has a
   proven safe disposable design yet.
-- No procedure is `BUILT_IN_VERIFIED`: that promotion is left to the maintainer.
 
 Each fix carries a verification label. **"Not yet verified on a live FreeIPA server"** means the procedure
 has been tested against recorded evidence only; **"Verified in a live lab on FreeIPA X / OS Y"** names exactly

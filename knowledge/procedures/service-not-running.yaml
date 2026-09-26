@@ -14,7 +14,10 @@ applies_to:
   freeipa_below: "5.0"
   roles: [ipa-server]
 provenance:
-  tier: LIVE_VERIFIED
+  # Promoted by the maintainer after the Slice 1 truth validation. The definitive ("built-in verified") label is
+  # shown only on the exact live-verified environment below (FreeIPA 4.13.3 / Fedora 43); applicability gates
+  # (applies_to + the read-only checks) are unchanged by the tier.
+  tier: BUILT_IN_VERIFIED
   sources:
     - kind: upstream-code
       ref: https://github.com/freeipa/freeipa-healthcheck/blob/master/src/ipahealthcheck/meta/services.py
@@ -33,6 +36,10 @@ provenance:
       date: "2026-09-24"
       scope: "adversarial rounds 1-10 and red teams 1-8 plus a final truth review: tried to make ipa-diagnose offer a wrong or unsafe procedure or report a false RESOLVED; all blockers fixed and regression-tested"
       independent: true
+    - by: "Azeem Siddiqui (maintainer)"
+      date: "2026-09-26"
+      scope: "promotion decision: LIVE_VERIFIED -> BUILT_IN_VERIFIED, definitive only for the live-verified FreeIPA 4.13.3 / fedora-43; no change to applicability"
+      independent: false
   tests:
     - tests/resolution/test_procedures.py
     - tests/resolution/test_round3_regressions.py
