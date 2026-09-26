@@ -312,8 +312,8 @@ def _file_findings(bundle: EvidenceBundle) -> List[Finding]:
         # Allowlist: upstream's owner/group/mode results carry type, path, expected and got.
         if str(kw.get("type", "")).lower() not in ("owner", "group", "mode"):
             continue
-        if not all(k in kw for k in ("path", "expected", "got")):
-            continue
+        if not all(isinstance(kw.get(k), str) for k in ("path", "expected", "got")):
+            continue  # a malformed (non-text) value is not an owner/group/mode result we can reason about
         if str(kw.get("got", "")).lower().startswith("unknown "):  # 'Unknown uid 1234': no such account, not a mismatch of a known owner
             continue
         out.append(f)
@@ -354,7 +354,9 @@ _DS_PATH_PREFIXES = ("/etc/dirsrv/", "/var/lib/dirsrv/", "/var/log/dirsrv/", "/r
 def _names_any(item: EvidenceItem, paths: List[str]) -> bool:
     text = str(item.data.get("message") or item.data.get("line") or item.summary or "")
     for p in paths:
-        if p and (p in text or (p.rsplit("/", 1)[0] + "/") in text):
+        parent = p.rsplit("/", 1)[0] + "/"
+        # the parent only counts when it is a specific directory (/etc/dirsrv/slapd-X/, not /etc/)
+        if p and (p in text or (parent.count("/") >= 4 and parent in text)):
             return True
     return False
 

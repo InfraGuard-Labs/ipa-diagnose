@@ -268,7 +268,9 @@ def _target_location(real: str):
     root = CONTAINER_DATA_ROOT + "/"
     if real.startswith(root):
         standard = real[len(CONTAINER_DATA_ROOT):]
-        if T.validate("ipa_path", standard) is not None and os.path.realpath(standard) == real:
+        # the standard path must be the mirror's directory route to the file, not itself a link (round-7 review)
+        if (T.validate("ipa_path", standard) is not None and os.path.realpath(standard) == real
+                and not os.path.islink(standard)):
             return standard, True, True
     return real, False, False
 

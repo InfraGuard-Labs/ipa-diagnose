@@ -1,0 +1,8 @@
+[
+ {
+  "unit": "dirsrv@EXAMPLE-TEST.service",
+  "timestamp": "Sep 25 09:40:03",
+  "message": "ERR - dse_write_file_nolock - Can't rename file /etc/dirsrv/slapd-EXAMPLE-TEST/dse.ldif.tmp (Permission denied)",
+  "category": "permission_denied"
+ }
+]

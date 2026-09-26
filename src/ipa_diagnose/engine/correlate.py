@@ -113,20 +113,31 @@ _IMPLICIT_RULE_UPSTREAMS = {
     "kerberos.kdc-discovery-failure": ("healthcheck.service-not-running-dirsrv*",),
     "dns.srv-autodiscovery": ("dns.named-service-down", "healthcheck.service-not-running-named",
                               "healthcheck.service-not-running-named-pkcs11"),
+    # this server's CA stopped: certmonger cannot reach it and RA/Dogtag calls fail - its symptoms, not new problems
+    "certificates.certmonger-tracking-stuck": ("healthcheck.service-not-running-pki-tomcatd*", "healthcheck.service-not-running-pki_tomcatd*"),
+    "certificates.ra-agent-desync": ("healthcheck.service-not-running-pki-tomcatd*", "healthcheck.service-not-running-pki_tomcatd*"),
 }
 
 
 _SAFETY_NETS = ("healthcheck-check-failed", "unexplained-findings")
 
 
-def _explains_source(u: Diagnosis, source: str) -> bool:
-    """Whether a confirmed problem `u` explains a crashed/unexplained ipa-healthcheck finding from `source`."""
+def _is_service_down(u: Diagnosis) -> bool:
+    return (u.pack_id == "healthcheck" and u.rule_id.startswith("service-not-running-")) or u.diagnosis_id == "dns.named-service-down"
 
-    service_down = u.pack_id == "healthcheck" and u.rule_id.startswith("service-not-running-")
-    if service_down and u.rule_id[len("service-not-running-"):].split("@")[0] == "dirsrv":
-        return True  # Directory Server underlies every IPA check: with it stopped, any check can fail
-    if (service_down or u.rule_id == "named-service-down") and source.startswith("ipahealthcheck.meta.services"):
+
+def _explains_source(u: Diagnosis, source: str, crashed: bool) -> bool:
+    """Whether a stopped service `u` explains a crashed (or, if not `crashed`, unexplained) finding from `source`."""
+
+    if source.startswith("ipahealthcheck.system.filesystemspace"):
+        return False  # disk space is never a symptom of a stopped service
+    dirsrv = u.pack_id == "healthcheck" and u.rule_id[len("service-not-running-"):].split("@")[0] == "dirsrv"
+    if dirsrv and crashed:
+        return True  # Directory Server underlies every IPA check: with it stopped, any check can crash
+    if source.startswith("ipahealthcheck.meta.services"):
         return True  # a service check failing is explained by a stopped service
+    if dirsrv and source.startswith("ipahealthcheck.ds."):
+        return True
     return any(source.startswith(p) for p in _pack_sources(_effective_pack(u)))
 
 
@@ -155,14 +166,19 @@ def _demote_via_causality(diagnoses: List[Diagnosis], finding_sources: Optional[
             # Crashed/unexplained ipa-healthcheck findings are absorbed only by a confirmed upstream problem whose
             # pack owns every one of those checks (a stopped certmonger explains crashed ipa.certs checks, not an
             # unrelated trust-agent CRITICAL).
+            # Only a stopped service absorbs them. Crashed checks (a check that could not run) are absorbed by the
+            # stopped service that owns them; findings that did run (an unexplained result) only by a stopped
+            # service at least as severe, never across to e.g. file-system space results (red-team round 3).
             srcs = [finding_sources.get(r.evidence_id, "") for r in d.evidence_for if r.kind == "finding"]
-            candidates = [u for u in candidates if u.status == DiagnosisStatus.DIAGNOSED and srcs
-                          and all(_explains_source(u, s) for s in srcs)]
+            crashed = d.rule_id == "healthcheck-check-failed"
+            candidates = [u for u in candidates if u.status == DiagnosisStatus.DIAGNOSED and _is_service_down(u) and srcs
+                          and all(_explains_source(u, s, crashed) for s in srcs)
+                          and (crashed or _evidence_rank(u) >= _evidence_rank(d))]
         else:
-            # A cause is never less severe than the symptom it absorbs, and an unconfirmed (UNKNOWN_*) upstream
-            # never hides a confidently DIAGNOSED problem (red-team round 2, Slice 1 hardening).
-            candidates = [u for u in candidates if _evidence_rank(u) >= _evidence_rank(d)
-                          and (u.status == DiagnosisStatus.DIAGNOSED or d.status != DiagnosisStatus.DIAGNOSED)]
+            # An unconfirmed (UNKNOWN_*) upstream never hides a confidently DIAGNOSED problem, and one unconfirmed
+            # problem absorbs another only if it is at least as severe (red-team rounds 2-3, Slice 1 hardening).
+            candidates = [u for u in candidates if u.status == DiagnosisStatus.DIAGNOSED
+                          or (d.status != DiagnosisStatus.DIAGNOSED and _evidence_rank(u) >= _evidence_rank(d))]
         packs: List[str] = []
         for u in candidates:
             if _effective_pack(u) not in packs:

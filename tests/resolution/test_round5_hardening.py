@@ -240,3 +240,134 @@ def test_confirm_first_uses_the_real_link_count_and_never_guesses():
     del st2[1]["mode_a"]
     r2 = res_of(report_for([perm()], {**ROOT_OK, f"file.stat|path={CS}": st2})[0], FP)
     assert r2.status == "WITHHELD" and not r2.steps  # an expected output that cannot be rendered exactly withholds
+
+
+# --- round 7 review --------------------------------------------------------------------------------------------------
+
+def _ai_diag(*safe):
+    from ipa_diagnose.engine.model import Action, Confidence, ConfidenceLevel, Diagnosis, DiagnosisStatus, RiskLevel
+
+    return Diagnosis(pack_id="kerberos", rule_id="clock-skew", status=DiagnosisStatus.DIAGNOSED, title="t", why="t",
+                     confidence=Confidence(level=ConfidenceLevel.HIGH, rationale="t"),
+                     actions=[Action(description="a", risk=RiskLevel.SAFE, command=c) for c in safe])
+
+
+@pytest.mark.parametrize("text", [
+    "The fix is to run sys\x1b[0mtemctl stop krb5kdc and then r\x1b[0mm /etc/krb5.keytab to reset it.",
+    "Run \u0455ystemctl stop krb5kdc.",
+    "Run \uff53\uff59\uff53\uff54\uff45\uff4d\uff43\uff54\uff4c stop krb5kdc.",
+    "Run system\u200bctl stop krb5kdc.",
+    "Fix:\n```\nsetsebool httpd_can_network_connect on\n```",
+    "Then nmcli connection down eth0 and useradd tmpadmin.",
+    "Finally kdestroy and authselect select sssd with-mkhomedir.",
+])
+def test_ai_text_obfuscation_and_unlisted_programs_are_rejected(text):
+    from ipa_diagnose.ai.prompt import sanitize_explanation
+
+    assert sanitize_explanation(text, _ai_diag("chronyc tracking")) is None
+
+
+@pytest.mark.parametrize("text", [
+    "The IPA server's Kerberos KDC rejected the request.",
+    "The Directory Server service stopped earlier today.",
+    "The PKI subsystem uses its own certificate database.",
+    "Check /var/log/krb5kdc.log for the rejection.",
+    "Run `chronyc tracking` to see the offset.",
+])
+def test_ai_read_only_prose_is_kept(text):
+    from ipa_diagnose.ai.prompt import sanitize_explanation
+
+    assert sanitize_explanation(text, _ai_diag("chronyc tracking")) == text
+
+
+def test_no_ai_rewording_for_a_withheld_or_absent_fix(monkeypatch):
+    import argparse
+
+    from rich.console import Console
+
+    from ipa_diagnose import cli
+
+    report, _ = report_for([perm()], {**ROOT_OK, f"file.stat|path={CS}": stat(mode="0660")})  # fix withheld
+    asked = []
+
+    class _P:
+        def is_configured(self):
+            return True
+
+    monkeypatch.setattr(cli, "build_provider", lambda config: _P(), raising=False)
+    monkeypatch.setattr(cli, "explain_diagnosis", lambda d, b, p: asked.append(d.diagnosis_id) or "ok", raising=False)
+    monkeypatch.setattr(cli, "_ai_config_from_args", lambda args: argparse.Namespace(provider="openai"))
+    args = argparse.Namespace(no_ai=False, json=False)
+    cli._maybe_explain(report, None, args, Console(file=__import__("io").StringIO()))
+    withheld = [d for d, r in report.resolutions.items() if r.status in ("WITHHELD", "NONE")]
+    for d in report.diagnoses:
+        d.priority = cli._EXPLAINABLE_PRIORITIES and next(iter(cli._EXPLAINABLE_PRIORITIES))
+    cli._maybe_explain(report, None, args, Console(file=__import__("io").StringIO()))
+    assert withheld and not (set(asked) & set(withheld))
+    # control: the same diagnosis with an OFFERED fix is explained (so the assertion above is not vacuous)
+    for r in report.resolutions.values():
+        r.status = "OFFERED"
+    cli._maybe_explain(report, None, args, Console(file=__import__("io").StringIO()))
+    assert set(asked) & set(withheld)
+
+
+def test_repeated_verify_keeps_the_fix_record_while_the_fix_is_not_reoffered():
+    from ipa_diagnose.render.json_output import report_to_dict
+    from ipa_diagnose.verify import VerifyOutcome, carry_forward_fixes, compare
+
+    from tests.resolution.test_procedures import FakeRunner
+
+    before, _ = report_for([perm()], {**ROOT_OK, f"file.stat|path={CS}": stat()})
+    base1 = json.loads(json.dumps(report_to_dict(before)))
+    # run 2: the finding is still reported, but the fix is withheld this time (stat denied)
+    still, _ = report_for([perm()], {**ROOT_OK, f"file.stat|path={CS}": (C.DENIED, {}, "denied")})
+    assert still.resolutions and all(r.status != "OFFERED" for r in still.resolutions.values())
+    still.carried_fixes = carry_forward_fixes(base1, still)
+    base2 = json.loads(json.dumps(report_to_dict(still)))
+    assert base2["v2"]["verify_baseline"]["fixes"]
+    # run 3: the finding is gone but the file is still 0664 -> never RESOLVED
+    gone, _ = report_for([], {**ROOT_OK})
+    out = compare(base2, gone, runner=FakeRunner({f"file.stat|path={CS}": stat(mode="0664")}))
+    assert out.items[0].outcome == VerifyOutcome.PARTIALLY_RESOLVED
+
+
+def test_unreadable_saved_baseline_is_exit_4_not_nothing_to_verify(tmp_path, monkeypatch):
+    import argparse
+    import io
+
+    from rich.console import Console
+
+    from ipa_diagnose import cli
+
+    report, _ = report_for([], {**ROOT_OK})
+    state = tmp_path / "last_report.json"
+    state.write_text('{"generated_at": "x", "diagnoses": [', encoding="utf-8")
+    monkeypatch.setattr(cli, "_collect_and_diagnose", lambda args: (None, report))
+    monkeypatch.setattr(cli, "_state_path", lambda args: state)
+    buf = io.StringIO()
+    rc = cli.cmd_verify(argparse.Namespace(json=False, replay=None), Console(file=buf))
+    assert rc == 4 and "cannot be read" in buf.getvalue()
+    assert state.read_text(encoding="utf-8").startswith('{"generated_at": "x"')  # not overwritten
+
+
+def test_state_file_is_written_atomically_and_owner_only(tmp_path):
+    import os
+    import stat as st
+
+    from ipa_diagnose.verify import save_report
+
+    report, _ = report_for([], {**ROOT_OK})
+    p = tmp_path / "state" / "last_report.json"
+    save_report(p, report)
+    assert json.loads(p.read_text(encoding="utf-8"))["hostname"]
+    if os.name == "posix":
+        assert st.S_IMODE(p.stat().st_mode) == 0o600
+    assert not [x for x in p.parent.iterdir() if x.name.endswith(".tmp")]
+
+
+def test_container_mirror_refused_when_the_standard_path_is_itself_a_link(monkeypatch):
+    real = "/data/etc/pki/pki-tomcat/ca/CS.cfg"
+    std = "/etc/pki/pki-tomcat/ca/CS.cfg"
+    monkeypatch.setattr(C.os.path, "realpath", lambda p: real if p in (std, real) else p)
+    monkeypatch.setattr(C.os.path, "islink", lambda p: p == std)
+    assert C._command_target(real)[1] is False

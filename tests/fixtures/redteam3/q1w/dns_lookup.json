@@ -1,0 +1,54 @@
+[
+  {
+    "item_id": "dns_lookup.srv_kerberos_udp",
+    "kind": "dns_srv_record",
+    "summary": "_kerberos._udp.example.test SRV: NXDOMAIN, 0 record(s)",
+    "data": {
+      "query": "_kerberos._udp.example.test",
+      "qtype": "SRV",
+      "resolver": "127.0.0.1",
+      "rcode": "NXDOMAIN",
+      "answers": []
+    },
+    "severity": "ERROR"
+  },
+  {
+    "item_id": "dns_lookup.srv_kerberos_tcp",
+    "kind": "dns_srv_record",
+    "summary": "_kerberos._tcp.example.test SRV: NOERROR, 1 record(s)",
+    "data": {
+      "query": "_kerberos._tcp.example.test",
+      "qtype": "SRV",
+      "resolver": "127.0.0.1",
+      "rcode": "NOERROR",
+      "answers": ["0 100 88 ipa01.example.test."]
+    },
+    "severity": "SUCCESS"
+  },
+  {
+    "item_id": "dns_lookup.srv_ldap_tcp",
+    "kind": "dns_srv_record",
+    "summary": "_ldap._tcp.example.test SRV: NOERROR, 1 record(s)",
+    "data": {
+      "query": "_ldap._tcp.example.test",
+      "qtype": "SRV",
+      "resolver": "127.0.0.1",
+      "rcode": "NOERROR",
+      "answers": ["0 100 389 ipa01.example.test."]
+    },
+    "severity": "SUCCESS"
+  },
+  {
+    "item_id": "dns_lookup.a_ipa_ca",
+    "kind": "dns_address_record",
+    "summary": "ipa-ca.example.test A: NOERROR, 1 record(s)",
+    "data": {
+      "query": "ipa-ca.example.test",
+      "qtype": "A",
+      "resolver": "127.0.0.1",
+      "rcode": "NOERROR",
+      "answers": ["192.0.2.10"]
+    },
+    "severity": "SUCCESS"
+  }
+]

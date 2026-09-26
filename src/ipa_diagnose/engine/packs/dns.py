@@ -439,6 +439,8 @@ class ForwardZoneConflictRule(DiagnosticRule):
                 ],
                 limitations=_SINGLE_RESOLVER_LIMITATION,
                 upstream_candidates=[],
+                # an unloaded forward zone affects only names in that zone, never IPA's own records or peers
+                explains_downstream=False,
             )
 
         # Generic forwarding trouble without the specific collision signature -
@@ -476,6 +478,8 @@ class ForwardZoneConflictRule(DiagnosticRule):
             ),
             limitations=_SINGLE_RESOLVER_LIMITATION,
             upstream_candidates=[],
+                # an unloaded forward zone affects only names in that zone, never IPA's own records or peers
+                explains_downstream=False,
         )
 
 

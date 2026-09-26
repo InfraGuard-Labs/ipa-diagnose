@@ -1,0 +1,9 @@
+[
+  {"source": "ipahealthcheck.meta.services", "check": "dirsrv", "result": "SUCCESS", "uuid": "s1", "when": "20260101000000Z", "duration": "0.01", "kw": {"status": true}},
+  {"source": "ipahealthcheck.system.filesystemspace", "check": "FileSystemSpaceCheck", "result": "ERROR", "uuid": "fs", "when": "20260925100000Z", "duration": "0.01",
+   "kw": {"store": "/var/lib/ipa/backup", "percent_free": 2, "threshold": 20, "msg": "/var/lib/ipa/backup: free space percentage 2 is below threshold 20"}},
+  {"source": "ipahealthcheck.ds.config", "check": "ConfigCheck", "result": "CRITICAL", "uuid": "cfg", "when": "20260925100000Z", "duration": "0.01",
+   "kw": {"key": "DSCLE0002", "items": ["cn=config", "passwordStorageScheme"], "msg": "Weak passwordStorageScheme: CLEAR - passwords are stored in clear text"}},
+  {"source": "ipahealthcheck.ipa.files", "check": "IPAFileCheck", "result": "ERROR", "uuid": "uid", "when": "20260925100000Z", "duration": "0.01",
+   "kw": {"key": "_etc_ipa_default.conf_owner", "path": "/etc/ipa/default.conf", "type": "owner", "expected": "root", "got": "Unknown uid 4242", "msg": "Ownership of /etc/ipa/default.conf is Unknown uid 4242 and should be root"}}
+]

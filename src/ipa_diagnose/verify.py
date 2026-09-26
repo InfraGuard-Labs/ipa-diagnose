@@ -81,18 +81,47 @@ def save_report(state_path: pathlib.Path, report: DiagnosisReport) -> None:
     try:
         state_path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         os.chmod(state_path.parent, 0o700)
-        state_path.write_text(json.dumps(report_to_dict(report), indent=2), encoding="utf-8")
-        os.chmod(state_path, 0o600)
+        data = json.dumps(report_to_dict(report), indent=2).encode("utf-8")
+        # Atomic: a full disk or a crash leaves the previous file intact, never a truncated one (round-7 review).
+        tmp = state_path.with_name(f".{state_path.name}.{os.getpid()}.tmp")
+        fd = os.open(str(tmp), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        try:
+            with os.fdopen(fd, "wb") as fh:
+                fh.write(data)
+                fh.flush()
+                os.fsync(fh.fileno())
+            os.replace(str(tmp), str(state_path))
+        finally:
+            if tmp.exists():
+                tmp.unlink()
     except OSError:
         pass  # Saving state is best-effort; `verify` degrades to UNABLE_TO_VERIFY without it.
 
 
-def load_previous_report(state_path: pathlib.Path) -> Optional[Dict[str, Any]]:
+def carry_forward_fixes(previous: Optional[Dict[str, Any]], report: DiagnosisReport) -> List[Dict[str, Any]]:
+    """Fix records to keep in the next baseline: a fix shown earlier whose diagnosis is still present now but is
+    not shown again this run (for example a check could not run). Without this, a later verify would compare
+    without the fix's own checks (round-7 review). Only from a usable baseline of this same host and mode."""
+
+    if previous is None or _baseline_problem(previous, report) or _baseline_damage(previous):
+        return []
+    fresh_ids = {d.diagnosis_id for d in report.diagnoses}
+    shown_now = {rid for rid, r in (report.resolutions or {}).items() if getattr(r, "status", None) == "OFFERED"}
+    return [f for did, f in _baseline_fixes(previous).items() if did in fresh_ids and did not in shown_now]
+
+
+class UnreadableBaseline(Exception):
+    """The saved diagnosis exists but cannot be read: verification is impossible, not "nothing to verify"."""
+
+
+def load_previous_report(state_path: pathlib.Path, strict: bool = False) -> Optional[Dict[str, Any]]:
     if not state_path.exists():
         return None
     try:
         data = json.loads(state_path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError, ValueError, RecursionError):
+        if strict:
+            raise UnreadableBaseline(str(state_path))
         return None
     # A corrupt/hand-edited state file must degrade to "no baseline", never crash.
     if not isinstance(data, dict) or not isinstance(data.get("diagnoses", []), list):

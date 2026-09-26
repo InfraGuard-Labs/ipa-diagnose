@@ -20,6 +20,9 @@ SPEC keys (all optional):
   ruv_state_in:         [states]
   resolution:           {procedure, status, argv, no_argv0: [..], reason_contains}
   no_offered:           true            no v2 resolution is OFFERED
+  no_diagnoses:         true            no diagnosis at all
+  undiagnosed_only:     [checks]        every undiagnosed ipa-healthcheck finding is one of these checks
+  verify_item:          {contains, outcome_in / outcome_not}   (verify only) the item whose title contains the text
   verify_outcome_in:    [outcomes]      (verify only) every item's outcome is in this list
   verify_not:           [outcomes]      (verify only) no item has these outcomes
 """
@@ -109,6 +112,11 @@ def check(scenario: str, path: str, spec: dict) -> list:
         c.append((comp.get("level") != spec["completeness_not"], f"completeness {comp.get('level')} != {spec['completeness_not']}"))
     if "ruv_state_in" in spec:
         c.append((comp.get("ruv_state") in spec["ruv_state_in"], f"RUV state {comp.get('ruv_state')} in {spec['ruv_state_in']}"))
+    if spec.get("no_diagnoses"):
+        c.append((not diags, f"no diagnoses (got {[d.get('title') for d in diags]})"))
+    if "undiagnosed_only" in spec:
+        und = [(u.get("check"), u.get("message")) for u in report.get("undiagnosed_findings") or []]
+        c.append((all(ch in spec["undiagnosed_only"] for ch, _ in und), f"undiagnosed findings only {spec['undiagnosed_only']} (got {und})"))
     if spec.get("no_offered"):
         off = [r.get("procedure_id") for r in res if r.get("status") == "OFFERED"]
         c.append((not off, f"no fix OFFERED (found {off})"))
@@ -142,6 +150,12 @@ def verify_check(scenario: str, path: str, spec: dict):
         c.append((bool(items) and all(o in spec["verify_outcome_in"] for o in outs), f"verify outcomes {outs} all in {spec['verify_outcome_in']}"))
     if "verify_not" in spec:
         c.append((not any(o in spec["verify_not"] for o in outs), f"verify outcomes {outs} contain none of {spec['verify_not']}"))
+    vi = spec.get("verify_item")
+    if vi:
+        hit = [i for i in items if vi["contains"].lower() in str(i.get("title", "")).lower()]
+        ok = bool(hit) and all((i.get("outcome") in vi["outcome_in"]) if "outcome_in" in vi else (i.get("outcome") not in vi.get("outcome_not", []))
+                               for i in hit)
+        c.append((ok, f"verify item {vi['contains']!r}: {[i.get('outcome') for i in hit]} ({vi})"))
     row = _row(data.get("current_report") or {})
     row["verify"] = [{"title": i.get("title"), "outcome": i.get("outcome"), "detail": (i.get("detail") or "")[:300]} for i in items]
     return c, row

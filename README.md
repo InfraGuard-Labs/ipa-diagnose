@@ -274,7 +274,9 @@ CHECKED FOR YOU -> IMPACT -> FIX -> PREREQUISITES -> WHAT THIS CHANGES -> RISK -
 
 ipa-diagnose runs only **read-only** checks itself (shown under CHECKED FOR YOU) and **never runs a fix**. A fix is
 shown only when its applicability and prerequisites are established on this host and nothing contradicts it;
-otherwise the report says why no fix is shown. Details, guarantees and the JSON format (`v2.resolutions`):
+otherwise the report says why no fix is shown. The first two procedures have been applied verbatim and verified
+in a live lab (FreeIPA 4.13.3 / Fedora 43 only); the clock and certificate procedures are tested against recorded
+evidence only, and each fix's label says which. Details, guarantees and the JSON format (`v2.resolutions`):
 [docs/resolution.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/docs/resolution.md).
 
 ## The evidence model

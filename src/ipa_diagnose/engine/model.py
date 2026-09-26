@@ -271,6 +271,8 @@ class DiagnosisReport:
     """Every WARNING-or-worse ipa-healthcheck finding no rule explains, by name (never only a count)."""
     resolutions: Dict[str, Any] = dataclasses.field(default_factory=dict)
     """diagnosis_id -> resolution.engine.Resolution, filled by resolve_report (1.0 Slice 1)."""
+    carried_fixes: List[Dict[str, Any]] = dataclasses.field(default_factory=list)
+    """Verify-baseline fix records carried over from the previous run (see verify.carry_forward_fixes)."""
     unknown_severity_findings: List[str] = dataclasses.field(default_factory=list)
     """Human-readable notes for any Finding whose raw ipa-healthcheck
     ``result`` value did not match a known severity (see Severity.UNKNOWN) -

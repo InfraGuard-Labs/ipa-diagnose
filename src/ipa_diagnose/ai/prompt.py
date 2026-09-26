@@ -15,12 +15,14 @@ misleading than falling back to the deterministic `why` text).
 from __future__ import annotations
 
 import re
+import unicodedata
 from typing import Optional
 
 from ipa_diagnose.ai.provider import AIProvider, AIRequest, ProviderError
 from ipa_diagnose.engine.model import Diagnosis, RiskLevel
 from ipa_diagnose.evidence.model import EvidenceBundle
 from ipa_diagnose.privacy.minimize import build_ai_payload
+from ipa_diagnose.textsafe import clean_multiline
 
 # Deliberately NOT anchored to line-start (an earlier version was - a
 # security review found that let prose-embedded suggestions like "you could
@@ -34,16 +36,19 @@ _COMMAND_LIKE = re.compile(
     # consuming group, and any path prefix (/bin/, /usr/sbin/, ...).
     r"(?<![\w./-])(?:\$\s*)?(?:sudo\s+)?(?:/(?:usr/)?(?:local/)?s?bin/)?"
     r"(ipa[\w-]*|getcert|kinit|klist|kvno|dsconf|dsctl|ldapmodify|ldapsearch|ldapadd|ldapdelete|"
-    r"systemctl|service|reboot|shutdown|halt|poweroff|init\s+0|"
+    r"systemctl|service\s+[\w@.-]+\s+(?:start|stop|restart|reload|status|condrestart)|reboot|shutdown|halt|poweroff|init\s+0|"
     r"rm\b|mkfs[\w.]*|dd\b|userdel|groupdel|usermod|passwd|iptables|firewall-cmd|"
     r"dnf|yum|rpm\b|certutil|pk12util|openssl|pki\b|db2index[\w.]*|chmod|chown|chgrp|p?kill(?:all)?|"
     r"curl|wget|python[\w.]*|perl|bash|sh\b|nc\b|ncat|ssh|scp|crontab|tee\b|sed\s+-i|truncate|shred|"
     r"chronyc|chronyd(?=\s+-)|ntpdate|ntpd(?=\s+-)|hwclock|timedatectl|date\s+(?:-\w+\s+)*(?:-s|--set)|setenforce|semanage|"
     r"setfacl|restorecon|journalctl|sss_cache|sssctl|ldappasswd|ldapmodrdn|ldapdelete|"
-    r"kadmin[\w.]*|kdb5_util|ktutil|mv\b|cp\b|ln\b)\b",
-    re.IGNORECASE,
+    r"kadmin[\w.]*|kdb5_util|ktutil|kdestroy|mv\b|cp\b|ln\b|unlink|useradd|groupadd|nmcli|authselect|setsebool|"
+    r"bak2db|ldif2db|db2ldif|db2bak|dscreate|dsctl|pkispawn|pkidestroy|rndc|named-checkconf)\b",
+    # case-sensitive on purpose: commands are typed in lower case, while prose says "IPA", "PKI", "Service"
 )
 _CODE_SPAN = re.compile(r"`([^`\n]{1,200})`")
+_FENCED = re.compile(r"```[^\n]*\n?(.*?)```", re.DOTALL)
+_INVISIBLE = re.compile("[­​-‏⁠-⁤﻿]")
 _SHAPE = re.compile(r"(?<![\w./-])([A-Za-z][A-Za-z0-9_.+-]{0,40})\s+(?:--?[A-Za-z]|/[\w.-])")
 _REDIRECT = re.compile(r"(?<![-=<])>{1,2}\s*[/~$]|\|\s*[A-Za-z]|\$\(|&&|;\s*[a-z]+\s+-")
 _PROSE_WORDS = frozenset(
@@ -52,7 +57,7 @@ _PROSE_WORDS = frozenset(
     "not only both also like such than then when while if because between over below above near "
     "config configuration database log logs keytab keytabs certificate certificates socket link symlink "
     "mode owner group permissions exists missing location copy entry key keys store stored lives points "
-    "reads writes uses under-".split()
+    "reads writes uses check see inspect review read open look examine compare confirm".split()
 )
 _MAX_EXPLANATION_CHARS = 4000
 
@@ -112,10 +117,21 @@ def sanitize_explanation(text: str, diagnosis: Diagnosis) -> Optional[str]:
         return None
     if len(text) > _MAX_EXPLANATION_CHARS:
         return None
+    # Filter exactly what will be displayed: terminal escapes removed (they could split a command so the filter
+    # misses it while the terminal shows it joined - round-7 review), compatibility forms folded (NFKC: full-width
+    # letters), invisible characters dropped, and look-alike letters from other scripts refused outright.
+    text = unicodedata.normalize("NFKC", clean_multiline(_INVISIBLE.sub("", text)))
+    if any(ch.isalpha() and not ch.isascii() for ch in text):
+        return None
 
     approved_commands = {a.command for a in diagnosis.actions if a.command and a.risk == RiskLevel.SAFE}
 
-    for span_match in _CODE_SPAN.finditer(text):
+    for block in _FENCED.finditer(text):
+        for line in block.group(1).splitlines():
+            if line.strip() and not _looks_approved(line, approved_commands):
+                return None
+    text_wo_fences = _FENCED.sub(" ", text)
+    for span_match in _CODE_SPAN.finditer(text_wo_fences):
         if not _looks_approved(span_match.group(1), approved_commands):
             return None
 

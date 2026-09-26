@@ -101,6 +101,10 @@ def _maybe_explain(
     for d in report.diagnoses:
         if d.priority not in _EXPLAINABLE_PRIORITIES:
             continue
+        res = (report.resolutions or {}).get(d.diagnosis_id)
+        if res is not None and res.status in ("WITHHELD", "NONE"):
+            # A fix was deliberately not shown: no AI rewording at all, so nothing can bring one back.
+            continue
         text = explain_diagnosis(d, bundle, provider)
         if text:
             explanations[d.diagnosis_id] = text
@@ -124,6 +128,9 @@ def _save_baseline(report: DiagnosisReport, args: argparse.Namespace) -> None:
     overwrite the last good baseline that `verify` compares against."""
 
     if report.evidence_completeness.healthcheck_collected:
+        from ipa_diagnose.verify import carry_forward_fixes
+
+        report.carried_fixes = carry_forward_fixes(load_previous_report(_state_path(args)), report)
         save_report(_state_path(args), report)
 
 
@@ -142,7 +149,19 @@ def cmd_diagnose(args: argparse.Namespace, console: Console) -> int:
 
 def cmd_verify(args: argparse.Namespace, console: Console) -> int:
     bundle, report = _collect_and_diagnose(args)
-    previous = load_previous_report(_state_path(args))
+    from ipa_diagnose.verify import UnreadableBaseline
+
+    try:
+        previous = load_previous_report(_state_path(args), strict=True)
+    except UnreadableBaseline:
+        msg = ("The saved diagnosis exists but cannot be read (damaged or truncated), so nothing can be verified. "
+               "Run ipa-diagnose to create a new baseline.")
+        if args.json:
+            print(json.dumps({"previous_generated_at": None, "baseline_unreadable": True, "items": [],
+                              "new_conditions": [], "current_report": report_to_dict(report)}, indent=2))
+        else:
+            console.print(f"[yellow]{msg}[/yellow]")
+        return 4
     result = compare(previous, report, runner=_runner(args))
 
     if args.json:
