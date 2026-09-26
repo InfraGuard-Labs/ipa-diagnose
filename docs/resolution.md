@@ -81,12 +81,13 @@ it (nothing that prints a command for later can): run the commands right after c
 ## AI explanations
 
 When an AI provider is configured, it may reword WHY. It never produces the FIX section, and it is not asked at
-all for a diagnosis whose fix was withheld or has no procedure. Its text is shown only if it contains **no
-command at all** - not even the diagnosis's own read-only ones: no backticks or code blocks, no known program
+all for a diagnosis whose fix was withheld or has no procedure. Its text is shown only if the filter finds **no
+command in it** - not even the diagnosis's own read-only ones: no backticks or code blocks, no known program
 name, no word followed by an option or an absolute path, no redirect, pipe, `$(`, `&&`, backslash-split word
-or `//` path, no letters outside ASCII (look-alikes); invisible characters and terminal escapes are removed
+or `//` path, no instruction to run something ("run X Y"), no letters outside ASCII (look-alikes); invisible characters and terminal escapes are removed
 first, and the text checked is exactly the text shown. Otherwise the deterministic WHY is shown. This is a
-filter, not a proof - never run a command that appears only in AI text.
+filter, not a proof: a command written as plain words for a program it does not know can still get through, so
+never run a command that appears only in AI text.
 
 ## When ipa-healthcheck gives no results
 

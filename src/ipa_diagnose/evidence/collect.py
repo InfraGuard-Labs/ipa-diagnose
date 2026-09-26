@@ -55,17 +55,19 @@ def collect_evidence(*, replay_dir: Optional[str] = None) -> EvidenceBundle:
 
     before = _unit_state("certmonger.service") if live else None
     _collect_healthcheck(bundle, live=live, fixture_path=fixture_path)
+    if live and any(e.collector == "ipa-healthcheck" for e in bundle.collection_errors):
+        bundle.service_states = _ipa_unit_states()
+    _collect_staged(bundle, fixture_path=fixture_path)
     if live:
+        # measured after every collector (getcert can activate certmonger over D-Bus too - round-9 review)
         after = _unit_state("certmonger.service")
         if before in ("inactive", "failed") and after == "active":
             # Upstream ipalib's certmonger client starts certmonger when it is not running, and ipa-healthcheck's
             # certificate checks use it. ipa-diagnose itself changed nothing, but the administrator must know.
             bundle.side_effects.append(
                 "certmonger was not running when ipa-diagnose started and is running now: ipa-healthcheck's "
-                "certificate checks start it (upstream FreeIPA behaviour). ipa-diagnose itself changed nothing.")
-        if any(e.collector == "ipa-healthcheck" for e in bundle.collection_errors):
-            bundle.service_states = _ipa_unit_states()
-    _collect_staged(bundle, fixture_path=fixture_path)
+                "certificate checks (or getcert) start it (upstream FreeIPA behaviour). ipa-diagnose itself changed "
+                "nothing.")
     return bundle
 
 
@@ -73,16 +75,20 @@ _STATE_RE = __import__("re").compile(r"^[a-z-]{1,20}$")
 
 
 def _unit_state(unit: str) -> Optional[str]:
-    """`systemctl is-active <unit>` (read-only). None when it cannot be read."""
+    """ActiveState of a unit that exists (`systemctl show`, read-only). None when it cannot be read or the unit is
+    not loaded - systemd reports "inactive" for a unit that does not exist at all (round-9 review)."""
 
     if shutil.which("systemctl") is None:
         return None
     try:
-        proc = subprocess.run(["systemctl", "is-active", unit], capture_output=True, text=True, timeout=10,
-                              stdin=subprocess.DEVNULL, errors="replace")
+        proc = subprocess.run(["systemctl", "show", "-p", "LoadState,ActiveState", unit], capture_output=True,
+                              text=True, timeout=10, stdin=subprocess.DEVNULL, errors="replace")
     except (OSError, ValueError, subprocess.SubprocessError):
         return None
-    state = (proc.stdout or "").strip().splitlines()[0] if (proc.stdout or "").strip() else ""
+    fields = dict(ln.split("=", 1) for ln in (proc.stdout or "").splitlines() if "=" in ln)
+    if fields.get("LoadState") != "loaded":
+        return None
+    state = fields.get("ActiveState", "")
     return state if _STATE_RE.fullmatch(state) else None
 
 

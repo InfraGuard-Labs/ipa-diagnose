@@ -116,7 +116,10 @@ def test_when_healthcheck_gives_nothing_ipa_diagnose_names_stopped_units_itself(
     from tests.adversarial import test_false_reassurance as fr
 
     def systemctl(args):
-        return (3, "inactive\n", "") if args[-1] == "named.service" else (0, "active\n", "")
+        unit = args[-1]
+        if unit == "named-pkcs11.service":  # does not exist on this system: never listed
+            return (0, "LoadState=not-found\nActiveState=inactive\n", "")
+        return (0, f"LoadState=loaded\nActiveState={'inactive' if unit == 'named.service' else 'active'}\n", "")
 
     fr._install(monkeypatch, healthcheck=subprocess.TimeoutExpired(["ipa-healthcheck"], 120), extra={"systemctl": systemctl})
     report = fr._diagnose()
@@ -126,6 +129,7 @@ def test_when_healthcheck_gives_nothing_ipa_diagnose_names_stopped_units_itself(
     render_report(report, Console(file=buf, width=200, color_system=None))
     text = buf.getvalue()
     assert "named.service: inactive" in text and "NOT a healthy result" in text and "No problem was observed" not in text
+    assert "named-pkcs11" not in text
 
 
 def test_certmonger_started_by_healthcheck_is_disclosed(monkeypatch):
@@ -141,11 +145,12 @@ def test_certmonger_started_by_healthcheck_is_disclosed(monkeypatch):
     def systemctl(args):
         calls.append(args[-1])
         # stopped before ipa-healthcheck ran, running afterwards (ipalib starts it)
-        return (3, "inactive\n", "") if calls.count("certmonger.service") == 1 else (0, "active\n", "")
+        state = "inactive" if calls.count("certmonger.service") == 1 else "active"
+        return (0, f"LoadState=loaded\nActiveState={state}\n", "")
 
     fr._install(monkeypatch, extra={"systemctl": systemctl})
     report = fr._diagnose()
     assert any("certmonger was not running" in s for s in report.side_effects)
     buf = io.StringIO()
     render_report(report, Console(file=buf, width=200, color_system=None))
-    assert "ipa-diagnose itself changed nothing" in buf.getvalue()
+    assert "ipa-diagnose itself changed nothing" in " ".join(buf.getvalue().split())

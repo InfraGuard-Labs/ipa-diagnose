@@ -293,11 +293,12 @@ def _file_stat(params):
         group = grp.getgrgid(st.st_gid).gr_name
     except (ImportError, KeyError):
         owner, group = f"uid:{st.st_uid}", f"gid:{st.st_gid}"
+    unnamed = owner.startswith("uid:") or group.startswith("gid:")  # stat %U/%G would print UNKNOWN: no exact confirm
     real = os.path.realpath(path)
     target, allowed, mirror = _command_target(real, path)
     allowed = allowed and (_stat.S_ISLNK(st.st_mode) or _layout_ok(path))
     # A regular file with another hard link may really be another component's file under a second name.
-    allowed = allowed and not (_stat.S_ISREG(st.st_mode) and st.st_nlink > 1)
+    allowed = allowed and not (_stat.S_ISREG(st.st_mode) and st.st_nlink > 1) and not unnamed
     fields = {
         "exists": True, "is_symlink": _stat.S_ISLNK(st.st_mode), "is_regular": _stat.S_ISREG(st.st_mode),
         "is_dir": _stat.S_ISDIR(st.st_mode), "mode": "%04o" % (st.st_mode & 0o7777),

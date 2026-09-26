@@ -244,7 +244,10 @@ def compare(previous: Optional[Dict[str, Any]], current: DiagnosisReport, runner
     pack_collectors = {
         p.pack_id: set(p.additional_collectors) | set(p.unconditional_collectors) for p in all_packs()
     }
-    healthcheck_missing = not current.evidence_completeness.healthcheck_collected
+    # A fresh run that did not include the full set of ipa-healthcheck checks cannot show that anything cleared
+    # (round-9 review): the check that found it may simply not have run.
+    healthcheck_missing = not current.evidence_completeness.healthcheck_collected or any(
+        e.startswith("ipa-healthcheck-coverage") for e in current.collection_errors)
     crashed_checks = any(d.rule_id == "healthcheck-check-failed" for d in current.diagnoses)
     not_a_baseline = _baseline_problem(previous, current) or _baseline_damage(previous)
     missing_record = _offered_without_record(previous, fixes)
@@ -274,7 +277,7 @@ def compare(previous: Optional[Dict[str, Any]], current: DiagnosisReport, runner
                     title=title,
                     outcome=VerifyOutcome.UNABLE_TO_VERIFY,
                     detail=(
-                        "ipa-healthcheck could not run this time, so nothing can be confirmed resolved."
+                        "ipa-healthcheck could not run (or did not run its full set of checks) this time, so nothing can be confirmed resolved."
                         if healthcheck_missing
                         else "Fresh evidence for this pack could not be collected this run."
                     ),
@@ -340,7 +343,7 @@ def compare(previous: Optional[Dict[str, Any]], current: DiagnosisReport, runner
     # never silently "nothing to verify" (round-8 review).
     v2 = previous.get("v2") if isinstance(previous.get("v2"), dict) else {}
     shown = {r.get("diagnosis_id") for r in (v2.get("resolutions") if isinstance(v2.get("resolutions"), list) else [])
-             if isinstance(r, dict) and r.get("status") == "OFFERED"}
+             if isinstance(r, dict) and r.get("status") == "OFFERED" and isinstance(r.get("diagnosis_id"), str)}
     for did in sorted((set(fixes) | {x for x in shown if isinstance(x, str)}) - set(prev_by_id)):
         items.append(VerifyItem(diagnosis_id=sanitize_text(did, 160), title=sanitize_text(did, 160),
                                 outcome=VerifyOutcome.UNABLE_TO_VERIFY,

@@ -441,3 +441,69 @@ def test_key_material_skip_reason_is_plain():
     assert r.status == "WITHHELD"
     assert any("holds keys or secrets" in x for x in r.reasons)
     assert not any("not a single value" in x or "(ownership of key material" in x for x in r.reasons)
+
+
+@pytest.mark.parametrize("text", [
+    "You can restart the whole machine with init 6 once the disk is cleared.",
+    "Run telinit 6 to restart.",
+    "To leave the domain run realm leave now.",
+    "Relabel everything with fixfiles onboot then restart.",
+    "Run podman restart freeipa",
+    "Stop the firewall: nft flush ruleset",
+    "Please execute the command frobnicate --all soon.",
+])
+def test_round9_ai_commands_are_rejected(text):
+    from ipa_diagnose.ai.prompt import sanitize_explanation
+
+    assert sanitize_explanation(text, _ai_diag("chronyc tracking")) is None
+
+
+def test_round9_prose_with_run_as_noun_is_kept():
+    from ipa_diagnose.ai.prompt import sanitize_explanation
+
+    t = "The Directory Server stopped; everything that depends on it failed during the last run."
+    assert sanitize_explanation(t, _ai_diag("chronyc tracking")) == t
+
+
+def test_round9_conflict_detected_even_when_one_finding_is_dropped():
+    p1, p2 = "/var/lib/pki/pki-tomcat/conf/ca/CS.cfg", "/etc/pki/pki-tomcat/ca/CS.cfg"
+    entries = [perm(path=p1, expected="0660", got="0644"), perm(path=p2, expected="0600", got="0644", check="IPAFileCheck")]
+    results = {**ROOT_OK, f"file.stat|path={p1}": stat(mode="0644", real=p2), f"file.stat|path={p2}": stat(mode="0644", real=p2)}
+    r = res_of(report_for(entries, results)[0], FP)
+    assert r.status == "WITHHELD" and not r.steps and any("different values for the same file" in x for x in r.reasons)
+
+
+def test_round9_file_stat_refuses_unnamed_owner(monkeypatch):
+    import os
+
+    path = "/etc/pki/pki-tomcat/ca/CS.cfg"
+    monkeypatch.setattr(C.os, "lstat", lambda p: os.stat_result((0o100664, 1, 1, 1, 424242, 424242, 10, 0, 0, 0)))
+    monkeypatch.setattr(C.os.path, "realpath", lambda p: p)
+    monkeypatch.setattr(C.os.path, "islink", lambda p: False)
+    assert C._file_stat({"path": path}).fields["realpath_allowed"] is False
+
+
+def test_round9_label_names_exact_version_and_os():
+    from ipa_diagnose.evidence.model import EnvironmentInfo
+    from ipa_diagnose.resolution.engine import _label
+    from ipa_diagnose.resolution.knowledge import load_catalogue
+
+    proc = next(p for p in load_catalogue()[0] if p["id"] == "proc.service.start-stopped-service")
+    same = EnvironmentInfo(distro="fedora", distro_version="43", freeipa_version="4.13.3-2.fc43")
+    other = EnvironmentInfo(distro="fedora", distro_version="39", freeipa_version="4.13.0-1.fc39")
+    assert "only - not yet on this" not in _label(proc, same)[1]
+    assert "only - not yet on this" in _label(proc, other)[1]
+
+
+def test_round9_verify_with_missing_check_families_is_unable():
+    from ipa_diagnose.render.json_output import report_to_dict
+    from ipa_diagnose.verify import VerifyOutcome, compare
+
+    before, _ = report_for([perm()], {**ROOT_OK, f"file.stat|path={CS}": stat()})
+    prev = json.loads(json.dumps(report_to_dict(before)))
+    after, _ = report_for([], {**ROOT_OK})
+    after.collection_errors.append("ipa-healthcheck-coverage: ipa-healthcheck reported no ipahealthcheck.ds.* checks")
+    from tests.resolution.test_procedures import FakeRunner
+
+    out = compare(prev, after, runner=FakeRunner({f"file.stat|path={CS}": stat(mode="0660")}))
+    assert all(i.outcome == VerifyOutcome.UNABLE_TO_VERIFY for i in out.items)

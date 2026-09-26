@@ -43,10 +43,14 @@ _COMMAND_LIKE = re.compile(
     r"chronyc|chronyd(?=\s+-)|ntpdate|ntpd(?=\s+-)|hwclock|timedatectl|date\s+(?:-\w+\s+)*(?:-s|--set)|setenforce|semanage|"
     r"setfacl|restorecon|journalctl|sss_cache|sssctl|ldappasswd|ldapmodrdn|ldapdelete|"
     r"kadmin[\w.]*|kdb5_util|ktutil|kdestroy|mv\b|cp\b|ln\b|unlink|useradd|groupadd|nmcli|authselect|setsebool|"
-    r"bak2db|ldif2db|db2ldif|db2bak|dscreate|dsctl|pkispawn|pkidestroy|rndc|named-checkconf)\b",
+    r"bak2db|ldif2db|db2ldif|db2bak|dscreate|dsctl|pkispawn|pkidestroy|rndc|named-checkconf|"
+    r"init\s+[0-6]|telinit|realm\s+(?:leave|join|deny|permit)|fixfiles|podman|docker|nft|kexec|mount|umount|"
+    r"swapoff|sysctl\s+-w|hostnamectl|update-crypto-policies|authconfig)\b",
     # case-sensitive on purpose: commands are typed in lower case, while prose says "IPA", "PKI", "Service"
 )
 _WORD_BREAK = re.compile(r"\w\\\w|(?<![\w:])//")  # "sys\temctl" (the shell drops the backslash), "//usr/bin/..."
+# An instruction to run something, whatever it is called: "run realm leave", "execute the command foo bar".
+_IMPERATIVE = re.compile(r"(?i)\b(?:run|execute|invoke|type|issue|enter)\s+(?:the\s+)?(?:command\s+)?[a-z][\w.-]*\s+[a-z0-9-]")
 _INVISIBLE = re.compile("[­​-‏⁠-⁤﻿]")
 _SHAPE = re.compile(r"(?<![\w./-])([A-Za-z][A-Za-z0-9_.+-]{0,40})\s+(?:--?[A-Za-z]|/[\w.-])")
 _REDIRECT = re.compile(r"(?<![-=<])>{1,2}\s*[/~$]|\|\s*[A-Za-z]|\$\(|&&|;\s*[a-z]+\s+-")
@@ -88,7 +92,7 @@ def sanitize_explanation(text: str, diagnosis: Diagnosis) -> Optional[str]:
     for m in _SHAPE.finditer(text):
         if m.group(1).lower() not in _PROSE_WORDS:
             return None
-    if _COMMAND_LIKE.search(text):
+    if _COMMAND_LIKE.search(text) or _IMPERATIVE.search(text):
         return None
     return text.strip()
 

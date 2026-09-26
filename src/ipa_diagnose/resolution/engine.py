@@ -305,11 +305,12 @@ def _label(proc: Dict[str, Any], env: Optional[EnvironmentInfo]) -> Tuple[bool, 
     prov = proc["provenance"]
     live = [v for v in prov.get("verified_on") or [] if v.get("tier") == "LIVE"]
     here = _version(env.freeipa_version) if env else None
-    distro = (env.distro or "").lower() if env else ""
+    os_here = f"{(env.distro or '').lower()}-{(env.distro_version or '').lower()}" if env else ""
+    # exact: same FreeIPA version (major.minor.patch) and same OS release as the live record (round-9 review)
     matched = [
         v for v in live
-        if here is not None and _version(v["freeipa"]) is not None and _version(v["freeipa"])[:2] == here[:2]
-        and str(v["os"]).lower().split("-")[0] == distro
+        if here is not None and _version(v["freeipa"]) is not None and _version(v["freeipa"])[:3] == here[:3]
+        and str(v["os"]).lower() == os_here
     ]
     where = ", ".join(f"FreeIPA {v['freeipa']} / {v['os']}" for v in live)
     if prov["tier"] == "BUILT_IN_VERIFIED" and matched:
@@ -401,6 +402,20 @@ def resolve_diagnosis(d: Diagnosis, env: Optional[EnvironmentInfo], runner: Runn
             res = runner.run(inv["check"], params)
             (sc.item_checks if inv.get("for_each") else global_checks)[inv["id"]] = res
             r.checks.append((_text(inv["label"], sc), res))
+
+    # 5b. Two reported items that reach the same real target (check field "target") must not disagree, whether or
+    # not a later rule would drop one of them (round-9 review): a dropped contradicting finding still contradicts.
+    for n, items in lists.items():
+        by_target: Dict[Tuple[str, str], set] = {}
+        for it, ic in zip(items, lchecks[n]):
+            tgt = next((c.fields.get("target") for c in ic.values() if c.status == OK and c.fields.get("target")), None)
+            if tgt:
+                by_target.setdefault((n, str(tgt)), set()).add(json.dumps({k: v for k, v in it.items() if k != "path"}, sort_keys=True))
+        clash = [t for (ln, t), vals in by_target.items() if len(vals) > 1]
+        if clash:
+            r.reasons.append(f"Two findings expect different values for the same file ({sanitize_text(clash[0], 160)}), "
+                             "so ipa-diagnose cannot tell which one is right.")
+            return r
 
     # 6. contradicting / changed evidence: withhold (or drop the one affected target)
     for w in proc.get("withhold_if", []):
