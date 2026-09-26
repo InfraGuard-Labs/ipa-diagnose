@@ -26,7 +26,7 @@ provenance:
     - freeipa: "4.13.3"
       os: fedora-43
       tier: LIVE
-      evidence: https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36254925467
+      evidence: https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36258032392
       date: "2026-09-26"
   reviews:
     - by: "fresh reviewer agents that did not implement Slice 1 (independent within a one-maintainer project), rounds 1-10, red teams 1-8"

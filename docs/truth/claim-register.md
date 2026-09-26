@@ -2,7 +2,7 @@
 
 This is **not** an article draft. It lists every claim about ipa-diagnose that could be published, with its
 evidence tier and exact safe wording, so no claim is ever stronger than its evidence. Evidence rows are in
-[truth-matrix.md](truth-matrix.md). Product commit for all LIVE rows: `832a7f9` (runs 36254925467 and 36254927881). One maintainer; "independent review" means fresh AI reviewer agents that did not write the code.
+[truth-matrix.md](truth-matrix.md). Product commit for all LIVE rows: `46c844d` (runs 36258032392 and 36258035064). One maintainer; "independent review" means fresh AI reviewer agents that did not write the code.
 
 **Evidence tiers:** LIVE (disposable real FreeIPA server in the free GitHub-hosted lab, current code) ·
 FIXTURE (recorded or constructed evidence replayed through current code) · HISTORICAL (live evidence from an
