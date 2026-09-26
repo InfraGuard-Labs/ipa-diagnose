@@ -2,8 +2,7 @@
 
 This is **not** an article draft. It lists every claim about ipa-diagnose that could be published, with its
 evidence tier and exact safe wording, so no claim is ever stronger than its evidence. Evidence rows are in
-[truth-matrix.md](truth-matrix.md). Product commit for all LIVE rows: the final Slice 1 hardening commit named
-there. One maintainer; "independent review" means fresh AI reviewer agents that did not write the code.
+[truth-matrix.md](truth-matrix.md). Product commit for all LIVE rows: `832a7f9` (runs 36254925467 and 36254927881). One maintainer; "independent review" means fresh AI reviewer agents that did not write the code.
 
 **Evidence tiers:** LIVE (disposable real FreeIPA server in the free GitHub-hosted lab, current code) ·
 FIXTURE (recorded or constructed evidence replayed through current code) · HISTORICAL (live evidence from an
@@ -31,16 +30,16 @@ there is **no** live evidence for EL8/EL9/RHEL.
 | C11 | verify is not fooled by a damaged saved report | LIVE (one case) + FIXTURE | V2 + tests | root forgery out of scope | "When the saved fix record was altered, verify reported CHANGED instead of RESOLVED." | "tamper-proof" |
 | C12 | Healthy server stays boring | LIVE | S0b, S10 | container MetaCheck FIPS warning makes it NOT_FULLY_VERIFIED, no diagnosis | "On a healthy lab server ipa-diagnose made no diagnosis; the only item was an ipa-healthcheck metadata warning caused by the container (listed, not explained away)." | "reports HEALTHY on healthy servers" |
 | C13 | Missing ipa-healthcheck / ldapsearch / root never looks healthy | LIVE | S1, S2 | - | "Without ipa-healthcheck, ldapsearch or root, the report was never HEALTHY and no fix was offered." | - |
-| C14 | named stopped | LIVE | S4 | ipa-healthcheck itself times out | "With this server's DNS stopped, ipa-healthcheck did not finish; ipa-diagnose reported UNKNOWN - not healthy - and listed the stopped unit (from its own read-only check)." | "diagnoses DNS outages" |
-| C15 | Two simultaneous service failures | LIVE | S7b (krb5kdc + certmonger) | two services | "Two stopped services were both diagnosed and both got their own scoped start command." | "handles multiple failures" in general |
+| C14 | named stopped | LIVE | S4 (named.service listed inactive) | ipa-healthcheck itself times out | "With this server's DNS stopped, ipa-healthcheck did not finish; ipa-diagnose reported UNKNOWN - not healthy - and listed the stopped unit (from its own read-only check)." | "diagnoses DNS outages" |
+| C15 | Two simultaneous service failures | LIVE (partial) | S7 (named + krb5kdc: UNKNOWN, ipa-healthcheck timed out), S7b (krb5kdc diagnosed and fix offered; certmonger restarted by ipa-healthcheck and disclosed) | certmonger cannot be observed stopped | "With the KDC and certmonger stopped together, the KDC got its scoped fix and the report disclosed that ipa-healthcheck had restarted certmonger." | "diagnoses multiple simultaneous failures" |
 | C16 | Healthy two-node topology, RUV verified | LIVE | H2 | one topology | "On a healthy two-server lab topology, replica update vectors were read and verified." | - |
 | C17 | Dead replica detection | LIVE (**negative**) | R1 | - | **Do not claim.** With the replica removed but still registered, neither ipa-healthcheck nor ipa-diagnose reported it at capture time. | "detects a failed replica" |
 | C18 | Stale RUV detection live | not established | R2 | engineered state only | **Do not claim** a live stale-RUV detection. Fixture evidence only. | "detects stale RUVs" |
 | C19 | Clock-skew fix | FIXTURE | tests | cannot be reproduced safely in containers (shared wall clock) | "Offered only when this host's clock is measured ≥240 s off and synchronized to a named source; tested on recorded evidence." | any live claim |
 | C20 | Expiring DS certificate renewal | FIXTURE + LIVE capture of the tracking profile | tests; S6 getcert capture | no live near-expiry certificate | "Tested on recorded evidence; offered only with the standard IPA service profile, observed live as caIPAserviceCert." | any live renewal claim |
 | C21 | Expired DS certificate gets no invented fix | FIXTURE + SOURCE/RESEARCH | tests; RHEL docs link | - | "For an already expired DS certificate it points to the documented recovery procedure instead of a command." | - |
-| C22 | Print-only | SOURCE (code) + LIVE (lab ran commands itself) | all apply rows | ipa-healthcheck side effect | "ipa-diagnose never runs a fix; note that ipa-healthcheck, which it runs, starts a stopped certmonger (upstream behaviour), and ipa-diagnose reports when that happens." | "completely read-only" |
+| C22 | Print-only | SOURCE (code) + LIVE (lab ran commands itself; S7b disclosure) | all apply rows, S7b | ipa-healthcheck side effect | "ipa-diagnose never runs a fix; note that ipa-healthcheck, which it runs, starts a stopped certmonger (upstream behaviour), and ipa-diagnose reports when that happens." | "completely read-only" |
 | C23 | AI cannot bring back a withheld command | SYNTHETIC + code | tests | filter not proof | "AI rewording is not requested for withheld fixes, and AI text containing any command is discarded." | "AI is safe" |
 | C24 | Works across RHEL 8-10 | none | - | EL images did not install in the lab | **Do not claim.** Procedures are gated to FreeIPA 4.9-4.x and say "not verified on this version/OS" elsewhere. | "supports RHEL 8/9/10" |
-| C25 | Independent review | process | review rounds 1-9 / red teams 1-5 | fresh AI agents, one maintainer | "Reviewed adversarially in several rounds by fresh reviewer agents that did not write the code (a one-maintainer project)." | "independently audited" |
+| C25 | Independent review | process | review rounds 1-10 / red teams 1-8, fresh-user check | fresh AI agents, one maintainer | "Reviewed adversarially in several rounds by fresh reviewer agents that did not write the code (a one-maintainer project)." | "independently audited" |
 | C26 | Secret redaction | SYNTHETIC | tests | pattern-based | "Common secret shapes are redacted from the log line it shows." | "never leaks secrets" |
