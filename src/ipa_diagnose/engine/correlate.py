@@ -127,7 +127,9 @@ _SAFETY_NETS = ("healthcheck-check-failed", "unexplained-findings")
 
 # ipa-healthcheck checks whose answer comes from the service itself (so a stopped service explains their result)
 _CHECKS_ASKING_SERVICE = {
-    "certmonger": ("IPACertmongerCA", "IPACertTracking", "CertmongerStuckCheck", "IPACertmongerExpirationCheck"),
+    # only what the live capture proves: with certmonger stopped, IPACertmongerCA ran and said "CA missing"
+    # (the other certificate checks crash instead; a result they return came from a running certmonger)
+    "certmonger": ("IPACertmongerCA",),
 }
 
 

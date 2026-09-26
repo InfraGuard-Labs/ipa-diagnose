@@ -155,6 +155,16 @@ class NamedServiceDownRule(DiagnosticRule):
     summary = "named/bind-dyndb-ldap is not running or failed to start"
 
     def evaluate(self, bundle: EvidenceBundle) -> Optional[Diagnosis]:
+        d = self._evaluate(bundle)
+        dirsrv_down = any(f.source.endswith("meta.services") and f.check.split("@")[0] == "dirsrv"
+                          and f.severity.rank >= Severity.ERROR.rank for f in bundle.findings)
+        if d is not None and "missing LDAP ACI" in d.title and not dirsrv_down:
+            # err=50 is an access-control ANSWER from a running Directory Server: not a symptom of a full disk or
+            # other DS trouble while dirsrv runs (red-team round 8)
+            d.not_caused_by = ["directory-server"]
+        return d
+
+    def _evaluate(self, bundle: EvidenceBundle) -> Optional[Diagnosis]:
         journal_lines = _journal_lines(bundle)
         aci_lines = [i for i in journal_lines if _is_aci_error(i)]
         crash_lines = [i for i in journal_lines if _is_strong_crash(i)]
