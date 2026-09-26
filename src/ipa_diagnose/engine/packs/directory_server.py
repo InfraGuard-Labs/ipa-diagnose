@@ -351,6 +351,23 @@ def _permission_targets(findings: List[Finding]) -> dict:
 _DS_PATH_PREFIXES = ("/etc/dirsrv/", "/var/lib/dirsrv/", "/var/log/dirsrv/", "/run/dirsrv/", "/usr/lib64/dirsrv/")
 
 
+def _file_impact(findings: List[Finding]) -> str:
+    """What the reported mismatch can actually do. A mode that is only too PERMISSIVE exposes the file to more
+    local users but cannot stop a service from reading it (live lab: every fresh container install reports
+    CS.cfg 0664 vs 0660) - it must not be described as an outage risk."""
+
+    def permissive(f: Finding) -> bool:
+        kw = f.keywords if isinstance(f.keywords, dict) else {}
+        return (str(kw.get("type", "")).lower() == "mode"
+                and _mode_delta(str(kw.get("got")), str(kw.get("expected"))).get("loosens") == "no")
+
+    if findings and all(permissive(f) for f in findings):
+        return ("The file is readable or writable by more local users than it should be, which can expose what it "
+                "contains. This does not stop any service from working; it is a security finding.")
+    return ("dirsrv (or the RA agent / Tomcat/PKI NSS DB it depends on) can fail to start or fail to "
+            "read its own certificate material until ownership/mode is corrected.")
+
+
 def _names_any(item: EvidenceItem, paths: List[str]) -> bool:
     text = str(item.data.get("message") or item.data.get("line") or item.summary or "")
     for p in paths:
@@ -481,10 +498,7 @@ class OwnershipSelinuxMismatchRule(DiagnosticRule):
                 ),
                 severity=Severity.CRITICAL if worst.severity == Severity.CRITICAL else Severity.ERROR,
                 evidence_for=evidence_for,
-                impact=(
-                    "dirsrv (or the RA agent / Tomcat/PKI NSS DB it depends on) can fail to start or fail to "
-                    "read its own certificate material until ownership/mode is corrected."
-                ),
+                impact=_file_impact(file_findings),
                 actions=[
                     Action(
                         description="Confirm the current owner/group/mode and SELinux context of the reported path before changing anything.",

@@ -2295,7 +2295,7 @@
       "why_relevant": "ipahealthcheck.ipa.files.TomcatFileCheck reports a file ownership/mode problem: Permissions of /var/lib/pki/pki-tomcat/conf/ca/CS.cfg are too permissive: 0664 and should be 0660"
      }
     ],
-    "impact": "dirsrv (or the RA agent / Tomcat/PKI NSS DB it depends on) can fail to start or fail to read its own certificate material until ownership/mode is corrected.",
+    "impact": "The file is readable or writable by more local users than it should be, which can expose what it contains. This does not stop any service from working; it is a security finding.",
     "limitations": "This pack has no ausearch/AVC collector; 'no new AVC denials' can only be confirmed by the administrator via `ausearch -m avc -ts recent`, not by this tool.",
     "next_diagnostic_step": null,
     "pack_id": "directory-server",
@@ -2492,7 +2492,7 @@
       "why_relevant": "ipahealthcheck.ipa.files.TomcatFileCheck reports a file ownership/mode problem: Permissions of /var/lib/pki/pki-tomcat/conf/ca/CS.cfg are too permissive: 0664 and should be 0660"
      }
     ],
-    "impact": "dirsrv (or the RA agent / Tomcat/PKI NSS DB it depends on) can fail to start or fail to read its own certificate material until ownership/mode is corrected.",
+    "impact": "The file is readable or writable by more local users than it should be, which can expose what it contains. This does not stop any service from working; it is a security finding.",
     "limitations": "This pack has no ausearch/AVC collector; 'no new AVC denials' can only be confirmed by the administrator via `ausearch -m avc -ts recent`, not by this tool.",
     "next_diagnostic_step": null,
     "pack_id": "directory-server",
@@ -2640,7 +2640,7 @@
       "why_relevant": "ipahealthcheck.ipa.files.TomcatFileCheck reports a file ownership/mode problem: Permissions of /var/lib/pki/pki-tomcat/conf/ca/CS.cfg are too permissive: 0664 and should be 0660"
      }
     ],
-    "impact": "dirsrv (or the RA agent / Tomcat/PKI NSS DB it depends on) can fail to start or fail to read its own certificate material until ownership/mode is corrected.",
+    "impact": "The file is readable or writable by more local users than it should be, which can expose what it contains. This does not stop any service from working; it is a security finding.",
     "limitations": "This pack has no ausearch/AVC collector; 'no new AVC denials' can only be confirmed by the administrator via `ausearch -m avc -ts recent`, not by this tool.",
     "next_diagnostic_step": null,
     "pack_id": "directory-server",
