@@ -524,10 +524,10 @@
    "provenance": {
     "reviews": [
      {
-      "by": "fresh reviewer agents that did not implement Slice 1 (independent within a one-maintainer project), rounds 1-4",
+      "by": "fresh reviewer agents that did not implement Slice 1 (independent within a one-maintainer project), rounds 1-10, red teams 1-8",
       "date": "2026-09-24",
       "independent": true,
-      "scope": "adversarial: tried to make ipa-diagnose offer a wrong or unsafe procedure; all blockers fixed and regression-tested"
+      "scope": "adversarial rounds 1-10 and red teams 1-8 plus a final truth review: tried to make ipa-diagnose offer a wrong or unsafe procedure or report a false RESOLVED; all blockers fixed and regression-tested"
      }
     ],
     "sources": [
@@ -550,8 +550,8 @@
     "tier": "LIVE_VERIFIED",
     "verified_on": [
      {
-      "date": "2026-09-24",
-      "evidence": "https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36057446151",
+      "date": "2026-09-26",
+      "evidence": "https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36254925467",
       "freeipa": "4.13.3",
       "os": "fedora-43",
       "tier": "LIVE"
@@ -813,6 +813,75 @@
     },
     {
      "for_each": "targets_mode",
+     "reason": "{item.path} has {ref.stat.links} hard links (another name for the same file exists elsewhere); ipa-diagnose will not change it.",
+     "when": {
+      "all": [
+       {
+        "left": {
+         "field": "is_regular",
+         "ref": "stat"
+        },
+        "op": "is_true"
+       },
+       {
+        "left": {
+         "field": "links",
+         "ref": "stat"
+        },
+        "op": "gt",
+        "right": 1
+       }
+      ]
+     }
+    },
+    {
+     "for_each": "targets_owner",
+     "reason": "{item.path} has {ref.stat.links} hard links (another name for the same file exists elsewhere); ipa-diagnose will not change it.",
+     "when": {
+      "all": [
+       {
+        "left": {
+         "field": "is_regular",
+         "ref": "stat"
+        },
+        "op": "is_true"
+       },
+       {
+        "left": {
+         "field": "links",
+         "ref": "stat"
+        },
+        "op": "gt",
+        "right": 1
+       }
+      ]
+     }
+    },
+    {
+     "for_each": "targets_group",
+     "reason": "{item.path} has {ref.stat.links} hard links (another name for the same file exists elsewhere); ipa-diagnose will not change it.",
+     "when": {
+      "all": [
+       {
+        "left": {
+         "field": "is_regular",
+         "ref": "stat"
+        },
+        "op": "is_true"
+       },
+       {
+        "left": {
+         "field": "links",
+         "ref": "stat"
+        },
+        "op": "gt",
+        "right": 1
+       }
+      ]
+     }
+    },
+    {
+     "for_each": "targets_mode",
      "reason": "{item.path} resolves to {ref.stat.realpath} through a symbolic link that is not part of the standard IPA layout, or to a location outside IPA-managed locations; ipa-diagnose will not change it.",
      "when": {
       "left": {
@@ -1047,10 +1116,10 @@
    "provenance": {
     "reviews": [
      {
-      "by": "fresh reviewer agents that did not implement Slice 1 (independent within a one-maintainer project), rounds 1-4",
+      "by": "fresh reviewer agents that did not implement Slice 1 (independent within a one-maintainer project), rounds 1-10, red teams 1-8",
       "date": "2026-09-24",
       "independent": true,
-      "scope": "adversarial: tried to make ipa-diagnose offer a wrong or unsafe procedure; all blockers fixed and regression-tested"
+      "scope": "adversarial rounds 1-10 and red teams 1-8 plus a final truth review: tried to make ipa-diagnose offer a wrong or unsafe procedure or report a false RESOLVED; all blockers fixed and regression-tested"
      }
     ],
     "sources": [
@@ -1072,8 +1141,8 @@
     "tier": "LIVE_VERIFIED",
     "verified_on": [
      {
-      "date": "2026-09-24",
-      "evidence": "https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36057446151",
+      "date": "2026-09-26",
+      "evidence": "https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36254925467",
       "freeipa": "4.13.3",
       "os": "fedora-43",
       "tier": "LIVE"

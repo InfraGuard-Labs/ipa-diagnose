@@ -263,20 +263,24 @@ def _bindings(proc: Dict[str, Any], d: Diagnosis, reasons: List[str]) -> Optiona
                 if not isinstance(it, dict):
                     continue
                 good = {}
+                bad_field = None
                 for f, t in spec["item"].items():
                     val = it.get(f)
                     good[f] = sanitize_text(val, 64) if t == "any_text" and isinstance(val, str) else T.validate(t, val)
                     if good[f] in (None, ""):
-                        good = None
+                        good, bad_field = None, f
                         break
                 if good is None:
                     where = sanitize_text(it.get("path", "a reported item"), 120)
                     if isinstance(it.get("withhold_reason"), str):
                         reasons.append(f"Skipped {where}: {sanitize_text(it['withhold_reason'], 200)}.")
                     else:
-                        shown = sanitize_text(it.get("expected", ""), 60)
-                        reasons.append(f"Skipped {where}: the reported value" + (f" ({shown})" if shown else "")
-                                       + " is not a single value that can be used safely.")
+                        # name the value that actually failed (truth review: "nobody" is the problem, not "root")
+                        label = {"got": "current", "expected": "expected"}.get(bad_field, bad_field or "reported")
+                        shown = sanitize_text(it.get(bad_field, "") if bad_field else "", 60)
+                        why = ("is not one of the IPA service accounts" if spec["item"].get(bad_field) == "ipa_account"
+                               else "is not a single value that can be used safely")
+                        reasons.append(f"Skipped {where}: the {label} value" + (f" ({shown})" if shown else "") + f" {why}.")
                 else:
                     items.append(good)
             out[name] = items

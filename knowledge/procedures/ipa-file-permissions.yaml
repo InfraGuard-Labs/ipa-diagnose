@@ -26,12 +26,12 @@ provenance:
     - freeipa: "4.13.3"
       os: fedora-43
       tier: LIVE
-      evidence: https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36057446151
-      date: "2026-09-24"
+      evidence: https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36254925467
+      date: "2026-09-26"
   reviews:
-    - by: "fresh reviewer agents that did not implement Slice 1 (independent within a one-maintainer project), rounds 1-4"
+    - by: "fresh reviewer agents that did not implement Slice 1 (independent within a one-maintainer project), rounds 1-10, red teams 1-8"
       date: "2026-09-24"
-      scope: "adversarial: tried to make ipa-diagnose offer a wrong or unsafe procedure; all blockers fixed and regression-tested"
+      scope: "adversarial rounds 1-10 and red teams 1-8 plus a final truth review: tried to make ipa-diagnose offer a wrong or unsafe procedure or report a false RESOLVED; all blockers fixed and regression-tested"
       independent: true
   tests:
     - tests/resolution/test_procedures.py
@@ -50,6 +50,9 @@ withhold_if:
   - {for_each: targets_mode, when: {left: {ref: stat, field: exists}, op: is_false}, reason: "{item.path} no longer exists."}
   - {for_each: targets_owner, when: {left: {ref: stat, field: exists}, op: is_false}, reason: "{item.path} no longer exists."}
   - {for_each: targets_group, when: {left: {ref: stat, field: exists}, op: is_false}, reason: "{item.path} no longer exists."}
+  - {for_each: targets_mode, when: {all: [{left: {ref: stat, field: is_regular}, op: is_true}, {left: {ref: stat, field: links}, op: gt, right: 1}]}, reason: "{item.path} has {ref.stat.links} hard links (another name for the same file exists elsewhere); ipa-diagnose will not change it."}
+  - {for_each: targets_owner, when: {all: [{left: {ref: stat, field: is_regular}, op: is_true}, {left: {ref: stat, field: links}, op: gt, right: 1}]}, reason: "{item.path} has {ref.stat.links} hard links (another name for the same file exists elsewhere); ipa-diagnose will not change it."}
+  - {for_each: targets_group, when: {all: [{left: {ref: stat, field: is_regular}, op: is_true}, {left: {ref: stat, field: links}, op: gt, right: 1}]}, reason: "{item.path} has {ref.stat.links} hard links (another name for the same file exists elsewhere); ipa-diagnose will not change it."}
   - {for_each: targets_mode, when: {left: {ref: stat, field: realpath_allowed}, op: is_false}, reason: "{item.path} resolves to {ref.stat.realpath} through a symbolic link that is not part of the standard IPA layout, or to a location outside IPA-managed locations; ipa-diagnose will not change it."}
   - {for_each: targets_owner, when: {left: {ref: stat, field: realpath_allowed}, op: is_false}, reason: "{item.path} resolves to {ref.stat.realpath} through a symbolic link that is not part of the standard IPA layout, or to a location outside IPA-managed locations; ipa-diagnose will not change it."}
   - {for_each: targets_group, when: {left: {ref: stat, field: realpath_allowed}, op: is_false}, reason: "{item.path} resolves to {ref.stat.realpath} through a symbolic link that is not part of the standard IPA layout, or to a location outside IPA-managed locations; ipa-diagnose will not change it."}

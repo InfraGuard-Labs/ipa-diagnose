@@ -5,7 +5,8 @@ must come from here via [claim-register.md](claim-register.md), never from test 
 
 ## LIVE evidence - current code
 
-- **Product code:** commit `832a7f9` on `slice1/resolution-framework`. Later commits touch documentation only.
+- **Product code:** commit `832a7f9` on `slice1/resolution-framework` (the runs' head commit on GitHub; evidence
+  bundles from later runs also record it in `env.txt` and every truth row). See the final report for later commits.
 - **Environment:** free GitHub-hosted runner (ubuntu-latest), disposable container `freeipa/freeipa-server:fedora-43`,
   FreeIPA 4.13.3-2.fc43, ipa-healthcheck 0.19-2.fc43, 389-ds 3.1.5, single server with integrated DNS and CA.
   The replication rows (H2, R1, R2) use a two-server topology built in the same job.
@@ -63,8 +64,8 @@ Notes that belong with the rows:
 - **R1 is a miss, not a pass of the product:** with the replica removed but still registered, neither
   ipa-healthcheck nor ipa-diagnose reported the dead peer at capture time. The row passes only because nothing
   false was claimed. There is no live evidence that ipa-diagnose detects a dead replica.
-- **R2:** whether a genuine stale RUV exists after the lab's removal is not established. No stale-RUV claim is
-  made from it.
+- **R2:** the RUV probe after the lab's removal (`ruv-ldapi-probe-after.txt`) shows only the surviving replica: no
+  stale RUV was created, so R2 says nothing about stale-RUV detection.
 
 ## Not achieved live
 

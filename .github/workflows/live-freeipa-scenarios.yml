@@ -82,6 +82,7 @@ jobs:
           fi
           docker exec ipa-s cp /etc/resolv.conf.bak /etc/resolv.conf
           $D --version | tee env.txt
+          echo "commit: $GITHUB_SHA" | tee -a env.txt
           cat image.txt >> env.txt
           docker exec ipa-s rpm -q freeipa-server freeipa-healthcheck 389-ds-base | tee -a env.txt
           docker exec ipa-s $PY --version | tee -a env.txt

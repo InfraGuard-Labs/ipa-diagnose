@@ -256,7 +256,7 @@ analysis against `ipa-healthcheck`):
 
 | Pack | Covers | Ambiguity it explicitly refuses to guess through |
 |---|---|---|
-| **Replication** | Peer connectivity breaks, replication conflicts, stale RUVs, topology disconnection | Conflict entries mean replication *is* transmitting writes, not that it's broken - a documented trap this pack does not fall into |
+| **Replication** | Peer connectivity breaks, replication conflicts, stale RUVs, topology disconnection (tested on recorded/constructed evidence; a replica that had just died was **not** detected in the live lab - see docs/truth/truth-matrix.md, R1) | Conflict entries mean replication *is* transmitting writes, not that it's broken - a documented trap this pack does not fall into |
 | **Certificates / CA** | Stuck certmonger renewals, expired certs, RA-agent/Dogtag desync, unreachable renewal master | `CA_UNREACHABLE` has 3+ unrelated root causes sharing one state name; only DIAGNOSES when the actual error text is specific enough |
 | **Kerberos** | Clock skew, keytab/KVNO mismatch, DNS-caused KDC discovery failure | "Preauthentication failed" is a generic bucket produced by all three causes - only a direct KVNO comparison counts as proof of a keytab problem |
 | **DNS** | `named`/bind-dyndb-ldap down, forward-zone/empty-zone collisions, broken SRV/autodiscovery records | A documented `ipa-healthcheck` false-positive (issue #270) means WARNING-only SRV findings are treated with extra skepticism, not trusted blindly |
@@ -352,7 +352,7 @@ docker compose run --rm test          # full test suite
 docker compose run --rm dev bash      # interactive shell
 ```
 
-470+ tests: unit tests for the engine/correlation/redaction core, per-pack
+1000+ tests: unit tests for the engine/correlation/redaction core, per-pack
 fixture tests (one directory per scenario under `tests/fixtures/`, each with
 an expected outcome in `meta.json`), and an adversarial suite covering false
 correlation, prompt injection, secret leakage, command injection, and
@@ -435,7 +435,8 @@ no longer want it). Set `IPA_DIAGNOSE_STATE_DIR` to change the location.
 - **Older FreeIPA/`ipa-healthcheck` generations (RHEL/Rocky/AlmaLinux 8,
   `ipa-healthcheck` 0.12-era) are missing some checks entirely** (e.g.
   `CertmongerStuckCheck`, the FIPS-token check) that newer generations have -
-  the relevant rules correctly see no evidence rather than misdiagnosing,
+  the relevant rules see no evidence rather than misdiagnosing (shown on
+  recorded evidence; there is no live EL8 evidence for the current code),
   but coverage is thinner on EL8 by nature of the upstream tool, not a gap
   in this project's rules. Full generation-by-generation detail in
   [docs/compatibility.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/docs/compatibility.md).

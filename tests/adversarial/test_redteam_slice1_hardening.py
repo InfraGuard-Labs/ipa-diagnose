@@ -154,3 +154,22 @@ def test_certmonger_started_by_healthcheck_is_disclosed(monkeypatch):
     buf = io.StringIO()
     render_report(report, Console(file=buf, width=200, color_system=None))
     assert "ipa-diagnose itself changed nothing" in " ".join(buf.getvalue().split())
+
+
+def test_certmonger_restarted_by_healthcheck_is_not_reported_as_a_current_outage(monkeypatch):
+    from tests.adversarial import test_false_reassurance as fr
+
+    calls = []
+
+    def systemctl(args):
+        calls.append(args[-1])
+        state = "inactive" if calls.count("certmonger.service") == 1 else "active"
+        return (0, f"LoadState=loaded\nActiveState={state}\n", "")
+
+    hc = __import__("json").dumps([fr._entry("ipahealthcheck.meta.services", "certmonger", "ERROR", "certmonger: not running"),
+                                   fr._entry("ipahealthcheck.ds.replication", "ReplicationCheck", "SUCCESS"),
+                                   fr._entry("ipahealthcheck.ipa.certs", "IPACertmongerExpirationCheck", "SUCCESS")])
+    fr._install(monkeypatch, healthcheck=(0, hc, ""), extra={"systemctl": systemctl})
+    report = fr._diagnose()
+    d = next(x for x in report.diagnoses if "certmonger" in x.title)
+    assert d.severity.value == "WARNING" and "running now" in d.why

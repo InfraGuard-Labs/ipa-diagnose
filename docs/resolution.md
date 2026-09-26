@@ -107,7 +107,8 @@ perfect.
 ## VERIFY
 
 After running the fix, `sudo ipa-diagnose verify` re-runs the diagnosis **and** the fix's own checks with fresh
-read-only evidence. It reports RESOLVED only when the diagnosis is gone *and* those checks pass; if a check
+read-only evidence. For a diagnosis a fix was shown for, it reports RESOLVED only when the diagnosis is gone *and* those checks pass (a
+diagnosis with no fix is RESOLVED when fresh evidence no longer shows it); if a check
 fails it reports PARTIALLY_RESOLVED; if a check cannot run, UNABLE_TO_VERIFY (exit 4); if the fix now points
 at something else than when it was shown (another file, another instance), CHANGED (exit 4) - never RESOLVED.
 

@@ -620,3 +620,21 @@ def test_plain_run_drops_a_record_whose_fix_now_passes(tmp_path, monkeypatch):
     plain, _ = report_for([], {**ROOT_OK})
     cli._save_baseline(plain, args)
     assert json.loads(state.read_text(encoding="utf-8"))["v2"]["verify_baseline"]["fixes"] == []
+
+
+# --- final truth review ------------------------------------------------------------------------------------------------
+
+def test_non_ipa_group_reason_names_the_non_ipa_value():
+    path = "/etc/ipa/ca.crt"
+    entry = perm(path=path, kind="group", expected="root", got="nobody", check="IPAFileCheck")
+    r = res_of(report_for([entry], {**ROOT_OK, f"file.stat|path={path}": stat(group="nobody", real=path)})[0], FP)
+    assert r.status == "WITHHELD"
+    assert any("current value (nobody) is not one of the IPA service accounts" in x for x in r.reasons)
+
+
+def test_hard_link_reason_says_hard_link_not_symlink():
+    st = stat(mode="0664")
+    st[1].update({"links": 2})
+    r = res_of(report_for([perm()], {**ROOT_OK, f"file.stat|path={CS}": st})[0], FP)
+    assert r.status == "WITHHELD" and any("2 hard links" in x for x in r.reasons)
+    assert not any("symbolic link" in x for x in r.reasons)

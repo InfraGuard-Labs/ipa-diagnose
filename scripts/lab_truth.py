@@ -31,6 +31,7 @@ SPEC keys (all optional):
 from __future__ import annotations
 
 import json
+import os
 import pathlib
 import sys
 
@@ -48,7 +49,8 @@ def _load(path: str):
 def _emit(scenario: str, verdict: str, checks: list, row: dict) -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     with RESULTS.open("a", encoding="utf-8") as fh:
-        fh.write(json.dumps({"scenario": scenario, "verdict": verdict, "checks": checks, **row}, sort_keys=True) + "\n")
+        fh.write(json.dumps({"scenario": scenario, "verdict": verdict, "checks": checks,
+                             "commit": os.environ.get("GITHUB_SHA"), **row}, sort_keys=True) + "\n")
     for ok, text in checks:
         print(("PASS" if ok else "FAIL") + f": {scenario}: {text}")
     if verdict == "SKIP":

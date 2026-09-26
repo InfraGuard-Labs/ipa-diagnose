@@ -227,6 +227,14 @@ def build_report(
     packs_evaluated: List[str],
 ) -> DiagnosisReport:
     diagnoses = list(diagnoses)
+    if any("certmonger was not running" in s for s in bundle.side_effects):
+        # ipa-healthcheck started certmonger during this run: "not running" was true at check time and is not now
+        # (truth review) - keep it visible, but not as a current outage.
+        for d in diagnoses:
+            if d.pack_id == "healthcheck" and d.rule_id == "service-not-running-certmonger":
+                d.why = (f"{d.why}\n\nNote: certmonger is running now - ipa-healthcheck's certificate checks started it "
+                         "during this run (see the note at the top). If it had been stopped on purpose, stop or mask it again.")
+                d.severity = Severity.WARNING
     demotions = _demote_via_causality(diagnoses, {f.finding_id: f"{f.source}::{f.check}" for f in bundle.findings})
     titles_by_pack: Dict[str, List[str]] = {}
     for d in diagnoses:
