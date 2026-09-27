@@ -176,9 +176,11 @@ If anything is found, **no bundle is written**:
 - The command lists the file and category (never the matched text) and exits 5.
 - The archive is only built in memory after the self-test passes, so nothing partial or sensitive is left on disk.
 
-The self-test checks what ipa-diagnose knows. It cannot find a name that
-appears only in free text and matches no known identifier or pattern. Such a
-name stays as written.
+The two halves of the self-test are not equally independent:
+- **Identities.** It searches every file for every real identifier found anywhere in the evidence. This is independent of the replacement step, so a name that was discovered but not replaced stops the bundle.
+- **Credentials.** It uses the same detectors as redaction. It therefore catches text that skipped redaction (a pipeline failure), not a credential in a format the detectors do not know.
+
+It cannot find a name that appears only in free text and matches no known identifier or pattern. Such a name stays as written.
 
 ## Integrity
 
@@ -243,7 +245,10 @@ diagnosis time: the bundle adds no collectors or network access.
 
 ## Known limitations
 
-- Detection is **pattern-based and cannot be perfect**. Credentials in an unfamiliar format, names that match no known identifier or pattern, and look-alike characters beyond the folded Cyrillic/Greek set can remain.
-- A bundle still contains **operational detail**: unit and service names, versions, error text, timestamps, certificate expiry dates, and the shape of the topology (how many replicas, which agreements fail). Review it before sharing.
+- Detection is **pattern-based and cannot be perfect**. Credentials in an unfamiliar format, a secret split across two separate fields, names that match no known identifier or pattern, and look-alike characters beyond the folded Cyrillic/Greek set can remain.
+- Redaction errs towards removing too much: an unquoted value after `password=` or `password is` is removed to the end of its line, so nearby context can be lost.
+- Validating a maximum-size bundle can take a few minutes, because every file is scanned for credential patterns.
+- A bundle still contains **operational detail**: unit and service names, versions, file paths and modes, error text, timestamps (certmonger request IDs even reveal when the server was installed), certificate expiry dates, exact disk sizes, and the shape of the topology (how many replicas, which agreements fail). Several bundles from one server can be recognised as coming from the same server. Review it before sharing.
+- The pseudonym mapping is not kept anywhere, so answers that name a pseudonym (`HOST-002`) must be translated back by the sender. `HOST-001` is always the diagnosed host; replicas can be matched through their replica IDs (`replica_id` in `topology.json`), which are kept.
 - **Single-host view.** `topology.json` shows what the diagnosed host reported. It does not compare hosts or say which server is at fault.
 - No encryption or signing. Share bundles over a channel you trust.

@@ -237,6 +237,7 @@ def test_dns_record_names_are_not_mistaken_for_secret_fields():
     s = _san("_kpasswd._tcp.example.test.:ipa01.example.test.")
     assert s.text("_kpasswd._tcp.example.test.:ipa01.example.test.") == "_kpasswd._tcp.DOMAIN-001.:HOST-001."
     assert s.text("_kpasswd._udp.example.test.:ipa01.example.test.") == "_kpasswd._udp.DOMAIN-001.:HOST-001."
+    assert s.text("_kpasswd.example.test.:ipa01.example.test.") == "_kpasswd.DOMAIN-001.:HOST-001."  # URI record (live)
 
 
 def test_credential_urls_keep_the_host_relationship():
@@ -246,3 +247,59 @@ def test_credential_urls_keep_the_host_relationship():
     assert out[0] == "see ldaps://[REDACTED:credential_url]@HOST-002:636"
     assert "proxy.corp" not in out[1] and "Secret99" not in out[1] and "HOST-003" in out[1]
     assert "EMAIL" not in s.pseudonym_counts()
+
+
+# --- security review (fresh reviewer, round 1) reproductions -------------------------------------------------------
+@pytest.mark.parametrize("key", ["nsslapd-rootpw", "key_pin", "dm_pass", "otp", "dmPass", "adminPassword", "psk",
+                                 "client_secret", "privkey"])
+def test_secret_named_fields_the_first_rule_missed_are_removed(key):
+    s = _san()
+    out = s.transform({key: "ZQLEAKsecret1", "pin": 4821})
+    assert out[key] == "[REMOVED]" and out["pin"] == "[REMOVED]"  # a numeric PIN is removed too
+
+
+@pytest.mark.parametrize("text", ["password: AAA BBB CCC", "password=AAA,BBB", "password=AAA;BBB",
+                                  "the password is AAA BBB", "--password=AAA,BBB", "--passphrase 'AAA BBB'"])
+def test_multi_word_and_punctuated_passwords_are_redacted_completely(text):
+    out = _san().text(text)
+    assert "AAA" not in out and "BBB" not in out and "CCC" not in out
+
+
+def test_password_flag_detection_is_linear_and_still_works():
+    import time
+
+    s = _san()
+    assert "Hunter2xyz" not in s.text("ipa-server-install -U -p Hunter2xyz")
+    hostile = "ipa-" * 16000  # 64,000 characters: quadratic backtracking took minutes before the fix
+    t = time.time()
+    s.text(hostile)
+    find_secrets("ipa-a -w x " * 5800)
+    assert time.time() - t < 20
+
+
+@pytest.mark.parametrize("unit", ["%3D", "$a", "ipa-", "-w x ", "a.", "password=", "dc=a,", "EXAMPLE\\"])
+def test_no_hostile_repetition_is_quadratic(unit):
+    import time
+
+    s = _san()
+    text = unit * (64000 // len(unit))
+    t = time.time()
+    s.discover(text)
+    s.text(text)
+    assert time.time() - t < 20, unit
+
+
+def test_country_tlds_downlevel_names_and_encoded_suffixes_are_pseudonymized():
+    texts = ["dc1.acme-corp.it unreachable", "ipa9.lab-x.us down", r"logon ACMECORP\jdoe failed",
+             "mail jdoe@ad.acme-corp.it", "base dc%3Dacme-corp%2Cdc%3Dit", "LDAP DN dc=EXAMPLE\2CDC=TEST ok"]
+    s = _san(*texts)
+    out = " ".join(s.text(t) for t in texts)
+    for leaked in ("acme", "lab-x", "ACMECORP", "jdoe", "dc1", "ipa9"):
+        assert leaked.lower() not in out.lower(), (leaked, out)
+    assert "setup.py" in s.text("setup.py and README.md")  # file names are not hosts
+
+
+def test_a_host_named_like_a_pseudonym_is_never_registered():
+    s = _san("peer HOST-001.example.test", "replica HOST-002")
+    assert s.local_host_pseudonym("ipa01.example.test") == "HOST-001"
+    assert s.text("peer ipa01.example.test") == "peer HOST-001"

@@ -302,3 +302,18 @@ def test_real_and_resolution_fixtures_build_and_pass_the_self_test(fixture):
     b = build(ev, report, created_at=T0)
     _check(b, [str(ROOT / fixture)])
     assert _json(b, "manifest.json")["overall_status"] == report.overall_status.value
+
+
+def test_collection_reasons_are_pseudonymized_before_they_are_shortened():
+    """Privacy red team: the report's reasons are cut upstream, so where the cut falls could reveal the length of a
+    real host name. The bundle uses the collector's full message, pseudonymized first and bounded afterwards."""
+
+    long_msg = ("ipa-replica-manage list -v averyveryverylongreplicahostname.example.test failed: " + "detail " * 60)
+    ev, report = _live_bundle([_f("ipahealthcheck.meta.services", "dirsrv", "SUCCESS")],
+                              errors=[CollectionError(collector="replication_agreements", message=long_msg)])
+    b = build(ev, report, created_at=T0)
+    _check(b)
+    comp = _json(b, "report.json")["evidence_completeness"]
+    assert comp["ruv_reason"].startswith("ipa-replica-manage list -v HOST-002 failed: detail")
+    assert "..." not in comp["ruv_reason"] and "averyvery" not in all_text(b.members)
+    assert _json(b, "collection-errors.json")["unverified"][0]["reason"] == comp["ruv_reason"]

@@ -95,8 +95,24 @@ def _cited(report: DiagnosisReport) -> Dict[str, List[str]]:
     return cited
 
 
-def _project_report(report: DiagnosisReport, mode: str, dropped: collections.Counter) -> Dict[str, Any]:
+def _raw_reason(evidence: EvidenceBundle, collector: str, shortened: Any) -> Any:
+    """The collector's own, untruncated message. The report's reason was already shortened before any bundle
+    processing, so where it was cut could hint at the length of a real name inside it; the bundle pipeline
+    pseudonymizes the full text first and bounds it afterwards."""
+
+    for e in evidence.collection_errors:
+        if e.collector == collector:
+            return str(e.message)
+    return shortened
+
+
+def _project_report(report: DiagnosisReport, evidence: EvidenceBundle, mode: str,
+                    dropped: collections.Counter) -> Dict[str, Any]:
     rd = report_to_dict(report)
+    comp = dict(rd["evidence_completeness"])
+    comp["unverified"] = [dict(u, reason=_raw_reason(evidence, u["collector"], u["reason"])) for u in comp["unverified"]]
+    if comp.get("ruv_reason"):
+        comp["ruv_reason"] = _raw_reason(evidence, "replication_agreements", comp["ruv_reason"])
     diagnoses = []
     for d in _cap(rd["diagnoses"], LIMITS["max_diagnoses"], dropped, "diagnoses"):
         d = dict(d)
@@ -137,7 +153,7 @@ def _project_report(report: DiagnosisReport, mode: str, dropped: collections.Cou
         "hostname": rd["hostname"],
         "overall_status": rd["overall_status"],
         "fully_verified": rd["fully_verified"],
-        "evidence_completeness": rd["evidence_completeness"],
+        "evidence_completeness": comp,
         "packs_evaluated": rd["packs_evaluated"],
         "unknown_severity_findings": rd["unknown_severity_findings"],
         "unclaimed_warnings": rd["unclaimed_warnings"],
@@ -229,7 +245,8 @@ def _project_errors(evidence: EvidenceBundle, report: DiagnosisReport, mode: str
         "source_mode": mode,
         "completeness": comp.level,
         "errors": errors,
-        "unverified": [{"capability": u.capability, "collector": u.collector, "reason": u.reason,
+        "unverified": [{"capability": u.capability, "collector": u.collector,
+                        "reason": _raw_reason(evidence, u.collector, u.reason),
                         "permission_related": u.permission_related, "hint": u.hint} for u in comp.unverified],
     }
 
@@ -376,7 +393,7 @@ def build(evidence: EvidenceBundle, report: DiagnosisReport, *, previous: Option
     # STRUCTURE (+ remove prohibited classes): fixed projections of what this run already produced
     raw = {
         "environment.json": _project_environment(evidence, report, mode),
-        "report.json": _project_report(report, mode, dropped),
+        "report.json": _project_report(report, evidence, mode, dropped),
         "healthcheck.json": _project_healthcheck(evidence, report, mode, cited, dropped),
         "evidence.json": _project_evidence(evidence, mode, cited, dropped),
         "collection-errors.json": _project_errors(evidence, report, mode, dropped),

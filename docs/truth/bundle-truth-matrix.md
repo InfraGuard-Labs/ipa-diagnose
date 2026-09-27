@@ -1,0 +1,9 @@
+| Scenario | Verdict | Overall / completeness | Resolutions in the bundle | Pseudonymized | Redacted | Bundle bytes | Checks | Run |
+|---|---|---|---|---|---|---|---|---|
+| B0-fresh-install-file-procedure | PASS | DEGRADED / complete | proc.files.restore-expected-permissions OFFERED [LIVE_VERIFIED] | DOMAIN 1, HOST 1, INSTANCE 1, REALM 1, SUFFIX 1 | password_assignment 2 | 19119 | 17/17 | https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36289361450 |
+| B1-healthy-baseline | PASS | NOT_FULLY_VERIFIED / complete | - | DOMAIN 1, HOST 1, INSTANCE 1, REALM 1, SUFFIX 1 | password_assignment 2 | 16565 | 16/16 | https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36289361450 |
+| B2-dirsrv-down | PASS | CRITICAL / partial | proc.service.start-stopped-service OFFERED [BUILT_IN_VERIFIED, definitive] | DOMAIN 1, HOST 1, INSTANCE 1, REALM 1, SUFFIX 1, USER 1 | - | 15914 | 17/17 | https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36289361450 |
+| B3-krb5kdc-down | PASS | CRITICAL / complete | proc.service.start-stopped-service OFFERED [BUILT_IN_VERIFIED, definitive] | DOMAIN 1, HOST 1, INSTANCE 1, REALM 1, SUFFIX 1, USER 1 | password_assignment 2 | 19413 | 17/17 | https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36289361450 |
+| B4-healthcheck-missing | PASS | UNKNOWN / insufficient | - | DOMAIN 1, HOST 1, INSTANCE 1, REALM 1, SUFFIX 1 | - | 5591 | 18/18 | https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36289361450 |
+| B5-non-root | PASS | UNKNOWN / insufficient | - | DOMAIN 1, HOST 1, INSTANCE 1, REALM 1, SUFFIX 1 | - | 5456 | 16/16 | https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36289361450 |
+| B6-output-safety-PASS | SKIP (existing file and symlink refused (exit 5), neither touched) | - / - | - | - | - | - | 0/0 | https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36289361450 |

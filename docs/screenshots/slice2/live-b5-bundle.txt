@@ -1,0 +1,16 @@
+Warning: not running as root - live evidence collection will likely be 
+incomplete, and the bundle will say so.
+
+Support bundle written: /tmp/b5.tar.gz
+  5.3 KiB, file mode 0600, SHA-256 c939f642ac3d9373ca6a8cc9b52360e731f1aa60e32ee1c1ed6126fc358b4440
+  Source: LIVE diagnosis of this host, shown as HOST-001; overall status UNKNOWN, evidence insufficient
+  Contents: 0 diagnoses, 0 resolutions, 0 undiagnosed findings, 0 ipa-healthcheck problems (0 results), 0 evidence items, 2 collection errors
+  Pseudonymized: host 1, domain 1, realm 1, suffix 1, instance 1
+  Redacted: 0 value(s); secret-named fields removed: 0; raw output fields dropped: 0
+  Leak self-test: passed
+
+Before sharing, review it. It is pseudonymized and credential-scanned, but it still contains operational detail (service names, versions, error text, timestamps, topology shape). Nothing was uploaded; the file is not encrypted, so share it over a channel you trust.
+  List the files:  tar -tzf /tmp/b5.tar.gz
+  Read one:        tar -xzOf /tmp/b5.tar.gz ipa-diagnose-bundle/report.json | less
+  Check it:        ipa-diagnose bundle validate /tmp/b5.tar.gz
+exit=0
