@@ -97,7 +97,7 @@ _SECRET_KEY_RE = re.compile(
     r"(?i)(passw|passphrase|passcode|pwd|secret|token|apikey|api_key|api-key|bearer|private_?key|privkey|credential|"
     r"bindpw|bind_pw|rootpw|access_?key|cookie|authoriz|session_?key|session_?id|ccache_data|keytab_data|ticket_data|"
     r"pincode|kennwort|motdepasse|contrase|authtok|auth_tok|creds|basic_?auth|"
-    r"(?<![a-z0-9])(?:pw|pin|pass|otp|totp|hotp|psk)(?![a-z0-9]))")
+    r"(?<![a-z0-9])(?:pw|pin|pass|otp|totp|hotp|psk)(?![a-z0-9])|[a-z]pw(?![a-z0-9]))")
 
 
 def secret_key(key: str, normalize: bool = False) -> bool:
@@ -181,7 +181,7 @@ _PW = r"pass[\s_.-]?w(?:or)?d"  # password / passwd, also split by one separator
 _SECRET_NAME = (r"[\w.-]{0,100}?(?:" + _PW + r"|passphrase|passcode|pwd|secret|token|api[_-]?key|apikey|creds|"
                 r"basic[_-]?auth|"
                 r"access[_-]?key|private[_-]?key|privkey|client[_-]?secret|bindpw|rootpw|authtok|credentials?)[\w.-]{0,100}"
-                r"|[\w.-]{0,100}?(?<![A-Za-z0-9])(?:pw|pin|pass|otp|psk)\b")
+                r"|[\w.-]{0,100}?(?<![A-Za-z0-9])(?:pw|pin|pass|otp|psk)\b|[\w.-]{0,60}?[A-Za-z]pw\b")
 _SECRET_MARKER = re.compile(r"(?i)" + _PW + r"|passphrase|passcode|pwd|secret|token|api[_-]?key|access[_-]?key|"
                             r"private[_-]?key|privkey|bindpw|rootpw|authtok|credentials?|"
                             r"(?<![a-z0-9])(?:pw|pin|pass|otp|psk)")
@@ -254,9 +254,10 @@ PATTERNS: List[Pattern] = [
     ("cookie", re.compile(r"(?i)\b(?:set-)?cookie[\"']?(?:\s*[:=]\s*|\s+(?=[^\s=]+=))" + _NOT_MARKER
                           + r"(?P<secret>\S[^\n]*)")),
     ("stdin_secret", re.compile(  # echo pw | kinit admin
-        r"(?i)\b(?:echo|printf)(?:\s+-[neE]{1,3})*\s+" + _NOT_MARKER + r"(?P<secret>\"[^\"\n]*\"|'[^'\n]*'|\S+)\s*\|\s*"
+        r"(?i)\b(?:echo|printf)(?:\s+-[neE]{1,3})*(?:\s+'[^']{0,20}%s[^']{0,20}'|\s+\"[^\"]{0,20}%s[^\"]{0,20}\")?\s+"
+        + _NOT_MARKER + r"(?P<secret>\"[^\"\n]*\"|'[^'\n]*'|\S+)\s*\|\s*"
         r"(?:sudo\s+)?(?:kinit|kpasswd|passwd|ldap\w+|ipa\b|ipa-\w|dsconf|pk12util|certutil|chpasswd)")),
-    ("bearer_token", re.compile(r"(?i)\b(?:bearer|negotiate|basic)\s+" + _NOT_MARKER
+    ("bearer_token", re.compile(r"(?i)\b(?:bearer|negotiate|basic)(?:\s*:)?\s+" + _NOT_MARKER
                                 + r"(?P<secret>[A-Za-z0-9\-_.=+/~]{12,})")),
     ("password_option", re.compile(
         r"(?i)(?<![\w-])--?[\w-]{0,40}?(?:passw(?:or)?d|passphrase|passcode|pin|secret|token|api-?key|otp|bindpw|"
@@ -266,7 +267,7 @@ PATTERNS: List[Pattern] = [
         # starts only at the beginning of a word run: an unanchored [\w.-]* is quadratic on long runs
         r"(?i)(?<![\w.-])(?P<key>" + _SECRET_NAME + r")\\?[\"']?\s*(?::|=>|=)\s*" + _VALUE_LINE)),
     ("password_flag", re.compile(  # pk12util -K slot password, ldappasswd -s new password (anchored on the tool)
-        r"(?i)\b(?:ldappasswd|pk12util)\b[^\n]{0,300}?(?<!\S)-[sK]\s*" + _NOT_MARKER
+        r"(?i)\b(?:ldappasswd|pk12util|pki)\b[^\n]{0,300}?(?<!\S)-[sKc]\s*" + _NOT_MARKER
         + r"(?P<secret>(?=[^\s-])" + _SHELL_WORD + r")")),
     ("user_password", re.compile(  # curl -u/--user user:pw, smbclient/net -U user%pw
         r"(?<![\w-])(?:--[Uu]ser(?:name)?|-[uU])(?:\s*=\s*|\s*)" + _NOT_MARKER
@@ -276,19 +277,38 @@ PATTERNS: List[Pattern] = [
         + r"(?P<secret>[^\s=:][^\n]*)")),
     ("config_secret", re.compile(  # the same, after upstream text cleaning collapsed it into a sentence
         r"(?i)(?<![A-Za-z])" + _PW + r"[ \t]+" + _NOT_MARKER + r"(?P<secret>[^\s=:]\S*)")),
+    ("config_secret", re.compile(  # space-separated token keywords: api_key X, access_token X, X-Api-Key X
+        r"(?i)(?<![\w-])(?:api[_-]?key|access[_-]?token|auth[_-]?token|refresh[_-]?token|x-api-key|client[_-]?secret|"
+        r"[A-Za-z]{1,30}pw)[ \t]+" + _NOT_MARKER + r"(?P<secret>[^\s=:]\S*)")),
+    ("password_positional", re.compile(r"(?i)\bipa\s+passwd\s+\S+\s+" + _NOT_MARKER + r"(?P<secret>\S+)")),
     ("config_secret", re.compile(r"(?i)(?<![\w-])(?:bindpw|rootpw|[\w-]{0,40}authtok)[ \t]+" + _NOT_MARKER
                                  + r"(?P<secret>[^\s=:][^\n]*)")),
     ("password_prose", re.compile(
-        r"(?i)\b(?:" + _PW + r"|passphrase|passcode|pin|secret|token)s?(?:\s+for\s+[^\n]{1,80}?)?\s+"
+        r"(?i)\b(?:" + _PW + r"|pass\s?phrase|passcode|pin|secret|token)s?(?:\s+for\s+[^\n]{1,80}?)?\s+"
         r"(?:(?:(?:is|was|are|were|has been|have been)\s+)?(?:set|reset|changed)\s+to|is|was|are|were|of)\s+"
         + _NOT_MARKER + r"(?P<secret>[^\n]+)")),
     ("password_prompt", re.compile(  # e.g. kinit's "Password for admin@REALM: <typed secret>"
         r"(?i)\b(?:" + _PW + r"|passphrase|pin)\s+for\s+[^\n:\[]{1,256}?\s*:\s*" + _VALUE_LINE)),
     ("keytab_material", re.compile(r"(?i)\bkeytab\S*[:=]\s*[0-9a-f]{32,}")),
+    # an LDAP/389-DS password value in its storage-scheme form ({SSHA512}..., {PBKDF2_SHA256}..., {AES-...}...)
+    ("password_hash", re.compile(r"(?i)\{(?:S?SHA\d{0,3}|S?MD5|CRYPT|CLEAR|PBKDF2[\w-]{0,20}|ARGON2[\w-]{0,10}|"
+                                 r"GOST_YESCRYPT|AES-[^}\s]{0,64})\}(?P<secret>\S+)")),
     # a keytab file itself, base64-encoded: the format starts with 0x05 0x02 ("BQ" in base64)
     ("keytab_material", re.compile(r"(?i)\bkeytab[^\n:=]{0,40}[:=]\s*(?P<secret>BQ[A-Za-z0-9+/]{6,}={0,2})")),
-    ("high_entropy_token", re.compile(r"(?<![\w+/=.-])(?P<secret>[A-Za-z0-9+/_\-]{40,}={0,2})(?![\w+/=-])")),
+    ("high_entropy_token", re.compile(r"(?<![\w+/=~-])(?P<secret>[A-Za-z0-9+/_~\-]{40,}={0,2})(?![\w+/=~-])")),
 ]
+
+
+def _random_segment(seg: str) -> bool:
+    if len(seg) >= 16 and any(c.isdigit() for c in seg) and any(c.isalpha() for c in seg):
+        return True
+    if (len(seg) >= 10 and any(c.isdigit() for c in seg) and any(c.isupper() for c in seg)
+            and any(c.islower() for c in seg)):
+        return True  # shorter, but digits and both cases mixed together: not a word
+    # letters only: random text changes case about every second character, CamelCase words far less often
+    pairs = [(a, b) for a, b in zip(seg, seg[1:]) if a.isalpha() and b.isalpha()]
+    changes = sum(1 for a, b in pairs if a.isupper() != b.isupper())
+    return len(seg) >= 20 and len(pairs) >= 12 and changes >= 0.3 * len(pairs)
 
 
 def _keep(name: str, m: "re.Match[str]") -> bool:
@@ -310,9 +330,11 @@ def _keep(name: str, m: "re.Match[str]") -> bool:
         return not m.group(0).lower().startswith("basic") or any(c.isdigit() or c in "=+/_-." for c in m.group("secret"))
     if name == "high_entropy_token":
         val = m.group("secret")
-        if val.startswith("/") or not (any(c.isdigit() for c in val) and any(c.isalpha() for c in val)):
+        if not (any(c.isdigit() for c in val) and any(c.isalpha() for c in val)) and not _random_segment(val):
             return False
-        segments = [x for x in re.split(r"[/_.-]+", val) if x]
+        segments = [x for x in re.split(r"[/_.~-]+", val) if x]
+        if any(_random_segment(x) for x in segments):
+            return True  # one random-looking part is enough (sk_live_<random>, base64 with / + -)
         wordy = [x for x in segments if re.fullmatch(r"[a-z]{2,}|[A-Z][a-z]+|[A-Z]{2,}|\d{1,4}", x)]
         # words joined by separators (a path, a file-check key, an identifier) - not a random token
         return not (len(segments) >= 3 and len(wordy) * 2 >= len(segments))
@@ -491,12 +513,12 @@ _ENTERPRISE_RE = re.compile(r"(?<![\w.\\-])(?P<user>[A-Za-z0-9._$-]{1,64})\\@(?P
 _USER_DN_RE = re.compile(r"(?i)\bcn=(?P<v>[^,+=\\]{1,128}),\s*cn=users\b")
 _IPV6_RUN_RE = re.compile(r"(?<![0-9A-Fa-f:.])[0-9A-Fa-f.]*:[0-9A-Fa-f:.]*:[0-9A-Fa-f:.]*")
 _FQDN_RE = re.compile(r"(?<![A-Za-z0-9_.\\-])(?P<v>(?:" + _LABEL + r"\.)+[A-Za-z][A-Za-z0-9-]{0,61}[A-Za-z0-9])"
-                      r"(?![A-Za-z0-9_-])(?:(?!\.[A-Za-z0-9])|(?=\.(?:pem|crt|cer|key|csr|conf|keytab|log|db|p12|pfx|"
+                      r"(?![A-Za-z0-9-])(?:(?!\.[A-Za-z0-9])|(?=\.(?:pem|crt|cer|key|csr|conf|keytab|log|db|p12|pfx|"
                       r"ldif|json|txt)(?![A-Za-z0-9])))")  # a host name may be followed by a file extension
 _IPV4_RE = re.compile(r"(?<![0-9])(?<![0-9]\.)(?:\d{1,3}\.){3}\d{1,3}(?!\d)(?!\.\d)")
 _IPV6_RE = re.compile(r"(?<![\w:.])(?:[0-9A-Fa-f]{0,4}:){2,7}(?:\d{1,3}(?:\.\d{1,3}){3}|[0-9A-Fa-f]{0,4})"
                       r"(?![\w:])(?!\.\d)")
-_AGREEMENT_PREFIX = re.compile(r"^(meTo|cloneAgreement\d+-)")
+_AGREEMENT_PREFIX = re.compile(r"^(meTo|cloneAgreement\d+-|masterAgreement\d+-)")
 # a maximal dotted name (used to find hosts inside known domains in one linear pass)
 _DOTTED_RE = re.compile(r"(?<![A-Za-z0-9_.-])(?:" + _LABEL + r"\.)+" + _LABEL)
 _CHUNK = 1024  # identifier-dense text is replaced in chunks of about this size (keeps replacement linear)
@@ -740,6 +762,15 @@ class Sanitizer:
             if len(labels) >= 3 and labels[-1] in _FILE_EXTS:  # host.example.com.pem: the host is before the extension
                 v = v.rsplit(".", 1)[0]
                 labels = labels[:-1]
+            if "-" in labels[-1] and not _is_tld(labels[-1]):  # cloneAgreement1-<host>.<dom>.lan-pki-tomcat, -cert
+                for i, c in enumerate(labels[-1]):
+                    if c == "-" and _is_tld(labels[-1][:i]):
+                        v = v[: len(v) - len(labels[-1]) + i]
+                        labels[-1] = labels[-1][:i]
+                        break
+            if len(labels) >= 2 and self._known(v.lower()) and v.lower() not in self._domain_set:
+                self.add_host(v)  # a host of a domain already known (whatever text is glued around it)
+                continue
             tld = _is_tld(labels[-1]) or (labels[-1] in _NOT_TLD2 and len(labels) >= 3)
             if (tld and labels[0] not in _MODULE_ROOTS
                     and not any(v.lower() == d or v.lower().endswith("." + d) for d in self._domains)):
@@ -771,7 +802,7 @@ class Sanitizer:
             base = len(low) - len(last)
             ends = [len(low)] + [base + i for i, c in enumerate(last) if c == "-"][:5]
             # the domain may also end before a later label (replica07.corp.test.pem)
-            ends += [i for i, c in enumerate(low) if c == "."][::-1][:20]
+            ends += [i for i, c in enumerate(low) if c in ".-"][::-1][:30]  # also before -cert.pem, -pki-tomcat
             for e in ends:
                 parts = low[:e].split(".")
                 hit = next((".".join(parts[i:]) for i in range(max(1, len(parts) - 10), len(parts))
