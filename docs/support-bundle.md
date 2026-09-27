@@ -246,7 +246,7 @@ diagnosis time: the bundle adds no collectors or network access.
 
 ## Known limitations
 
-- Detection is **pattern-based and cannot be perfect**. Credentials in an unfamiliar format, a secret split across two separate fields, names that match no known identifier or pattern, and look-alike characters beyond the folded Cyrillic/Greek set can remain.
+- Detection is **pattern-based and cannot be perfect**. Credentials in an unfamiliar format (known examples: `htpasswd -b FILE USER PASSWORD`, a password after a bare `pw` in prose, a `token=` inside a DNS-style `_label.token=` name), a secret split across two separate fields, names that match no known identifier or pattern, and look-alike characters beyond the folded Cyrillic/Greek set can remain.
 - Redaction errs towards removing too much. As a backstop, once a line contains a secret word (password, passphrase, secret, credential, bind or root password, API key) followed by `:` or `=`, everything after that `:` or `=` to the end of the line is removed. The exceptions are a secret word that is part of a longer word (`IPAProxySecretCheck`) and one followed by a metadata word (`expiration`, `policy`, `file`, ...). Nearby context on such lines is lost.
 - Validating a maximum-size bundle can take a few minutes, because every file is scanned for credential patterns.
 - A bundle still contains **operational detail**: unit and service names, versions, file paths and modes, error text, timestamps (certmonger request IDs even reveal when the server was installed), certificate expiry dates, exact disk sizes, and the shape of the topology (how many replicas, which agreements fail). Several bundles from one server can be recognised as coming from the same server. Review it before sharing.

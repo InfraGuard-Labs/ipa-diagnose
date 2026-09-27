@@ -95,7 +95,7 @@ _KEEP_IPS = {"127.0.0.1", "0.0.0.0", "255.255.255.255", "::1", "::"}
 _SECRET_KEY_RE = re.compile(
     r"(?i)(passw|passphrase|passcode|pwd|secret|token|apikey|api_key|api-key|bearer|private_?key|privkey|credential|"
     r"bindpw|bind_pw|rootpw|access_?key|cookie|authoriz|session_?key|session_?id|ccache_data|keytab_data|ticket_data|"
-    r"pincode|kennwort|motdepasse|contrase|"
+    r"pincode|kennwort|motdepasse|contrase|authtok|auth_tok|"
     r"(?<![a-z0-9])(?:pw|pin|pass|otp|totp|hotp|psk)(?![a-z0-9]))")
 
 
@@ -161,27 +161,39 @@ _NOT_MARKER = r"(?!\s*\[RE(?:DACTED|MOVED))"  # also when the pattern backtracks
 _VALUE_LINE = _NOT_MARKER + r"(?P<secret>\"[^\"\n]*\"|'[^'\n]*'|\S[^\n]*)"
 _VALUE_ARG = _NOT_MARKER + r"(?P<secret>\"[^\"\n]*\"|'[^'\n]*'|\S+)"
 # field names are bounded (a real key is short); unbounded [\w.-]* on both sides is quadratic on long runs
-_SECRET_NAME = (r"[\w.-]{0,100}?(?:passw(?:or)?d|passphrase|passcode|pwd|secret|token|api[_-]?key|apikey|"
-                r"access[_-]?key|private[_-]?key|privkey|client[_-]?secret|bindpw|rootpw|credentials?)[\w.-]{0,100}"
+_PW = r"pass[\s_.-]?w(?:or)?d"  # password / passwd, also split by one separator (pass word, pass_word)
+_SECRET_NAME = (r"[\w.-]{0,100}?(?:" + _PW + r"|passphrase|passcode|pwd|secret|token|api[_-]?key|apikey|"
+                r"access[_-]?key|private[_-]?key|privkey|client[_-]?secret|bindpw|rootpw|authtok|credentials?)[\w.-]{0,100}"
                 r"|[\w.-]{0,100}?(?<![A-Za-z0-9])(?:pw|pin|pass|otp|psk)\b")
-_SECRET_MARKER = re.compile(r"(?i)passw(?:or)?d|passphrase|passcode|pwd|secret|token|api[_-]?key|access[_-]?key|"
-                            r"private[_-]?key|privkey|bindpw|rootpw|credentials?|(?<![a-z0-9])(?:pw|pin|pass|otp|psk)")
+_SECRET_MARKER = re.compile(r"(?i)" + _PW + r"|passphrase|passcode|pwd|secret|token|api[_-]?key|access[_-]?key|"
+                            r"private[_-]?key|privkey|bindpw|rootpw|authtok|credentials?|"
+                            r"(?<![a-z0-9])(?:pw|pin|pass|otp|psk)")
 # command-line password flags of tools that take them (checked procedurally in find_secrets: a regex that looks
 # back from a flag to the tool name backtracks super-linearly)
-_FLAG_RE = re.compile(r"(?<!\S)-(?:w|W|p|P|a|u)\s*" + _NOT_MARKER + r"(?P<secret>\"[^\"\n]*\"|'[^'\n]*'|[^\s-]\S*)")
+_FLAG_RE = re.compile(r"(?<!\S)-(?:[A-Za-z]{0,6}w|W|p|P|a|u)\s*" + _NOT_MARKER + r"(?P<secret>\"[^\"\n]*\"|'[^'\n]*'|[^\s-]\S*)")
 # a line-level backstop: after a secret keyword and a ':' or '=', the rest of the line is treated as secret, unless
 # the keyword continues a word (IPAProxySecretCheck, passwords) or is followed by a word saying it is metadata
-_LINE_KEYWORD_RE = re.compile(r"(?i)passw(?:or)?d|passphrase|passcode|kennwort|bindpw|rootpw|secret|credentials?|"
-                              r"api[_-]?key")
-_META_TAIL_RE = re.compile(r"(?i)[A-Za-z]|[\s_.-]?(?:file|path|dir|polic|expir|lifetime|histor|grace|attempt|failure|"
-                           r"enabled|required|len|min|max|age|type|status|state|changed|time|date|count|prompt|hint|"
-                           r"reset|change|quality|strength|check)")
+_LINE_KEYWORD_RE = re.compile(r"(?i)" + _PW + r"|passphrase|passcode|kennwort|bindpw|rootpw|authtok|secret|"
+                              r"credentials?|api[_-]?key|\bpin\b")
+_META_TAIL_RE = re.compile(r"(?i)[A-Za-z]|[\s_.-]?(?:files?|paths?|dirs?|polic(?:y|ies)|expir\w*|lifetime|history|"
+                           r"grace|attempts?|failures?|enabled|required|length|len|minimum|min|maximum|max|age|type|"
+                           r"status|state|changed|time|timestamp|date|count|prompt|hint|reset|change|quality|strength|"
+                           r"checks?)(?![A-Za-z])")
 _TOOL_RE = re.compile(r"(?i)\b(?:ldap(?:search|modify|add|delete|passwd|whoami|compare|modrdn)\b|dsconf\b|dsctl\b|"
-                      r"ipa-[a-z]|pk12util\b|mysql\b|psql\b|curl\b)")
+                      r"ipa-[a-z]|pk12util\b|mysql\b|psql\b|curl\b|sshpass\b|redis-cli\b|kinit\b|kpasswd\b|passwd\b|"
+                      r"certutil\b|chpasswd\b|ipa\b)")
+# a here-string fed to one of the tools (kinit admin <<< pw); checked procedurally like the flags
+_HERESTR_RE = re.compile(r"<<<\s*" + _NOT_MARKER + r"(?P<secret>\S[^\n]*)")
+# markers already in the text: nothing that starts inside one is a new secret
+_MARKER_RE = re.compile(r"\[(?:REDACTED|REMOVED)[^\]\n]{0,60}\]")
 # words that, after the secret-ish part of a field name, say the value is metadata about a secret, not the secret
 _NON_SECRET_TAIL = re.compile(r"(?i)file|path|dir|polic|expir|lifetime|histor|grace|attempt|failure|enabled|required|"
                               r"len|min|max|age|type|status|state|changed|time|date|count|prompt|hint")
 _BOOLISH = {"true", "false", "none", "null", "yes", "no", "on", "off", ""}
+_PROSE_START_RE = re.compile(
+    r"(?i)(?:for|is|was|has|have|had|must|will|can|cannot|could|should|of|to|the|a|an|and|or|not|in|on|at|by|with|"
+    r"expired|expires|expiration|policy|reset|change|changed|manager|required|incorrect|invalid|wrong|mismatch|"
+    r"missing|empty|length|file|path|check|checks|history|age|attempts?|failures?)\b")
 
 Pattern = Tuple[str, "re.Pattern[str]"]
 PATTERNS: List[Pattern] = [
@@ -198,10 +210,14 @@ PATTERNS: List[Pattern] = [
     ("slack_token", re.compile(r"\bxox[abposr]-[A-Za-z0-9-]{10,}")),
     ("google_api_key", re.compile(r"\bAIza[0-9A-Za-z_-]{30,}")),
     ("credential_url", re.compile(r"(?i)(?<![a-z0-9+.-])[a-z][a-z0-9+.-]*://" + _NOT_MARKER
-                                  + r"(?P<secret>[^\s/@:]+:\S{0,256}?)@(?=[A-Za-z0-9.\[\]:-]+(?:[/\s?#]|$))")),
+                                  + r"(?P<secret>[^/@:\n]{1,128}:\S{0,256}?)@(?=[A-Za-z0-9.\[\]:-]+(?:[/\s?#]|$))")),
     ("authorization_header", re.compile(
         r"(?i)\b(?:proxy-)?authori[sz]ation[\"']?\s*[:=]\s*" + _NOT_MARKER + r"(?P<secret>[^\n]+)")),
-    ("cookie", re.compile(r"(?i)\b(?:set-)?cookie[\"']?\s*[:=]\s*" + _NOT_MARKER + r"(?P<secret>[^\n]+)")),
+    ("cookie", re.compile(r"(?i)\b(?:set-)?cookie[\"']?(?:\s*[:=]\s*|\s+(?=[^\s=]+=))" + _NOT_MARKER
+                          + r"(?P<secret>\S[^\n]*)")),
+    ("stdin_secret", re.compile(  # echo pw | kinit admin
+        r"(?i)\b(?:echo|printf)\s+" + _NOT_MARKER + r"(?P<secret>\"[^\"\n]*\"|'[^'\n]*'|\S+)\s*\|\s*"
+        r"(?:sudo\s+)?(?:kinit|kpasswd|passwd|ldap\w+|ipa\b|ipa-\w|dsconf|pk12util|certutil|chpasswd)")),
     ("bearer_token", re.compile(r"(?i)\b(?:bearer|negotiate|basic)\s+" + _NOT_MARKER
                                 + r"(?P<secret>[A-Za-z0-9\-_.=+/~]{12,})")),
     ("password_option", re.compile(
@@ -211,12 +227,22 @@ PATTERNS: List[Pattern] = [
     ("password_assignment", re.compile(
         # starts only at the beginning of a word run: an unanchored [\w.-]* is quadratic on long runs
         r"(?i)(?<![\w.-])(?P<key>" + _SECRET_NAME + r")\\?[\"']?\s*(?::|=>|=)\s*" + _VALUE_LINE)),
+    ("user_password", re.compile(  # curl -u/--user user:pw, smbclient/net -U user%pw
+        r"(?<![\w-])(?:--[Uu]ser(?:name)?|-[uU])(?:\s*=\s*|\s*)" + _NOT_MARKER
+        + r"[^\s:%'\"]{1,128}[:%](?P<secret>\S+)")),
+    ("config_secret", re.compile(  # ldap.conf / slapd.conf / sssd.conf style "bindpw value", "PASSWORD<TAB>value"
+        r"(?im)^[ \t]*[\w.-]{0,60}(?:bindpw|rootpw|authtok|" + _PW + r"|passphrase|secret)[ \t]+" + _NOT_MARKER
+        + r"(?P<secret>[^\s=:][^\n]*)")),
+    ("config_secret", re.compile(  # the same, after upstream text cleaning collapsed it into a sentence
+        r"(?i)(?<![A-Za-z])" + _PW + r"[ \t]+" + _NOT_MARKER + r"(?P<secret>[^\s=:]\S*)")),
+    ("config_secret", re.compile(r"(?i)(?<![\w-])(?:bindpw|rootpw|[\w-]{0,40}authtok)[ \t]+" + _NOT_MARKER
+                                 + r"(?P<secret>[^\s=:][^\n]*)")),
     ("password_prose", re.compile(
-        r"(?i)\b(?:password|passphrase|passwd|passcode|pin|secret|token)\s+"
+        r"(?i)\b(?:" + _PW + r"|passphrase|passcode|pin|secret|token)(?:\s+for\s+\S{1,64})?\s+"
         r"(?:(?:(?:is|was|has been)\s+)?(?:set|reset|changed)\s+to|is|was|of)\s+"
         + _NOT_MARKER + r"(?P<secret>[^\n]+)")),
     ("password_prompt", re.compile(  # e.g. kinit's "Password for admin@REALM: <typed secret>"
-        r"(?i)\b(?:password|passphrase|pin)\s+for\s+\S{1,256}?\s*:\s*" + _VALUE_LINE)),
+        r"(?i)\b(?:" + _PW + r"|passphrase|pin)\s+for\s+[^\n:\[]{1,256}?\s*:\s*" + _VALUE_LINE)),
     ("keytab_material", re.compile(r"(?i)\bkeytab\S*[:=]\s*[0-9a-f]{32,}")),
     # a keytab file itself, base64-encoded: the format starts with 0x05 0x02 ("BQ" in base64)
     ("keytab_material", re.compile(r"(?i)\bkeytab[^\n:=]{0,40}[:=]\s*(?P<secret>BQ[A-Za-z0-9+/]{6,}={0,2})")),
@@ -235,6 +261,8 @@ def _keep(name: str, m: "re.Match[str]") -> bool:
         markers = list(_SECRET_MARKER.finditer(key))
         tail = key[markers[-1].end():] if markers else ""
         return not (_NON_SECRET_TAIL.match(tail.lstrip("_.-")) or val in _BOOLISH)
+    if name == "config_secret":  # "Password expired for ...", "secret is not set": prose, not a config value
+        return not _PROSE_START_RE.match(m.group("secret"))
     if name == "bearer_token":
         return any(c.isdigit() or c in "=+/_-." for c in m.group("secret"))
     if name == "high_entropy_token":
@@ -288,7 +316,7 @@ def _secret_lines(text: str, covered: List[Tuple[int, int]]) -> List[Tuple[str, 
             if k >= 0 and covered[k][0] <= m.start() < covered[k][1]:
                 continue  # inside something another detector already redacts (e.g. a URL password)
             d = min((i for i in (text.find(":", m.end(), eol), text.find("=", m.end(), eol)) if i >= 0), default=-1)
-            if d >= 0 and text.rfind("[RE", m.end(), d) < 0:  # not the colon inside a [REDACTED:...] marker
+            if d >= 0 and max(text.rfind("[REDACTED", m.end(), d), text.rfind("[REMOVED", m.end(), d)) < 0:
                 j = d + 1
                 while j < eol and text[j] in " \t\"'":
                     j += 1
@@ -314,10 +342,11 @@ def find_secrets(text: str) -> List[Tuple[str, int, int]]:
     for m in _TOOL_RE.finditer(folded):
         ls = starts[bisect.bisect_right(starts, m.start()) - 1]
         first_tool.setdefault(ls, m.start())
-    for m in _FLAG_RE.finditer(folded):  # "-w SECRET" counts only after one of the tools, on the same line
-        ls = starts[bisect.bisect_right(starts, m.start()) - 1]
-        if first_tool.get(ls, len(folded)) < m.start():
-            found.append(("password_flag", m.start("secret"), m.end("secret")))
+    for rx, cat in ((_FLAG_RE, "password_flag"), (_HERESTR_RE, "stdin_secret")):
+        for m in rx.finditer(folded):  # counts only after one of the tools, on the same line
+            ls = starts[bisect.bisect_right(starts, m.start()) - 1]
+            if first_tool.get(ls, len(folded)) < m.start():
+                found.append((cat, m.start("secret"), m.end("secret")))
     covered = sorted((a, b) for _n, a, b in found)
     merged: List[Tuple[int, int]] = []
     for a, b in covered:
@@ -328,6 +357,15 @@ def find_secrets(text: str) -> List[Tuple[str, int, int]]:
     found += _secret_lines(folded, merged)
     if "-----END" in folded:
         found += [("pem_block", a, b) for a, b in _pem_tail(folded)]
+    if "[RE" in folded:  # a span that starts inside an existing [REDACTED:...] / [REMOVED] marker is not a secret
+        marks = [(m.start(), m.end()) for m in _MARKER_RE.finditer(folded)]
+        starts = [a for a, _b in marks]
+        keep = []
+        for f in found:
+            k = bisect.bisect_right(starts, f[1]) - 1
+            if not (k >= 0 and marks[k][0] <= f[1] < marks[k][1]):
+                keep.append(f)
+        found = keep
     return found
 
 
@@ -375,7 +413,7 @@ _DOWNLEVEL_RE = re.compile(r"(?<![\w\\=])(?P<dom>[A-Z][A-Z0-9-]{1,14})\\(?![0-9A
                            r"(?P<user>[A-Za-z0-9._$-]{2,64})(?![\w])")
 _DOWNLEVEL_CONST = {"NT", "BUILTIN", "NT AUTHORITY", "NT SERVICE", "WORKGROUP"}
 _HOME_RE = re.compile(r"/home/(?P<v>[^/\s:;,'\"]+)")
-_FQDN_RE = re.compile(r"(?<![A-Za-z0-9_@./\\-])(?P<v>(?:" + _LABEL + r"\.)+[A-Za-z][A-Za-z0-9-]{0,61}[A-Za-z0-9])"
+_FQDN_RE = re.compile(r"(?<![A-Za-z0-9_./\\-])(?P<v>(?:" + _LABEL + r"\.)+[A-Za-z][A-Za-z0-9-]{0,61}[A-Za-z0-9])"
                       r"(?![A-Za-z0-9_-])(?!\.[A-Za-z0-9])")
 _IPV4_RE = re.compile(r"(?<![0-9.])(?:\d{1,3}\.){3}\d{1,3}(?!\d)(?!\.\d)")
 _IPV6_RE = re.compile(r"(?<![\w:.])(?:[0-9A-Fa-f]{0,4}:){2,7}(?:\d{1,3}(?:\.\d{1,3}){3}|[0-9A-Fa-f]{0,4})"
@@ -629,6 +667,8 @@ class Sanitizer:
             last = low.rsplit(".", 1)[-1]
             base = len(low) - len(last)
             ends = [len(low)] + [base + i for i, c in enumerate(last) if c == "-"][:5]
+            # the domain may also end before a later label (replica07.corp.test.pem)
+            ends += [i for i, c in enumerate(low) if c == "."][::-1][:20]
             for e in ends:
                 parts = low[:e].split(".")
                 hit = next((".".join(parts[i:]) for i in range(max(1, len(parts) - 10), len(parts))
