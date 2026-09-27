@@ -42,7 +42,9 @@ provider (`--ai-provider` is refused).
 
 - Default name: `ipa-diagnose-bundle-<UTC time>.tar.gz`. The host name is never used in the file name.
 - Created with mode `0600`. It is written to a temporary file in the same directory and hard-linked into place, so it appears complete or not at all. On filesystems without hard links it is created exclusively with `O_EXCL|O_NOFOLLOW` instead.
-- An existing file or symlink at the path is never overwritten or followed; the command refuses with exit 5.
+- An existing file or symlink at the path is never overwritten or followed; the command refuses with exit 5, as it does when the directory cannot be written (read-only, no permission).
+- A directory owned by another user (neither root, you, nor the user who ran `sudo`) is refused: that user could replace the bundle after it is written.
+- If the process is killed outright while writing, a hidden `.ipa-diagnose-bundle-*.partial` file (mode 0600, the sanitized content) can remain in the directory; delete it.
 - A directory writable by every user without the sticky bit is refused, because another user could replace the file after it is written.
 - Under `sudo` the file belongs to root. Copy it with sudo to share it.
 
@@ -57,7 +59,7 @@ A gzip-compressed tar holding exactly these files in one directory,
 | `manifest.json` | format and schema version, ipa-diagnose version, creation time, LIVE/REPLAY, evidence tiers, counts, sanitization status, truncation, limits, SHA-256 of every member |
 | `environment.json` | OS and FreeIPA, ipa-healthcheck and 389-DS versions of the diagnosed host |
 | `report.json` | overall status, evidence completeness, diagnoses (confidence, evidence references, impact, limitations), undiagnosed findings, resolutions, service states, side effects |
-| `healthcheck.json` | ipa-healthcheck results: problems in full (source, check, severity, key, message, keywords, whether a rule explained it, whether this build knows the check); successes by name only |
+| `healthcheck.json` | ipa-healthcheck results: problems in full (source, check, severity, key, message, keywords, whether a rule explained it, whether this build knows the check); successes by name only. For a check this build does not know, the message and keyword values are withheld and only the keyword names are kept; diagnosis text that would quote them is rewritten from structured fields |
 | `evidence.json` | the targeted evidence items ipa-diagnose collected (certmonger requests, replication agreements, keytab/bind check, journal matches, and so on), with the collector and the diagnoses that cite each item |
 | `collection-errors.json` | each collector that failed: category (permission, timeout, not available, unparseable output, other), message, and what it leaves unverified |
 | `topology.json` | replication agreements and RUV entries as this host reported them |
@@ -178,7 +180,7 @@ If anything is found, **no bundle is written**:
 
 The two halves of the self-test are not equally independent:
 - **Identities and secret-field values.** It searches every file for every real identifier found anywhere in the evidence, and every value found under a secret-named field (such a value can be quoted again in a diagnosis text). This is independent of the replacement step, so a name that was discovered but not replaced stops the bundle.
-- **Credentials.** It uses the same detectors as redaction. It therefore catches text that skipped redaction (a pipeline failure), not a credential in a format the detectors do not know.
+- **Credentials.** It uses the same detectors as redaction, plus every value that was found under a secret-named field (matched as a whole word below six characters). It therefore catches text that skipped redaction (a pipeline failure), not a credential in a format the detectors do not know.
 
 It cannot find a name that appears only in free text and matches no known identifier or pattern. Such a name stays as written.
 
@@ -204,6 +206,8 @@ extracts it**. It refuses:
 - entries that are not plain regular files (symlinks, hard links, devices, directories), pax headers, unexpected, traversing or non-ASCII names, duplicates, and missing files;
 - nested archives, invalid UTF-8, malformed JSON (duplicate keys and NaN/Infinity are refused), a different or future schema version, or a file claiming a different `source_mode` than the manifest;
 - checksum mismatches;
+- any data after the last readable archive entry (other tar programs skip an unreadable header and would extract what follows), and numbers that are not finite;
+- anything too large to check within its limits: 200,000 strings, 24 MiB of text, 60 seconds.
 - credential patterns or control characters in any file. It reports the category, never the text, and says not to share the bundle.
 
 Unknown extra fields in the manifest are only a warning.

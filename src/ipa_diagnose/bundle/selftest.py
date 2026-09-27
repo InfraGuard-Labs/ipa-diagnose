@@ -17,7 +17,7 @@ import re
 import unicodedata
 from typing import Dict, Iterable, List, Sequence, Tuple
 
-from ipa_diagnose.bundle.sanitize import find_secrets, invisible, iter_originals, secret_key
+from ipa_diagnose.bundle.sanitize import find_secrets, invisible, iter_originals, secret_key, secret_value_re
 
 # members that carry evidence (the manifest and redaction report are generated and name categories, not values)
 EVIDENCE_MEMBERS = ("environment.json", "report.json", "healthcheck.json", "evidence.json", "collection-errors.json",
@@ -88,7 +88,7 @@ def check(members: Dict[str, bytes], originals: Iterable[Tuple[str, str]], forbi
           secrets: Iterable[str] = ()) -> None:
     detectors = list(iter_originals(originals))
     literals = [f.lower() for f in forbidden if f and len(f) >= 4]
-    secret_list = sorted(set(secrets))
+    secret_list = [(v, secret_value_re(v)) for v in sorted(set(secrets))]
     problems: List[Tuple[str, str]] = []
 
     active = detectors
@@ -129,7 +129,7 @@ def check(members: Dict[str, bytes], originals: Iterable[Tuple[str, str]], forbi
             if name in EVIDENCE_MEMBERS and unremoved_secret_fields(obj):
                 problems.append((name, "secret-named field not removed"))
             if name in EVIDENCE_MEMBERS and secret_list and any(
-                    v in s for _k, s in _strings(obj) for v in secret_list if v[:3] in s):
+                    rx.search(s) for _k, s in _strings(obj) for v, rx in secret_list if v in s):
                 problems.append((name, "value of a secret-named field"))
         else:
             scan(name, "", text, multiline=True)

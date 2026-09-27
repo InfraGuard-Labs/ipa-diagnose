@@ -85,6 +85,7 @@ def _is_tld(label: str) -> bool:
 PUBLIC_DOMAINS = ("freeipa.org", "redhat.com", "fedoraproject.org", "port389.org", "github.com", "pagure.io",
                   "readthedocs.io", "mit.edu", "kerberos.org", "ietf.org", "rfc-editor.org", "python.org", "pypi.org",
                   "sssd.io", "almalinux.org", "rockylinux.org", "centos.org", "example.com", "example.org", "example.net")
+_FILE_EXTS = {"pem", "crt", "cer", "key", "csr", "conf", "keytab", "log", "db", "p12", "pfx", "ldif", "json", "txt"}
 _UNIT_SUFFIXES = {"service", "socket", "target", "timer", "mount", "path", "slice", "scope", "device", "swap",
                   "automount"}
 # first labels of dotted names that are code (Python modules, Java packages), not hosts
@@ -107,6 +108,7 @@ def secret_key(key: str, normalize: bool = False) -> bool:
 _RAW_KEYS = frozenset({"raw", "stdout", "stderr", "output", "raw_output", "environ", "environment_variables"})
 
 _HOSTISH_KEYS = {"host", "hostname", "server", "master", "replica", "fqdn", "peer", "target", "ca_renewal_master",
+                 "hosts", "servers", "masters", "replicas", "peers",
                  "crlgen_master", "dns_server", "ipa_server", "server_hostname"}
 _USER_KEYS = {"user", "uid", "username", "login", "owner", "expected_owner", "users", "members", "member",
               "memberuid", "member_user"}
@@ -199,6 +201,7 @@ _TOOL_RE = re.compile(r"(?i)\b(?:ldap(?:search|modify|add|delete|passwd|whoami|c
                       r"ipa-[a-z]|pk12util\b|mysql\b|psql\b|curl\b|sshpass\b|redis-cli\b|kinit\b|kpasswd\b|passwd\b|"
                       r"certutil\b|chpasswd\b|ipa\b)")
 # a here-string fed to one of the tools (kinit admin <<< pw); checked procedurally like the flags
+_YAML_BLOCK_RE = re.compile(r"[|>][-+0-9]{0,3}[ \t]*")
 _HERESTR_RE = re.compile(r"<<<\s*" + _NOT_MARKER + r"(?P<secret>\S[^\n]*)")
 # markers already in the text: nothing that starts inside one is a new secret
 _MARKER_RE = re.compile(r"\[(?:REDACTED|REMOVED)[^\]\n]{0,60}\]")
@@ -206,6 +209,18 @@ _MARKER_RE = re.compile(r"\[(?:REDACTED|REMOVED)[^\]\n]{0,60}\]")
 _NON_SECRET_TAIL = re.compile(r"(?i)file|path|dir|polic|expir|lifetime|histor|grace|attempt|failure|enabled|required|"
                               r"len|min|max|age|type|status|state|changed|time|date|count|prompt|hint")
 _BOOLISH = {"true", "false", "none", "null", "yes", "no", "on", "off", ""}
+_TRIVIAL_VALUES = {"none", "null", "true", "false", "yes", "no", "on", "off", "n/a", "unknown", "empty", "default",
+                   "unset", "redacted", "removed", "withheld", "***", "xxx"}
+
+
+def secret_value_re(value: str) -> "re.Pattern[str]":
+    """A tracked secret value: anywhere when long, as a whole token when short (a 4-digit PIN must not match inside
+    a longer number or word)."""
+
+    esc = re.escape(value)
+    return re.compile(esc if len(value) >= 6 else r"(?<![A-Za-z0-9])" + esc + r"(?![A-Za-z0-9])")
+
+
 _PROSE_START_RE = re.compile(
     r"(?i)(?:for|is|was|has|have|had|must|will|can|cannot|could|should|of|to|the|a|an|and|or|not|in|on|at|by|with|"
     r"expired|expires|expiration|policy|reset|change|changed|manager|required|incorrect|invalid|wrong|mismatch|"
@@ -232,14 +247,14 @@ PATTERNS: List[Pattern] = [
         + _NOT_MARKER + r"(?P<secret>[^<\n]{1,512})</")),
     ("google_api_key", re.compile(r"\bAIza[0-9A-Za-z_-]{30,}")),
     ("credential_url", re.compile(r"(?i)(?<![a-z0-9+.-])[a-z][a-z0-9+.-]*://" + _NOT_MARKER
-                                  + r"(?P<secret>[^/@:\n]{1,128}:\S{0,256}?)@"
+                                  + r"(?P<secret>[^/@:\n]{0,128}:\S{0,256}?)@"
                                   + r"(?=[A-Za-z0-9.\[\]:-]+(?:[/\s?#)'\",;\]>]|$))")),
     ("authorization_header", re.compile(
         r"(?i)\b(?:proxy-)?authori[sz]ation[\"']?\s*[:=]\s*" + _NOT_MARKER + r"(?P<secret>[^\n]+)")),
     ("cookie", re.compile(r"(?i)\b(?:set-)?cookie[\"']?(?:\s*[:=]\s*|\s+(?=[^\s=]+=))" + _NOT_MARKER
                           + r"(?P<secret>\S[^\n]*)")),
     ("stdin_secret", re.compile(  # echo pw | kinit admin
-        r"(?i)\b(?:echo|printf)\s+" + _NOT_MARKER + r"(?P<secret>\"[^\"\n]*\"|'[^'\n]*'|\S+)\s*\|\s*"
+        r"(?i)\b(?:echo|printf)(?:\s+-[neE]{1,3})*\s+" + _NOT_MARKER + r"(?P<secret>\"[^\"\n]*\"|'[^'\n]*'|\S+)\s*\|\s*"
         r"(?:sudo\s+)?(?:kinit|kpasswd|passwd|ldap\w+|ipa\b|ipa-\w|dsconf|pk12util|certutil|chpasswd)")),
     ("bearer_token", re.compile(r"(?i)\b(?:bearer|negotiate|basic)\s+" + _NOT_MARKER
                                 + r"(?P<secret>[A-Za-z0-9\-_.=+/~]{12,})")),
@@ -250,6 +265,9 @@ PATTERNS: List[Pattern] = [
     ("password_assignment", re.compile(
         # starts only at the beginning of a word run: an unanchored [\w.-]* is quadratic on long runs
         r"(?i)(?<![\w.-])(?P<key>" + _SECRET_NAME + r")\\?[\"']?\s*(?::|=>|=)\s*" + _VALUE_LINE)),
+    ("password_flag", re.compile(  # pk12util -K slot password, ldappasswd -s new password (anchored on the tool)
+        r"(?i)\b(?:ldappasswd|pk12util)\b[^\n]{0,300}?(?<!\S)-[sK]\s*" + _NOT_MARKER
+        + r"(?P<secret>(?=[^\s-])" + _SHELL_WORD + r")")),
     ("user_password", re.compile(  # curl -u/--user user:pw, smbclient/net -U user%pw
         r"(?<![\w-])(?:--[Uu]ser(?:name)?|-[uU])(?:\s*=\s*|\s*)" + _NOT_MARKER
         + r"[^\s:%'\"]{1,128}[:%](?P<secret>\S+)")),
@@ -285,9 +303,11 @@ def _keep(name: str, m: "re.Match[str]") -> bool:
         tail = key[markers[-1].end():] if markers else ""
         return not (_NON_SECRET_TAIL.match(tail.lstrip("_.-")) or val in _BOOLISH)
     if name == "config_secret":  # "Password expired for ...", "secret is not set": prose, not a config value
+        if re.search(r"(?i)bindpw|rootpw|authtok", m.group(0)[: m.start("secret") - m.start()]):
+            return True
         return not _PROSE_START_RE.match(m.group("secret"))
     if name == "bearer_token":
-        return any(c.isdigit() or c in "=+/_-." for c in m.group("secret"))
+        return not m.group(0).lower().startswith("basic") or any(c.isdigit() or c in "=+/_-." for c in m.group("secret"))
     if name == "high_entropy_token":
         val = m.group("secret")
         if val.startswith("/") or not (any(c.isdigit() for c in val) and any(c.isalpha() for c in val)):
@@ -343,7 +363,7 @@ def _secret_lines(text: str, covered: List[Tuple[int, int]]) -> List[Tuple[str, 
                 j = d + 1
                 while j < eol and text[j] in " \t\"'":
                     j += 1
-                if j < eol and text[j] in "|>" and not text[j + 1:eol].strip() and eol < n:
+                if j < eol and _YAML_BLOCK_RE.fullmatch(text, j, eol) and eol < n:
                     nxt = text.find("\n", eol + 1)
                     spans.append(("secret_line", j, n if nxt < 0 else nxt))  # YAML block: the value is on the next line
                 elif j < eol and not text.startswith("[RE", j):
@@ -424,10 +444,10 @@ def redact(text: str, counts: Optional[collections.Counter] = None) -> str:
 _LABEL = r"[A-Za-z0-9_](?:[A-Za-z0-9_-]{0,61}[A-Za-z0-9])?"
 _PRINCIPAL_RE = re.compile(
     r"(?<![\w.@/\\$-])(?P<primary>[A-Za-z0-9._$-]+)(?:/(?P<instance>[A-Za-z0-9._-]+))?(?:@|\\40)"
-    r"(?P<realm>[A-Z0-9][A-Z0-9-]*(?:\.[A-Z0-9-]+)+)(?![\w.-])")
+    r"(?P<realm>[A-Z0-9]+(?:-[A-Z0-9]+)*(?:\.[A-Z0-9]+(?:-[A-Z0-9]+)*)+)(?![A-Za-z0-9_])(?!\.[A-Za-z0-9])")
 _EMAIL_RE = re.compile(r"(?i)(?<![\w.%+-])[A-Za-z0-9._%+-]+@(?P<domain>(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,})(?![\w-])")
 _URL_HOST_RE = re.compile(r"(?i)(?<![a-z0-9+.-])[a-z][a-z0-9+.-]*://(?:\S{0,256}@)?\[?(?P<host>[^\s/:\]@\[)'\",;<>]+)")
-_UID_RE = re.compile(r"(?i)\buid=(?P<v>[^,+\s=\\]+)")
+_UID_RE = re.compile(r"(?i)\buid\s*[=:]\s*(?P<v>[^,+\s=\\:]+)")
 _FQDN_ATTR_RE = re.compile(r"(?i)\bfqdn=(?P<v>[^,+\s=\\]+)")
 _GROUP_DN_RE = re.compile(r"(?i)\bcn=(?P<v>[^,+=\\]+),\s*cn=groups\b")
 _HOSTGROUP_DN_RE = re.compile(r"(?i)\bcn=(?P<v>[^,+=\\]+),\s*cn=hostgroups\b")
@@ -446,12 +466,13 @@ _HOME_RE = re.compile(r"/home/(?P<v>[^/\s:;,'\"]+)(?:/(?P<v2>[^/\s:;,'\"]+))?")
 _ENTERPRISE_RE = re.compile(r"(?<![\w.\\-])(?P<user>[A-Za-z0-9._$-]{1,64})\\@(?P<dom>[A-Za-z0-9.-]+\.[A-Za-z]{2,})@")
 _USER_DN_RE = re.compile(r"(?i)\bcn=(?P<v>[^,+=\\]{1,128}),\s*cn=users\b")
 _IPV6_RUN_RE = re.compile(r"(?<![0-9A-Fa-f:.])[0-9A-Fa-f.]*:[0-9A-Fa-f:.]*:[0-9A-Fa-f:.]*")
-_FQDN_RE = re.compile(r"(?<![A-Za-z0-9_./\\-])(?P<v>(?:" + _LABEL + r"\.)+[A-Za-z][A-Za-z0-9-]{0,61}[A-Za-z0-9])"
-                      r"(?![A-Za-z0-9_-])(?!\.[A-Za-z0-9])")
-_IPV4_RE = re.compile(r"(?<![0-9.])(?:\d{1,3}\.){3}\d{1,3}(?!\d)(?!\.\d)")
+_FQDN_RE = re.compile(r"(?<![A-Za-z0-9_.\\-])(?P<v>(?:" + _LABEL + r"\.)+[A-Za-z][A-Za-z0-9-]{0,61}[A-Za-z0-9])"
+                      r"(?![A-Za-z0-9_-])(?:(?!\.[A-Za-z0-9])|(?=\.(?:pem|crt|cer|key|csr|conf|keytab|log|db|p12|pfx|"
+                      r"ldif|json|txt)(?![A-Za-z0-9])))")  # a host name may be followed by a file extension
+_IPV4_RE = re.compile(r"(?<![0-9])(?<![0-9]\.)(?:\d{1,3}\.){3}\d{1,3}(?!\d)(?!\.\d)")
 _IPV6_RE = re.compile(r"(?<![\w:.])(?:[0-9A-Fa-f]{0,4}:){2,7}(?:\d{1,3}(?:\.\d{1,3}){3}|[0-9A-Fa-f]{0,4})"
                       r"(?![\w:])(?!\.\d)")
-_AGREEMENT_PREFIX = re.compile(r"^(meTo|cloneAgreement\d+-)", re.IGNORECASE)
+_AGREEMENT_PREFIX = re.compile(r"^(meTo|cloneAgreement\d+-)")
 # a maximal dotted name (used to find hosts inside known domains in one linear pass)
 _DOTTED_RE = re.compile(r"(?<![A-Za-z0-9_.-])(?:" + _LABEL + r"\.)+" + _LABEL)
 _CHUNK = 1024  # identifier-dense text is replaced in chunks of about this size (keeps replacement linear)
@@ -475,7 +496,7 @@ def _canon_ip(text: str) -> Optional[str]:
 def _ip_pattern(form: str) -> str:
     esc = re.escape(form)
     if ":" not in form:  # IPv4: a port (10.1.2.3:389) or an IPv4-mapped prefix (::ffff:) around it is still the address
-        return r"(?<![0-9.])" + esc + r"(?!\d)(?!\.\d)"
+        return r"(?<![0-9])(?<![0-9]\.)" + esc + r"(?!\d)(?!\.\d)"
     return r"(?i:(?<![0-9A-Fa-f.])(?<![0-9A-Fa-f]:)" + esc + r")(?![0-9A-Fa-f:])(?!\.\d)"
 
 
@@ -642,7 +663,8 @@ class Sanitizer:
             in_known = any(dom == d or dom.endswith("." + d) for d in self._domains)
             if last in _UNIT_SUFFIXES or not (last.isalpha() and len(last) >= 2) or self._public(dom):
                 continue  # e.g. dirsrv@EXAMPLE-TEST.service is a systemd unit, not an address
-            if m.start() > 0 and text[m.start() - 1] == ":" and "://" in text[max(0, m.start() - 200):m.start()]:
+            k = text.rfind("://", max(0, m.start() - 200), m.start())
+            if m.start() > 0 and text[m.start() - 1] == ":" and k >= 0 and not any(c.isspace() for c in text[k:m.start()]):
                 continue  # user:password@host in a URL: the host is found by the URL rule, the rest is redacted
             if in_known and dom not in self._domains:
                 self.add_host(dom)  # user@host.<ipa domain>: the part after @ is a host of this domain
@@ -692,6 +714,9 @@ class Sanitizer:
         for m in _FQDN_RE.finditer(text):
             v = m.group("v")
             labels = v.lower().split(".")
+            if len(labels) >= 3 and labels[-1] in _FILE_EXTS:  # host.example.com.pem: the host is before the extension
+                v = v.rsplit(".", 1)[0]
+                labels = labels[:-1]
             tld = _is_tld(labels[-1]) or (labels[-1] in _NOT_TLD2 and len(labels) >= 3)
             if (tld and labels[0] not in _MODULE_ROOTS
                     and not any(v.lower() == d or v.lower().endswith("." + d) for d in self._domains)):
@@ -758,6 +783,21 @@ class Sanitizer:
         elif isinstance(value, str) and len(value) <= HARD_LIMIT:
             self.discover_text(value, key)
 
+    def track_secrets(self, value: Any, depth: int = 0) -> None:
+        """Every value under a secret-named field anywhere in `value` is tracked (removed and self-tested)."""
+
+        if depth > MAX_DEPTH:
+            return
+        if isinstance(value, dict):
+            for k, v in list(value.items())[:10000]:
+                if secret_key(str(k), normalize=True):
+                    self._collect_secret(v)
+                else:
+                    self.track_secrets(v, depth + 1)
+        elif isinstance(value, (list, tuple)):
+            for v in list(value)[:10000]:
+                self.track_secrets(v, depth + 1)
+
     def _collect_secret(self, value: Any, depth: int = 0) -> None:
         if depth > MAX_DEPTH or isinstance(value, bool) or value is None:
             return
@@ -769,13 +809,14 @@ class Sanitizer:
                 self._collect_secret(v, depth + 1)
         else:
             text = clean(str(value))[:HARD_LIMIT].strip()
-            if len(text) >= 6:
+            if len(text) >= 3 and text.lower() not in _TRIVIAL_VALUES and not _PSEUDONYM_SHAPE.fullmatch(text):
                 self.secret_values.add(text)
 
     def _remove_secret_values(self, text: str) -> str:
         for v in sorted((v for v in self.secret_values if v in text), key=len, reverse=True):
-            text = text.replace(v, "[REDACTED:secret_field_value]")
-            self.redactions["secret_field_value"] += 1
+            rx = secret_value_re(v)
+            text, n = rx.subn("[REDACTED:secret_field_value]", text)
+            self.redactions["secret_field_value"] += n
         return text
 
     # -- pseudonymization ---------------------------------------------------------------------------------------

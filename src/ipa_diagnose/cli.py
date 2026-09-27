@@ -291,7 +291,8 @@ def main(argv: Optional[list] = None) -> int:
         if command == "bundle":  # reached only through an unusual spelling such as `ipa-diagnose -- bundle`
             from ipa_diagnose.bundle.cli import run as run_bundle
 
-            return run_bundle(["bundle"])
+            return run_bundle(["bundle"] + (["--replay", args.replay] if args.replay else [])
+                              + (["--json"] if args.json else []))
         if command == "verify":
             return cmd_verify(args, console)
         if command == "ai-preview":

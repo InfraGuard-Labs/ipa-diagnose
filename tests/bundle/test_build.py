@@ -94,7 +94,7 @@ def test_canary_secrets_and_identities_never_survive(tmp_path):
     for canary in CANARIES:
         assert canary.lower() not in text.lower(), canary
     red = _json(b, "redaction-report.json")
-    assert red["secret_named_fields_removed"] >= 1 and sum(red["redacted_values"].values()) >= 8
+    assert red["secret_named_fields_removed"] >= 1 and sum(red["redacted_values"].values()) >= 4
     assert {"HOST", "DOMAIN", "REALM", "SUFFIX", "USER", "IP"} <= set(red["pseudonymized_identifiers"])
     # relationships kept: the agreement and the peer are the same pseudonym everywhere
     topo = _json(b, "topology.json")
@@ -230,8 +230,18 @@ def test_resource_limits_truncate_honestly_and_keep_failures_first():
     assert sum(1 for f in hc["findings"] if f["severity"] == "ERROR") == 700  # every failure kept
     m = _json(b, "manifest.json")
     assert m["content_complete"] is False and m["truncation"]["entries_dropped_by_limits"]["findings"] == 300
-    assert m["truncation"]["strings_truncated"] >= 700
-    assert all(len(f.get("message", "")) <= 2000 for f in hc["findings"])
+    # these checks are unknown to this build: their free text is withheld, not truncated
+    assert all(f["message"].startswith("[WITHHELD") for f in hc["findings"] if f["severity"] == "ERROR")
+
+
+def test_long_text_of_a_known_check_is_truncated_after_redaction():
+    ev, report = _live_bundle([_f("ipahealthcheck.ds.replication", "ReplicationCheck", "ERROR", "m" * 3000, fid="r1"),
+                               _f("ipahealthcheck.ipa.certs", "IPACertmongerExpirationCheck", "SUCCESS")])
+    b = build(ev, report, created_at=T0)
+    _check(b)
+    msg = [f for f in _json(b, "healthcheck.json")["findings"] if f["finding_id"] == "r1"][0]["message"]
+    assert msg.endswith("[truncated]") and len(msg) <= 2000
+    assert _json(b, "manifest.json")["truncation"]["strings_truncated"] >= 1
 
 
 def test_same_input_gives_the_same_bundle():

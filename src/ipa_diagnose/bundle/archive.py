@@ -90,6 +90,13 @@ def _check_parent(parent: pathlib.Path) -> None:
     if os.name != "nt" and st.st_mode & stat.S_IWOTH and not st.st_mode & stat.S_ISVTX:
         raise OutputRefused(f"{parent} is writable by every user and not sticky: another user could replace the "
                             "bundle after it is written. Choose another directory.")
+    if os.name != "nt":
+        trusted = {0, os.geteuid()}
+        if os.environ.get("SUDO_UID", "").isdigit():
+            trusted.add(int(os.environ["SUDO_UID"]))  # the user who ran sudo, in their own directory
+        if st.st_uid not in trusted:
+            raise OutputRefused(f"{parent} belongs to another user, who could replace the bundle after it is "
+                                "written. Choose a directory you or root own.")
 
 
 def write_new_file(path: pathlib.Path, data: bytes) -> pathlib.Path:
@@ -196,7 +203,14 @@ def _strict_json(data: bytes) -> Any:
     def no_constants(_name):
         raise ValueError("non-standard number")
 
-    value = json.loads(data.decode("utf-8"), object_pairs_hook=no_dupes, parse_constant=no_constants)
+    def finite(text):
+        f = float(text)
+        if f != f or f in (float("inf"), float("-inf")):
+            raise ValueError("non-finite number")
+        return f
+
+    value = json.loads(data.decode("utf-8"), object_pairs_hook=no_dupes, parse_constant=no_constants,
+                       parse_float=finite)
     if not _depth_ok(value):
         raise ValueError("nested too deeply")
     return value
@@ -258,6 +272,31 @@ def _json_strings(value, key=""):
 
 
 def validate(path: str) -> Validation:
+    """Never raises: anything unexpected is reported as a problem (the bundle is then not valid)."""
+
+    try:
+        return _validate(path)
+    except _Budget:
+        v = Validation()
+        v.problems.append(f"too large to check within the validation limits ({MAX_SCAN_STRINGS} strings, "
+                          f"{MAX_SCAN_CHARS} characters, {MAX_SCAN_SECONDS} s); not validated")
+        return v
+    except Exception as e:  # noqa: BLE001 - a hostile file must never crash validation
+        v = Validation()
+        v.problems.append(f"could not be validated ({type(e).__name__})")
+        return v
+
+
+MAX_SCAN_STRINGS = 200_000
+MAX_SCAN_CHARS = 24 * 1024 * 1024
+MAX_SCAN_SECONDS = 60
+
+
+class _Budget(Exception):
+    pass
+
+
+def _validate(path: str) -> Validation:
     v = Validation()
     data = _read_limited(pathlib.Path(path), v)
     if data is None:
@@ -295,8 +334,13 @@ def validate(path: str) -> Validation:
                     continue
                 fh = tar.extractfile(ti)
                 contents[member] = fh.read(LIMITS["member_bytes"] + 1) if fh else b""
+            end = tar.offset
     except (tarfile.TarError, EOFError, OSError, ValueError, RecursionError, MemoryError) as e:
         v.problems.append(f"not a readable tar archive ({type(e).__name__})")
+        return v
+    if raw[end:].strip(b"\0"):
+        # other tar readers (GNU tar) skip an unreadable header and extract whatever follows it
+        v.problems.append("data after the last readable archive entry (other tar programs may extract hidden files)")
         return v
     missing = [m for m in MEMBERS if m not in contents]
     if missing:
@@ -382,7 +426,7 @@ def _check_manifest(contents: Dict[str, bytes], v: Validation) -> Optional[Dict[
         v.problems.append("manifest.json members do not match the archive")
     for e in entries:
         n = e.get("name")
-        if n in contents and (e.get("sha256") != hashlib.sha256(contents[n]).hexdigest()
+        if isinstance(n, str) and n in contents and (e.get("sha256") != hashlib.sha256(contents[n]).hexdigest()
                               or e.get("bytes") != len(contents[n])):
             v.problems.append(f"manifest.json checksum or size mismatch for {n}")
     return m
@@ -390,6 +434,15 @@ def _check_manifest(contents: Dict[str, bytes], v: Validation) -> Optional[Dict[
 
 def _check_content(contents: Dict[str, bytes], manifest: Optional[Dict[str, Any]], v: Validation) -> None:
     mode = manifest.get("source_mode") if manifest else None
+    budget = {"strings": 0, "chars": 0, "deadline": time.monotonic() + MAX_SCAN_SECONDS}
+
+    def scan(text: str, key: str = "", multiline: bool = False):
+        budget["strings"] += 1
+        budget["chars"] += len(text)
+        if (budget["strings"] > MAX_SCAN_STRINGS or budget["chars"] > MAX_SCAN_CHARS
+                or (budget["strings"] % 256 == 0 and time.monotonic() > budget["deadline"])):
+            raise _Budget()
+        return scan_text(text, key, multiline)
     for name in MEMBERS:
         data = contents.get(name)
         if data is None or name == "SHA256SUMS":
@@ -413,16 +466,19 @@ def _check_content(contents: Dict[str, bytes], manifest: Optional[Dict[str, Any]
                 v.problems.append(f"{name} says source_mode {str(obj.get('source_mode'))[:10]!r}, the manifest says "
                                   f"{mode}")
             for key, s in _json_strings(obj):
-                found.update(scan_text(s, key))
+                found.update(scan(s, key))
             if name in EVIDENCE_MEMBERS and unremoved_secret_fields(obj):
                 found.add("secret-named field not removed")
         else:
-            found.update(scan_text(text, multiline=True))
+            found.update(scan(text, multiline=True))
         for cat in sorted(found):
             v.problems.append(f"{name}: {cat} - do not share this bundle")
     if manifest:
-        v.summary = {k: manifest.get(k) for k in ("created_at", "source_mode", "overall_status",
-                                                   "evidence_completeness", "bundle_schema_version")}
+        def plain(x):
+            return x if isinstance(x, (str, int, bool)) or x is None else None
+
+        v.summary = {k: plain(manifest.get(k)) for k in ("created_at", "source_mode", "overall_status",
+                                                          "evidence_completeness", "bundle_schema_version")}
         by = manifest.get("created_by")
-        v.summary["ipa_diagnose_version"] = by.get("version") if isinstance(by, dict) else None
-        v.summary["content_complete"] = manifest.get("content_complete")
+        v.summary["ipa_diagnose_version"] = plain(by.get("version")) if isinstance(by, dict) else None
+        v.summary["content_complete"] = plain(manifest.get("content_complete"))

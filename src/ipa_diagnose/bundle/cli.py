@@ -126,6 +126,8 @@ def _create(args: argparse.Namespace, console: Console, err: Console) -> int:
         archive.write_new_file(path, data)
     except archive.OutputRefused as e:
         return _refused(args, console, "the output file was not created", [str(e)])
+    except OSError as e:  # read-only filesystem, no permission, disk full: nothing was left behind
+        return _refused(args, console, "the output file was not created", [f"{path}: {e.strerror or type(e).__name__}"])
     import hashlib
 
     digest = hashlib.sha256(data).hexdigest()

@@ -107,9 +107,19 @@ def _raw_reason(evidence: EvidenceBundle, collector: str, shortened: Any) -> Any
     return shortened
 
 
+WITHHELD = "[WITHHELD: free text of a check this ipa-diagnose build does not know]"
+# engine diagnoses whose text quotes raw ipa-healthcheck messages and keywords: regenerated from structured fields
+_QUOTING_RULES = {("healthcheck", "unexplained-findings"), ("healthcheck", "healthcheck-check-failed")}
+
+
+def _known_check(source: Any, check: Any) -> bool:
+    return f"{source}.{check}" in CATALOG
+
+
 def _project_report(report: DiagnosisReport, evidence: EvidenceBundle, mode: str,
                     dropped: collections.Counter) -> Dict[str, Any]:
     rd = report_to_dict(report)
+    findings = {f.finding_id: f for f in evidence.findings}
     comp = dict(rd["evidence_completeness"])
     comp["unverified"] = [dict(u, reason=_raw_reason(evidence, u["collector"], u["reason"])) for u in comp["unverified"]]
     if comp.get("ruv_reason"):
@@ -118,6 +128,12 @@ def _project_report(report: DiagnosisReport, evidence: EvidenceBundle, mode: str
     for d in _cap(rd["diagnoses"], LIMITS["max_diagnoses"], dropped, "diagnoses"):
         d = dict(d)
         d.pop("ai_explanation", None)  # AI text is never part of a bundle
+        if (d["pack_id"], d["rule_id"]) in _QUOTING_RULES:
+            cited = [findings[r["evidence_id"]] for r in d["evidence_for"] if r["evidence_id"] in findings]
+            d["why"] = (f"{len(cited)} ipa-healthcheck finding(s) that no ipa-diagnose rule explains: "
+                        + "; ".join(f"{f.source}.{f.check} ({f.severity.value})" for f in cited)
+                        + ". Their details are in healthcheck.json (text of checks this build does not know is "
+                          "withheld). Rewritten for the bundle from structured fields.")
         d["actions"] = [
             {"description": a["description"], "risk": a["risk"], "reference": a["reference"],
              # read-only diagnostic commands (with placeholders) are kept; state-changing ones are omitted
@@ -127,7 +143,10 @@ def _project_report(report: DiagnosisReport, evidence: EvidenceBundle, mode: str
         diagnoses.append(d)
     undiagnosed = []
     for u, raw in zip(report.undiagnosed_findings, rd["undiagnosed_findings"]):
-        undiagnosed.append(dict(raw, finding_id=u.finding_id))
+        entry = dict(raw, finding_id=u.finding_id)
+        if not _known_check(u.source, u.check):
+            entry["message"] = WITHHELD
+        undiagnosed.append(entry)
     resolutions = []
     for r in rd["v2"]["resolutions"]:
         resolutions.append({
@@ -177,10 +196,13 @@ def _project_healthcheck(evidence: EvidenceBundle, report: DiagnosisReport, mode
             successes.append({"finding_id": f.finding_id, "source": f.source, "check": f.check,
                               "severity": "SUCCESS", "key": f.keywords.get("key")})
             continue
+        known = f.qualified_check in CATALOG
+        kw = {k: v for k, v in f.keywords.items() if k not in ("msg", "key")}
         entry = {
             "finding_id": f.finding_id, "source": f.source, "check": f.check, "severity": f.severity.value,
-            "key": f.keywords.get("key"), "message": f.message,
-            "keywords": {k: v for k, v in f.keywords.items() if k not in ("msg", "key")},
+            "key": f.keywords.get("key"), "message": f.message if known else WITHHELD,
+            # a check this build does not know: which fields it reported, not their free-text values
+            "keywords": kw if known else {"withheld_field_names": sorted(kw)},
             "when": f.raw.get("when") if isinstance(f.raw, dict) else None,
             "evidence_tier": "LIVE" if f.provenance.live else "REPLAY",
             "diagnosed_by": cited.get(f.finding_id, []),
@@ -420,6 +442,10 @@ def build(evidence: EvidenceBundle, report: DiagnosisReport, *, previous: Option
         domain = host.split(".", 1)[1]
         s.add_domain(domain, force=True)
         s.add_realm(domain.upper(), force=True)
+    for f in evidence.findings:  # secret-field values from the raw evidence, including fields that are withheld
+        s.track_secrets(f.keywords)
+    for i in evidence.items:
+        s.track_secrets(i.data)
     try:
         for obj in raw.values():
             s.discover(obj)
