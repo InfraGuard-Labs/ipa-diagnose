@@ -470,6 +470,8 @@ jobs:
         run: |
           set +e
           mkdir -p out
+          # let unprivileged users run the installed tool (validate needs no root; B5 runs as nobody)
+          docker exec ipa-s bash -c 'chmod -R a+rX /root/.local /root/.local/pipx /root/.local/share/pipx 2>/dev/null; chmod a+x /root /root/.local /root/.local/share'
           IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ipa-s)
           echo "LAB_FORBIDDEN=ipa01|lab.test|LAB-TEST|$IP|$IPA_PASSWORD|zqlivecanary|ZqLiveCanary|OPENSSH PRIVATE KEY|/ipa-diagnose-source" >> "$GITHUB_ENV"
           docker exec ipa-s bash -c 'printf "ipa user-mod admin --password ZQLIVECANARYHIST1\nexport OPENAI_API_KEY=sk-zqlivecanaryhist2xxxxxxxxxxxxxx\n" >> /root/.bash_history

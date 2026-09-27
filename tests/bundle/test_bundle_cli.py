@@ -171,3 +171,8 @@ def test_other_commands_are_unchanged(capsys):
     with pytest.raises(SystemExit) as e:
         cli.main(["nonsense"])
     assert e.value.code == 2
+
+
+def test_a_missing_replay_directory_is_refused(capsys, tmp_path):
+    assert cli.main(["bundle", "--replay", str(tmp_path / "nope")]) == 5
+    assert "does not exist" in capsys.readouterr().out and _files(tmp_path / "work") == []

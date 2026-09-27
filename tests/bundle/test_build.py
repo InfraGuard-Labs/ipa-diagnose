@@ -122,6 +122,7 @@ def test_fix_commands_are_omitted_and_never_presented_as_safe_to_run():
     assert r["status"] == "OFFERED" and r["procedure_id"] == "proc.service.start-stopped-service"
     assert r["tier"] == "BUILT_IN_VERIFIED" and r["commands_omitted"] is True
     assert all(set(s) == {"id", "text", "risk", "run_on"} for s in r["steps"])
+    assert r["evaluated_against"] == "RECORDED EVIDENCE"
     assert "systemctl start" not in all_text(b.members)
     assert "Re-run ipa-diagnose on the machine you intend to change" in rep["note"]
     assert "never a fix for another machine" in b.members["README.txt"].decode()

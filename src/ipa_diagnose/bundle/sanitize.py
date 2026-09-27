@@ -188,6 +188,8 @@ def _keep(name: str, m: "re.Match[str]") -> bool:
     if name == "password_assignment":
         key = m.group("key")
         val = m.group("secret").strip("\"'").lower()
+        if re.match(r"_[\w-]+\._(?:tcp|udp)\b", key):
+            return False  # a DNS SRV/URI record name such as _kpasswd._tcp.<domain>., not a secret-named field
         markers = list(_SECRET_MARKER.finditer(key))
         tail = key[markers[-1].end():] if markers else ""
         return not (_NON_SECRET_TAIL.search(tail) or val in _BOOLISH)
@@ -265,7 +267,7 @@ _PRINCIPAL_RE = re.compile(
     r"(?<![\w.@/\\-])(?P<primary>[A-Za-z0-9._$-]+)(?:/(?P<instance>[A-Za-z0-9._-]+))?(?:@|\\40)"
     r"(?P<realm>[A-Z0-9][A-Z0-9-]*(?:\.[A-Z0-9-]+)+)(?![\w.-])")
 _EMAIL_RE = re.compile(r"(?i)(?<![\w.+-])[A-Za-z0-9._%+-]+@(?P<domain>(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,})(?![\w-])")
-_URL_HOST_RE = re.compile(r"(?i)(?<![a-z0-9+.-])[a-z][a-z0-9+.-]*://\[?(?P<host>[^\s/:\]@\[]+)")
+_URL_HOST_RE = re.compile(r"(?i)(?<![a-z0-9+.-])[a-z][a-z0-9+.-]*://(?:[^\s/@]{0,200}@)?\[?(?P<host>[^\s/:\]@\[]+)")
 _UID_RE = re.compile(r"(?i)\buid=(?P<v>[^,+\s=\\]+)")
 _FQDN_ATTR_RE = re.compile(r"(?i)\bfqdn=(?P<v>[^,+\s=\\]+)")
 _GROUP_DN_RE = re.compile(r"(?i)\bcn=(?P<v>[^,+=\\]+),\s*cn=groups\b")
@@ -429,8 +431,13 @@ class Sanitizer:
         for m in _EMAIL_RE.finditer(text):
             dom = m.group("domain").lower()
             last = dom.rsplit(".", 1)[-1]
-            if last in _UNIT_SUFFIXES or (last not in _TLDS and dom not in self._domains) or self._public(dom):
+            in_known = any(dom == d or dom.endswith("." + d) for d in self._domains)
+            if last in _UNIT_SUFFIXES or (last not in _TLDS and not in_known) or self._public(dom):
                 continue  # e.g. dirsrv@EXAMPLE-TEST.service is a systemd unit, not an address
+            if m.start() > 0 and text[m.start() - 1] == ":" and "://" in text[max(0, m.start() - 200):m.start()]:
+                continue  # user:password@host in a URL: the host is found by the URL rule, the rest is redacted
+            if in_known and dom not in self._domains:
+                self.add_host(dom)  # user@host.<ipa domain>: the part after @ is a host of this domain
             if not _PRINCIPAL_RE.search(m.group(0)):
                 self._register("EMAIL", m.group(0).lower())
                 self.add_domain(m.group("domain"))
@@ -483,12 +490,16 @@ class Sanitizer:
     def discover(self, value: Any, key: str = "", depth: int = 0) -> None:
         if depth > MAX_DEPTH:
             return
+        # Exactly the same bounds as transform(): everything that can reach a member must have been discovered,
+        # otherwise an identifier seen only there is neither pseudonymized nor known to the leak self-test.
         if isinstance(value, dict):
-            for k, v in list(value.items())[:MAX_DICT_KEYS]:
+            items = list(value.items())
+            for k, v in (items[:MAX_DICT_KEYS] if depth >= 1 else items):
                 self.discover_text(str(k))
                 self.discover(v, str(k), depth + 1)
         elif isinstance(value, (list, tuple)):
-            for v in list(value)[:MAX_LIST_ITEMS]:
+            seq = list(value)
+            for v in (seq[:MAX_LIST_ITEMS] if depth >= 2 else seq):
                 self.discover(v, key, depth + 1)
         elif isinstance(value, str) and len(value) <= HARD_LIMIT:
             self.discover_text(value, key)

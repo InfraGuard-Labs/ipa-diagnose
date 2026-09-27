@@ -126,6 +126,7 @@ def _project_report(report: DiagnosisReport, mode: str, dropped: collections.Cou
             "verify": [v.get("text") if isinstance(v, dict) else v for v in r["verify"]],
             "rollback_step_count": len(r["rollback"]), "confirm_first_step_count": len(r["confirm_first"]),
             "commands_omitted": True,
+            "evaluated_against": "RECORDED EVIDENCE" if mode == "REPLAY" else "THE DIAGNOSED HOST (LIVE)",
         })
     return {
         "source_mode": mode,
@@ -278,6 +279,8 @@ def _project_verification(previous: Optional[Dict[str, Any]], mode: str) -> Dict
 
 def _project_environment(evidence: EvidenceBundle, report: DiagnosisReport, mode: str) -> Dict[str, Any]:
     env = report.environment
+    meta = next((f.keywords for f in evidence.findings if f.source == "ipahealthcheck.meta.core"
+                 and isinstance(f.keywords, dict) and f.keywords.get("ipa_version")), {})
     host = evidence.hostname
     domain = host.split(".", 1)[1] if "." in host.strip(".") else None
     return {
@@ -291,6 +294,9 @@ def _project_environment(evidence: EvidenceBundle, report: DiagnosisReport, mode
         "directory_server_version": env.directory_server_version if env else None,
         "python_version": env.python_version if env else None,
         "detected_live": env.detected_live if env else None,
+        # what ipa-healthcheck itself reported (MetaCheck), independent of ipa-diagnose's own detection
+        "freeipa_version_reported_by_ipa_healthcheck": meta.get("ipa_version"),
+        "fields_note": "null means the value was not detected (recorded evidence often does not include it).",
     }
 
 
@@ -318,6 +324,7 @@ WHAT THIS IS NOT
   Not a backup, not a sosreport, not a copy of logs, LDAP entries or configuration.
   Not live evidence: it records what one host reported at one time.
   Not instructions: fixes are listed by procedure and status only, without commands.
+  Not encrypted: share it over a channel you trust.
   A recorded fix is never a fix for another machine; re-run ipa-diagnose there.
 
 PRIVACY
@@ -341,9 +348,10 @@ PRIVACY
 
 EVIDENCE TIERS
   manifest.json source_mode is LIVE or REPLAY; every other file repeats it.
-  In report.json each resolution carries its knowledge tier (FIXTURE_ONLY,
-  LIVE_VERIFIED or BUILT_IN_VERIFIED) and whether it was definitive for the diagnosed
-  host.
+  In report.json each resolution carries its knowledge tier and whether it was
+  definitive for the diagnosed host: FIXTURE_ONLY (tested on recorded evidence only),
+  LIVE_VERIFIED (applied and verified in a live lab), BUILT_IN_VERIFIED (also reviewed
+  and promoted; definitive only on the exact live-verified FreeIPA version and OS).
 
 CHECKING IT
   ipa-diagnose bundle validate <this file>     (reads the archive, extracts nothing)

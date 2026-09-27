@@ -137,6 +137,27 @@ def main(argv):
         _emit(argv[1], "SKIP", [], {"skip_reason": argv[2]})
         print(f"SKIP: {argv[1]}: {argv[2]}")
         return 0
+    if argv[:1] == ["matrix"]:  # matrix OUT.md RUN_REF=bundle-results.jsonl
+        lines = ["| Scenario | Verdict | Overall / completeness | Resolutions in the bundle | Pseudonymized | Redacted | "
+                 "Bundle bytes | Checks | Run |", "|---|---|---|---|---|---|---|---|---|"]
+        for spec in argv[2:]:
+            ref, path = spec.split("=", 1)
+            for raw in pathlib.Path(path).read_text(encoding="utf-8").splitlines():
+                r = json.loads(raw)
+                fails = [t for ok_, t in r.get("checks") or [] if not ok_]
+                res = "; ".join(f"{x['procedure']} {x['status']} [{x['tier']}{', definitive' if x.get('definitive') else ''}]"
+                                for x in r.get("resolutions") or []) or "-"
+                cells = [r["scenario"], r["verdict"] + (f" ({fails[0]})" if fails else "") + (f" ({r['skip_reason']})"
+                                                                                                 if r.get("skip_reason") else ""),
+                         f"{r.get('overall', '-')} / {r.get('completeness', '-')}", res,
+                         ", ".join(f"{k} {v}" for k, v in (r.get("pseudonymized") or {}).items()) or "-",
+                         ", ".join(f"{k} {v}" for k, v in (r.get("redacted") or {}).items()) or "-",
+                         r.get("bytes", "-"), f"{sum(1 for c in r.get('checks') or [] if c[0])}/{len(r.get('checks') or [])}",
+                         ref]
+                lines.append("| " + " | ".join(str(c).replace("|", "\\|") for c in cells) + " |")
+        pathlib.Path(argv[1]).write_text("\n".join(lines) + "\n", encoding="utf-8")
+        print(f"{len(lines) - 2} rows -> {argv[1]}")
+        return 0
     if argv[:1] == ["summary"]:
         rows = [json.loads(x) for x in RESULTS.read_text(encoding="utf-8").splitlines()] if RESULTS.exists() else []
         for r in rows:

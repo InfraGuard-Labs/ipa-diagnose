@@ -301,7 +301,8 @@ passwords).
 
 The file is written only if a final self-test finds none of the real identifiers and no credential pattern in it.
 Nothing is uploaded, and no AI provider is contacted. `--preview` shows what would be included without writing
-anything. `ipa-diagnose bundle validate FILE` checks a received bundle without extracting it.
+anything. `ipa-diagnose bundle validate FILE` checks a received bundle without extracting it. The file is not
+encrypted, and under `sudo` it belongs to root.
 
 Detection is pattern-based and cannot be perfect, and a bundle still contains operational detail such as unit
 names, versions and error text, so review it before sharing. Details:

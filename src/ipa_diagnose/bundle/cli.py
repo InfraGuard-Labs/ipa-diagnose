@@ -21,6 +21,8 @@ from rich.console import Console
 from ipa_diagnose.textsafe import sanitize_text
 
 REFUSED = 5
+_REVIEW = ("Before sharing, review it. It is pseudonymized and credential-scanned, but it still contains operational "
+           "detail (service names, versions, error text, timestamps, topology shape).")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -78,6 +80,10 @@ def run(argv: List[str]) -> int:
         parser.error(f"unexpected argument {args.bundle!r}")
     if args.preview and args.output:
         parser.error("--preview writes nothing, so --output does not apply")
+    if args.replay is not None and not os.path.isdir(args.replay):
+        # a bundle of nothing would be labelled correctly but is useless; say so instead
+        return _refused(args, console, f"the replay directory {sanitize_text(args.replay, 200)!r} does not exist",
+                        ["--replay needs a directory of recorded evidence (for example tests/fixtures/...)"])
     if os.name != "nt" and args.replay is None and os.geteuid() != 0:
         err.print("[yellow]Warning: not running as root - live evidence collection will likely be incomplete, and "
                   "the bundle will say so.[/yellow]\n")
@@ -130,9 +136,8 @@ def _create(args: argparse.Namespace, console: Console, err: Console) -> int:
     console.print(f"  {len(data) / 1024:.1f} KiB, file mode 0600, SHA-256 {digest}", markup=False, soft_wrap=True)
     _print_summary(console, info)
     console.print()
-    console.print("Before sharing, review it. It is pseudonymized and credential-scanned, but it still contains "
-                  "operational detail (service names, versions, error text, timestamps, topology shape). Nothing was "
-                  "uploaded.", markup=False, soft_wrap=True)
+    console.print(_REVIEW + " Nothing was uploaded; the file is not encrypted, so share it over a channel you trust.",
+                  markup=False, soft_wrap=True)
     console.print(f"  List the files:  tar -tzf {path}", markup=False, soft_wrap=True)
     console.print(f"  Read one:        tar -xzOf {path} ipa-diagnose-bundle/report.json | less", markup=False, soft_wrap=True)
     console.print(f"  Check it:        ipa-diagnose bundle validate {path}", markup=False, soft_wrap=True)
@@ -199,6 +204,7 @@ def _show_preview(args, console: Console, built, info: Dict[str, Any], size: int
     for m in members:
         console.print(f"    {m['name']:<24} {m['bytes'] / 1024:8.1f} KiB", markup=False, soft_wrap=True)
     console.print("  Never included: " + "; ".join(excluded), markup=False, soft_wrap=True)
+    console.print(_REVIEW, markup=False, soft_wrap=True)
     console.print("Create it with: ipa-diagnose bundle" + (f" --replay {args.replay}" if args.replay else "")
                   + " [--output PATH]", markup=False, soft_wrap=True)
     return 0
@@ -237,6 +243,6 @@ def _validate(args, console: Console) -> int:
                       f"source {summary.get('source_mode')}, overall status {summary.get('overall_status')}, "
                       f"evidence {summary.get('evidence_completeness')}", markup=False, soft_wrap=True)
     console.print("This checks structure, checksums and credential patterns only. Checksums are not a signature. The "
-                  "content is recorded evidence from another system at another time - never a diagnosis of this "
-                  "machine, and never something to run.", markup=False, soft_wrap=True)
+                  "content is recorded evidence of the system and time it was created on - never a live diagnosis of "
+                  "this machine, and never something to run.", markup=False, soft_wrap=True)
     return 0 if v.valid else REFUSED

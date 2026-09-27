@@ -219,3 +219,30 @@ def test_structure_is_bounded():
     assert len(out["records"]) == 1500
     assert len(out["rec"]["l"]) == 200 and len(out["rec"]["d"]) == 60 and s.structure_trimmed >= 3
     assert "OMITTED" in str(out["rec"]["n"])
+
+
+def test_identifiers_deep_in_long_record_lists_are_discovered():
+    """Review finding: discovery stopped at item 200 while the member keeps up to 1000 records."""
+
+    s = Sanitizer()
+    s.add_host("ipa01.example.test")
+    records = {"findings": [{"message": "filler"} for _ in range(230)]
+               + [{"message": "from 10.1.2.3 uid=bob host ad01.corp.acme-internal.com"}]}
+    s.discover(records)
+    out = s.transform(records)["findings"][-1]["message"]
+    assert "10.1.2.3" not in out and "bob" not in out and "ad01" not in out and "corp" not in out
+
+
+def test_dns_record_names_are_not_mistaken_for_secret_fields():
+    s = _san("_kpasswd._tcp.example.test.:ipa01.example.test.")
+    assert s.text("_kpasswd._tcp.example.test.:ipa01.example.test.") == "_kpasswd._tcp.DOMAIN-001.:HOST-001."
+    assert s.text("_kpasswd._udp.example.test.:ipa01.example.test.") == "_kpasswd._udp.DOMAIN-001.:HOST-001."
+
+
+def test_credential_urls_keep_the_host_relationship():
+    texts = ["see ldaps://u:Secret99@db.example.test:636", "proxy https://u:Secret99@proxy.corp.internal/"]
+    s = _san(*texts)
+    out = [s.text(t) for t in texts]
+    assert out[0] == "see ldaps://[REDACTED:credential_url]@HOST-002:636"
+    assert "proxy.corp" not in out[1] and "Secret99" not in out[1] and "HOST-003" in out[1]
+    assert "EMAIL" not in s.pseudonym_counts()

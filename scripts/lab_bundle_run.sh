@@ -23,7 +23,8 @@ docker exec -u "$U" "${CANARY_ENV[@]}" ipa-s $BIN bundle --preview > "out/$TAG-p
 state > "out/$TAG-state-after.txt"
 docker exec -u "$U" ipa-s $BIN --json > "out/$TAG-after.json" 2>/dev/null
 docker exec ipa-s stat -c '%a %U' "$DIR/$TAG.tar.gz" > "out/$TAG-mode.txt" 2>&1
-docker exec -u nobody ipa-s sh -c "cat '$DIR/$TAG.tar.gz' > /dev/null 2>&1" && echo "readable-by-others" >> "out/$TAG-mode.txt"
+# read attempt by a user who is neither the owner nor root (daemon; the B5 bundle is owned by nobody)
+docker exec -u daemon ipa-s sh -c "cat '$DIR/$TAG.tar.gz' > /dev/null 2>&1" && echo "readable-by-others" >> "out/$TAG-mode.txt"
 docker cp "ipa-s:$DIR/$TAG.tar.gz" "out/$TAG.tar.gz"
 docker cp "out/$TAG.tar.gz" ipa-s:/tmp/validate-$TAG.tar.gz; docker exec ipa-s chmod 0644 /tmp/validate-$TAG.tar.gz
 docker exec -u nobody ipa-s $BIN bundle validate /tmp/validate-$TAG.tar.gz > "out/$TAG-validate.txt" 2>&1; echo "exit=$?" >> "out/$TAG-validate.txt"

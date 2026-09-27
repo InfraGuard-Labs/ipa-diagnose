@@ -221,7 +221,9 @@ directory: `tar -xzf FILE`, then `sha256sum -c SHA256SUMS` inside
 - A bundle built with `--replay DIR` is `REPLAY`: read from recorded fixture files, describing no live system.
 
 The mode appears in the manifest, in every JSON file and in the README, and the
-fixture path is never included.
+fixture path is never included. Each resolution also says what it was evaluated
+against (`evaluated_against`). Its knowledge tier (FIXTURE_ONLY, LIVE_VERIFIED,
+BUILT_IN_VERIFIED) is explained in [resolution.md](resolution.md).
 
 ## Limits
 
@@ -236,7 +238,7 @@ fixture path is never included.
 | each file / whole bundle (uncompressed) | 8 MiB / 32 MiB (over the limit: no bundle, exit 5) |
 
 When anything is shortened, `manifest.json` says `"content_complete": false`
-and lists what was truncated or dropped. Collection time is the normal
+and counts what was truncated or dropped (by kind, not by field). Collection time is the normal
 diagnosis time: the bundle adds no collectors or network access.
 
 ## Known limitations
