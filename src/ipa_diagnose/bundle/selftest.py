@@ -17,7 +17,13 @@ import re
 import unicodedata
 from typing import Dict, Iterable, List, Sequence, Tuple
 
-from ipa_diagnose.bundle.sanitize import find_secrets, invisible, iter_originals, secret_key, secret_value_re
+from ipa_diagnose.bundle.sanitize import (
+    _SERVICE_LABELS, find_secrets, invisible, iter_originals, secret_key, secret_value_re)
+
+# a label written directly before a domain pseudonym is a host label that escaped pseudonymization (x.DOMAIN-002),
+# unless it is a DNS service label (_kerberos._udp.DOMAIN-001, ipa-ca.DOMAIN-001) or itself a pseudonym
+_LABEL_BEFORE_DOMAIN = re.compile(r"(?<![A-Za-z0-9_.-])((?:[A-Za-z0-9_-]{1,63}\.){1,10})DOMAIN-\d{3,}\b")
+_PSEUDONYM_LABEL = re.compile(r"(?:HOST|DOMAIN|REALM|INSTANCE|IP|USER|GROUP|HOSTGROUP|SERVICE|EMAIL)-\d{3,}")
 
 # members that carry evidence (the manifest and redaction report are generated and name categories, not values)
 EVIDENCE_MEMBERS = ("environment.json", "report.json", "healthcheck.json", "evidence.json", "collection-errors.json",
@@ -81,6 +87,13 @@ def scan_text(text: str, key: str = "", multiline: bool = False) -> List[str]:
         if name == "high_entropy_token" and key == "sha256" and _HEX64.fullmatch(text):
             continue  # a checksum field, not a secret
         out.append(f"credential pattern ({name})")
+    if "DOMAIN-" in text:
+        for m in _LABEL_BEFORE_DOMAIN.finditer(text):
+            labels = m.group(1).rstrip(".").split(".")
+            if any(lb.lower() not in _SERVICE_LABELS and not lb.startswith("_") and not _PSEUDONYM_LABEL.fullmatch(lb)
+                   for lb in labels):
+                out.append("host name label next to a domain pseudonym")
+                break
     return out
 
 

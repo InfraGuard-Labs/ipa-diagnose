@@ -197,7 +197,7 @@ _META_TAIL_RE = re.compile(r"(?i)[A-Za-z]|[\s_.-]?(?:files?|paths?|dirs?|polic(?
                            r"grace|attempts?|failures?|enabled|required|length|len|minimum|min|maximum|max|age|type|"
                            r"status|state|changed|time|timestamp|date|count|prompt|hint|reset|change|quality|strength|"
                            r"checks?)(?![A-Za-z])")
-_TOOL_RE = re.compile(r"(?i)\b(?:ldap(?:search|modify|add|delete|passwd|whoami|compare|modrdn)\b|dsconf\b|dsctl\b|"
+_TOOL_RE = re.compile(r"(?i)\b(?:ldap[a-z]{2,12}\b|dsconf\b|dsctl\b|dsidm\b|dscreate\b|"
                       r"ipa-[a-z]|pk12util\b|mysql\b|psql\b|curl\b|sshpass\b|redis-cli\b|kinit\b|kpasswd\b|passwd\b|"
                       r"certutil\b|chpasswd\b|ipa\b)")
 # a here-string fed to one of the tools (kinit admin <<< pw); checked procedurally like the flags
@@ -279,8 +279,8 @@ PATTERNS: List[Pattern] = [
     ("config_secret", re.compile(r"(?i)(?<![\w-])(?:bindpw|rootpw|[\w-]{0,40}authtok)[ \t]+" + _NOT_MARKER
                                  + r"(?P<secret>[^\s=:][^\n]*)")),
     ("password_prose", re.compile(
-        r"(?i)\b(?:" + _PW + r"|passphrase|passcode|pin|secret|token)(?:\s+for\s+\S{1,64})?\s+"
-        r"(?:(?:(?:is|was|has been)\s+)?(?:set|reset|changed)\s+to|is|was|of)\s+"
+        r"(?i)\b(?:" + _PW + r"|passphrase|passcode|pin|secret|token)s?(?:\s+for\s+[^\n]{1,80}?)?\s+"
+        r"(?:(?:(?:is|was|are|were|has been|have been)\s+)?(?:set|reset|changed)\s+to|is|was|are|were|of)\s+"
         + _NOT_MARKER + r"(?P<secret>[^\n]+)")),
     ("password_prompt", re.compile(  # e.g. kinit's "Password for admin@REALM: <typed secret>"
         r"(?i)\b(?:" + _PW + r"|passphrase|pin)\s+for\s+[^\n:\[]{1,256}?\s*:\s*" + _VALUE_LINE)),
@@ -336,6 +336,29 @@ def _pem_tail(text: str) -> List[Tuple[int, int]]:
         end = len(text) if end < 0 else end + 5
         spans.append((j, end))
         start = end
+
+
+_SCHEME_RE = re.compile(r"(?i)(?<![a-z0-9+.-])[a-z][a-z0-9+.-]{0,30}://")
+
+
+def _url_userinfo(text: str) -> List[Tuple[str, int, int]]:
+    """user:password@host in any URL, whatever follows the host: the authority ends at the first '/', '?', '#' or
+    whitespace, and its userinfo runs to the last '@' in it (a password may contain '@')."""
+
+    spans = []
+    for m in _SCHEME_RE.finditer(text):
+        start = m.end()
+        end = start
+        limit = min(len(text), start + 512)
+        while end < limit and text[end] not in "/?#" and not text[end].isspace():
+            end += 1
+        at = text.rfind("@", start, end)
+        if at < 0:
+            continue
+        colon = text.find(":", start, at)
+        if colon >= 0 and not text.startswith("[RE", colon + 1) and at > colon + 1:
+            spans.append(("credential_url", colon + 1, at))
+    return spans
 
 
 def _secret_lines(text: str, covered: List[Tuple[int, int]]) -> List[Tuple[str, int, int]]:
@@ -400,6 +423,7 @@ def find_secrets(text: str) -> List[Tuple[str, int, int]]:
             merged[-1] = (merged[-1][0], max(merged[-1][1], b))
         else:
             merged.append((a, b))
+    found += _url_userinfo(folded)
     found += _secret_lines(folded, merged)
     if "-----END" in folded:
         found += [("pem_block", a, b) for a, b in _pem_tail(folded)]
@@ -446,7 +470,7 @@ _PRINCIPAL_RE = re.compile(
     r"(?<![\w.@/\\$-])(?P<primary>[A-Za-z0-9._$-]+)(?:/(?P<instance>[A-Za-z0-9._-]+))?(?:@|\\40)"
     r"(?P<realm>[A-Z0-9]+(?:-[A-Z0-9]+)*(?:\.[A-Z0-9]+(?:-[A-Z0-9]+)*)+)(?![A-Za-z0-9_])(?!\.[A-Za-z0-9])")
 _EMAIL_RE = re.compile(r"(?i)(?<![\w.%+-])[A-Za-z0-9._%+-]+@(?P<domain>(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,})(?![\w-])")
-_URL_HOST_RE = re.compile(r"(?i)(?<![a-z0-9+.-])[a-z][a-z0-9+.-]*://(?:\S{0,256}@)?\[?(?P<host>[^\s/:\]@\[)'\",;<>]+)")
+_URL_HOST_RE = re.compile(r"(?i)(?<![a-z0-9+.-])[a-z][a-z0-9+.-]*://(?:\S{0,256}@)?\[?(?P<host>[A-Za-z0-9._-]+)")
 _UID_RE = re.compile(r"(?i)\buid\s*[=:]\s*(?P<v>[^,+\s=\\:]+)")
 _FQDN_ATTR_RE = re.compile(r"(?i)\bfqdn=(?P<v>[^,+\s=\\]+)")
 _GROUP_DN_RE = re.compile(r"(?i)\bcn=(?P<v>[^,+=\\]+),\s*cn=groups\b")
@@ -710,9 +734,8 @@ class Sanitizer:
                 if cand.count(":") >= 2 and _canon_ip(cand):
                     self.add_ip(cand)
                     break
-        self._discover_in_domain(text)
         for m in _FQDN_RE.finditer(text):
-            v = m.group("v")
+            v = _AGREEMENT_PREFIX.sub("", m.group("v"))
             labels = v.lower().split(".")
             if len(labels) >= 3 and labels[-1] in _FILE_EXTS:  # host.example.com.pem: the host is before the extension
                 v = v.rsplit(".", 1)[0]
@@ -723,6 +746,8 @@ class Sanitizer:
                 if ("HOST", v.lower()) not in self._map and not self._public(v.lower()):
                     self.heuristic_hosts += 1
                 self.add_host(v, short=False)  # a guess: its first label alone is not treated as a name
+        # after the heuristic registered new domains: every other name in those domains, in this same text
+        self._discover_in_domain(text)
 
     _in_domain_cache: Dict[str, "re.Pattern[str]"] = {}
 
