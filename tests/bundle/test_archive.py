@@ -288,3 +288,16 @@ def test_non_regular_paths_are_not_opened(tmp_path):
     assert not archive.validate(str(fifo)).valid
     assert not archive.validate(str(tmp_path)).valid
     assert not archive.validate(str(tmp_path / "missing")).valid
+
+
+def test_a_secret_named_field_holding_a_value_is_refused_by_validate_and_the_self_test(tmp_path, good):
+    from ipa_diagnose.bundle import selftest
+
+    members, _ = good
+    ev = json.loads(members["evidence.json"])
+    ev["items"][0]["data"]["p​assword"] = "plain value"
+    changed = _resum(dict(members, **{"evidence.json": json.dumps(ev).encode()}))
+    v = _validate(tmp_path, _rebuild(changed))
+    assert not v.valid and any("secret-named field not removed" in p for p in v.problems)
+    with pytest.raises(selftest.LeakDetected):
+        selftest.check(changed, [])

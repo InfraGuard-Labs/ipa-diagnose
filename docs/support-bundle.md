@@ -139,7 +139,7 @@ Every string and every JSON key passes through the same steps.
 
 | Class | Example | Found from |
 |---|---|---|
-| `HOST` | `HOST-001` | the diagnosed host (always `HOST-001`), replication peers, RUV URLs, principals' host part, any name in a known IPA domain, host-like fields, and other FQDNs with a common or private top-level domain |
+| `HOST` | `HOST-001` | the diagnosed host (`HOST-001`; `environment.json` names it), replication peers, RUV URLs, principals' host part, any name in a known IPA domain, host-like fields, and other FQDNs with a common or private top-level domain |
 | `DOMAIN` | `DOMAIN-001` | the host's DNS domain; e-mail domains |
 | `REALM` | `REALM-001` | Kerberos principals; the uppercase IPA domain |
 | `SUFFIX` | `SUFFIX-001` | the LDAP suffix `dc=...,dc=...` (also in its `\3D`/`\2C` escaped form) |
@@ -149,7 +149,7 @@ Every string and every JSON key passes through the same steps.
 
 - Pseudonyms are sequential and **bundle-local**. They are assigned in a fixed discovery order, not derived from the real value (no hash, no salt), so they cannot be reversed by guessing. Two different names never share one.
 - Two bundles of the same evidence number identifiers the same way. That reveals nothing about the real names, and no stable identity is carried across different evidence.
-- If the input already contains text shaped like a pseudonym (a host literally named `HOST-002`), that number is skipped, so no assigned pseudonym can be confused with it.
+- If the input already contains text shaped like a pseudonym (a host literally named `HOST-002`), that number is skipped, so no assigned pseudonym can be confused with it. Such a name is left as written (it reveals nothing beyond a pseudonym-shaped label).
 
 Relationships survive:
 - `cn=meToipa02.example.test,cn=replica,cn=dc\3Dexample\2Cdc\3Dtest,...` becomes `cn=meToHOST-002,cn=replica,cn=SUFFIX-001,...`;
@@ -238,6 +238,7 @@ BUILT_IN_VERIFIED) is explained in [resolution.md](resolution.md).
 | text processed at all | 64 KiB per value (longer is omitted) |
 | JSON structure | 60 keys per object, 200 items per list, depth 8 |
 | each file / whole bundle (uncompressed) | 8 MiB / 32 MiB (over the limit: no bundle, exit 5) |
+| sanitizing time | 300 seconds (evidence with tens of thousands of distinct names can reach it: no bundle, exit 5) |
 
 When anything is shortened, `manifest.json` says `"content_complete": false`
 and counts what was truncated or dropped (by kind, not by field). Collection time is the normal
@@ -249,6 +250,6 @@ diagnosis time: the bundle adds no collectors or network access.
 - Redaction errs towards removing too much: an unquoted value after `password=` or `password is` is removed to the end of its line, so nearby context can be lost.
 - Validating a maximum-size bundle can take a few minutes, because every file is scanned for credential patterns.
 - A bundle still contains **operational detail**: unit and service names, versions, file paths and modes, error text, timestamps (certmonger request IDs even reveal when the server was installed), certificate expiry dates, exact disk sizes, and the shape of the topology (how many replicas, which agreements fail). Several bundles from one server can be recognised as coming from the same server. Review it before sharing.
-- The pseudonym mapping is not kept anywhere, so answers that name a pseudonym (`HOST-002`) must be translated back by the sender. `HOST-001` is always the diagnosed host; replicas can be matched through their replica IDs (`replica_id` in `topology.json`), which are kept.
+- The pseudonym mapping is not kept anywhere, so answers that name a pseudonym (`HOST-002`) must be translated back by the sender. `HOST-001` is the diagnosed host (only if the evidence itself contains the text `HOST-001` does it get the next free number; `environment.json` always names it); replicas can be matched through their replica IDs (`replica_id` in `topology.json`), which are kept.
 - **Single-host view.** `topology.json` shows what the diagnosed host reported. It does not compare hosts or say which server is at fault.
 - No encryption or signing. Share bundles over a channel you trust.

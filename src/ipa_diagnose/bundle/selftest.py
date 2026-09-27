@@ -17,7 +17,27 @@ import re
 import unicodedata
 from typing import Dict, Iterable, List, Sequence, Tuple
 
-from ipa_diagnose.bundle.sanitize import find_secrets, iter_originals
+from ipa_diagnose.bundle.sanitize import find_secrets, iter_originals, secret_key
+
+# members that carry evidence (the manifest and redaction report are generated and name categories, not values)
+EVIDENCE_MEMBERS = ("environment.json", "report.json", "healthcheck.json", "evidence.json", "collection-errors.json",
+                    "topology.json", "verification.json")
+
+
+def unremoved_secret_fields(value) -> int:
+    """How many secret-named fields hold anything but [REMOVED], null or a boolean."""
+
+    n = 0
+    if isinstance(value, dict):
+        for k, v in value.items():
+            if secret_key(str(k), normalize=True) and not (v == "[REMOVED]" or v is None or isinstance(v, bool)):
+                n += 1
+            else:
+                n += unremoved_secret_fields(v)
+    elif isinstance(value, list):
+        n += sum(unremoved_secret_fields(v) for v in value)
+    return n
+
 
 _SUMS_LINE = re.compile(r"[0-9a-f]{64}  [A-Za-z0-9._-]{1,64}")
 _HEX64 = re.compile(r"[0-9a-f]{64}")
@@ -68,13 +88,15 @@ def check(members: Dict[str, bytes], originals: Iterable[Tuple[str, str]], forbi
     literals = [f.lower() for f in forbidden if f and len(f) >= 4]
     problems: List[Tuple[str, str]] = []
 
+    active = detectors
+
     def scan(member: str, key: str, text: str, multiline: bool = False) -> None:
         for cat in scan_text(text, key, multiline):
             problems.append((member, cat))
-        for cls, rx in detectors:
-            if rx.search(text):
-                problems.append((member, f"real identifier ({cls})"))
         low = text.lower()
+        for cls, rx, probe in active:
+            if probe in low and rx.search(text):
+                problems.append((member, f"real identifier ({cls})"))
         if any(lit in low for lit in literals):
             problems.append((member, "local path"))
 
@@ -84,6 +106,10 @@ def check(members: Dict[str, bytes], originals: Iterable[Tuple[str, str]], forbi
         except UnicodeDecodeError:
             problems.append((name, "not valid UTF-8"))
             continue
+        member_low = text.lower()
+        # only identifiers whose probe occurs somewhere in this member can match in one of its strings
+        # (JSON escapes are backslashes and quotes; probes never contain them - a SUFFIX probe is one label)
+        active = [d for d in detectors if d[2] in member_low]
         if name == "SHA256SUMS":
             lines = text.split("\n")
             if lines[-1] != "" or not all(_SUMS_LINE.fullmatch(ln) for ln in lines[:-1]):
@@ -97,6 +123,8 @@ def check(members: Dict[str, bytes], originals: Iterable[Tuple[str, str]], forbi
                 continue
             for key, s in _strings(obj):
                 scan(name, key, s)
+            if name in EVIDENCE_MEMBERS and unremoved_secret_fields(obj):
+                problems.append((name, "secret-named field not removed"))
         else:
             scan(name, "", text, multiline=True)
     if problems:

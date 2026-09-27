@@ -55,7 +55,8 @@ FreeIPA 4.13.3 / Fedora 43". Overclaim to avoid: "built-in verified" without tha
 ## Slice 2: support bundle (`ipa-diagnose bundle`)
 
 Evidence rows: [bundle-truth-matrix.md](bundle-truth-matrix.md) (LIVE, same lab and environment as above: FreeIPA
-4.13.3 / Fedora 43 container, single server). Real console captures: `docs/screenshots/slice2/`. Fixture, synthetic
+4.13.3 / Fedora 43 container, single server). Product commit for all Slice 2 LIVE rows: `0a5cf66` (run 36291228242);
+release candidate 36291231569 and Python matrix 36291234275 on the same commit. Real console captures: `docs/screenshots/slice2/`. Fixture, synthetic
 and review evidence: `tests/bundle/` and the review summary in the Slice 2 pull request.
 
 | ID | Claim | Tier | Evidence | Limits | Safe wording | Overclaim to avoid |

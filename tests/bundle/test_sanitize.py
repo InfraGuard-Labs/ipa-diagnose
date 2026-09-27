@@ -303,3 +303,58 @@ def test_a_host_named_like_a_pseudonym_is_never_registered():
     s = _san("peer HOST-001.example.test", "replica HOST-002")
     assert s.local_host_pseudonym("ipa01.example.test") == "HOST-001"
     assert s.text("peer ipa01.example.test") == "peer HOST-001"
+
+
+# --- security review (new fresh reviewer, round 2) reproductions ---------------------------------------------------
+def test_ipv4_with_a_port_or_mapped_into_ipv6_is_the_same_pseudonym():
+    texts = ["connecting to 10.66.77.88:389 failed", "ldap://10.66.77.88:636/", "from ::ffff:10.66.77.88",
+             "server 10.66.77.88 and later 10.66.77.88:389"]
+    s = _san(*texts)
+    out = [s.text(t) for t in texts]
+    assert out == ["connecting to IP-001:389 failed", "ldap://IP-001:636/", "from IP-001",
+                   "server IP-001 and later IP-001:389"]
+
+
+@pytest.mark.parametrize("key", ["p​assword", "ｐａｓｓｗｏｒｄ", "pаssword", "pass­word"])
+def test_secret_named_keys_are_recognised_after_normalisation(key):
+    s = _san()
+    assert list(s.transform({key: "ZQLEAKvalue9"}).values()) == ["[REMOVED]"]
+
+
+@pytest.mark.parametrize("text,secret", [
+    ("Password for admin@EXAMPLE.TEST: Hunter8Secret", "Hunter8Secret"),
+    ("ldapsearch -x -D cn=dm -wHunter8Secret -b cn=config", "Hunter8Secret"),
+    ('payload {\\"password\\": \\"Hunter8Secret\\"}', "Hunter8Secret"),
+])
+def test_prompt_attached_flag_and_escaped_json_passwords(text, secret):
+    assert secret not in _san().text(text)
+
+
+def test_module_root_first_labels_are_still_hosts_outside_code():
+    s = _san("pki.acmecorp.com and os.acmecorp.com down; ipahealthcheck.dogtag.ca.DogtagCertsConfigCheck ok")
+    out = s.text("pki.acmecorp.com and os.acmecorp.com down; ipahealthcheck.dogtag.ca.DogtagCertsConfigCheck ok")
+    assert "acmecorp" not in out and "ipahealthcheck.dogtag.ca.DogtagCertsConfigCheck" in out
+
+
+def test_a_real_host_literally_named_host_001_never_merges_with_the_diagnosed_host():
+    text = "replica HOST-001.example.test unreachable; ipa01.example.test ok"
+    s = Sanitizer()
+    s.reserve({"t": text})
+    s.add_host("ipa01.example.test")
+    s.add_domain("example.test")
+    s.discover(text)
+    out = s.text(text)
+    local = s.local_host_pseudonym("ipa01.example.test")
+    assert local != "HOST-001" and out.endswith(f"; {local} ok") and not out.startswith(f"replica {local} ")
+
+
+def test_many_distinct_identifiers_are_processed_in_linear_time():
+    import time
+
+    s = Sanitizer()
+    s.add_host("ipa01.example.test")
+    rec = {f"k{i}": " ".join(f"h{i}x{j}.acmecorp{j}.com" for j in range(800)) for i in range(4)}
+    t = time.time()
+    s.discover(rec)
+    out = s.transform(rec)
+    assert time.time() - t < 60 and "acmecorp" not in str(out)

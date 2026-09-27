@@ -1,5 +1,5 @@
 Support bundle written: /root/b2.tar.gz
-  15.5 KiB, file mode 0600, SHA-256 b438351ff0cc94e1530783d8640ef41b1ceccf3c285abd2846e987389a6d4e4a
+  15.6 KiB, file mode 0600, SHA-256 2e376c4aa3fedca1e7618dad71b4e6f661668084141c8cc6943782b192de33a6
   Source: LIVE diagnosis of this host, shown as HOST-001; overall status CRITICAL, evidence partial
   Contents: 2 diagnoses, 1 resolutions, 1 undiagnosed findings, 3 ipa-healthcheck problems (186 results), 3 evidence items, 2 collection errors
   Pseudonymized: host 1, domain 1, realm 1, suffix 1, instance 1, user 1

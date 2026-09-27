@@ -2,7 +2,7 @@ Support bundle preview - nothing was written
   Source: LIVE diagnosis of this host, shown as HOST-001; overall status DEGRADED, evidence complete
   Contents: 1 diagnoses, 1 resolutions, 1 undiagnosed findings, 2 ipa-healthcheck problems (288 results), 8 evidence items, 0 collection errors
   Pseudonymized: host 1, domain 1, realm 1, suffix 1, instance 1
-  Redacted: 2 value(s) (password_assignment); secret-named fields removed: 0; raw output fields dropped: 0
+  Redacted: 0 value(s); secret-named fields removed: 0; raw output fields dropped: 0
   Leak self-test: passed
   Estimated size: 18.6 KiB compressed
   Files:

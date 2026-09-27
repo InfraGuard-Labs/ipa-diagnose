@@ -18,11 +18,12 @@ import datetime
 import hashlib
 import json
 import os
+import time
 from typing import Any, Dict, List, Optional
 
 from ipa_diagnose import __version__
 from ipa_diagnose.bundle.sanitize import (
-    HARD_LIMIT, KEY_LIMIT, MAX_DEPTH, MAX_DICT_KEYS, MAX_LIST_ITEMS, PROSE_LIMIT, TEXT_LIMIT, Sanitizer)
+    HARD_LIMIT, KEY_LIMIT, MAX_DEPTH, MAX_DICT_KEYS, MAX_LIST_ITEMS, PROSE_LIMIT, TEXT_LIMIT, Sanitizer, SanitizeTimeout)
 from ipa_diagnose.engine.model import DiagnosisReport
 from ipa_diagnose.evidence.healthcheck_catalog import CATALOG
 from ipa_diagnose.evidence.model import EvidenceBundle, Severity
@@ -51,7 +52,7 @@ LIMITS = {
     "max_undiagnosed_findings": 500, "max_baseline_diagnoses": 100, "text_chars": TEXT_LIMIT, "prose_chars": PROSE_LIMIT,
     "key_chars": KEY_LIMIT, "unprocessed_text_chars": HARD_LIMIT, "max_mapping_keys": MAX_DICT_KEYS,
     "max_list_items": MAX_LIST_ITEMS, "max_nesting": MAX_DEPTH, "member_bytes": 8 * 1024 * 1024,
-    "total_bytes": 32 * 1024 * 1024,
+    "total_bytes": 32 * 1024 * 1024, "processing_seconds": 300,
 }
 VOLATILE_FIELDS = ["manifest.json:created_at", "README.txt:Created", "report.json:generated_at",
                    "healthcheck.json:findings[].when", "evidence.json:items[].collected_at"]
@@ -330,7 +331,7 @@ def _readme(mode: str, created_at: str, local_host: Optional[str]) -> str:
 Format:  {BUNDLE_FORMAT}, schema {BUNDLE_SCHEMA_VERSION}
 Created: {created_at} by ipa-diagnose {__version__}
 Source:  {source}
-Host:    {local_host or "HOST-001"} (always HOST-001: the host this bundle describes)
+Host:    {local_host or "HOST-001"} (the host this bundle describes)
 
 WHAT THIS IS
   One structured, sanitized snapshot of a single ipa-diagnose run, made to be reviewed
@@ -403,6 +404,9 @@ def build(evidence: EvidenceBundle, report: DiagnosisReport, *, previous: Option
 
     # identities: the diagnosed host first (HOST-001), its domain, the default realm, then everything discovered
     s = Sanitizer()
+    s.deadline = time.monotonic() + LIMITS["processing_seconds"]
+    for obj in raw.values():
+        s.reserve(obj)
     if evidence.replay_source:
         for form in (evidence.replay_source, os.path.abspath(evidence.replay_source)):
             s.add_literal(form, "<replay-fixture>")
@@ -415,13 +419,15 @@ def build(evidence: EvidenceBundle, report: DiagnosisReport, *, previous: Option
         domain = host.split(".", 1)[1]
         s.add_domain(domain)
         s.add_realm(domain.upper())
-    for obj in raw.values():
-        s.discover(obj)
-
-    # REDACT -> PSEUDONYMIZE -> BOUND, for every key and string
-    final = {name: s.transform(obj) for name, obj in raw.items()}
+    try:
+        for obj in raw.values():
+            s.discover(obj)
+        # REDACT -> PSEUDONYMIZE -> BOUND, for every key and string
+        final = {name: s.transform(obj) for name, obj in raw.items()}
+    except SanitizeTimeout:
+        raise BundleTooLarge(f"sanitizing the evidence took longer than {LIMITS['processing_seconds']} seconds")
     local_host = s.local_host_pseudonym(host)
-    final["environment.json"]["note"] = "HOST-001 is always the host this bundle describes."
+    final["environment.json"]["note"] = f"{local_host or 'HOST-001'} is the host this bundle describes."
 
     counts = {
         "diagnoses": len(final["report.json"]["diagnoses"]),

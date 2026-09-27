@@ -23,6 +23,7 @@ from __future__ import annotations
 import collections
 import ipaddress
 import re
+import time
 import unicodedata
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
@@ -84,8 +85,7 @@ PUBLIC_DOMAINS = ("freeipa.org", "redhat.com", "fedoraproject.org", "port389.org
 _UNIT_SUFFIXES = {"service", "socket", "target", "timer", "mount", "path", "slice", "scope", "device", "swap",
                   "automount"}
 # first labels of dotted names that are code (Python modules, Java packages), not hosts
-_MODULE_ROOTS = {"ipahealthcheck", "ipalib", "ipaserver", "ipaclient", "ipaplatform", "ipapython", "ipatests", "pki",
-                 "lib389", "java", "javax", "com", "org", "net", "sun", "jdk", "os", "sys", "self"}
+_MODULE_ROOTS = {"ipahealthcheck", "ipalib", "ipaserver", "ipaclient", "ipaplatform", "ipapython", "ipatests", "lib389"}
 _KEEP_IPS = {"127.0.0.1", "0.0.0.0", "255.255.255.255", "::1", "::"}
 
 # keys whose value is a secret regardless of what it looks like (matched on the key with camelCase split by "_")
@@ -95,7 +95,9 @@ _SECRET_KEY_RE = re.compile(
     r"(?<![a-z0-9])(?:pw|pin|pass|otp|totp|hotp|psk)(?![a-z0-9]))")
 
 
-def secret_key(key: str) -> bool:
+def secret_key(key: str, normalize: bool = False) -> bool:
+    if normalize:  # the key as it is written out (NFKC, no format characters) and with look-alike letters folded
+        key = clean(key).translate(_FOLD)
     return bool(_SECRET_KEY_RE.search(re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", key)))
 # keys whose value is raw unstructured tool output: never copied into a bundle
 _RAW_KEYS = frozenset({"raw", "stdout", "stderr", "output", "raw_output", "environ", "environment_variables"})
@@ -147,10 +149,10 @@ def clean(text: str) -> str:
 
 
 # --- secret patterns ----------------------------------------------------------------------------------------------
-_NOT_MARKER = r"(?!\[RE(?:DACTED|MOVED))"
+_NOT_MARKER = r"(?!\s*\[RE(?:DACTED|MOVED))"  # also when the pattern backtracks over whitespace before a marker
 # A quoted value ends at its quote; an unquoted one runs to the end of the line, because a passphrase may contain
 # spaces, commas or semicolons (over-redaction is the safe side).
-_VALUE_LINE = _NOT_MARKER + r"(?P<secret>\"[^\"\n]*\"|'[^'\n]*'|[^\n]+)"
+_VALUE_LINE = _NOT_MARKER + r"(?P<secret>\"[^\"\n]*\"|'[^'\n]*'|\S[^\n]*)"
 _VALUE_ARG = _NOT_MARKER + r"(?P<secret>\"[^\"\n]*\"|'[^'\n]*'|\S+)"
 # field names are bounded (a real key is short); unbounded [\w.-]* on both sides is quadratic on long runs
 _SECRET_NAME = (r"[\w.-]{0,40}?(?:passw(?:or)?d|passphrase|passcode|pwd|secret|token|api[_-]?key|apikey|"
@@ -160,7 +162,7 @@ _SECRET_MARKER = re.compile(r"(?i)passw(?:or)?d|passphrase|passcode|pwd|secret|t
                             r"private[_-]?key|privkey|bindpw|rootpw|credentials?|(?<![a-z0-9])(?:pw|pin|pass|otp|psk)")
 # command-line password flags of tools that take them (checked procedurally in find_secrets: a regex that looks
 # back from a flag to the tool name backtracks super-linearly)
-_FLAG_RE = re.compile(r"(?<!\S)-(?:w|W|p|P|a|u)\s+" + _NOT_MARKER + r"(?P<secret>[^\s-]\S*)")
+_FLAG_RE = re.compile(r"(?<!\S)-(?:w|W|p|P|a|u)\s*" + _NOT_MARKER + r"(?P<secret>[^\s-]\S*)")
 _TOOL_RE = re.compile(r"(?i)\b(?:ldap(?:search|modify|add|delete|passwd|whoami|compare|modrdn)\b|dsconf\b|dsctl\b|"
                       r"ipa-[a-z]|pk12util\b|mysql\b|psql\b|curl\b)")
 # words that, after the secret-ish part of a field name, say the value is metadata about a secret, not the secret
@@ -193,11 +195,13 @@ PATTERNS: List[Pattern] = [
         r"[\w-]{0,20}(?:\s*=\s*|\s+)" + _VALUE_ARG)),
     ("password_assignment", re.compile(
         # starts only at the beginning of a word run: an unanchored [\w.-]* is quadratic on long runs
-        r"(?i)(?<![\w.-])(?P<key>" + _SECRET_NAME + r")[\"']?\s*(?::|=>|=)\s*" + _VALUE_LINE)),
+        r"(?i)(?<![\w.-])(?P<key>" + _SECRET_NAME + r")\\?[\"']?\s*(?::|=>|=)\s*" + _VALUE_LINE)),
     ("password_prose", re.compile(
         r"(?i)\b(?:password|passphrase|passwd|passcode|pin|secret|token)\s+"
         r"(?:(?:(?:is|was|has been)\s+)?(?:set|reset|changed)\s+to|is|was|of)\s+"
         + _NOT_MARKER + r"(?P<secret>[^\n]+)")),
+    ("password_prompt", re.compile(  # e.g. kinit's "Password for admin@REALM: <typed secret>"
+        r"(?i)\b(?:password|passphrase|pin)\s+for\s+\S{1,256}?\s*:\s*" + _VALUE_LINE)),
     ("keytab_material", re.compile(r"(?i)\bkeytab\S*[:=]\s*[0-9a-f]{32,}")),
     ("high_entropy_token", re.compile(r"(?<![\w+/=.-])(?P<secret>[A-Za-z0-9+/_\-]{40,}={0,2})(?![\w+/=-])")),
 ]
@@ -313,8 +317,12 @@ _HOME_RE = re.compile(r"/home/(?P<v>[^/\s:;,'\"]+)")
 _FQDN_RE = re.compile(r"(?<![A-Za-z0-9_@./\\-])(?P<v>(?:" + _LABEL + r"\.)+[A-Za-z][A-Za-z0-9-]{0,61}[A-Za-z0-9])"
                       r"(?![A-Za-z0-9_-])(?!\.[A-Za-z0-9])")
 _IPV4_RE = re.compile(r"(?<![\w.])(?:\d{1,3}\.){3}\d{1,3}(?!\d)(?!\.\d)")
-_IPV6_RE = re.compile(r"(?<![\w:.])(?:[0-9A-Fa-f]{0,4}:){2,7}[0-9A-Fa-f]{0,4}(?![\w:])")
+_IPV6_RE = re.compile(r"(?<![\w:.])(?:[0-9A-Fa-f]{0,4}:){2,7}(?:\d{1,3}(?:\.\d{1,3}){3}|[0-9A-Fa-f]{0,4})"
+                      r"(?![\w:])(?!\.\d)")
 _AGREEMENT_PREFIX = re.compile(r"^(meTo|cloneAgreement\d+-)", re.IGNORECASE)
+# a maximal dotted name (used to find hosts inside known domains in one linear pass)
+_DOTTED_RE = re.compile(r"(?<![A-Za-z0-9_.-])(?:" + _LABEL + r"\.)+" + _LABEL)
+_CHUNK = 1024  # identifier-dense text is replaced in chunks of about this size (keeps replacement linear)
 
 
 def _canon_ip(text: str) -> Optional[str]:
@@ -322,7 +330,20 @@ def _canon_ip(text: str) -> Optional[str]:
         ip = ipaddress.ip_address(text)
     except ValueError:
         return None
+    if ip.version == 6 and ip.ipv4_mapped:  # ::ffff:10.1.2.3 is the same address as 10.1.2.3
+        ip = ip.ipv4_mapped
     return None if ip.compressed in _KEEP_IPS or ip.is_loopback else ip.compressed
+
+
+def _ip_pattern(form: str) -> str:
+    esc = re.escape(form)
+    if ":" not in form:  # IPv4: a port (10.1.2.3:389) or an IPv4-mapped prefix (::ffff:) around it is still the address
+        return r"(?<![\w.])" + esc + r"(?!\d)(?!\.\d)"
+    return r"(?i:(?<![\w.:])" + esc + r")(?![\w:])(?!\.\d)"
+
+
+class SanitizeTimeout(Exception):
+    pass
 
 
 class Sanitizer:
@@ -334,9 +355,11 @@ class Sanitizer:
         self._taken: Dict[str, set] = collections.defaultdict(set)  # pseudonym numbers already present in the input
         self._variants: Dict[Tuple[str, str], Tuple[str, str]] = {}  # (class, text form) -> map key
         self._domains: List[str] = []
-        self._regex: Optional["re.Pattern[str]"] = None
-        self._alts: Dict[str, Tuple[str, Tuple[str, str]]] = {}  # regex group -> (class, map key)
-        self._loose: Optional["re.Pattern[str]"] = None
+        self._domain_set: set = set()
+        self._probes: List[Tuple[str, Tuple[str, str], Tuple[str, str]]] = []
+        self._regex: Optional[bool] = None  # None: the per-subset regex cache below must be rebuilt
+        self._cache: Dict[Tuple[Tuple[Tuple[str, str], ...], Tuple[str, ...]], Any] = {}
+        self.deadline: Optional[float] = None  # time.monotonic() limit for all processing (build sets it)
         self.redactions: collections.Counter = collections.Counter()
         self.removed_fields = 0
         self.raw_fields_dropped = 0
@@ -408,7 +431,8 @@ class Sanitizer:
         low = domain.strip().strip(".").lower()
         if not low or _is_tld(low) or low in CONST_WORDS or "." not in low or self._public(low):
             return
-        if low not in self._domains:
+        if low not in self._domain_set:
+            self._domain_set.add(low)
             self._domains.append(low)
             self._regex = None
         self._register("DOMAIN", low)
@@ -445,6 +469,7 @@ class Sanitizer:
 
     # -- discovery ----------------------------------------------------------------------------------------------
     def discover_text(self, text: str, key: str = "") -> None:
+        self._check_time()
         text = self._apply_literals(clean(text))
         for m in _PSEUDONYM_SHAPE.finditer(text):
             self._taken[m.group(1)].add(int(m.group(2)))
@@ -503,9 +528,7 @@ class Sanitizer:
         for m in _IPV6_RE.finditer(text):
             if any(c.isdigit() or c.isalpha() for c in m.group(0)):
                 self.add_ip(m.group(0))
-        for dom in list(self._domains):
-            for m in self._in_domain_re(dom).finditer(text):
-                self._host_in_domain(m.group(0), dom)
+        self._discover_in_domain(text)
         for m in _FQDN_RE.finditer(text):
             v = m.group("v")
             labels = v.lower().split(".")
@@ -523,6 +546,26 @@ class Sanitizer:
             cls._in_domain_cache[dom] = re.compile(r"(?i)(?<![A-Za-z0-9_.-])(?:" + _LABEL + r"\.)+" + re.escape(dom)
                                                    + r"(?![A-Za-z0-9])(?!\.[A-Za-z0-9])")
         return cls._in_domain_cache[dom]
+
+    def _discover_in_domain(self, text: str) -> None:
+        """Every name that ends in a known domain is a host of that domain (meToipa02.example.test and
+        cloneAgreement1-ipa02.example.test-pki-tomcat included). One pass over the dotted names, then set lookups."""
+
+        if not self._domain_set:
+            return
+        for m in _DOTTED_RE.finditer(text):
+            tok = m.group(0)
+            low = tok.lower()
+            last = low.rsplit(".", 1)[-1]
+            base = len(low) - len(last)
+            ends = [len(low)] + [base + i for i, c in enumerate(last) if c == "-"][:5]
+            for e in ends:
+                parts = low[:e].split(".")
+                hit = next((".".join(parts[i:]) for i in range(max(1, len(parts) - 10), len(parts))
+                            if ".".join(parts[i:]) in self._domain_set), None)
+                if hit:
+                    self._host_in_domain(tok[:e], hit)
+                    break
 
     def _host_in_domain(self, text: str, dom: str) -> None:
         text = _AGREEMENT_PREFIX.sub("", text)
@@ -551,9 +594,19 @@ class Sanitizer:
             self.discover_text(value, key)
 
     # -- pseudonymization ---------------------------------------------------------------------------------------
-    def _build_regex(self, loose: bool = False) -> "re.Pattern[str]":
+    def _check_time(self) -> None:
+        if self.deadline is not None and time.monotonic() > self.deadline:
+            raise SanitizeTimeout()
+
+    @staticmethod
+    def _probe(cls: str, form: str) -> str:
+        """A lower-case literal that must occur in a text for this identifier form to be able to match there."""
+
+        return form.split(".")[0].lower() if cls == "SUFFIX" else form.lower()
+
+    def _build_regex(self, variants, domains, loose: bool = False):
         alts: List[Tuple[int, int, str, str, Tuple[str, str]]] = []
-        for (cls, form), key in self._variants.items():
+        for (cls, form), key in variants:
             esc = re.escape(form)
             if cls == "HOST":
                 if "." in form:
@@ -570,7 +623,7 @@ class Sanitizer:
             elif cls == "INSTANCE":
                 pat = r"(?i:(?<![A-Za-z0-9])" + esc + r")(?![A-Za-z0-9-])"
             elif cls == "IP":
-                pat = r"(?i:(?<![\w.:])" + esc + r")(?![\w:])(?!\.\d)"
+                pat = _ip_pattern(form)
             elif cls in ("EMAIL",):
                 pat = r"(?i:" + esc + r")(?![A-Za-z0-9_-])"
             elif cls == "SERVICE":
@@ -581,24 +634,22 @@ class Sanitizer:
                 pat = pat.replace(r"(?!\.[A-Za-z0-9])", "")
             prio = 0 if cls == "REALM" else 1  # a realm (case-sensitive) wins over the same-length domain
             alts.append((-len(form), prio, cls, pat, key))
-        for dom in ([] if loose else self._domains):
+        for dom in ([] if loose else domains):
             alts.append((-(len(dom) + 1), 2, "_INDOMAIN", r"(?i:(?<![A-Za-z0-9_.-])(?:" + _LABEL + r"\.)+"
                          + re.escape(dom) + r")(?![A-Za-z0-9])(?!\.[A-Za-z0-9])", ("_INDOMAIN", dom)))
         alts.sort(key=lambda a: (a[0], a[1]))
-        tag = "l" if loose else "s"  # distinct group names: both regexes share one lookup table
-        for i, a in enumerate(alts):
-            self._alts[f"{tag}{i}"] = (a[2], a[4])
-        if not alts:
-            return re.compile(r"(?!x)x")
+        groups = {f"g{i}": (a[2], a[4]) for i, a in enumerate(alts)}
         # first alternative: a pseudonym already in the text (assigned by the first pass, or an input literal whose
-        # number is skipped) is kept as it is - a real name such as host-001 must never rewrite HOST-001
-        return re.compile(f"(?P<{tag}keep>" + _PSEUDONYM_TOKEN + ")|"
-                          + "|".join(f"(?P<{tag}{i}>{a[3]})" for i, a in enumerate(alts)))
+        # number is skipped) is kept as it is - a real name such as host-001 must never rewrite HOST-001. A
+        # pseudonym-shaped label that starts a longer name (HOST-001.example.test) is a real name, not kept.
+        rx = re.compile("(?P<keep>" + _PSEUDONYM_TOKEN + r"(?!\.[A-Za-z0-9]))|"
+                        + "|".join(f"(?P<g{i}>{a[3]})" for i, a in enumerate(alts)))
+        return rx, groups
 
-    def _replace(self, m: "re.Match[str]") -> str:
-        if m.lastgroup.endswith("keep"):
+    def _replace(self, m: "re.Match[str]", groups) -> str:
+        if m.lastgroup == "keep":
             return m.group(0)
-        cls, key = self._alts[m.lastgroup]
+        cls, key = groups[m.lastgroup]
         if cls == "_INDOMAIN":
             text = m.group(0)
             prefix = ""
@@ -621,12 +672,50 @@ class Sanitizer:
         return self._map[key]
 
     def pseudonymize(self, text: str) -> str:
+        """Only the identifiers that can occur in this text take part in its regex (a cheap substring probe), so the
+        cost does not grow with the number of identifiers known to the bundle."""
+
+        self._check_time()
         if self._regex is None:
-            self._alts = {}
-            self._regex = self._build_regex()
-            self._loose = self._build_regex(loose=True)
+            self._cache.clear()
+            self._probes = [(self._probe(*v), v, k) for v, k in self._variants.items()]
+            self._regex = True
+        low = text.lower()
+        present = [(p, v, k) for p, v, k in self._probes if p in low]
+        if not present:
+            return text
+        if len(text) <= 2 * _CHUNK or len(present) <= 32:
+            return self._sub(text, [(v, k) for _p, v, k in present])
+        # identifier-dense long text: each chunk only carries the identifiers that occur in it
+        out = []
+        for chunk in _chunks(text, _CHUNK):
+            cl = chunk.lower()
+            sub = [(v, k) for p, v, k in present if p in cl]
+            out.append(self._sub(chunk, sub) if sub else chunk)
+        return "".join(out)
+
+    def _sub(self, text: str, present) -> str:
+        variants = tuple(sorted(present))
+        ck = tuple(v for v, _ in variants)
+        if ck not in self._cache:
+            if len(self._cache) > 4096:
+                self._cache.clear()
+            self._cache[ck] = (self._build_regex(variants, ()), self._build_regex(variants, (), loose=True))
+        (strict, sg), (loose, lg) = self._cache[ck]
         # whole names first (a longer name wins), then any remaining occurrence of a known identifier
-        return self._loose.sub(self._replace, self._regex.sub(self._replace, text))
+        out = strict.sub(lambda m: self._replace(m, sg), text)
+        return loose.sub(lambda m: self._replace(m, lg), out)
+
+    def reserve(self, value: Any) -> None:
+        """Pseudonym numbers that already occur as text in the evidence are never assigned (called before the
+        diagnosed host is registered, so a literal HOST-001 in the evidence cannot be confused with it)."""
+
+        def visit(_key: str, text: str) -> None:
+            if len(text) <= HARD_LIMIT:
+                for m in _PSEUDONYM_SHAPE.finditer(clean(text)):
+                    self._taken[m.group(1)].add(int(m.group(2)))
+
+        walk_strings(value, visit)
 
     # -- the whole pipeline ---------------------------------------------------------------------------------------
     def text(self, value: str, limit: int = TEXT_LIMIT) -> str:
@@ -663,7 +752,7 @@ class Sanitizer:
                 nk = self.text(k, KEY_LIMIT)
                 while nk in out:
                     nk += "#"
-                if secret_key(k) and not isinstance(v, bool) and v is not None:
+                if secret_key(k, normalize=True) and not isinstance(v, bool) and v is not None:
                     self.removed_fields += 1
                     out[nk] = "[REMOVED]"
                     continue
@@ -700,6 +789,24 @@ class Sanitizer:
         return self._map.get(("HOST", low))
 
 
+def _chunks(text: str, size: int) -> List[str]:
+    """Pieces of about `size` characters, cut at whitespace that does not follow a comma (so an LDAP suffix
+    written as "dc=a, dc=b" stays whole); a hard cut only when there is no such whitespace."""
+
+    out, start = [], 0
+    while len(text) - start > size:
+        cut = -1
+        for i in range(start + size, start + size // 2, -1):
+            if text[i].isspace() and text[i - 1] != ",":
+                cut = i
+                break
+        cut = cut if cut > start else start + size
+        out.append(text[start:cut])
+        start = cut
+    out.append(text[start:])
+    return out
+
+
 def walk_strings(value: Any, visit: Callable[[str, str], None], key: str = "") -> None:
     """Calls visit(key, string) for every mapping key and string value."""
 
@@ -714,19 +821,21 @@ def walk_strings(value: Any, visit: Callable[[str, str], None], key: str = "") -
         visit(key, value)
 
 
-def iter_originals(items: Iterable[Tuple[str, str]]) -> Iterable[Tuple[str, "re.Pattern[str]"]]:
-    """Strict detectors for the leak self-test: a real identifier anywhere in the output is a leak."""
+def iter_originals(items: Iterable[Tuple[str, str]]) -> Iterable[Tuple[str, "re.Pattern[str]", str]]:
+    """Strict detectors for the leak self-test: a real identifier anywhere in the output is a leak. Each comes with
+    a lower-case probe that must occur in a text before the detector can match (keeps the scan linear)."""
 
     for cls, form in items:
         esc = re.escape(form)
+        probe = Sanitizer._probe(cls, form)
         if cls == "HOST" and "." in form:
-            yield cls, re.compile(r"(?i)" + esc + r"(?![A-Za-z0-9])")
+            yield cls, re.compile(r"(?i)" + esc + r"(?![A-Za-z0-9])"), probe
         elif cls == "SUFFIX":
             labels = form.split(".")
-            yield cls, re.compile(r"(?i)" + _SUFFIX_SEP.join(_SUFFIX_DC + re.escape(lb) for lb in labels))
+            yield cls, re.compile(r"(?i)" + _SUFFIX_SEP.join(_SUFFIX_DC + re.escape(lb) for lb in labels)), probe
         elif cls == "IP":
-            yield cls, re.compile(r"(?i)(?<![\w.:])" + esc + r"(?![\w:])(?!\.\d)")
+            yield cls, re.compile(_ip_pattern(form)), probe
         elif cls == "REALM":
-            yield cls, re.compile(r"(?<![A-Za-z])" + esc + r"(?![A-Za-z0-9])")
+            yield cls, re.compile(r"(?<![A-Za-z])" + esc + r"(?![A-Za-z0-9])"), probe
         else:
-            yield cls, re.compile(r"(?i)(?<![A-Za-z0-9])" + esc + r"(?![A-Za-z0-9])")
+            yield cls, re.compile(r"(?i)(?<![A-Za-z0-9])" + esc + r"(?![A-Za-z0-9])"), probe

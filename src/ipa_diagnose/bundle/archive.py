@@ -28,7 +28,7 @@ import zlib
 from typing import Any, Dict, List, Optional
 
 from ipa_diagnose.bundle.build import BUNDLE_FORMAT, BUNDLE_SCHEMA_VERSION, LIMITS, MEMBERS, TOP_DIR
-from ipa_diagnose.bundle.selftest import scan_text
+from ipa_diagnose.bundle.selftest import EVIDENCE_MEMBERS, scan_text, unremoved_secret_fields
 
 MAX_ARCHIVE_BYTES = 16 * 1024 * 1024
 MAX_UNCOMPRESSED = LIMITS["total_bytes"] + 1024 * 1024
@@ -393,6 +393,8 @@ def _check_content(contents: Dict[str, bytes], manifest: Optional[Dict[str, Any]
                                   f"{mode}")
             for key, s in _json_strings(obj):
                 found.update(scan_text(s, key))
+            if name in EVIDENCE_MEMBERS and unremoved_secret_fields(obj):
+                found.add("secret-named field not removed")
         else:
             found.update(scan_text(text, multiline=True))
         for cat in sorted(found):

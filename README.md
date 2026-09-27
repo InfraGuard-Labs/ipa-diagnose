@@ -295,7 +295,7 @@ helping you. It holds a fresh diagnosis in structured form:
 - a manifest with SHA-256 checksums.
 
 Host names, domains, realms, LDAP suffixes, IP addresses, users and groups are replaced by bundle-local pseudonyms
-(`HOST-001` is always the diagnosed host). Values that look like credentials are redacted before anything is
+(the diagnosed host is `HOST-001`). Values that look like credentials are redacted before anything is
 truncated. No collector records secret material to begin with (keytab keys, ticket contents, private keys,
 passwords).
 
