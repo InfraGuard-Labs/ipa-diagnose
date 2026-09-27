@@ -111,3 +111,9 @@ fixed in `privacy/minimize.py`.
   redacted, cited evidence for one diagnosis.
 - Never requires network access or an LLM to produce a diagnosis (`--no-ai`
   is the default).
+
+## Support bundles
+
+`ipa-diagnose bundle` has its own pipeline: structure, remove prohibited fields, redact, pseudonymize, bound, then a
+fail-closed leak self-test. It is described in [support-bundle.md](support-bundle.md). It shares no code path with
+the AI payload above, and a bundle is never sent to an AI provider.

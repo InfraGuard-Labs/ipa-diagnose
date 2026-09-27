@@ -51,10 +51,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "command",
         nargs="?",
-        choices=["diagnose", "verify", "ai-preview"],
+        choices=["diagnose", "verify", "ai-preview", "bundle"],
         default="diagnose",
         help="diagnose (default): run diagnosis. verify: check if previously diagnosed problems cleared. "
-        "ai-preview: show exactly what would be sent to the AI provider.",
+        "ai-preview: show exactly what would be sent to the AI provider. "
+        "bundle: create, preview or validate a sanitized support bundle (see 'ipa-diagnose bundle --help').",
     )
     _add_common_args(parser)
     return parser
@@ -247,7 +248,30 @@ def _exit_code_for(report: DiagnosisReport) -> int:
     }[report.overall_status]
 
 
+def _first_positional(argv: list) -> Optional[str]:
+    skip = False
+    for a in argv:
+        if skip:
+            skip = False
+        elif a in ("--replay", "--ai-provider"):
+            skip = True
+        elif a == "--":
+            return None
+        elif not a.startswith("-"):
+            return a
+    return None
+
+
 def main(argv: Optional[list] = None) -> int:
+    argv = sys.argv[1:] if argv is None else list(argv)
+    # Warnings go to STDERR so `--json` on stdout is always pure JSON.
+    err_console = Console(stderr=True, highlight=False)
+    if _first_positional(argv) == "bundle":
+        # `bundle` has its own arguments (validate BUNDLE, --output, --preview); nothing else changes.
+        from ipa_diagnose.bundle.cli import run as run_bundle
+
+        return _guarded(lambda: run_bundle(argv), err_console)
+
     parser = build_parser()
     args = parser.parse_args(argv)
     # highlight=False: rich's default ReprHighlighter auto-colors substrings
@@ -255,8 +279,6 @@ def main(argv: Optional[list] = None) -> int:
     # (e.g. a log message), which reads as noise, not signal, in this UI -
     # all intentional styling here is explicit markup, not auto-detected.
     console = Console(highlight=False)
-    # Warnings go to STDERR so `--json` on stdout is always pure JSON.
-    err_console = Console(stderr=True, highlight=False)
 
     command = args.command or "diagnose"
     if os.name != "nt" and command in ("diagnose", "verify") and args.replay is None and os.geteuid() != 0:
@@ -265,12 +287,23 @@ def main(argv: Optional[list] = None) -> int:
             "journalctl, certmonger) will likely fail or be incomplete.[/yellow]\n"
         )
 
-    try:
+    def dispatch() -> int:
+        if command == "bundle":  # reached only through an unusual spelling such as `ipa-diagnose -- bundle`
+            from ipa_diagnose.bundle.cli import run as run_bundle
+
+            return run_bundle(["bundle"])
         if command == "verify":
             return cmd_verify(args, console)
         if command == "ai-preview":
             return cmd_ai_preview(args, console)
         return cmd_diagnose(args, console)
+
+    return _guarded(dispatch, err_console)
+
+
+def _guarded(fn, err_console: Console) -> int:
+    try:
+        return fn()
     except KeyboardInterrupt:
         return 130
     except BrokenPipeError:

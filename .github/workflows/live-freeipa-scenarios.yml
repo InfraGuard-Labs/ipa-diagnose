@@ -24,6 +24,11 @@ on:
         required: false
         default: "fedora-43"
         type: string
+      suite:
+        description: "'scenarios' (default: failure scenarios and Slice 1 procedures) or 'bundle' (support bundles)"
+        required: false
+        default: "scenarios"
+        type: string
 
 env:
   INSTALL_SOURCE: ${{ inputs.install_source }}
@@ -35,6 +40,7 @@ env:
 
 jobs:
   scenarios:
+    if: ${{ inputs.suite != 'bundle' }}
     runs-on: ubuntu-latest
     timeout-minutes: 75
     steps:
@@ -392,6 +398,172 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: live-scenarios-evidence-${{ inputs.image || 'fedora-43' }}
+          path: |
+            env.txt
+            image.txt
+            out/
+          retention-days: 30
+
+  bundle:
+    # Support bundles (1.0 Slice 2) from real states of the same throwaway server: fresh install, healthy, Directory
+    # Server stopped, KDC stopped, ipa-healthcheck missing, unprivileged. Canary secrets (never real credentials) are
+    # planted where a bundle could meet them; scripts/lab_bundle.py fails the job if any reaches a bundle.
+    if: ${{ inputs.suite == 'bundle' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Boot a real FreeIPA server (integrated DNS + CA)
+        run: |
+          set +e
+          echo "image: freeipa/freeipa-server:$IMAGE" | tee image.txt
+          docker volume create ipa-data
+          docker run -d --name ipa-s --privileged --cgroupns=host \
+            -v /sys/fs/cgroup:/sys/fs/cgroup:rw -v ipa-data:/data \
+            -h ipa01.lab.test -e PASSWORD=${IPA_PASSWORD} \
+            freeipa/freeipa-server:$IMAGE \
+            ipa-server-install -U -r LAB.TEST --no-ntp --skip-mem-check --setup-dns --auto-forwarders --auto-reverse
+          for i in $(seq 1 120); do
+            sleep 10
+            if docker exec ipa-s systemctl is-active ipa.service 2>/dev/null | grep -qx active; then echo "active after ~$((i*10))s"; sleep 20; break; fi
+          done
+          if ! docker exec ipa-s ipactl status; then
+            mkdir -p out
+            docker logs ipa-s > out/boot-container.log 2>&1
+            for f in ipaserver-install.log ipaclient-install.log; do docker cp ipa-s:/data/var/log/$f out/$f 2>/dev/null || docker cp ipa-s:/var/log/$f out/$f 2>/dev/null; done
+            tail -60 out/boot-container.log; grep -n "ERROR\|Error\|error" out/ipa*-install.log 2>/dev/null | tail -30
+            exit 1
+          fi
+
+      - name: Install ipa-diagnose
+        run: |
+          set +e
+          docker exec ipa-s bash -c 'cp /etc/resolv.conf /etc/resolv.conf.bak; printf "nameserver 1.1.1.1\nnameserver 8.8.8.8\n" > /etc/resolv.conf'
+          PY=python3
+          if ! docker exec ipa-s python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)'; then
+            docker exec ipa-s bash -c 'for a in 1 2 3; do dnf install -y python3.11 python3.11-pip && break; sleep 15; done'
+            PY=python3.11
+          else
+            docker exec ipa-s bash -c 'for a in 1 2 3; do dnf install -y python3-pip && break; sleep 15; done'
+          fi
+          docker exec ipa-s $PY -m pip install pipx
+          if [ "$INSTALL_SOURCE" = "pypi" ]; then
+            docker exec ipa-s $PY -m pipx install ipa-diagnose
+          else
+            docker cp "$GITHUB_WORKSPACE" ipa-s:/ipa-diagnose-source
+            docker exec ipa-s $PY -m pipx install /ipa-diagnose-source
+          fi
+          docker exec ipa-s cp /etc/resolv.conf.bak /etc/resolv.conf
+          $D --version | tee env.txt
+          echo "commit: $GITHUB_SHA" | tee -a env.txt
+          cat image.txt >> env.txt
+          docker exec ipa-s rpm -q freeipa-server freeipa-healthcheck 389-ds-base | tee -a env.txt
+          docker exec ipa-s $PY --version | tee -a env.txt
+          docker exec ipa-s cat /etc/os-release | tee -a env.txt
+          INST=$(docker exec ipa-s bash -c 'ls -d /etc/dirsrv/slapd-* | head -1 | sed "s#.*/slapd-##"')
+          NAMED=$(docker exec ipa-s bash -c 'for u in named-pkcs11.service named.service; do systemctl is-enabled $u >/dev/null 2>&1 && { echo $u; break; }; done')
+          echo "INST=$INST" >> "$GITHUB_ENV"; echo "NAMED=${NAMED:-named.service}" >> "$GITHUB_ENV"
+          echo "DS instance: $INST  named unit: ${NAMED:-named.service}" | tee -a env.txt
+
+      - name: Plant canaries (fake values only)
+        run: |
+          set +e
+          mkdir -p out
+          IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ipa-s)
+          echo "LAB_FORBIDDEN=ipa01|lab.test|LAB-TEST|$IP|$IPA_PASSWORD|zqlivecanary|ZqLiveCanary|OPENSSH PRIVATE KEY|/ipa-diagnose-source" >> "$GITHUB_ENV"
+          docker exec ipa-s bash -c 'printf "ipa user-mod admin --password ZQLIVECANARYHIST1\nexport OPENAI_API_KEY=sk-zqlivecanaryhist2xxxxxxxxxxxxxx\n" >> /root/.bash_history
+            mkdir -p /root/.ssh /root/.aws
+            printf -- "-----BEGIN OPENSSH PRIVATE KEY-----\nZQLIVECANARYSSH3\n-----END OPENSSH PRIVATE KEY-----\n" > /root/.ssh/id_zqlivecanary
+            chmod 600 /root/.ssh/id_zqlivecanary
+            printf "[default]\naws_access_key_id=AKIAZQLIVECANARY0004\naws_secret_access_key=ZQLIVECANARYAWS5\n" > /root/.aws/credentials
+            echo ZQLIVECANARYDM6 > /root/zqlivecanary-note.txt'
+          # an IPA user whose name the Kerberos collectors can meet (root's credential cache) - an identity canary
+          docker exec ipa-s bash -c 'echo "$0" | kinit admin >/dev/null && printf "ZqLiveCanaryPw7\nZqLiveCanaryPw7\n" | ipa user-add zqlivecanaryuser --first=Zq --last=Canary --password >/dev/null; kdestroy -A' "$IPA_PASSWORD"
+          docker exec ipa-s bash -c 'printf "ZqLiveCanaryPw7\nZqLiveCanaryPw8\nZqLiveCanaryPw8\n" | kinit zqlivecanaryuser >/dev/null 2>&1; klist 2>&1 | head -3' | tee out/canary-ccache.txt
+
+      - name: B0 fresh install (real CS.cfg 0664 quirk, Slice 1 file procedure offered)
+        run: |
+          set +e
+          docker exec ipa-s ipa-healthcheck --failures-only --output-type json > out/b0-healthcheck-failures.json 2>&1
+          if grep -q CS.cfg out/b0-healthcheck-failures.json; then
+            bash scripts/lab_bundle_run.sh B0-fresh-install-file-procedure b0 root '{"resolution": {"procedure": "proc.files.restore-expected-permissions", "status": "OFFERED"}, "pseudonym_classes": ["HOST", "DOMAIN", "REALM"]}'
+          else
+            bash scripts/lab_bundle_run.sh B0-fresh-install b0 root '{"pseudonym_classes": ["HOST", "DOMAIN", "REALM"]}'
+          fi
+          docker exec ipa-s chmod 0660 /var/lib/pki/pki-tomcat/conf/ca/CS.cfg
+
+      - name: B1 healthy baseline (as observed in the container)
+        run: |
+          bash scripts/lab_bundle_run.sh B1-healthy-baseline b1 root '{"overall_in": ["HEALTHY", "NOT_FULLY_VERIFIED"]}'
+
+      - name: B2 Directory Server stopped
+        run: |
+          set +e
+          docker exec ipa-s systemctl stop dirsrv@$INST.service; sleep 5
+          bash scripts/lab_bundle_run.sh B2-dirsrv-down b2 root '{"overall_in": ["CRITICAL"], "resolution": {"procedure": "proc.service.start-stopped-service", "status": "OFFERED"}}'
+          docker exec ipa-s systemctl start dirsrv@$INST.service; sleep 20
+
+      - name: B3 Kerberos KDC stopped (canary user in root's credential cache)
+        run: |
+          set +e
+          docker exec ipa-s systemctl stop krb5kdc.service; sleep 5
+          bash scripts/lab_bundle_run.sh B3-krb5kdc-down b3 root '{"overall_in": ["CRITICAL"], "resolution": {"procedure": "proc.service.start-stopped-service", "status": "OFFERED"}}'
+          docker exec ipa-s systemctl start krb5kdc.service; sleep 10
+
+      - name: B4 ipa-healthcheck missing (collection failure, UNKNOWN)
+        run: |
+          set +e
+          docker exec ipa-s mv /usr/bin/ipa-healthcheck /usr/bin/ipa-healthcheck.off
+          bash scripts/lab_bundle_run.sh B4-healthcheck-missing b4 root '{"overall_in": ["UNKNOWN"], "completeness": "insufficient", "collection_error_category": "not_available"}'
+          docker exec ipa-s mv /usr/bin/ipa-healthcheck.off /usr/bin/ipa-healthcheck
+
+      - name: B5 unprivileged user
+        run: |
+          set +e
+          docker exec ipa-s bash -c 'chmod -R a+rX /root/.local /root/.local/pipx 2>/dev/null; chmod a+x /root'
+          bash scripts/lab_bundle_run.sh B5-non-root b5 nobody '{"overall_in": ["UNKNOWN", "NOT_FULLY_VERIFIED", "DEGRADED", "CRITICAL"]}'
+
+      - name: B6 output safety on the real server (no overwrite, no symlink follow)
+        run: |
+          set +e
+          X="docker exec ipa-s /root/.local/bin/ipa-diagnose bundle"
+          docker exec ipa-s bash -c 'echo keep > /root/b6-existing; ln -sf /etc/zqlivecanary-target /root/b6-link'
+          $X --output /root/b6-existing > out/b6-existing.txt 2>&1; echo "exit=$?" >> out/b6-existing.txt
+          $X --output /root/b6-link > out/b6-link.txt 2>&1; echo "exit=$?" >> out/b6-link.txt
+          docker exec ipa-s bash -c 'cat /root/b6-existing; test -e /etc/zqlivecanary-target && echo TARGET-CREATED || echo target-absent' > out/b6-after.txt
+          cat out/b6-*.txt
+          if grep -q "exit=5" out/b6-existing.txt && grep -q "exit=5" out/b6-link.txt && grep -qx keep out/b6-after.txt && grep -qx target-absent out/b6-after.txt; then
+            python3 scripts/lab_bundle.py skip B6-output-safety-PASS "existing file and symlink refused (exit 5), neither touched"
+          else
+            python3 scripts/lab_bundle.py skip B6-output-safety-FAIL "see out/b6-*.txt"
+          fi
+
+      - name: B7 timing - diagnose vs preview vs bundle (3 runs each, healthy server)
+        run: |
+          set +e
+          for n in 1 2 3; do
+            /usr/bin/time -f "diagnose run $n: %e s" docker exec ipa-s /root/.local/bin/ipa-diagnose --json > /dev/null 2>> out/b7-timing.txt
+            /usr/bin/time -f "preview  run $n: %e s" docker exec ipa-s /root/.local/bin/ipa-diagnose bundle --preview > /dev/null 2>> out/b7-timing.txt
+            /usr/bin/time -f "bundle   run $n: %e s" docker exec ipa-s /root/.local/bin/ipa-diagnose bundle --output /root/b7-$n.tar.gz > /dev/null 2>> out/b7-timing.txt
+          done
+          cat out/b7-timing.txt
+
+      - name: Bundle assertions (fail the job on any FAIL)
+        run: |
+          python3 scripts/lab_bundle.py summary; a=$?
+          if grep -q B6-output-safety-FAIL out/truth/bundle-results.jsonl; then a=1; fi
+          exit $a
+
+      - name: Cleanup
+        if: always()
+        run: docker rm -f ipa-s 2>/dev/null || true; docker volume rm ipa-data 2>/dev/null || true
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-bundle-evidence-${{ inputs.image || 'fedora-43' }}
           path: |
             env.txt
             image.txt
