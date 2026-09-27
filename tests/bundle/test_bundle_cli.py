@@ -134,6 +134,8 @@ def test_live_mode_bundle_is_labelled_live(capsys, tmp_path, monkeypatch):
 
     fr._install(monkeypatch)
     monkeypatch.setattr(os, "geteuid", lambda: 0, raising=False)
+    if hasattr(os, "stat") and os.name != "nt":  # as under sudo: the calling user owns the output directory
+        monkeypatch.setenv("SUDO_UID", str(os.stat(tmp_path).st_uid))
     assert cli.main(["bundle", "-o", str(tmp_path / "live.tar.gz")]) == 0
     capsys.readouterr()
     m = members_of((tmp_path / "live.tar.gz").read_bytes())
