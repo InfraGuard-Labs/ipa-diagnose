@@ -20,6 +20,7 @@ collects secret material at all (see build.py). This module is the second line, 
 
 from __future__ import annotations
 
+import bisect
 import collections
 import ipaddress
 import re
@@ -69,6 +70,8 @@ _TLDS = {
     "private", "home", "test", "example", "invalid", "arpa", "priv", "dev", "cloud", "info", "biz", "site", "online",
     "tech", "app", "xyz", "top", "shop", "page", "link", "network", "systems", "company", "group", "global", "world",
     "services", "solutions", "digital", "agency", "center", "host", "domains", "email", "zone", "work", "science",
+    "lab", "labs", "domain", "intern", "mgmt", "prod", "stage", "staging", "qa", "uat", "infra", "office", "cluster",
+    "idm", "ipa", "lcl", "loc", "srv", "net1", "corp1",
 }
 # every two-letter (country-code) top-level domain counts, except these that are far more often file extensions
 _NOT_TLD2 = {"py", "sh", "md", "js", "rs", "go", "so", "pl", "pm", "rb", "ts", "cs", "db", "gz", "xz", "bz", "ko",
@@ -91,7 +94,8 @@ _KEEP_IPS = {"127.0.0.1", "0.0.0.0", "255.255.255.255", "::1", "::"}
 # keys whose value is a secret regardless of what it looks like (matched on the key with camelCase split by "_")
 _SECRET_KEY_RE = re.compile(
     r"(?i)(passw|passphrase|passcode|pwd|secret|token|apikey|api_key|api-key|bearer|private_?key|privkey|credential|"
-    r"bindpw|bind_pw|rootpw|access_?key|cookie|authoriz|session_?key|ccache_data|keytab_data|ticket_data|"
+    r"bindpw|bind_pw|rootpw|access_?key|cookie|authoriz|session_?key|session_?id|ccache_data|keytab_data|ticket_data|"
+    r"pincode|kennwort|motdepasse|contrase|"
     r"(?<![a-z0-9])(?:pw|pin|pass|otp|totp|hotp|psk)(?![a-z0-9]))")
 
 
@@ -130,7 +134,9 @@ def clean(text: str) -> str:
     """Terminal escapes and control characters removed, format characters (zero-width, bidi) deleted so they cannot
     split a keyword, compatibility forms normalized (NFKC). Newlines and tabs are kept for multi-line detection."""
 
-    text = unicodedata.normalize("NFKC", text)
+    # combining marks are dropped after decomposition, so an accent cannot hide a keyword (pa\u0301ssword, p\u00e1ssword)
+    text = unicodedata.normalize("NFKD", text)
+    text = unicodedata.normalize("NFKC", "".join(c for c in text if not unicodedata.combining(c)))
     for p in _ESCAPES:
         text = p.sub("", text)
     out = []
@@ -155,14 +161,21 @@ _NOT_MARKER = r"(?!\s*\[RE(?:DACTED|MOVED))"  # also when the pattern backtracks
 _VALUE_LINE = _NOT_MARKER + r"(?P<secret>\"[^\"\n]*\"|'[^'\n]*'|\S[^\n]*)"
 _VALUE_ARG = _NOT_MARKER + r"(?P<secret>\"[^\"\n]*\"|'[^'\n]*'|\S+)"
 # field names are bounded (a real key is short); unbounded [\w.-]* on both sides is quadratic on long runs
-_SECRET_NAME = (r"[\w.-]{0,40}?(?:passw(?:or)?d|passphrase|passcode|pwd|secret|token|api[_-]?key|apikey|"
-                r"access[_-]?key|private[_-]?key|privkey|client[_-]?secret|bindpw|rootpw|credentials?)[\w.-]{0,40}"
-                r"|[\w.-]{0,40}?(?<![A-Za-z0-9])(?:pw|pin|pass|otp|psk)\b")
+_SECRET_NAME = (r"[\w.-]{0,100}?(?:passw(?:or)?d|passphrase|passcode|pwd|secret|token|api[_-]?key|apikey|"
+                r"access[_-]?key|private[_-]?key|privkey|client[_-]?secret|bindpw|rootpw|credentials?)[\w.-]{0,100}"
+                r"|[\w.-]{0,100}?(?<![A-Za-z0-9])(?:pw|pin|pass|otp|psk)\b")
 _SECRET_MARKER = re.compile(r"(?i)passw(?:or)?d|passphrase|passcode|pwd|secret|token|api[_-]?key|access[_-]?key|"
                             r"private[_-]?key|privkey|bindpw|rootpw|credentials?|(?<![a-z0-9])(?:pw|pin|pass|otp|psk)")
 # command-line password flags of tools that take them (checked procedurally in find_secrets: a regex that looks
 # back from a flag to the tool name backtracks super-linearly)
-_FLAG_RE = re.compile(r"(?<!\S)-(?:w|W|p|P|a|u)\s*" + _NOT_MARKER + r"(?P<secret>[^\s-]\S*)")
+_FLAG_RE = re.compile(r"(?<!\S)-(?:w|W|p|P|a|u)\s*" + _NOT_MARKER + r"(?P<secret>\"[^\"\n]*\"|'[^'\n]*'|[^\s-]\S*)")
+# a line-level backstop: after a secret keyword and a ':' or '=', the rest of the line is treated as secret, unless
+# the keyword continues a word (IPAProxySecretCheck, passwords) or is followed by a word saying it is metadata
+_LINE_KEYWORD_RE = re.compile(r"(?i)passw(?:or)?d|passphrase|passcode|kennwort|bindpw|rootpw|secret|credentials?|"
+                              r"api[_-]?key")
+_META_TAIL_RE = re.compile(r"(?i)[A-Za-z]|[\s_.-]?(?:file|path|dir|polic|expir|lifetime|histor|grace|attempt|failure|"
+                           r"enabled|required|len|min|max|age|type|status|state|changed|time|date|count|prompt|hint|"
+                           r"reset|change|quality|strength|check)")
 _TOOL_RE = re.compile(r"(?i)\b(?:ldap(?:search|modify|add|delete|passwd|whoami|compare|modrdn)\b|dsconf\b|dsctl\b|"
                       r"ipa-[a-z]|pk12util\b|mysql\b|psql\b|curl\b)")
 # words that, after the secret-ish part of a field name, say the value is metadata about a secret, not the secret
@@ -184,14 +197,16 @@ PATTERNS: List[Pattern] = [
     ("github_token", re.compile(r"\b(?:gh[oprsu]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})")),
     ("slack_token", re.compile(r"\bxox[abposr]-[A-Za-z0-9-]{10,}")),
     ("google_api_key", re.compile(r"\bAIza[0-9A-Za-z_-]{30,}")),
-    ("credential_url", re.compile(r"(?i)(?<![a-z0-9+.-])[a-z][a-z0-9+.-]*://" + _NOT_MARKER + r"(?P<secret>[^\s/@:]+:[^\s/@]+)@")),
+    ("credential_url", re.compile(r"(?i)(?<![a-z0-9+.-])[a-z][a-z0-9+.-]*://" + _NOT_MARKER
+                                  + r"(?P<secret>[^\s/@:]+:\S{0,256}?)@(?=[A-Za-z0-9.\[\]:-]+(?:[/\s?#]|$))")),
     ("authorization_header", re.compile(
         r"(?i)\b(?:proxy-)?authori[sz]ation[\"']?\s*[:=]\s*" + _NOT_MARKER + r"(?P<secret>[^\n]+)")),
     ("cookie", re.compile(r"(?i)\b(?:set-)?cookie[\"']?\s*[:=]\s*" + _NOT_MARKER + r"(?P<secret>[^\n]+)")),
     ("bearer_token", re.compile(r"(?i)\b(?:bearer|negotiate|basic)\s+" + _NOT_MARKER
                                 + r"(?P<secret>[A-Za-z0-9\-_.=+/~]{12,})")),
     ("password_option", re.compile(
-        r"(?i)(?<![\w-])--?[\w-]{0,40}?(?:passw(?:or)?d|passphrase|passcode|pin|secret|token|api-?key|otp)"
+        r"(?i)(?<![\w-])--?[\w-]{0,40}?(?:passw(?:or)?d|passphrase|passcode|pin|secret|token|api-?key|otp|bindpw|"
+        r"rootpw|pw|pass|psk)"
         r"[\w-]{0,20}(?:\s*=\s*|\s+)" + _VALUE_ARG)),
     ("password_assignment", re.compile(
         # starts only at the beginning of a word run: an unanchored [\w.-]* is quadratic on long runs
@@ -203,6 +218,8 @@ PATTERNS: List[Pattern] = [
     ("password_prompt", re.compile(  # e.g. kinit's "Password for admin@REALM: <typed secret>"
         r"(?i)\b(?:password|passphrase|pin)\s+for\s+\S{1,256}?\s*:\s*" + _VALUE_LINE)),
     ("keytab_material", re.compile(r"(?i)\bkeytab\S*[:=]\s*[0-9a-f]{32,}")),
+    # a keytab file itself, base64-encoded: the format starts with 0x05 0x02 ("BQ" in base64)
+    ("keytab_material", re.compile(r"(?i)\bkeytab[^\n:=]{0,40}[:=]\s*(?P<secret>BQ[A-Za-z0-9+/]{6,}={0,2})")),
     ("high_entropy_token", re.compile(r"(?<![\w+/=.-])(?P<secret>[A-Za-z0-9+/_\-]{40,}={0,2})(?![\w+/=-])")),
 ]
 
@@ -212,13 +229,12 @@ def _keep(name: str, m: "re.Match[str]") -> bool:
 
     if name == "password_assignment":
         key = m.group("key")
-        first = re.split(r"[\s,;]", m.group("secret").strip())[0]
-        val = first.strip("\"',;").lower()
+        val = m.group("secret").strip().strip("\"',;.").lower()  # only a value that is just a boolean is exempt
         if re.match(r"_[\w-]+\.", key):
             return False  # a DNS record name such as _kpasswd._tcp.<domain>. or _kpasswd.<domain>., not a secret field
         markers = list(_SECRET_MARKER.finditer(key))
         tail = key[markers[-1].end():] if markers else ""
-        return not (_NON_SECRET_TAIL.search(tail) or val in _BOOLISH)
+        return not (_NON_SECRET_TAIL.match(tail.lstrip("_.-")) or val in _BOOLISH)
     if name == "bearer_token":
         return any(c.isdigit() or c in "=+/_-." for c in m.group("secret"))
     if name == "high_entropy_token":
@@ -251,6 +267,38 @@ def _pem_tail(text: str) -> List[Tuple[int, int]]:
         start = end
 
 
+def _secret_lines(text: str, covered: List[Tuple[int, int]]) -> List[Tuple[str, int, int]]:
+    """Per line: the first secret keyword that is not metadata, then the first ':' or '=' after it; the rest of the
+    line is secret. One keyword scan and one delimiter search per line (linear)."""
+
+    spans = []
+    pos, n = 0, len(text)
+    while pos <= n:
+        eol = text.find("\n", pos)
+        eol = n if eol < 0 else eol
+        for m in _LINE_KEYWORD_RE.finditer(text, pos, eol):
+            if _META_TAIL_RE.match(text, m.end(), eol):
+                continue
+            w = m.start()
+            while w > max(pos, m.start() - 64) and (text[w - 1].isalnum() or text[w - 1] in "_-"):
+                w -= 1
+            if text[w] == "_" or text.endswith("[REDACTED:", 0, w):
+                continue  # a DNS service label such as _kpasswd._tcp, or the category inside a redaction marker
+            k = bisect.bisect_right(covered, (m.start(), len(text))) - 1
+            if k >= 0 and covered[k][0] <= m.start() < covered[k][1]:
+                continue  # inside something another detector already redacts (e.g. a URL password)
+            d = min((i for i in (text.find(":", m.end(), eol), text.find("=", m.end(), eol)) if i >= 0), default=-1)
+            if d >= 0 and text.rfind("[RE", m.end(), d) < 0:  # not the colon inside a [REDACTED:...] marker
+                j = d + 1
+                while j < eol and text[j] in " \t\"'":
+                    j += 1
+                if j < eol and not text.startswith("[RE", j):
+                    spans.append(("secret_line", j, eol))
+            break
+        pos = eol + 1
+    return spans
+
+
 def find_secrets(text: str) -> List[Tuple[str, int, int]]:
     """(category, start, end) of every secret-looking span, detected on a confusable-folded copy."""
 
@@ -261,10 +309,23 @@ def find_secrets(text: str) -> List[Tuple[str, int, int]]:
             if _keep(name, m):
                 g = "secret" if "secret" in pat.groupindex and m.group("secret") is not None else 0
                 found.append((name, m.start(g), m.end(g)))
+    starts = [0] + [i + 1 for i, c in enumerate(folded) if c == "\n"]
+    first_tool: Dict[int, int] = {}
+    for m in _TOOL_RE.finditer(folded):
+        ls = starts[bisect.bisect_right(starts, m.start()) - 1]
+        first_tool.setdefault(ls, m.start())
     for m in _FLAG_RE.finditer(folded):  # "-w SECRET" counts only after one of the tools, on the same line
-        line_start = folded.rfind("\n", 0, m.start()) + 1
-        if _TOOL_RE.search(folded, max(line_start, m.start() - 300), m.start()):
+        ls = starts[bisect.bisect_right(starts, m.start()) - 1]
+        if first_tool.get(ls, len(folded)) < m.start():
             found.append(("password_flag", m.start("secret"), m.end("secret")))
+    covered = sorted((a, b) for _n, a, b in found)
+    merged: List[Tuple[int, int]] = []
+    for a, b in covered:
+        if merged and a <= merged[-1][1]:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], b))
+        else:
+            merged.append((a, b))
+    found += _secret_lines(folded, merged)
     if "-----END" in folded:
         found += [("pem_block", a, b) for a, b in _pem_tail(folded)]
     return found
@@ -297,7 +358,7 @@ _PRINCIPAL_RE = re.compile(
     r"(?<![\w.@/\\$-])(?P<primary>[A-Za-z0-9._$-]+)(?:/(?P<instance>[A-Za-z0-9._-]+))?(?:@|\\40)"
     r"(?P<realm>[A-Z0-9][A-Z0-9-]*(?:\.[A-Z0-9-]+)+)(?![\w.-])")
 _EMAIL_RE = re.compile(r"(?i)(?<![\w.%+-])[A-Za-z0-9._%+-]+@(?P<domain>(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,})(?![\w-])")
-_URL_HOST_RE = re.compile(r"(?i)(?<![a-z0-9+.-])[a-z][a-z0-9+.-]*://(?:[^\s/@]{0,200}@)?\[?(?P<host>[^\s/:\]@\[]+)")
+_URL_HOST_RE = re.compile(r"(?i)(?<![a-z0-9+.-])[a-z][a-z0-9+.-]*://(?:\S{0,256}@)?\[?(?P<host>[^\s/:\]@\[]+)")
 _UID_RE = re.compile(r"(?i)\buid=(?P<v>[^,+\s=\\]+)")
 _FQDN_ATTR_RE = re.compile(r"(?i)\bfqdn=(?P<v>[^,+\s=\\]+)")
 _GROUP_DN_RE = re.compile(r"(?i)\bcn=(?P<v>[^,+=\\]+),\s*cn=groups\b")
@@ -316,7 +377,7 @@ _DOWNLEVEL_CONST = {"NT", "BUILTIN", "NT AUTHORITY", "NT SERVICE", "WORKGROUP"}
 _HOME_RE = re.compile(r"/home/(?P<v>[^/\s:;,'\"]+)")
 _FQDN_RE = re.compile(r"(?<![A-Za-z0-9_@./\\-])(?P<v>(?:" + _LABEL + r"\.)+[A-Za-z][A-Za-z0-9-]{0,61}[A-Za-z0-9])"
                       r"(?![A-Za-z0-9_-])(?!\.[A-Za-z0-9])")
-_IPV4_RE = re.compile(r"(?<![\w.])(?:\d{1,3}\.){3}\d{1,3}(?!\d)(?!\.\d)")
+_IPV4_RE = re.compile(r"(?<![0-9.])(?:\d{1,3}\.){3}\d{1,3}(?!\d)(?!\.\d)")
 _IPV6_RE = re.compile(r"(?<![\w:.])(?:[0-9A-Fa-f]{0,4}:){2,7}(?:\d{1,3}(?:\.\d{1,3}){3}|[0-9A-Fa-f]{0,4})"
                       r"(?![\w:])(?!\.\d)")
 _AGREEMENT_PREFIX = re.compile(r"^(meTo|cloneAgreement\d+-)", re.IGNORECASE)
@@ -326,6 +387,11 @@ _CHUNK = 1024  # identifier-dense text is replaced in chunks of about this size 
 
 
 def _canon_ip(text: str) -> Optional[str]:
+    if re.fullmatch(r"(?:\d{1,3}\.){3}\d{1,3}", text):  # leading zeros (010.001.002.003) are the same address
+        octets = [int(x) for x in text.split(".")]
+        if any(o > 255 for o in octets):
+            return None
+        text = ".".join(str(o) for o in octets)
     try:
         ip = ipaddress.ip_address(text)
     except ValueError:
@@ -338,7 +404,7 @@ def _canon_ip(text: str) -> Optional[str]:
 def _ip_pattern(form: str) -> str:
     esc = re.escape(form)
     if ":" not in form:  # IPv4: a port (10.1.2.3:389) or an IPv4-mapped prefix (::ffff:) around it is still the address
-        return r"(?<![\w.])" + esc + r"(?!\d)(?!\.\d)"
+        return r"(?<![0-9.])" + esc + r"(?!\d)(?!\.\d)"
     return r"(?i:(?<![\w.:])" + esc + r")(?![\w:])(?!\.\d)"
 
 
@@ -406,11 +472,15 @@ class Sanitizer:
     def _public(low: str) -> bool:
         return any(low == d or low.endswith("." + d) for d in PUBLIC_DOMAINS)
 
-    def add_host(self, name: str, short: bool = True) -> None:
+    def _known(self, low: str) -> bool:
+        parts = low.split(".")
+        return any(".".join(parts[i:]) in self._domain_set for i in range(len(parts)))
+
+    def add_host(self, name: str, short: bool = True, force: bool = False) -> None:
         name = name.strip().rstrip(".")
         low = name.lower()
-        if (not name or low in CONST_WORDS or len(name) > 253 or _canon_ip(name) or self._public(low)
-                or _PSEUDONYM_SHAPE.fullmatch(name)):
+        if (not name or low in CONST_WORDS or len(name) > 253 or _canon_ip(name)
+                or (self._public(low) and not force and not self._known(low)) or _PSEUDONYM_SHAPE.fullmatch(name)):
             return  # a name shaped like a pseudonym is never registered: its number is skipped instead
         if "." in low:
             labels = low.split(".")
@@ -419,7 +489,7 @@ class Sanitizer:
             self._register("HOST", low)
             dom = ".".join(labels[1:])
             if "." in dom or _is_tld(dom):
-                self.add_domain(dom)
+                self.add_domain(dom, force=force)
             first = labels[0]
             if (short and len(first) >= 3 and first not in CONST_WORDS and not first.startswith("_")
                     and not _PSEUDONYM_SHAPE.fullmatch(first.upper())):
@@ -427,9 +497,9 @@ class Sanitizer:
         elif len(low) >= 3 and re.fullmatch(r"[a-z0-9][a-z0-9_-]*", low):
             self._register("HOST", low)
 
-    def add_domain(self, domain: str) -> None:
+    def add_domain(self, domain: str, force: bool = False) -> None:
         low = domain.strip().strip(".").lower()
-        if not low or _is_tld(low) or low in CONST_WORDS or "." not in low or self._public(low):
+        if not low or _is_tld(low) or low in CONST_WORDS or "." not in low or (self._public(low) and not force):
             return
         if low not in self._domain_set:
             self._domain_set.add(low)
@@ -438,12 +508,12 @@ class Sanitizer:
         self._register("DOMAIN", low)
         self._register("SUFFIX", low)  # the LDAP suffix dc=...,dc=... derived from it
 
-    def add_realm(self, realm: str) -> None:
+    def add_realm(self, realm: str, force: bool = False) -> None:
         realm = realm.strip()
         if not re.fullmatch(r"[A-Z0-9][A-Z0-9.-]*\.[A-Z0-9-]+", realm):
             return
         self._register("REALM", realm)
-        self.add_domain(realm.lower())
+        self.add_domain(realm.lower(), force=force)
         self.add_instance(realm.replace(".", "-"))
 
     def add_instance(self, name: str) -> None:

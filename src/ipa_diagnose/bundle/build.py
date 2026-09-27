@@ -414,11 +414,12 @@ def build(evidence: EvidenceBundle, report: DiagnosisReport, *, previous: Option
     if home not in ("/", "/root", "~"):
         s.add_literal(home, "<home>")
     host = evidence.hostname.strip().rstrip(".")
-    s.add_host(host)
+    # the diagnosed host, its domain and realm are always pseudonymized, even inside a well-known public domain
+    s.add_host(host, force=True)
     if "." in host:
         domain = host.split(".", 1)[1]
-        s.add_domain(domain)
-        s.add_realm(domain.upper())
+        s.add_domain(domain, force=True)
+        s.add_realm(domain.upper(), force=True)
     try:
         for obj in raw.values():
             s.discover(obj)

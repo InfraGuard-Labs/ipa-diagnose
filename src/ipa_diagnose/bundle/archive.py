@@ -166,6 +166,24 @@ class Validation:
         return not self.problems
 
 
+_MAX_JSON_DEPTH = 64
+
+
+def _depth_ok(value: Any) -> bool:
+    """Nesting no deeper than any genuine bundle member (checked without recursion)."""
+
+    stack = [(value, 1)]
+    while stack:
+        v, d = stack.pop()
+        if d > _MAX_JSON_DEPTH:
+            return False
+        if isinstance(v, dict):
+            stack.extend((x, d + 1) for x in v.values())
+        elif isinstance(v, list):
+            stack.extend((x, d + 1) for x in v)
+    return True
+
+
 def _strict_json(data: bytes) -> Any:
     def no_dupes(pairs):
         out = {}
@@ -178,7 +196,10 @@ def _strict_json(data: bytes) -> Any:
     def no_constants(_name):
         raise ValueError("non-standard number")
 
-    return json.loads(data.decode("utf-8"), object_pairs_hook=no_dupes, parse_constant=no_constants)
+    value = json.loads(data.decode("utf-8"), object_pairs_hook=no_dupes, parse_constant=no_constants)
+    if not _depth_ok(value):
+        raise ValueError("nested too deeply")
+    return value
 
 
 def _read_limited(path: pathlib.Path, v: Validation) -> Optional[bytes]:
@@ -274,7 +295,7 @@ def validate(path: str) -> Validation:
                     continue
                 fh = tar.extractfile(ti)
                 contents[member] = fh.read(LIMITS["member_bytes"] + 1) if fh else b""
-    except (tarfile.TarError, EOFError, OSError, ValueError) as e:
+    except (tarfile.TarError, EOFError, OSError, ValueError, RecursionError, MemoryError) as e:
         v.problems.append(f"not a readable tar archive ({type(e).__name__})")
         return v
     missing = [m for m in MEMBERS if m not in contents]
