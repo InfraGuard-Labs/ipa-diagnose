@@ -90,13 +90,16 @@ _UNIT_SUFFIXES = {"service", "socket", "target", "timer", "mount", "path", "slic
                   "automount"}
 # first labels of dotted names that are code (Python modules, Java packages), not hosts
 _MODULE_ROOTS = {"ipahealthcheck", "ipalib", "ipaserver", "ipaclient", "ipaplatform", "ipapython", "ipatests", "lib389"}
+_MODULE_SUBPACKAGES = {"ipa", "ds", "dogtag", "meta", "system", "install", "plugins", "util", "ipautil", "certdb",
+                       "ipaldap", "dns", "config", "topology", "core", "ipa_certs", "certs", "files", "host", "kdc",
+                       "replication", "ruv", "nss", "proxy", "roles", "trust", "idns", "dna", "backends", "encryption"}
 _KEEP_IPS = {"127.0.0.1", "0.0.0.0", "255.255.255.255", "::1", "::"}
 
 # keys whose value is a secret regardless of what it looks like (matched on the key with camelCase split by "_")
 _SECRET_KEY_RE = re.compile(
     r"(?i)(passw|passphrase|passcode|pwd|secret|token|apikey|api_key|api-key|bearer|private_?key|privkey|credential|"
     r"bindpw|bind_pw|rootpw|access_?key|cookie|authoriz|session_?key|session_?id|ccache_data|keytab_data|ticket_data|"
-    r"pincode|kennwort|motdepasse|contrase|authtok|auth_tok|creds|basic_?auth|"
+    r"pincode|kennwort|motdepasse|contrase|authtok|auth_tok|creds|basic_?auth|nt_?hash|lm_?hash|"
     r"(?<![a-z0-9])(?:pw|pin|pass|otp|totp|hotp|psk)(?![a-z0-9])|[a-z]pw(?![a-z0-9]))")
 
 
@@ -178,7 +181,7 @@ _SHELL_WORD = r"(?:'[^'\n]*'|\"[^\"\n]*\"|\\.|[^\s'\"\\])+"
 _VALUE_ARG = _NOT_MARKER + r"(?P<secret>" + _SHELL_WORD + r")"
 # field names are bounded (a real key is short); unbounded [\w.-]* on both sides is quadratic on long runs
 _PW = r"pass[\s_.-]?w(?:or)?d"  # password / passwd, also split by one separator (pass word, pass_word)
-_SECRET_NAME = (r"[\w.-]{0,100}?(?:" + _PW + r"|passphrase|passcode|pwd|secret|token|api[_-]?key|apikey|creds|"
+_SECRET_NAME = (r"[\w.-]{0,100}?(?:" + _PW + r"|passphrase|passcode|pwd|secret|token|api[_-]?key|apikey|creds|nthash|lmhash|"
                 r"basic[_-]?auth|"
                 r"access[_-]?key|private[_-]?key|privkey|client[_-]?secret|bindpw|rootpw|authtok|credentials?)[\w.-]{0,100}"
                 r"|[\w.-]{0,100}?(?<![A-Za-z0-9])(?:pw|pin|pass|otp|psk)\b|[\w.-]{0,60}?[A-Za-z]pw\b")
@@ -271,12 +274,12 @@ PATTERNS: List[Pattern] = [
         + r"(?P<secret>(?=[^\s-])" + _SHELL_WORD + r")")),
     ("user_password", re.compile(  # curl -u/--user user:pw, smbclient/net -U user%pw
         r"(?<![\w-])(?:--[Uu]ser(?:name)?|-[uU])(?:\s*=\s*|\s*)" + _NOT_MARKER
-        + r"[^\s:%'\"]{1,128}[:%](?P<secret>\S+)")),
+        + r"['\"]?[^\s:%'\"]{1,128}[:%](?P<secret>\S+)")),
     ("config_secret", re.compile(  # ldap.conf / slapd.conf / sssd.conf style "bindpw value", "PASSWORD<TAB>value"
         r"(?im)^[ \t]*[\w.-]{0,60}(?:bindpw|rootpw|authtok|" + _PW + r"|passphrase|secret)[ \t]+" + _NOT_MARKER
         + r"(?P<secret>[^\s=:][^\n]*)")),
     ("config_secret", re.compile(  # the same, after upstream text cleaning collapsed it into a sentence
-        r"(?i)(?<![A-Za-z])" + _PW + r"[ \t]+" + _NOT_MARKER + r"(?P<secret>[^\s=:]\S*)")),
+        r"(?i)(?<![A-Za-z])" + _PW + r"[ \t]+" + _NOT_MARKER + r"(?P<secret>'[^'\n]*'|\"[^\"\n]*\"|[^\s=:]\S*)")),
     ("config_secret", re.compile(  # space-separated token keywords: api_key X, access_token X, X-Api-Key X
         r"(?i)(?<![\w-])(?:api[_-]?key|access[_-]?token|auth[_-]?token|refresh[_-]?token|x-api-key|client[_-]?secret|"
         r"[A-Za-z]{1,30}pw)[ \t]+" + _NOT_MARKER + r"(?P<secret>[^\s=:]\S*)")),
@@ -295,7 +298,7 @@ PATTERNS: List[Pattern] = [
                                  r"GOST_YESCRYPT|AES-[^}\s]{0,64})\}(?P<secret>\S+)")),
     # a keytab file itself, base64-encoded: the format starts with 0x05 0x02 ("BQ" in base64)
     ("keytab_material", re.compile(r"(?i)\bkeytab[^\n:=]{0,40}[:=]\s*(?P<secret>BQ[A-Za-z0-9+/]{6,}={0,2})")),
-    ("high_entropy_token", re.compile(r"(?<![\w+/=~-])(?P<secret>[A-Za-z0-9+/_~\-]{40,}={0,2})(?![\w+/=~-])")),
+    ("high_entropy_token", re.compile(r"(?<![\w+/~-])(?P<secret>[A-Za-z0-9+/_~\-]{40,}={0,2})(?![\w+/=~-])")),
 ]
 
 
@@ -707,7 +710,8 @@ class Sanitizer:
             dom = m.group("domain").lower()
             last = dom.rsplit(".", 1)[-1]
             in_known = any(dom == d or dom.endswith("." + d) for d in self._domains)
-            if last in _UNIT_SUFFIXES or not (last.isalpha() and len(last) >= 2) or self._public(dom):
+            if last in _UNIT_SUFFIXES or not (last.isalpha() and len(last) >= 2) or (
+                    self._public(dom) and not self._known(dom)):
                 continue  # e.g. dirsrv@EXAMPLE-TEST.service is a systemd unit, not an address
             k = text.rfind("://", max(0, m.start() - 200), m.start())
             if m.start() > 0 and text[m.start() - 1] == ":" and k >= 0 and not any(c.isspace() for c in text[k:m.start()]):
@@ -759,6 +763,14 @@ class Sanitizer:
         for m in _FQDN_RE.finditer(text):
             v = _AGREEMENT_PREFIX.sub("", m.group("v"))
             labels = v.lower().split(".")
+            service = [i for i, lb in enumerate(labels) if lb.startswith("_") or lb in ("ipa-ca", "ipa_ca_missing_server")]
+            if service:  # _kerberos._udp.<domain>, _ldap._tcp.dc._msdcs.<domain>, ipa-ca.<domain>: the rest is a domain
+                rest = labels[service[-1] + 1:]
+                while rest and rest[0] in ("dc", "gc", "pdc", "domains", "_msdcs"):
+                    rest = rest[1:]
+                if len(rest) >= 2 and _is_tld(rest[-1]):
+                    self.add_domain(".".join(rest))
+                continue
             if len(labels) >= 3 and labels[-1] in _FILE_EXTS:  # host.example.com.pem: the host is before the extension
                 v = v.rsplit(".", 1)[0]
                 labels = labels[:-1]
@@ -772,7 +784,8 @@ class Sanitizer:
                 self.add_host(v)  # a host of a domain already known (whatever text is glued around it)
                 continue
             tld = _is_tld(labels[-1]) or (labels[-1] in _NOT_TLD2 and len(labels) >= 3)
-            if (tld and labels[0] not in _MODULE_ROOTS
+            code = labels[0] in _MODULE_ROOTS and (len(labels) < 3 or labels[1] in _MODULE_SUBPACKAGES)
+            if (tld and not code
                     and not any(v.lower() == d or v.lower().endswith("." + d) for d in self._domains)):
                 if ("HOST", v.lower()) not in self._map and not self._public(v.lower()):
                     self.heuristic_hosts += 1
