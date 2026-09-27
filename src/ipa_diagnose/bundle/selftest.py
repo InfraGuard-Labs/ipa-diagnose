@@ -17,7 +17,7 @@ import re
 import unicodedata
 from typing import Dict, Iterable, List, Sequence, Tuple
 
-from ipa_diagnose.bundle.sanitize import find_secrets, iter_originals, secret_key
+from ipa_diagnose.bundle.sanitize import find_secrets, invisible, iter_originals, secret_key
 
 # members that carry evidence (the manifest and redaction report are generated and name categories, not values)
 EVIDENCE_MEMBERS = ("environment.json", "report.json", "healthcheck.json", "evidence.json", "collection-errors.json",
@@ -65,7 +65,8 @@ def _bad_char(text: str, multiline: bool) -> bool:
     for ch in text:
         if multiline and ch in "\n\t":
             continue
-        if unicodedata.category(ch) in ("Cc", "Cf", "Cs", "Co", "Zl", "Zp") or ch == "\x1b":
+        if unicodedata.category(ch) in ("Cc", "Cf", "Cs", "Co", "Zl", "Zp") or ch == "\x1b" or (
+                ord(ch) > 0x7F and invisible(ch)):
             return True
     return False
 
@@ -83,9 +84,11 @@ def scan_text(text: str, key: str = "", multiline: bool = False) -> List[str]:
     return out
 
 
-def check(members: Dict[str, bytes], originals: Iterable[Tuple[str, str]], forbidden: Sequence[str] = ()) -> None:
+def check(members: Dict[str, bytes], originals: Iterable[Tuple[str, str]], forbidden: Sequence[str] = (),
+          secrets: Iterable[str] = ()) -> None:
     detectors = list(iter_originals(originals))
     literals = [f.lower() for f in forbidden if f and len(f) >= 4]
+    secret_list = sorted(set(secrets))
     problems: List[Tuple[str, str]] = []
 
     active = detectors
@@ -125,6 +128,9 @@ def check(members: Dict[str, bytes], originals: Iterable[Tuple[str, str]], forbi
                 scan(name, key, s)
             if name in EVIDENCE_MEMBERS and unremoved_secret_fields(obj):
                 problems.append((name, "secret-named field not removed"))
+            if name in EVIDENCE_MEMBERS and secret_list and any(
+                    v in s for _k, s in _strings(obj) for v in secret_list if v[:3] in s):
+                problems.append((name, "value of a secret-named field"))
         else:
             scan(name, "", text, multiline=True)
     if problems:

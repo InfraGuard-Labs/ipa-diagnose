@@ -110,7 +110,7 @@ def _create(args: argparse.Namespace, console: Console, err: Console) -> int:
     previous = load_previous_report(_state_path(args))  # read-only; bundles never save a baseline
     try:
         built = build(evidence, report, previous=previous)
-        selftest.check(built.members, built.sanitizer.originals(), _forbidden(args))
+        selftest.check(built.members, built.sanitizer.originals(), _forbidden(args), built.sanitizer.secret_values)
     except selftest.LeakDetected as e:
         return _refused(args, console, "the leak self-test found content that must not leave this host",
                         [f"{m}: {c}" for m, c in e.problems])

@@ -71,7 +71,7 @@ def test_output_directory_and_no_overwrite(capsys, tmp_path):
 
 
 def test_leak_self_test_failure_writes_nothing(capsys, tmp_path, monkeypatch):
-    def leak(members, originals, forbidden=()):
+    def leak(members, originals, forbidden=(), secrets=()):
         raise selftest.LeakDetected([("report.json", "real identifier (HOST)")])
 
     monkeypatch.setattr(selftest, "check", leak)
