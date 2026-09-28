@@ -508,13 +508,13 @@ _PRINCIPAL_RE = re.compile(
     r"(?P<realm>[A-Z0-9]+(?:-[A-Z0-9]+)*(?:\.[A-Z0-9]+(?:-[A-Z0-9]+)*)+)(?![A-Za-z0-9_])(?!\.[A-Za-z0-9])")
 _EMAIL_RE = re.compile(r"(?i)(?<![\w.%+-])[A-Za-z0-9._%+-]+@(?P<domain>(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,})(?![\w-])")
 _URL_HOST_RE = re.compile(r"(?i)(?<![a-z0-9+.-])[a-z][a-z0-9+.-]*://(?:\S{0,256}@)?\[?(?P<host>[A-Za-z0-9._-]+)")
-_UID_RE = re.compile(r"(?i)\b(?:uid|gid|user|login)\s*[=:]\s*['\"]?(?:\d+\()?(?P<v>[A-Za-z_][A-Za-z0-9._$@-]{0,63})")
+_UID_RE = re.compile(r"(?i)\b(?:uid|gid|user|login)\s*[=:]\s*['\"]?(?:\d+\()?(?P<v>[A-Za-z0-9_][A-Za-z0-9._$@-]{0,63})")
 _FQDN_ATTR_RE = re.compile(r"(?i)\bfqdn=(?P<v>[^,+\s=\\]+)")
 _GROUP_DN_RE = re.compile(r"(?i)\bcn=(?P<v>[^,+=\\]+)(?:\+[^,\n]{0,120})?,\s*cn=groups\b")
 _HOSTGROUP_DN_RE = re.compile(r"(?i)\bcn=(?P<v>[^,+=\\]+)(?:\+[^,\n]{0,120})?,\s*cn=hostgroups\b")
 _METO_RE = re.compile(r"\bmeTo(?P<v>[A-Za-z0-9-]{1,63}(?:\.[A-Za-z0-9-]{1,63}){1,10})")
 _SPN_RE = re.compile(r"(?<![\w/.@-])(?P<svc>[A-Za-z][\w-]{1,30})/(?P<host>[A-Za-z0-9-]{1,63}(?:\.[A-Za-z0-9-]{1,63}){1,10})")
-_INSTANCE_RE = re.compile(r"(?i)(?:\bdirsrv@|\bslapd-)(?P<v>[A-Za-z0-9-]+)")
+_INSTANCE_RE = re.compile(r"(?i)(?:\bdirsrv@|(?:\b|(?<=%2F))slapd-)(?P<v>[A-Za-z0-9-]+)")  # also ldapi://%2Frun%2Fslapd-X.socket
 # LDAP suffix components, plain, LDAP-escaped (\3D \2C) or URL-encoded (%3D %2C)
 _SUFFIX_DC = r"dc\s*(?:=|\\=|\\3D|%3D)\s*"
 _SUFFIX_SEP = r"\s*(?:,|\\,|\\2C|%2C)\s*"
@@ -537,6 +537,9 @@ _FQDN_RE = re.compile(r"(?<![A-Za-z0-9_.\\-])(?P<v>(?:" + _LABEL + r"\.)+[A-Za-z
 _IPV4_RE = re.compile(r"(?<![0-9])(?<![0-9]\.)(?:\d{1,3}\.){3}\d{1,3}(?!\d)(?!\.\d)")
 _IPV6_RE = re.compile(r"(?<![\w:.])(?:[0-9A-Fa-f]{0,4}:){2,7}(?:\d{1,3}(?:\.\d{1,3}){3}|[0-9A-Fa-f]{0,4})"
                       r"(?![\w:])(?!\.\d)")
+# an installer-made volume group <distro>_<short host name>: /dev/mapper/rhel_ipa01-root ('-' doubled), /dev/rhel_ipa01/
+_VG_RE = re.compile(r"(?<=/dev/mapper/)(?P<pfx>[A-Za-z0-9.+]{1,32}_)(?P<name>(?:[A-Za-z0-9.+]|--){1,128}?)(?=-(?!-))"
+                    r"|(?<=/dev/)(?P<pfx2>[A-Za-z0-9.+]{1,32}_)(?P<name2>[A-Za-z0-9.+-]{1,128})(?=/)")
 _AGREEMENT_PREFIX = re.compile(r"^(meTo|cloneAgreement\d+-|masterAgreement\d+-)")
 # a maximal dotted name (used to find hosts inside known domains in one linear pass)
 _DOTTED_RE = re.compile(r"(?<![A-Za-z0-9_.-])(?:" + _LABEL + r"\.)+" + _LABEL)
@@ -562,7 +565,7 @@ def _ip_pattern(form: str) -> str:
     esc = re.escape(form)
     if ":" not in form:  # IPv4: a port (10.1.2.3:389) or an IPv4-mapped prefix (::ffff:) around it is still the address
         return r"(?<![0-9])(?<![0-9]\.)" + esc + r"(?!\d)(?!\.\d)"
-    return r"(?i:(?<![0-9A-Fa-f.])(?<![0-9A-Fa-f]:)" + esc + r")(?![0-9A-Fa-f:])(?!\.\d)"
+    return r"(?i:(?<![0-9A-Fa-f.])(?<![0-9A-Fa-f]:)" + esc + r")(?![0-9A-Fa-f])(?!:[0-9A-Fa-f:])(?!\.\d)"
 
 
 class SanitizeTimeout(Exception):
@@ -792,6 +795,8 @@ class Sanitizer:
                 self.add_ip(m.group(0))
         for m in _IPV6_RUN_RE.finditer(text):  # also after ':' or '_' (address:fd00::5, host_fd00::7)
             run = m.group(0).strip(".")
+            if run.endswith(":") and not run.endswith("::"):
+                run = run[:-1]  # krb5kdc: "AS_REQ (...) 2001:db8::15: CLOCK_SKEW: ..." (the colon ends the address)
             for cand in (run, run.lstrip(":") if not run.startswith("::") else run, run.split(":", 1)[-1]):
                 if cand.count(":") >= 2 and _canon_ip(cand):
                     self.add_ip(cand)
@@ -1074,12 +1079,23 @@ class Sanitizer:
         out = self._apply_literals(clean(value))
         out = redact(out, self.redactions)
         out = self._remove_secret_values(out)
+        if "/dev/" in out:
+            out = _VG_RE.sub(self._vg_host, out)
         out = self.pseudonymize(out)
         out = " ".join(out.split())
         if len(out) > limit:
             self.truncated += 1
             out = out[: max(limit - 14, 0)].rstrip() + " [truncated]"
         return out
+
+    def _vg_host(self, m: "re.Match") -> str:
+        """The host short name in an installer-made LVM volume group (/dev/mapper/rhel_ipa01-root, /dev/rhel_ipa01/)."""
+
+        name = m.group("name") or m.group("name2")
+        key = self._variants.get(("HOST", name.replace("--", "-").lower()))
+        if key is None:
+            return m.group(0)
+        return (m.group("pfx") or m.group("pfx2")) + self._map[key]
 
     def transform(self, value: Any, key: str = "", depth: int = 0) -> Any:
         """Sanitized deep copy: prohibited keys removed, strings redacted/pseudonymized/bounded, structure bounded."""

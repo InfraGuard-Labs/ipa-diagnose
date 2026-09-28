@@ -253,6 +253,18 @@ diagnosis time: the bundle adds no collectors or network access.
 ## Known limitations
 
 - Detection is **pattern-based and cannot be perfect**. Credentials in an unfamiliar format (known examples: `htpasswd -b FILE USER PASSWORD`, a sentence that names the password before the word (`X is the password`, `with X as the password`), a small fraction of long random tokens made only of letters (they are recognised statistically), a secret word without a verb or separator in prose (`unlock with passphrase X`), a here-document, a password after a bare `pw` in prose, a `token=` inside a DNS-style `_label.token=` name), a secret split across two separate fields, account names shorter than three characters, bearer tokens shorter than twelve characters, addresses written in unusual notations (hex IPv4), names that match no known identifier or pattern, and look-alike characters beyond the folded Cyrillic/Greek set can remain.
+- **Pattern-based redaction cannot guarantee that arbitrary free text contains no secret.** Log lines, error messages and other prose are redacted by detectors for known credential shapes, so a secret written in a shape no detector knows can remain. Treat every bundle as potentially sensitive operational data and review it before sharing.
+- Residual shapes found by the privacy reviews and accepted because the supported collectors have no realistic path to them (or they are covered only by the line backstop above):
+  - glued assignments without a separator the detectors recognise (`userpass=`, `dbpass=`, `storepass=`, `internal=`, `replicationdb=`);
+  - `nsDS5ReplicaCredentials X` without `:` or `=`, and the contents of a password file quoted as prose;
+  - prose such as `the passphrase used was X` or `PIN 'X' incorrect`;
+  - a password inside a Python list-form command (`['ldapsearch', '-w', 'X']`, as a `CalledProcessError` would print
+    it) and `getcert request ... -P PIN`: no supported collector reads either;
+  - non-English or leetspeak secret words (`passwort`, `p@ssword`);
+  - bare user names that appear only in PAM fields (`ruser=`, `logname=`), in `id` output (`groups=...(name)`) or in PKI audit fields (`SubjectID=`, `UID x`). No collector reads PAM or `id` output, and the PKI audit accounts are usually system accounts;
+  - single-label (undotted) Kerberos realms;
+  - trust domains whose top-level label is not a known TLD;
+  - two hosts in different domains that share a short name: a bare short name then gets the diagnosed host's pseudonym.
 - Redaction errs towards removing too much. As a backstop, once a line contains a secret word (password, passphrase, secret, credential, bind or root password, API key) followed by `:` or `=`, everything after that `:` or `=` to the end of the line is removed. The exceptions are a secret word that is part of a longer word (`IPAProxySecretCheck`) and one followed by a metadata word (`expiration`, `policy`, `file`, ...). Nearby context on such lines is lost.
 - Validating a maximum-size bundle can take a few minutes, because every file is scanned for credential patterns.
 - A bundle still contains **operational detail**: unit and service names, versions, file paths and modes, error text, timestamps (certmonger request IDs even reveal when the server was installed), certificate expiry dates, exact disk sizes, and the shape of the topology (how many replicas, which agreements fail). Several bundles from one server can be recognised as coming from the same server. Review it before sharing.
