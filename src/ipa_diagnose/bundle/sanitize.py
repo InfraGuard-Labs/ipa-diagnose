@@ -543,7 +543,9 @@ _DOWNLEVEL_RE = re.compile(r"(?<![\w\\=])(?P<dom>[A-Za-z][A-Za-z0-9-]{1,14})\\(?
 _DOWNLEVEL_CONST = {"NT", "BUILTIN", "NT AUTHORITY", "NT SERVICE", "WORKGROUP"}
 _HOME_RE = re.compile(r"/home/(?P<v>[A-Za-z0-9._$@-]{1,64})(?:/(?P<v2>[A-Za-z0-9._$@-]{1,64}))?")
 # a relative record name in a FreeIPA DNS entry: idnsname=<host>,idnsname=<zone>.,cn=dns,...
-_IDNSNAME_RE = re.compile(r"(?i)\bidnsname=(?P<v>[A-Za-z0-9_-]{1,63}),\s*idnsname=")
+# (a relative name can have several labels: ws1.dev in zone example.test is ws1.dev.example.test)
+_IDNSNAME_RE = re.compile(r"(?i)\bidnsname=(?P<v>[A-Za-z0-9_-]{1,63}(?:\.[A-Za-z0-9_-]{1,63}){0,10}),\s*"
+                          r"idnsname=(?P<zone>[A-Za-z0-9_-]{1,63}(?:\.[A-Za-z0-9_-]{1,63}){0,20})\.?(?=[,\s'\"]|$)")
 _ENTERPRISE_RE = re.compile(r"(?<![\w.\\-])(?P<user>[A-Za-z0-9._$-]{1,64})\\@(?P<dom>[A-Za-z0-9.-]+\.[A-Za-z]{2,})@")
 _USER_DN_RE = re.compile(r"(?i)\bcn=(?P<v>[^,+=\\]{1,128})(?:\+[^,\n]{0,120})?,\s*cn=users\b")
 _IPV6_RUN_RE = re.compile(r"(?<![0-9A-Fa-f:.])[0-9A-Fa-f.]*:[0-9A-Fa-f:.]*:[0-9A-Fa-f:.]*")
@@ -708,6 +710,21 @@ class Sanitizer:
         self.add_domain(realm.lower(), force=force)
         self.add_instance(realm.replace(".", "-"))
 
+    def _add_record(self, rel: str, zone: str) -> None:
+        """A DNS record DN idnsname=<rel>,idnsname=<zone>.: the host <rel>.<zone>, also written as just <rel>."""
+
+        low, zone = rel.lower(), zone.lower().rstrip(".")
+        if low.startswith("_") or zone.endswith(".arpa") or low == "@":
+            return  # a service record (_ldap._tcp) or a reverse-zone entry (the address is found by the IP rules)
+        if "." not in zone and not _is_tld(zone):
+            if "." not in low:
+                self.add_host(rel)
+            return
+        fqdn = low + "." + zone  # its first label is registered as the same host's short name
+        self.add_host(fqdn)
+        if "." in low and ("HOST", fqdn) in self._map:
+            self._register("HOST", fqdn, low)  # the relative name as the DN writes it (ws1.dev)
+
     def add_instance(self, name: str) -> None:
         if len(name) >= 3 and name.lower() not in CONST_WORDS and name.lower() != "snmp":
             self._register("INSTANCE", name.upper(), name.upper())
@@ -780,9 +797,11 @@ class Sanitizer:
                 self.add_host(h)
         for rx, fn in ((_UID_RE, self.add_user), (_FQDN_ATTR_RE, self.add_host), (_GROUP_DN_RE, self.add_group),
                        (_HOSTGROUP_DN_RE, lambda v: self._add_account("HOSTGROUP", v)), (_INSTANCE_RE, self.add_instance),
-                       (_USER_DN_RE, self.add_user), (_IDNSNAME_RE, self.add_host)):
+                       (_USER_DN_RE, self.add_user)):
             for m in rx.finditer(text):
                 fn(m.group("v"))
+        for m in _IDNSNAME_RE.finditer(text):
+            self._add_record(m.group("v"), m.group("zone"))
         for m in _HOME_RE.finditer(text):  # /home/<user>, or SSSD's /home/<domain>/<user> for trusted-domain users
             if "." in m.group("v") and m.group("v2"):
                 self.add_domain(m.group("v"))
