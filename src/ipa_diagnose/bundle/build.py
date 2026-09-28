@@ -112,6 +112,10 @@ WITHHELD = "[WITHHELD: free text of a check this ipa-diagnose build does not kno
 _QUOTING_RULES = {("healthcheck", "unexplained-findings"), ("healthcheck", "healthcheck-check-failed")}
 
 
+def _withheld_key(f) -> Any:
+    return None if f.keywords.get("key") is None else "[WITHHELD]"
+
+
 def _known_check(source: Any, check: Any) -> bool:
     return f"{source}.{check}" in CATALOG
 
@@ -146,6 +150,7 @@ def _project_report(report: DiagnosisReport, evidence: EvidenceBundle, mode: str
         entry = dict(raw, finding_id=u.finding_id)
         if not _known_check(u.source, u.check):
             entry["message"] = WITHHELD
+            entry["key"] = None if u.key is None else "[WITHHELD]"
         undiagnosed.append(entry)
     resolutions = []
     for r in rd["v2"]["resolutions"]:
@@ -194,13 +199,14 @@ def _project_healthcheck(evidence: EvidenceBundle, report: DiagnosisReport, mode
         counts[f.severity.value] += 1
         if f.severity == Severity.SUCCESS:
             successes.append({"finding_id": f.finding_id, "source": f.source, "check": f.check,
-                              "severity": "SUCCESS", "key": f.keywords.get("key")})
+                              "severity": "SUCCESS",
+                              "key": f.keywords.get("key") if f.qualified_check in CATALOG else _withheld_key(f)})
             continue
         known = f.qualified_check in CATALOG
         kw = {k: v for k, v in f.keywords.items() if k not in ("msg", "key")}
         entry = {
             "finding_id": f.finding_id, "source": f.source, "check": f.check, "severity": f.severity.value,
-            "key": f.keywords.get("key"), "message": f.message if known else WITHHELD,
+            "key": f.keywords.get("key") if known else _withheld_key(f), "message": f.message if known else WITHHELD,
             # a check this build does not know: which fields it reported, not their free-text values
             "keywords": kw if known else {"withheld_field_names": sorted(kw)},
             "when": f.raw.get("when") if isinstance(f.raw, dict) else None,

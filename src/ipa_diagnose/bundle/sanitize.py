@@ -195,14 +195,14 @@ _FLAG_RE = re.compile(r"(?<!\S)-(?:[A-Za-z]{0,6}w|W|p|P|a|u)\s*" + _NOT_MARKER
 # a line-level backstop: after a secret keyword and a ':' or '=', the rest of the line is treated as secret, unless
 # the keyword continues a word (IPAProxySecretCheck, passwords) or is followed by a word saying it is metadata
 _LINE_KEYWORD_RE = re.compile(r"(?i)" + _PW + r"|passphrase|passcode|kennwort|bindpw|rootpw|authtok|secret|"
-                              r"credentials?|api[_-]?key|\bpin\b")
+                              r"credentials?|api[\s_-]?key|access[\s_-]?key|pass[\s_-]?phrase|\bpin\b")
 _META_TAIL_RE = re.compile(r"(?i)[A-Za-z]|[\s_.-]?(?:files?|paths?|dirs?|polic(?:y|ies)|expir\w*|lifetime|history|"
                            r"grace|attempts?|failures?|enabled|required|length|len|minimum|min|maximum|max|age|type|"
                            r"status|state|changed|time|timestamp|date|count|prompt|hint|reset|change|quality|strength|"
                            r"checks?)(?![A-Za-z])")
 _TOOL_RE = re.compile(r"(?i)\b(?:ldap[a-z]{2,12}\b|dsconf\b|dsctl\b|dsidm\b|dscreate\b|"
                       r"ipa-[a-z]|pk12util\b|mysql\b|psql\b|curl\b|sshpass\b|redis-cli\b|kinit\b|kpasswd\b|passwd\b|"
-                      r"certutil\b|chpasswd\b|ipa\b)")
+                      r"certutil\b|chpasswd\b|ipa\b|kadmin(?:\.local)?\b|kdb5_util\b|pki\b|wbinfo\b)")
 # a here-string fed to one of the tools (kinit admin <<< pw); checked procedurally like the flags
 _YAML_BLOCK_RE = re.compile(r"[|>][-+0-9]{0,3}[ \t]*")
 _HERESTR_RE = re.compile(r"<<<\s*" + _NOT_MARKER + r"(?P<secret>\S[^\n]*)")
@@ -227,7 +227,7 @@ def secret_value_re(value: str) -> "re.Pattern[str]":
 _PROSE_START_RE = re.compile(
     r"(?i)(?:for|is|was|has|have|had|must|will|can|cannot|could|should|of|to|the|a|an|and|or|not|in|on|at|by|with|"
     r"expired|expires|expiration|policy|reset|change|changed|manager|required|incorrect|invalid|wrong|mismatch|"
-    r"missing|empty|length|file|path|check|checks|history|age|attempts?|failures?)\b")
+    r"missing|empty|length|file|path|check|checks|history|age|attempts?|failures?|updated|update|now|set)\b")
 
 Pattern = Tuple[str, "re.Pattern[str]"]
 PATTERNS: List[Pattern] = [
@@ -272,6 +272,7 @@ PATTERNS: List[Pattern] = [
     ("password_flag", re.compile(  # pk12util -K slot password, ldappasswd -s new password (anchored on the tool)
         r"(?i)\b(?:ldappasswd|pk12util|pki)\b[^\n]{0,300}?(?<!\S)-[sKc]\s*" + _NOT_MARKER
         + r"(?P<secret>(?=[^\s-])" + _SHELL_WORD + r")")),
+    ("user_password", re.compile(r"(?i)\bwbinfo\b[^\n]{0,200}?(?<!\S)-a\s+['\"]?[^\s%'\"]{1,128}%(?P<secret>\S+)")),
     ("user_password", re.compile(  # curl -u/--user user:pw, smbclient/net -U user%pw
         r"(?<![\w-])(?:--[Uu]ser(?:name)?|-[uU])(?:\s*=\s*|\s*)" + _NOT_MARKER
         + r"['\"]?[^\s:%'\"]{1,128}[:%](?P<secret>\S+)")),
@@ -288,11 +289,13 @@ PATTERNS: List[Pattern] = [
                                  + r"(?P<secret>[^\s=:][^\n]*)")),
     ("password_prose", re.compile(
         r"(?i)\b(?:" + _PW + r"|pass\s?phrase|passcode|pin|secret|token)s?(?:\s+for\s+[^\n]{1,80}?)?\s+"
-        r"(?:(?:(?:is|was|are|were|has been|have been)\s+)?(?:set|reset|changed)\s+to|is|was|are|were|of)\s+"
+        r"(?:(?:(?:is|was|are|were|has been|have been)\s+)?(?:set|reset|changed|updated)\s+to|is|was|are|were|of|now)\s+"
         + _NOT_MARKER + r"(?P<secret>[^\n]+)")),
     ("password_prompt", re.compile(  # e.g. kinit's "Password for admin@REALM: <typed secret>"
         r"(?i)\b(?:" + _PW + r"|passphrase|pin)\s+for\s+[^\n:\[]{1,256}?\s*:\s*" + _VALUE_LINE)),
     ("keytab_material", re.compile(r"(?i)\bkeytab\S*[:=]\s*[0-9a-f]{32,}")),
+    # a key printed by klist -K / ktutil: "(0x<hex>)"
+    ("keytab_material", re.compile(r"\(0x(?P<secret>[0-9A-Fa-f]{32,})\)")),
     # an LDAP/389-DS password value in its storage-scheme form ({SSHA512}..., {PBKDF2_SHA256}..., {AES-...}...)
     ("password_hash", re.compile(r"(?i)\{(?:S?SHA\d{0,3}|S?MD5|CRYPT|CLEAR|PBKDF2[\w-]{0,20}|ARGON2[\w-]{0,10}|"
                                  r"GOST_YESCRYPT|AES-[^}\s]{0,64})\}(?P<secret>\S+)")),
@@ -383,6 +386,8 @@ def _url_userinfo(text: str) -> List[Tuple[str, int, int]]:
         colon = text.find(":", start, at)
         if colon >= 0 and not text.startswith("[RE", colon + 1) and at > colon + 1:
             spans.append(("credential_url", colon + 1, at))
+        elif colon < 0 and not text.startswith("[RE", start) and _random_segment(text[start:at]):
+            spans.append(("credential_url", start, at))  # a token used as the user name (https://<token>@host/...)
     return spans
 
 
@@ -496,7 +501,7 @@ _PRINCIPAL_RE = re.compile(
     r"(?P<realm>[A-Z0-9]+(?:-[A-Z0-9]+)*(?:\.[A-Z0-9]+(?:-[A-Z0-9]+)*)+)(?![A-Za-z0-9_])(?!\.[A-Za-z0-9])")
 _EMAIL_RE = re.compile(r"(?i)(?<![\w.%+-])[A-Za-z0-9._%+-]+@(?P<domain>(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,})(?![\w-])")
 _URL_HOST_RE = re.compile(r"(?i)(?<![a-z0-9+.-])[a-z][a-z0-9+.-]*://(?:\S{0,256}@)?\[?(?P<host>[A-Za-z0-9._-]+)")
-_UID_RE = re.compile(r"(?i)\buid\s*[=:]\s*(?P<v>[^,+\s=\\:]+)")
+_UID_RE = re.compile(r"(?i)\b(?:uid|gid|user|login)\s*[=:]\s*['\"]?(?:\d+\()?(?P<v>[A-Za-z_][A-Za-z0-9._$@-]{0,63})")
 _FQDN_ATTR_RE = re.compile(r"(?i)\bfqdn=(?P<v>[^,+\s=\\]+)")
 _GROUP_DN_RE = re.compile(r"(?i)\bcn=(?P<v>[^,+=\\]+),\s*cn=groups\b")
 _HOSTGROUP_DN_RE = re.compile(r"(?i)\bcn=(?P<v>[^,+=\\]+),\s*cn=hostgroups\b")
@@ -511,7 +516,9 @@ _SUFFIX_LABEL_RE = re.compile(r"(?i)" + _SUFFIX_DC + r"([a-z0-9-]{1,63})")
 _DOWNLEVEL_RE = re.compile(r"(?<![\w\\=])(?P<dom>[A-Za-z][A-Za-z0-9-]{1,14})\\(?![0-9A-Fa-f]{2}(?:[^A-Za-z0-9]|$))"
                            r"(?P<user>[A-Za-z0-9._$-]{2,64})(?![\w])")
 _DOWNLEVEL_CONST = {"NT", "BUILTIN", "NT AUTHORITY", "NT SERVICE", "WORKGROUP"}
-_HOME_RE = re.compile(r"/home/(?P<v>[^/\s:;,'\"]+)(?:/(?P<v2>[^/\s:;,'\"]+))?")
+_HOME_RE = re.compile(r"/home/(?P<v>[A-Za-z0-9._$@-]{1,64})(?:/(?P<v2>[A-Za-z0-9._$@-]{1,64}))?")
+# a relative record name in a FreeIPA DNS entry: idnsname=<host>,idnsname=<zone>.,cn=dns,...
+_IDNSNAME_RE = re.compile(r"(?i)\bidnsname=(?P<v>[A-Za-z0-9_-]{1,63}),\s*idnsname=")
 _ENTERPRISE_RE = re.compile(r"(?<![\w.\\-])(?P<user>[A-Za-z0-9._$-]{1,64})\\@(?P<dom>[A-Za-z0-9.-]+\.[A-Za-z]{2,})@")
 _USER_DN_RE = re.compile(r"(?i)\bcn=(?P<v>[^,+=\\]{1,128}),\s*cn=users\b")
 _IPV6_RUN_RE = re.compile(r"(?<![0-9A-Fa-f:.])[0-9A-Fa-f.]*:[0-9A-Fa-f:.]*:[0-9A-Fa-f:.]*")
@@ -671,7 +678,10 @@ class Sanitizer:
             self._register("IP", canon, text)
 
     def _add_account(self, cls: str, name: str) -> None:
-        low = name.strip().lower()
+        name = name.strip().strip(".-_$@")
+        if name.isdigit():
+            return  # a numeric id (uid=1001) is not a name
+        low = name.lower()
         if len(low) >= 3 and low not in CONST_ACCOUNTS and low not in CONST_WORDS and not _PSEUDONYM_SHAPE.fullmatch(
                 name.strip()):
             self._register(cls, low)
@@ -719,6 +729,8 @@ class Sanitizer:
             if in_known and dom not in self._domains:
                 self.add_host(dom)  # user@host.<ipa domain>: the part after @ is a host of this domain
             if not _PRINCIPAL_RE.search(m.group(0)):
+                if in_known:
+                    self.add_user(m.group(0).split("@", 1)[0])  # SSSD fully-qualified name user@domain
                 self._register("EMAIL", m.group(0).lower())
                 self.add_domain(m.group("domain"))
         for m in _URL_HOST_RE.finditer(text):
@@ -729,7 +741,7 @@ class Sanitizer:
                 self.add_host(h)
         for rx, fn in ((_UID_RE, self.add_user), (_FQDN_ATTR_RE, self.add_host), (_GROUP_DN_RE, self.add_group),
                        (_HOSTGROUP_DN_RE, lambda v: self._add_account("HOSTGROUP", v)), (_INSTANCE_RE, self.add_instance),
-                       (_USER_DN_RE, self.add_user)):
+                       (_USER_DN_RE, self.add_user), (_IDNSNAME_RE, self.add_host)):
             for m in rx.finditer(text):
                 fn(m.group("v"))
         for m in _HOME_RE.finditer(text):  # /home/<user>, or SSSD's /home/<domain>/<user> for trusted-domain users
