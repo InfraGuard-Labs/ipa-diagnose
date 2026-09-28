@@ -127,6 +127,13 @@ def _check(scenario, bundle_path, before_path, after_path, spec_text, tag=None):
     if "completeness" in spec:
         ok(manifest["evidence_completeness"] == spec["completeness"], f"completeness {spec['completeness']}")
     red = json.loads(members["redaction-report.json"])
+    if "evidence_kind" in spec:
+        items = [i for i in json.loads(members["evidence.json"])["items"] if i.get("kind") == spec["evidence_kind"]]
+        units = sorted({str((i.get("data") or {}).get("unit")) for i in items})
+        ok(items and (not spec.get("evidence_unit") or spec["evidence_unit"] in units),
+           f"evidence has {len(items)} {spec['evidence_kind']} items (units {units})")
+    if "redacted_category" in spec:
+        ok(red["redacted_values"].get(spec["redacted_category"], 0) >= 1, f"redacted {spec['redacted_category']}")
     if "pseudonym_classes" in spec:
         ok(set(spec["pseudonym_classes"]) <= set(red["pseudonymized_identifiers"]),
            f"pseudonymized classes include {spec['pseudonym_classes']}")

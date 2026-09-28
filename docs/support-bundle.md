@@ -126,6 +126,7 @@ Every string and every JSON key passes through the same steps.
    - `--password` style options and `ldapsearch -w`-style flags;
    - `password=` / `pw:` / `pin=` style assignments;
    - "the password is ..." prose;
+   - a secret-named attribute value echoed by Tomcat in the CA journal (`failed to set property [requiredSecret] to [...]`);
    - keytab hex;
    - long random-looking tokens.
 
@@ -264,9 +265,6 @@ diagnosis time: the bundle adds no collectors or network access.
     it) and `getcert request ... -P PIN`: no supported collector reads either;
   - non-English or leetspeak secret words (`passwort`, `p@ssword`);
   - bare user names that appear only in PAM fields (`ruser=`, `logname=`), in `id` output (`groups=...(name)`) or in PKI audit fields (`SubjectID=`, `UID x`). No collector reads PAM or `id` output, and the PKI audit accounts are usually system accounts;
-  - a value echoed by a Tomcat digester warning (`failed to set property [requiredSecret] to [X]`): the collected
-    `pki-tomcatd` journal does not include the Dogtag instance unit's output, and a real AJP secret (about 43
-    letters and digits) is caught by the random-token rule;
   - the group or host group name of an automember rule that appears only in a replication-conflict DN
     (`cn=<name>,cn=group,cn=automember,...`);
   - single-label (undotted) Kerberos realms;

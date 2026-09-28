@@ -1,7 +1,7 @@
 """journalctl collector for the CA (pki-tomcatd) and certmonger units.
 
-Wraps ``journalctl -u pki-tomcatd -u certmonger --since -30min --no-pager``
-(read-only) and surfaces only lines that look like they matter - errors,
+Wraps ``journalctl -u pki-tomcatd@pki-tomcat.service -u certmonger --since -30min
+--no-pager`` (read-only) and surfaces only lines that look like they matter - errors,
 failures, timeouts, refused/denied connections, or CA agent authorization
 failures (Dogtag's HTTP 4301 "Authorization Error") - as EvidenceItems of
 kind ``"pki_journal_line"`` (deliberately not the generic ``"journal_line"`` -
@@ -16,7 +16,9 @@ EvidenceItem.data for each match:
     {
       "unit": str,   # "certmonger" | "pki-tomcatd" | "unknown" (best-effort,
                       # detected from the line's own process tag since
-                      # journalctl interleaves multiple -u units together)
+                      # journalctl interleaves multiple -u units together;
+                      # live, a line that is not certmonger's is the CA's -
+                      # Dogtag logs under its own identifier, not the unit name)
       "line": str,   # the raw journal line, verbatim
     }
 
@@ -40,10 +42,14 @@ from ipa_diagnose.evidence.collectors.base import Collector, CollectorError, rai
 from ipa_diagnose.evidence.collectors.registry import register
 from ipa_diagnose.evidence.model import EvidenceItem, Provenance, Severity
 
+# FreeIPA runs the CA as the Dogtag instance unit pki-tomcatd@pki-tomcat.service (ipaplatform maps its
+# pki_tomcatd service to it). A bare "-u pki-tomcatd" means pki-tomcatd.service, which does not exist, so it
+# matched no CA line at all.
+PKI_UNIT = "pki-tomcatd@pki-tomcat.service"
 JOURNALCTL_COMMAND = [
     "journalctl",
     "-u",
-    "pki-tomcatd",
+    PKI_UNIT,
     "-u",
     "certmonger",
     "--since",
@@ -66,13 +72,13 @@ _ISSUE_KEYWORDS = (
 _ERROR_KEYWORDS = ("error", "fail", "unreachable", "refused", "denied")
 
 
-def _detect_unit(line: str) -> str:
+def _detect_unit(line: str, default: str = "unknown") -> str:
     lower = line.lower()
     if "certmonger" in lower:
         return "certmonger"
     if "pki-tomcatd" in lower or "pkidaemon" in lower or "pki-tomcat" in lower:
         return "pki-tomcatd"
-    return "unknown"
+    return default
 
 
 def _severity_for_line(line: str) -> Severity:
@@ -127,7 +133,8 @@ class JournalPkiCollector(Collector):
             lower = raw_line.lower()
             if not any(k in lower for k in _ISSUE_KEYWORDS):
                 continue
-            items.append(_to_item(idx, raw_line, unit=_detect_unit(raw_line), provenance=provenance))
+            # only the two requested units are in this output: a line that is not certmonger's is the CA's
+            items.append(_to_item(idx, raw_line, unit=_detect_unit(raw_line, "pki-tomcatd"), provenance=provenance))
             idx += 1
         return items
 

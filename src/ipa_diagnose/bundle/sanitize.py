@@ -239,6 +239,8 @@ _PROSE_START_RE = re.compile(
     r"missing|empty|length|file|path|check|checks|history|age|attempts?|failures?|updated|update|now|set)\b")
 
 Pattern = Tuple[str, "re.Pattern[str]"]
+# a secret-bearing Tomcat attribute name: secret, requiredSecret, keystorePass, truststorePassword, keyPass, ...
+_TOMCAT_SECRET_ATTR = r"[\w.-]{0,60}?(?:secret|pass(?:word|wd|phrase)?|pwd|pw|pin|token)[\w.-]{0,30}"
 PATTERNS: List[Pattern] = [
     # certificate serial numbers are never included (not credentials, but an explicit exclusion):
     # the IPA RA agent description "2;<serial>;<issuer>;<subject>" (IPARAAgent expected/got) ...
@@ -302,6 +304,13 @@ PATTERNS: List[Pattern] = [
         r"[A-Za-z]{1,30}pw)[ \t]+" + _NOT_MARKER + r"(?P<secret>[^\s=:]\S*)")),
     ("config_secret", re.compile(  # a quoted value after the word: named.conf's key "x" { secret "..."; }
         r"(?i)(?<![\w-])(?:secret|pass\s?phrase)[ \t]+(?P<secret>\"[^\"\n]{1,1024}\"|'[^'\n]{1,1024}')")),
+    # Tomcat's digester echoes the value of a server.xml attribute it cannot set, e.g. an AJP connector secret:
+    # "Match [Server/Service/Connector] failed to set property [requiredSecret] to [<value>]" (Tomcat 9+) and
+    # "Setting property 'secret' to '<value>' did not find a matching property." (older)
+    ("tomcat_property_secret", re.compile(
+        r"(?i)\bproperty\s+\[" + _TOMCAT_SECRET_ATTR + r"\]\s+to\s+\[(?P<secret>[^\]\n]{1,1024})\]")),
+    ("tomcat_property_secret", re.compile(
+        r"(?i)\bproperty\s+'" + _TOMCAT_SECRET_ATTR + r"'\s+to\s+'(?P<secret>[^'\n]{1,1024})'")),
     ("password_positional", re.compile(r"(?i)\bipa\s+passwd\s+\S+\s+" + _NOT_MARKER + r"(?P<secret>\S+)")),
     ("config_secret", re.compile(r"(?i)(?<![\w-])(?:bindpw|rootpw|[\w-]{0,40}authtok)[ \t]+" + _NOT_MARKER
                                  + r"(?P<secret>[^\s=:][^\n]*)")),

@@ -551,11 +551,38 @@ jobs:
           done
           cat out/b7-timing.txt
 
+      - name: B8 CA journal (Dogtag unit, digester echo of a fake AJP attribute, CA stopped)
+        run: |
+          set +e
+          U=pki-tomcatd@pki-tomcat.service
+          # the real unit and FreeIPA's own mapping of its pki_tomcatd service; old query vs new query
+          docker exec ipa-s bash -c "systemctl list-units --all --no-legend --plain 'pki-tomcatd*'; echo ---;
+            python3 -c 'from ipaplatform.services import knownservices as k; print(\"ipaplatform pki_tomcatd:\", k[\"pki_tomcatd\"].systemd_name)';
+            echo \"old -u pki-tomcatd lines: \$(journalctl -u pki-tomcatd --no-pager -q | wc -l)\";
+            echo \"new -u $U lines: \$(journalctl -u $U --no-pager -q | wc -l)\"" > out/b8-units.txt 2>&1
+          cat out/b8-units.txt
+          # a fake canary attribute on the AJP connector: Tomcat logs it back when it cannot set it
+          docker exec ipa-s bash -c 'cp -p /etc/pki/pki-tomcat/server.xml /root/server.xml.b8 &&
+            sed -i "0,/protocol=\"AJP\/1.3\"/s//protocol=\"AJP\/1.3\" zqLabSecret=\"ZqLiveCanaryAjpLettersOnly\"/" /etc/pki/pki-tomcat/server.xml &&
+            grep -c zqLabSecret /etc/pki/pki-tomcat/server.xml' > out/b8-inject.txt 2>&1
+          docker exec ipa-s systemctl restart $U
+          for i in $(seq 1 60); do docker exec ipa-s curl -sk -o /dev/null -w '%{http_code}' https://localhost:8443/ca/admin/ca/getStatus 2>/dev/null | grep -q 200 && break; sleep 3; done
+          # the digester lines as the journal has them, with the value masked (never copy the canary out raw)
+          docker exec ipa-s bash -c "journalctl -u $U --since -10min --no-pager -q | grep -i 'set property' |
+            sed -E \"s/to \\[[^]]*\\]/to [MASKED]/; s/to '[^']*'/to '[MASKED]'/\"" > out/b8-digester.txt 2>&1
+          echo "digester lines: $(wc -l < out/b8-digester.txt)"; head -3 out/b8-digester.txt
+          # the CA stopped: the dogtag.ca checks fail, so the certificates pack collects the CA journal
+          docker exec ipa-s systemctl stop $U; sleep 5
+          SPEC='{"overall_in": ["CRITICAL", "DEGRADED", "UNKNOWN"], "evidence_kind": "pki_journal_line", "evidence_unit": "pki-tomcatd"'
+          if [ -s out/b8-digester.txt ]; then SPEC="$SPEC"', "redacted_category": "tomcat_property_secret"'; fi
+          bash scripts/lab_bundle_run.sh B8-ca-journal b8 root "$SPEC}"
+          docker exec ipa-s bash -c 'cp -p /root/server.xml.b8 /etc/pki/pki-tomcat/server.xml' && docker exec ipa-s systemctl start $U; sleep 30
+
       - name: Bundle assertions (fail the job on any FAIL)
         run: |
           # every scenario must have a result row: a bundle that was not written is a FAIL, never a silent gap
           python3 scripts/lab_bundle.py summary B1-healthy-baseline B2-dirsrv-down B3-krb5kdc-down \
-            B4-healthcheck-missing B5-non-root B6-output-safety-PASS; a=$?
+            B4-healthcheck-missing B5-non-root B6-output-safety-PASS B8-ca-journal; a=$?
           if grep -q B6-output-safety-FAIL out/truth/bundle-results.jsonl; then a=1; fi
           if ! grep -q '"scenario": "B0-fresh-install' out/truth/bundle-results.jsonl; then echo "FAIL  B0 (no result row)"; a=1; fi
           exit $a
