@@ -133,7 +133,7 @@ Every string and every JSON key passes through the same steps.
 
    Fields whose name says "secret" (password, token, credential, cookie, authorization, and so on) are replaced with `[REMOVED]`.
 
-   **Redaction always runs on the full text.** Truncation happens afterwards, so it cannot cut a secret marker in half and expose the rest. Text over 64 KiB is omitted entirely rather than cut and then scanned.
+   **Redaction always runs on the full text.** Where a collector or the report already shortened a text before the bundle sees it, the bundle uses the unshortened source instead where it has one (the full journal line, the finding's own message and fields). Diagnosis text written by the engine can still quote a shortened excerpt; there a URL password whose `@` was cut off is still removed, but other credential shapes cut the same way are only as safe as the excerpt. Truncation happens afterwards, so it cannot cut a secret marker in half and expose the rest. Text over 64 KiB is omitted entirely rather than cut and then scanned.
 3. **Pseudonymize.** See below.
 4. **Bound.** Fixed caps apply (see Limits). Truncated text ends with `[truncated]` and is counted in the manifest.
 

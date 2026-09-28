@@ -382,6 +382,11 @@ def _url_userinfo(text: str) -> List[Tuple[str, int, int]]:
             end += 1
         at = text.rfind("@", start, end)
         if at < 0:
+            colon = text.find(":", start, end)
+            tail = text[colon + 1:end] if colon >= 0 else ""
+            if (colon > start and tail and not tail.rstrip(".").isdigit() and not text.startswith("[", start)
+                    and not text.startswith("[RE", colon + 1)):
+                spans.append(("credential_url", colon + 1, end))  # user:password with its '@' cut off upstream
             continue
         colon = text.find(":", start, at)
         if colon >= 0 and not text.startswith("[RE", colon + 1) and at > colon + 1:
@@ -503,8 +508,10 @@ _EMAIL_RE = re.compile(r"(?i)(?<![\w.%+-])[A-Za-z0-9._%+-]+@(?P<domain>(?:[A-Za-
 _URL_HOST_RE = re.compile(r"(?i)(?<![a-z0-9+.-])[a-z][a-z0-9+.-]*://(?:\S{0,256}@)?\[?(?P<host>[A-Za-z0-9._-]+)")
 _UID_RE = re.compile(r"(?i)\b(?:uid|gid|user|login)\s*[=:]\s*['\"]?(?:\d+\()?(?P<v>[A-Za-z_][A-Za-z0-9._$@-]{0,63})")
 _FQDN_ATTR_RE = re.compile(r"(?i)\bfqdn=(?P<v>[^,+\s=\\]+)")
-_GROUP_DN_RE = re.compile(r"(?i)\bcn=(?P<v>[^,+=\\]+),\s*cn=groups\b")
-_HOSTGROUP_DN_RE = re.compile(r"(?i)\bcn=(?P<v>[^,+=\\]+),\s*cn=hostgroups\b")
+_GROUP_DN_RE = re.compile(r"(?i)\bcn=(?P<v>[^,+=\\]+)(?:\+[^,\n]{0,120})?,\s*cn=groups\b")
+_HOSTGROUP_DN_RE = re.compile(r"(?i)\bcn=(?P<v>[^,+=\\]+)(?:\+[^,\n]{0,120})?,\s*cn=hostgroups\b")
+_METO_RE = re.compile(r"\bmeTo(?P<v>[A-Za-z0-9-]{1,63}(?:\.[A-Za-z0-9-]{1,63}){1,10})")
+_SPN_RE = re.compile(r"(?<![\w/.@-])(?P<svc>[A-Za-z][\w-]{1,30})/(?P<host>[A-Za-z0-9-]{1,63}(?:\.[A-Za-z0-9-]{1,63}){1,10})")
 _INSTANCE_RE = re.compile(r"(?i)(?:\bdirsrv@|\bslapd-)(?P<v>[A-Za-z0-9-]+)")
 # LDAP suffix components, plain, LDAP-escaped (\3D \2C) or URL-encoded (%3D %2C)
 _SUFFIX_DC = r"dc\s*(?:=|\\=|\\3D|%3D)\s*"
@@ -520,7 +527,7 @@ _HOME_RE = re.compile(r"/home/(?P<v>[A-Za-z0-9._$@-]{1,64})(?:/(?P<v2>[A-Za-z0-9
 # a relative record name in a FreeIPA DNS entry: idnsname=<host>,idnsname=<zone>.,cn=dns,...
 _IDNSNAME_RE = re.compile(r"(?i)\bidnsname=(?P<v>[A-Za-z0-9_-]{1,63}),\s*idnsname=")
 _ENTERPRISE_RE = re.compile(r"(?<![\w.\\-])(?P<user>[A-Za-z0-9._$-]{1,64})\\@(?P<dom>[A-Za-z0-9.-]+\.[A-Za-z]{2,})@")
-_USER_DN_RE = re.compile(r"(?i)\bcn=(?P<v>[^,+=\\]{1,128}),\s*cn=users\b")
+_USER_DN_RE = re.compile(r"(?i)\bcn=(?P<v>[^,+=\\]{1,128})(?:\+[^,\n]{0,120})?,\s*cn=users\b")
 _IPV6_RUN_RE = re.compile(r"(?<![0-9A-Fa-f:.])[0-9A-Fa-f.]*:[0-9A-Fa-f:.]*:[0-9A-Fa-f:.]*")
 _FQDN_RE = re.compile(r"(?<![A-Za-z0-9_.\\-])(?P<v>(?:" + _LABEL + r"\.)+[A-Za-z][A-Za-z0-9-]{0,61}[A-Za-z0-9])"
                       r"(?![A-Za-z0-9-])(?:(?!\.[A-Za-z0-9])|(?=\.(?:pem|crt|cer|key|csr|conf|keytab|log|db|p12|pfx|"
@@ -750,6 +757,11 @@ class Sanitizer:
                 self.add_user(m.group("v2"))
             else:
                 self.add_user(m.group("v"))
+        for m in _METO_RE.finditer(text):  # a replication agreement names its peer, whatever its top-level label
+            self.add_host(m.group("v"))
+        for m in _SPN_RE.finditer(text):  # service/host without a realm, for a host of a known domain
+            if self._known(m.group("host").lower()) and m.group("svc").lower() not in CONST_SERVICES:
+                self._add_account("SERVICE", m.group("svc"))
         for m in _ENTERPRISE_RE.finditer(text):  # alice\@ad.example@REALM (enterprise principal)
             self.add_user(m.group("user"))
             self.add_domain(m.group("dom"))

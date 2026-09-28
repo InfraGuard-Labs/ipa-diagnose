@@ -112,6 +112,19 @@ WITHHELD = "[WITHHELD: free text of a check this ipa-diagnose build does not kno
 _QUOTING_RULES = {("healthcheck", "unexplained-findings"), ("healthcheck", "healthcheck-check-failed")}
 
 
+_PLACEHOLDER = __import__("re").compile(r"\{([A-Za-z_][A-Za-z0-9_]{0,40})\}")
+
+
+def _full_message(f) -> str:
+    """The finding's message with its {placeholders} filled from its keywords, unshortened: the bundle redacts the
+    full text first and bounds it afterwards (the report's display copy was already cut at 300 characters)."""
+
+    kw = f.keywords if isinstance(f.keywords, dict) else {}
+    if not f.message:
+        return "(no message; fields: " + ", ".join(str(k) for k in list(kw)[:8]) + ")"
+    return _PLACEHOLDER.sub(lambda m: str(kw.get(m.group(1), m.group(0))), f.message[:20000])
+
+
 def _withheld_key(f) -> Any:
     return None if f.keywords.get("key") is None else "[WITHHELD]"
 
@@ -148,6 +161,8 @@ def _project_report(report: DiagnosisReport, evidence: EvidenceBundle, mode: str
     undiagnosed = []
     for u, raw in zip(report.undiagnosed_findings, rd["undiagnosed_findings"]):
         entry = dict(raw, finding_id=u.finding_id)
+        if u.finding_id in findings:
+            entry["message"] = _full_message(findings[u.finding_id])
         if not _known_check(u.source, u.check):
             entry["message"] = WITHHELD
             entry["key"] = None if u.key is None else "[WITHHELD]"
@@ -238,9 +253,10 @@ def _project_evidence(evidence: EvidenceBundle, mode: str, cited, dropped) -> Di
         data = {k: v for k, v in (i.data or {}).items() if k not in _ITEM_DROP.get(i.kind, ())}
         if i.kind == "klist_ticket":
             data["ticket_count"] = len(i.data.get("tickets") or [])
+        summary = i.summary if len(i.summary or "") < 195 else "[shortened by the collector; the full text is in data]"
         out.append({
             "item_id": i.item_id, "kind": i.kind, "severity": i.severity.value if i.severity else None,
-            "summary": i.summary, "data": data, "collected_by": i.provenance.source,
+            "summary": summary, "data": data, "collected_by": i.provenance.source,
             "command": i.provenance.command, "collected_at": i.provenance.collected_at,
             "evidence_tier": "LIVE" if i.provenance.live else "REPLAY", "cited_by": cited.get(i.item_id, []),
         })
