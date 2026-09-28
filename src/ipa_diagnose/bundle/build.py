@@ -502,6 +502,7 @@ def build(evidence: EvidenceBundle, report: DiagnosisReport, *, previous: Option
         "redacted_values": dict(sorted(s.redactions.items())),
         "secret_named_fields_removed": s.removed_fields,
         "raw_output_fields_dropped": s.raw_fields_dropped,
+        "certificate_serial_fields_removed": s.serial_fields_removed,
         "truncation": truncation,
         "excluded_by_design": EXCLUDED_CLASSES,
         "pseudonym_mapping_stored": False,

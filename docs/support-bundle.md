@@ -171,7 +171,7 @@ Constants that carry technical meaning are kept:
 
 Before anything is written, every file is scanned for:
 - every real identifier that was pseudonymized, in any case;
-- the credential patterns above;
+- the credential patterns above, and certificate serial numbers (in a `serial` field, an RA agent description `2;<serial>;...`, or `serial number <n>` in text);
 - control, escape and format characters;
 - the local replay and home paths;
 - malformed JSON, UTF-8 or checksum lines.

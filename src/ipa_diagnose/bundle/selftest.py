@@ -18,7 +18,7 @@ import unicodedata
 from typing import Dict, Iterable, List, Sequence, Tuple
 
 from ipa_diagnose.bundle.sanitize import (
-    _SERVICE_LABELS, find_secrets, invisible, iter_originals, secret_key, secret_value_re)
+    _SERVICE_LABELS, find_secrets, invisible, iter_originals, secret_key, secret_value_re, serial_key)
 
 # a label written directly before a domain pseudonym is a host label that escaped pseudonymization (x.DOMAIN-002),
 # unless it is a DNS service label (_kerberos._udp.DOMAIN-001, ipa-ca.DOMAIN-001) or itself a pseudonym
@@ -30,18 +30,19 @@ EVIDENCE_MEMBERS = ("environment.json", "report.json", "healthcheck.json", "evid
                     "topology.json", "verification.json")
 
 
-def unremoved_secret_fields(value) -> int:
-    """How many secret-named fields hold anything but [REMOVED], null or a boolean."""
+def unremoved_secret_fields(value, named=None) -> int:
+    """How many secret-named fields (or fields `named` selects) hold anything but [REMOVED], null or a boolean."""
 
+    named = named or (lambda k: secret_key(k, normalize=True))
     n = 0
     if isinstance(value, dict):
         for k, v in value.items():
-            if secret_key(str(k), normalize=True) and not (v == "[REMOVED]" or v is None or isinstance(v, bool)):
+            if named(str(k)) and not (v == "[REMOVED]" or v is None or isinstance(v, bool)):
                 n += 1
             else:
-                n += unremoved_secret_fields(v)
+                n += unremoved_secret_fields(v, named)
     elif isinstance(value, list):
-        n += sum(unremoved_secret_fields(v) for v in value)
+        n += sum(unremoved_secret_fields(v, named) for v in value)
     return n
 
 
@@ -141,6 +142,8 @@ def check(members: Dict[str, bytes], originals: Iterable[Tuple[str, str]], forbi
                 scan(name, key, s)
             if name in EVIDENCE_MEMBERS and unremoved_secret_fields(obj):
                 problems.append((name, "secret-named field not removed"))
+            if name in EVIDENCE_MEMBERS and unremoved_secret_fields(obj, serial_key):
+                problems.append((name, "certificate serial field not removed"))
             if name in EVIDENCE_MEMBERS and secret_list and any(
                     rx.search(s) for _k, s in _strings(obj) for v, rx in secret_list if v in s):
                 problems.append((name, "value of a secret-named field"))

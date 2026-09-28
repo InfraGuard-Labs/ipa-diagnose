@@ -103,6 +103,15 @@ _SECRET_KEY_RE = re.compile(
     r"(?<![a-z0-9])(?:pw|pin|pass|otp|totp|hotp|psk)(?![a-z0-9])|[a-z]pw(?![a-z0-9]))")
 
 
+_SERIAL_KEY_RE = re.compile(r"(?i)serial")
+
+
+def serial_key(key: str) -> bool:
+    """A field holding a certificate serial number (serial, serial_number, cert_serial, ...): never included."""
+
+    return bool(_SERIAL_KEY_RE.search(clean(key)))
+
+
 def secret_key(key: str, normalize: bool = False) -> bool:
     if normalize:  # the key as it is written out (NFKC, no format characters) and with look-alike letters folded
         key = clean(key).translate(_FOLD)
@@ -231,6 +240,13 @@ _PROSE_START_RE = re.compile(
 
 Pattern = Tuple[str, "re.Pattern[str]"]
 PATTERNS: List[Pattern] = [
+    # certificate serial numbers are never included (not credentials, but an explicit exclusion):
+    # the IPA RA agent description "2;<serial>;<issuer>;<subject>" (IPARAAgent expected/got) ...
+    ("certificate_serial", re.compile(r"(?<![\w;])2;(?P<secret>(?:0x)?[0-9A-Fa-f]{1,64});")),
+    # ... and "serial 12", "serial number: 0x1f", "Serial Number: 3a:4f:...", "SerialNumber=1234" in text
+    ("certificate_serial", re.compile(
+        r"(?i)\bserial[ _-]?(?:number|no\.?|num|#)?\s*(?:is\s+|[:=#]\s*|\(\s*)?"
+        r"(?P<secret>(?:[0-9A-Fa-f]{1,2}:){2,}[0-9A-Fa-f]{1,2}|(?:0x)?[0-9A-Fa-f]*\d[0-9A-Fa-f]*)(?![\w:])")),
     ("private_key_block", re.compile(
         r"(?i)-----BEGIN[ A-Z0-9]*PRIVATE KEY-----[\s\S]*?(?:-----END[ A-Z0-9]*PRIVATE KEY-----|\Z)")),
     ("pem_block", re.compile(r"(?i)-----BEGIN [A-Z0-9 ]{1,40}-----[\s\S]*?(?:-----END [A-Z0-9 ]{1,40}-----|\Z)")),
@@ -590,6 +606,7 @@ class Sanitizer:
         self.redactions: collections.Counter = collections.Counter()
         self.removed_fields = 0
         self.raw_fields_dropped = 0
+        self.serial_fields_removed = 0
         self.truncated = 0
         self.omitted = 0
         self.structure_trimmed = 0
@@ -1120,6 +1137,10 @@ class Sanitizer:
                     nk += "#"
                 if secret_key(k, normalize=True) and not isinstance(v, bool) and v is not None:
                     self.removed_fields += 1
+                    out[nk] = "[REMOVED]"
+                    continue
+                if serial_key(k) and not isinstance(v, bool) and v is not None:
+                    self.serial_fields_removed += 1
                     out[nk] = "[REMOVED]"
                     continue
                 out[nk] = self.transform(v, k, depth + 1)
