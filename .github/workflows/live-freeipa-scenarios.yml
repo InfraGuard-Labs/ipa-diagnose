@@ -568,14 +568,18 @@ jobs:
           docker exec ipa-s systemctl restart $U
           for i in $(seq 1 60); do docker exec ipa-s curl -sk -o /dev/null -w '%{http_code}' https://localhost:8443/ca/admin/ca/getStatus 2>/dev/null | grep -q 200 && break; sleep 3; done
           # the digester lines as the journal has them, with the value masked (never copy the canary out raw)
-          docker exec ipa-s bash -c "journalctl -u $U --since -10min --no-pager -q | grep -i 'set property' |
+          docker exec ipa-s bash -c "journalctl -u $U --since -10min --no-pager -q | grep -iE 'set(ting)? property' |
             sed -E \"s/to \\[[^]]*\\]/to [MASKED]/; s/to '[^']*'/to '[MASKED]'/\"" > out/b8-digester.txt 2>&1
           echo "digester lines: $(wc -l < out/b8-digester.txt)"; head -3 out/b8-digester.txt
           # the CA stopped: the dogtag.ca checks fail, so the certificates pack collects the CA journal
           docker exec ipa-s systemctl stop $U; sleep 5
-          SPEC='{"overall_in": ["CRITICAL", "DEGRADED", "UNKNOWN"], "evidence_kind": "pki_journal_line", "evidence_unit": "pki-tomcatd"'
-          if [ -s out/b8-digester.txt ]; then SPEC="$SPEC"', "redacted_category": "tomcat_property_secret"'; fi
-          bash scripts/lab_bundle_run.sh B8-ca-journal b8 root "$SPEC}"
+          # required every time (first live run showed Tomcat logs it): the canary was injected, echoed by Tomcat,
+          # and the CA's own line reached the bundle with the value redacted
+          bash scripts/lab_bundle_run.sh B8-ca-journal b8 root '{"overall_in": ["CRITICAL", "DEGRADED", "UNKNOWN"],
+            "evidence_kind": "pki_journal_line", "evidence_unit": "pki-tomcatd",
+            "evidence_line_contains": "failed to set property [zqLabSecret] to [[REDACTED:tomcat_property_secret]]",
+            "redacted_category": "tomcat_property_secret",
+            "lab_files_nonempty": ["out/b8-digester.txt"], "lab_file_equals": {"out/b8-inject.txt": "1"}}'
           docker exec ipa-s bash -c 'cp -p /root/server.xml.b8 /etc/pki/pki-tomcat/server.xml' && docker exec ipa-s systemctl start $U; sleep 30
 
       - name: Bundle assertions (fail the job on any FAIL)

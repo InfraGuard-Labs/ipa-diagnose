@@ -211,7 +211,7 @@ _META_TAIL_RE = re.compile(r"(?i)[A-Za-z]|[\s_.-]?(?:files?|paths?|dirs?|polic(?
                            r"checks?)(?![A-Za-z])")
 _TOOL_RE = re.compile(r"(?i)\b(?:ldap[a-z]{2,12}\b|dsconf\b|dsctl\b|dsidm\b|dscreate\b|"
                       r"ipa-[a-z]|pk12util\b|mysql\b|psql\b|curl\b|sshpass\b|redis-cli\b|kinit\b|kpasswd\b|passwd\b|"
-                      r"certutil\b|chpasswd\b|ipa\b|kadmin(?:\.local)?\b|kdb5_util\b|pki\b|wbinfo\b)")
+                      r"certutil\b|chpasswd\b|ipa\b|kadmin(?:\.local)?\b|kdb5_util\b|pki(?![\w@.-])|wbinfo\b)")  # not pki-tomcatd
 # a here-string fed to one of the tools (kinit admin <<< pw); checked procedurally like the flags
 _YAML_BLOCK_RE = re.compile(r"[|>][-+0-9]{0,3}[ \t]*")
 _HERESTR_RE = re.compile(r"<<<\s*" + _NOT_MARKER + r"(?P<secret>\S[^\n]*)")
@@ -288,7 +288,7 @@ PATTERNS: List[Pattern] = [
         # starts only at the beginning of a word run: an unanchored [\w.-]* is quadratic on long runs
         r"(?i)(?<![\w.-])(?P<key>" + _SECRET_NAME + r")\\?[\"']?\s*(?::|=>|=)\s*" + _VALUE_LINE)),
     ("password_flag", re.compile(  # pk12util -K slot password, ldappasswd -s new password (anchored on the tool)
-        r"(?i)\b(?:ldappasswd|pk12util|pki)\b[^\n]{0,300}?(?<!\S)-[sKc]\s*" + _NOT_MARKER
+        r"(?i)\b(?:ldappasswd\b|pk12util\b|pki(?![\w@.-]))[^\n]{0,300}?(?<!\S)-[sKc]\s*" + _NOT_MARKER
         + r"(?P<secret>(?=[^\s-])" + _SHELL_WORD + r")")),
     ("user_password", re.compile(r"(?i)\bwbinfo\b[^\n]{0,200}?(?<!\S)-a\s+['\"]?[^\s%'\"]{1,128}%(?P<secret>\S+)")),
     ("user_password", re.compile(  # curl -u/--user user:pw, smbclient/net -U user%pw
@@ -307,10 +307,11 @@ PATTERNS: List[Pattern] = [
     # Tomcat's digester echoes the value of a server.xml attribute it cannot set, e.g. an AJP connector secret:
     # "Match [Server/Service/Connector] failed to set property [requiredSecret] to [<value>]" (Tomcat 9+) and
     # "Setting property 'secret' to '<value>' did not find a matching property." (older)
-    ("tomcat_property_secret", re.compile(
-        r"(?i)\bproperty\s+\[" + _TOMCAT_SECRET_ATTR + r"\]\s+to\s+\[(?P<secret>[^\]\n]{1,1024})\]")),
-    ("tomcat_property_secret", re.compile(
-        r"(?i)\bproperty\s+'" + _TOMCAT_SECRET_ATTR + r"'\s+to\s+'(?P<secret>[^'\n]{1,1024})'")),
+    ("tomcat_property_secret", re.compile(  # the value runs to the last ']' on the line (it may contain ']')
+        r"(?i)\bproperty\s+\[" + _TOMCAT_SECRET_ATTR + r"\]\s+to\s+\[(?P<secret>[^\n]{1,1024})\]")),
+    ("tomcat_property_secret", re.compile(  # ... and to the "' did not find" that ends the older message
+        r"(?i)\bproperty\s+'" + _TOMCAT_SECRET_ATTR + r"'\s+to\s+'(?P<secret>[^\n]{1,1024})'"
+        r"(?=\s+did\s+not\s+find|[ \t.]*(?:\n|$))")),
     ("password_positional", re.compile(r"(?i)\bipa\s+passwd\s+\S+\s+" + _NOT_MARKER + r"(?P<secret>\S+)")),
     ("config_secret", re.compile(r"(?i)(?<![\w-])(?:bindpw|rootpw|[\w-]{0,40}authtok)[ \t]+" + _NOT_MARKER
                                  + r"(?P<secret>[^\s=:][^\n]*)")),

@@ -16,6 +16,7 @@ import pytest
 
 from ipa_diagnose.bundle import selftest
 from ipa_diagnose.bundle.build import build
+from ipa_diagnose.bundle.sanitize import Sanitizer
 from ipa_diagnose.evidence.collectors import journal_pki
 from ipa_diagnose.evidence.collectors.registry import get as get_collector
 
@@ -30,6 +31,7 @@ LIVE_OUTPUT = "\n".join([
     f"property [requiredSecret] to [{AJP}]",
     "Sep 28 10:00:02 ipa01.lab.test server[2345]: INFO: Starting ProtocolHandler [\"https-jsse-nio-8443\"]",
     "Sep 28 10:00:05 ipa01.lab.test server[2345]: SEVERE: Unable to connect to LDAP server ipa01.lab.test:636",
+    "Sep 28 10:00:06 ipa01.lab.test server[2345]: SEVERE: Object certificate not found: ocspSigningCert cert-pki-ca",
     "Sep 28 10:00:07 ipa01.lab.test certmonger[812]: Server at https://ipa01.lab.test/ipa/xml failed request, "
     "will retry: 4301 (RPC failed at server.  Certificate operation cannot be completed: Unable to communicate "
     "with CMS (503)).",
@@ -56,8 +58,9 @@ def test_live_ca_lines_are_collected_and_labelled(monkeypatch):
     assert "pki-tomcatd@pki-tomcat.service" in seen["args"]
     units = [(i.data["unit"], i.data["line"].split("]: ", 1)[0].rsplit(" ", 1)[-1]) for i in items]
     # the INFO line is not an issue line; every other line is kept, the CA's own lines as pki-tomcatd
-    assert units == [("pki-tomcatd", "server[2345"), ("pki-tomcatd", "server[2345"), ("certmonger", "certmonger[812"),
-                     ("pki-tomcatd", "systemd[1")]
+    assert units == [("pki-tomcatd", "server[2345"), ("pki-tomcatd", "server[2345"), ("pki-tomcatd", "server[2345"),
+                     ("certmonger", "certmonger[812"), ("pki-tomcatd", "systemd[1")]
+    assert any("Object certificate not found" in i.data["line"] for i in items)  # SEVERE alone is an issue line
     assert items[0].provenance.command.startswith("journalctl -u pki-tomcatd@pki-tomcat.service")
 
 
@@ -69,6 +72,9 @@ def test_live_ca_lines_are_collected_and_labelled(monkeypatch):
     ("Match [Server/Service/Connector/SSLHostConfig/Certificate] failed to set property [certificateKeystorePassword]"
      " to [ZqCanaryKsPw]", "ZqCanaryKsPw"),
     ("Match [Server/Service/Connector] failed to set property [keystorePass] to [ZqCanaryKsPass]", "ZqCanaryKsPass"),
+    # a value that itself contains the closing character
+    ("Match [Server/Service/Connector] failed to set property [secret] to [ZqAb]ZqCanaryTailPart]", "ZqCanaryTailPart"),
+    ("Setting property 'secret' to 'Zq'ZqCanaryQuoteTail' did not find a matching property.", "ZqCanaryQuoteTail"),
 ])
 def test_a_digester_warning_does_not_carry_the_attribute_value_into_a_bundle(tmp_path, line, value):
     d = tmp_path / "fx"
@@ -102,3 +108,20 @@ def test_the_self_test_refuses_an_unredacted_digester_warning():
 ])
 def test_a_non_secret_attribute_stays_readable(line):
     assert selftest.scan_text(line) == []
+
+
+@pytest.mark.parametrize("text", [
+    "journalctl -u pki-tomcatd@pki-tomcat.service -u certmonger --since -30min --no-pager",
+    "re-check journalctl -u pki-tomcatd -u certmonger for a repeat",
+])
+def test_the_ca_unit_name_is_not_taken_for_the_pki_tool(text):
+    # live B8: every CA item's command read "-u [REDACTED:password_flag]" (pki-tomcatd matched the pki CLI rule)
+    assert selftest.scan_text(text) == [] and "REDACTED" not in Sanitizer().text(text)
+
+
+@pytest.mark.parametrize("text,value", [
+    ("pki -U https://ipa01.example.test:8443 -u caadmin -w ZqCanaryPkiW ca-user-find", "ZqCanaryPkiW"),
+    ("sudo pki -c ZqCanaryPkiC client-cert-find", "ZqCanaryPkiC"),
+])
+def test_the_pki_tool_itself_is_still_redacted(text, value):
+    assert value not in Sanitizer().text(text)

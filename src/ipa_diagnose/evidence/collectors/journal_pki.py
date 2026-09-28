@@ -68,8 +68,9 @@ _ISSUE_KEYWORDS = (
     "unable",
     "warn",
     "4301",
+    "severe",  # Dogtag's java.util.logging level for its own errors ("SEVERE: Object certificate not found: ...")
 )
-_ERROR_KEYWORDS = ("error", "fail", "unreachable", "refused", "denied")
+_ERROR_KEYWORDS = ("error", "fail", "unreachable", "refused", "denied", "severe")
 
 
 def _detect_unit(line: str, default: str = "unknown") -> str:

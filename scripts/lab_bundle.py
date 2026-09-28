@@ -132,6 +132,13 @@ def _check(scenario, bundle_path, before_path, after_path, spec_text, tag=None):
         units = sorted({str((i.get("data") or {}).get("unit")) for i in items})
         ok(items and (not spec.get("evidence_unit") or spec["evidence_unit"] in units),
            f"evidence has {len(items)} {spec['evidence_kind']} items (units {units})")
+    if "evidence_line_contains" in spec:
+        lines = [str((i.get("data") or {}).get("line", "")) for i in json.loads(members["evidence.json"])["items"]]
+        ok(any(spec["evidence_line_contains"] in x for x in lines), f"an evidence line contains {spec['evidence_line_contains']!r}")
+    for f in spec.get("lab_files_nonempty", []):
+        ok(_read(f).strip(), f"{f} is not empty")
+    for f, want in (spec.get("lab_file_equals") or {}).items():
+        ok(_read(f).strip() == want, f"{f} is {want!r}")
     if "redacted_category" in spec:
         ok(red["redacted_values"].get(spec["redacted_category"], 0) >= 1, f"redacted {spec['redacted_category']}")
     if "pseudonym_classes" in spec:

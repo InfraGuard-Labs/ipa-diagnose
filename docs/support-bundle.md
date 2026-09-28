@@ -267,6 +267,11 @@ diagnosis time: the bundle adds no collectors or network access.
   - bare user names that appear only in PAM fields (`ruser=`, `logname=`), in `id` output (`groups=...(name)`) or in PKI audit fields (`SubjectID=`, `UID x`). No collector reads PAM or `id` output, and the PKI audit accounts are usually system accounts;
   - the group or host group name of an automember rule that appears only in a replication-conflict DN
     (`cn=<name>,cn=group,cn=automember,...`);
+  - certificate serial numbers written in shapes other than a `serial` field, `2;<serial>;` or `serial number <n>`
+    (`Certificate ID 0x5a3f not found`, `cn=<serial>,ou=certificateRepository,...`): no CA journal line the
+    collector keeps has been seen carrying them;
+  - a secret-named Tomcat attribute whose value is not the one being echoed back, e.g. a `passwordFile` path, is
+    hidden too (over-redaction; the attribute name stays visible);
   - single-label (undotted) Kerberos realms;
   - trust domains whose top-level label is not a known TLD;
   - two hosts in different domains that share a short name: a bare short name then gets the diagnosed host's pseudonym.
