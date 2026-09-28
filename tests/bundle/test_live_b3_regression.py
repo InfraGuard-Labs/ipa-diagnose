@@ -36,6 +36,11 @@ def test_freeipa_api_env_attributes_are_code_not_hosts():
     assert "api.env.host" in s.text(TRACEBACK, limit=2000)
 
 
+def test_only_the_three_label_api_env_attribute_is_code():
+    text = "peer api.env.zqacme.com unreachable"
+    assert "zqacme" not in _san(text).text(text)
+
+
 def test_a_host_named_api_does_not_make_the_word_api_an_identifier():
     s = _san("proxy to api.zqacme.io failed")
     assert ("HOST", "api") not in s.originals()

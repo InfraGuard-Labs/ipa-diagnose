@@ -7,6 +7,7 @@ import hashlib
 import io
 import json
 import os
+import re
 import tarfile
 
 import pytest
@@ -71,7 +72,9 @@ def test_a_host_prefixed_like_an_agreement_is_its_own_host():
 @pytest.mark.parametrize("kw", [{"pincode": "4821"}, {"userPIN": "4821"}, {"otp_code": "48213"}])
 def test_short_secret_field_values_are_tracked(tmp_path, kw):
     b = _bundle_with_kw(tmp_path, kw)
-    assert list(kw.values())[0] not in all_text(b.members)
+    # as a whole token, like the self-test: a 4-digit value can occur by chance inside a SHA-256 digest
+    value = list(kw.values())[0]
+    assert not re.search(r"(?<![0-9A-Za-z])" + value + r"(?![0-9A-Za-z])", all_text(b.members))
 
 
 def test_free_text_of_unknown_checks_is_withheld_and_quoting_prose_regenerated(tmp_path):

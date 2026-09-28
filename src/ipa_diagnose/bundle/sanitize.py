@@ -862,7 +862,7 @@ class Sanitizer:
                 continue
             tld = _is_tld(labels[-1]) or (labels[-1] in _NOT_TLD2 and len(labels) >= 3)
             code = (labels[0] in _MODULE_ROOTS and (len(labels) < 3 or labels[1] in _MODULE_SUBPACKAGES)
-                    or labels[:2] == ["api", "env"])  # FreeIPA's api.env.host in a traceback is code, not a host
+                    or (len(labels) == 3 and labels[:2] == ["api", "env"]))  # FreeIPA api.env.host: code, not a host
             if (tld and not code
                     and not any(v.lower() == d or v.lower().endswith("." + d) for d in self._domains)):
                 if ("HOST", v.lower()) not in self._map and not self._public(v.lower()):

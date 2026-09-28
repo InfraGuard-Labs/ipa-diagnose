@@ -165,8 +165,8 @@ Constants that carry technical meaning are kept:
 - `ipa-ca`, `localhost`, and public documentation domains (`freeipa.org`, `redhat.com`, ...), unless the
   diagnosed host is inside one of them: then that whole domain is pseudonymized, including the documentation
   links in it;
-- generic host words (`www`, `mail`, `api`, `ldap`, `server`, ...) are never treated as a host's short name, only
-  as part of its full name;
+- generic words (`www`, `mail`, `api`, `ldap`, `server`, `test`, `auth`, ...) are never treated as a host's short
+  name, only as part of its full name, and a user, group or service named exactly like one of them keeps that name;
 - Python and Java module names, and FreeIPA's `api.env.*` attributes in tracebacks.
 
 ## Leak self-test (fail closed)
