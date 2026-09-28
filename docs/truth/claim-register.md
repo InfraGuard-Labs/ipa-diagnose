@@ -55,8 +55,8 @@ FreeIPA 4.13.3 / Fedora 43". Overclaim to avoid: "built-in verified" without tha
 ## Slice 2: support bundle (`ipa-diagnose bundle`)
 
 Evidence rows: [bundle-truth-matrix.md](bundle-truth-matrix.md) (LIVE, same lab and environment as above: FreeIPA
-4.13.3 / Fedora 43 container, single server). Product commit for all Slice 2 LIVE rows: `0a5cf66` (run 36291228242);
-release candidate 36291231569 and Python matrix 36291234275 on the same commit. Real console captures: `docs/screenshots/slice2/`. Fixture, synthetic
+4.13.3 / Fedora 43 container, single server). Product commit for all Slice 2 LIVE rows: `c2f91dd` (run 36439525505);
+release candidate 36439537129 and Python matrix 36439547787 on the same commit. Real console captures: `docs/screenshots/slice2/`. Fixture, synthetic
 and review evidence: `tests/bundle/` and the review summary in the Slice 2 pull request.
 
 | ID | Claim | Tier | Evidence | Limits | Safe wording | Overclaim to avoid |
@@ -73,9 +73,10 @@ and review evidence: `tests/bundle/` and the review summary in the Slice 2 pull 
 | B10 | LIVE vs REPLAY labelling | LIVE + FIXTURE | B0-B5 LIVE in every file; replay tests | - | "Every file in a bundle says whether its evidence was collected live or read from recorded fixtures." | - |
 | B11 | Output file safety | LIVE + SYNTHETIC | B6 (existing file and symlink refused, untouched), mode 0600 unreadable by other users; tests | - | "The bundle file is created with mode 0600 and never overwrites a file or follows a symlink." | - |
 | B12 | Anonymous archive metadata | SYNTHETIC + LIVE + review | archive tests; privacy red team on the live bundles | - | "Archive entries carry no user, group, host or source-file metadata." | - |
-| B13 | No meaningful slowdown | LIVE (measured) | B7: 3 timed runs each of diagnose, preview and bundle on the healthy lab server | one server, container | "On the lab server a bundle took about as long as a normal diagnosis (about 12-16 seconds); normal runs are unaffected because nothing is collected unless a bundle is requested." | performance claims for other hardware |
+| B13 | No meaningful slowdown | LIVE (measured) | B7: 3 timed runs each of diagnose, preview and bundle on the healthy lab server | one server, container | "On the lab server a bundle took about as long as a normal diagnosis (about 16-17 seconds in the final run, 12-16 seconds in earlier runs); normal runs are unaffected because nothing is collected unless a bundle is requested." | performance claims for other hardware |
 | B14 | Packaged | CI | RPM release candidate (EL8/9/10, Fedora 43/44 lifecycle includes the bundle), Python 3.9-3.14 matrix, wheel | - | "The bundle command ships in the RPM and wheel with no new runtime dependency." | - |
-| B15 | Privacy red team | process | fresh reviewer given only the live bundles and the public doc | one reviewer, one lab | "A fresh reviewer given only live bundles could not recover the server's real names or any credential; install time, container environment, disk sizes and the incident timeline remained inferable." | "red-team proven" |
+| B15 | Privacy red team | process | fresh reviewer given only the live bundles of run 36291228242 (commit `0a5cf66`) and the public doc | one reviewer, one lab, an earlier commit; not repeated on the final bundles | "A fresh reviewer given only live bundles could not recover the server's real names or any credential; install time, container environment, disk sizes and the incident timeline remained inferable." | "red-team proven" |
+| B16 | Code-level privacy review | process | 17 rounds of fresh adversarial reviewers with source access, each finding fixed with a regression test (tests/bundle/test_review_round*.py); from round 14 judged against the owner-set threat model (realistic evidence from the supported collectors); the final round and a fresh review of the last fix found no blocker | reviewers are model agents, not independent humans; residual shapes are listed in support-bundle.md "Known limitations" | "Repeated fresh adversarial reviews found no remaining realistic leak path in evidence the supported collectors gather; residual shapes are documented." | "independently audited", "proven leak-free" |
 
 **Operational detail that remains by design** (say so whenever the bundle is described): software versions, unit
 names, file paths and modes, error text, timestamps (including install time implied by certmonger request IDs),

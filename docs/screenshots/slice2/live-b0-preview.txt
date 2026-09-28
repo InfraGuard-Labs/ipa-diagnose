@@ -4,7 +4,7 @@ Support bundle preview - nothing was written
   Pseudonymized: host 1, domain 1, realm 1, suffix 1, instance 1
   Redacted: 0 value(s); secret-named fields removed: 0; raw output fields dropped: 0
   Leak self-test: passed
-  Estimated size: 18.6 KiB compressed
+  Estimated size: 18.7 KiB compressed
   Files:
     README.txt                    3.1 KiB
     manifest.json                 4.2 KiB

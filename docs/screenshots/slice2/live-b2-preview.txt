@@ -10,7 +10,7 @@ Support bundle preview - nothing was written
     README.txt                    3.1 KiB
     manifest.json                 4.2 KiB
     environment.json              0.5 KiB
-    report.json                   8.6 KiB
+    report.json                   8.4 KiB
     healthcheck.json             42.7 KiB
     evidence.json                 1.7 KiB
     collection-errors.json        1.8 KiB
