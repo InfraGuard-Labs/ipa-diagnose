@@ -864,10 +864,15 @@ class Sanitizer:
         # otherwise an identifier seen only there is neither pseudonymized nor known to the leak self-test.
         if isinstance(value, dict):
             items = list(value.items())
+            kind = value.get("type")
+            owner_kind = kind.strip().lower() if isinstance(kind, str) and kind.strip().lower() in (
+                "owner", "group") else None
             for k, v in (items[:MAX_DICT_KEYS] if depth >= 1 else items):
                 self.discover_text(str(k))
                 if secret_key(str(k), normalize=True):
                     self._collect_secret(v)
+                if owner_kind and str(k).lower() in ("got", "expected"):
+                    self._discover_owner(owner_kind, v)
                 self.discover(v, str(k), depth + 1)
         elif isinstance(value, (list, tuple)):
             seq = list(value)
@@ -875,6 +880,17 @@ class Sanitizer:
                 self.discover(v, key, depth + 1)
         elif isinstance(value, str) and len(value) <= HARD_LIMIT:
             self.discover_text(value, key)
+
+    def _discover_owner(self, kind: str, value: Any) -> None:
+        """The got/expected of an ipa-healthcheck ownership finding (IPAFileCheck, TomcatFileCheck, ...): one or
+        several user or group names, e.g. "root" or "root,apache"."""
+
+        names = value if isinstance(value, (list, tuple)) else [value]
+        for n in names[:MAX_LIST_ITEMS]:
+            if isinstance(n, str) and len(n) <= HARD_LIMIT:
+                for part in re.split(r"[,\s]+", clean(n)):
+                    if re.fullmatch(r"[A-Za-z0-9_.$-]{1,64}", part):
+                        (self.add_user if kind == "owner" else self.add_group)(part)
 
     def track_secrets(self, value: Any, depth: int = 0) -> None:
         """Every value under a secret-named field anywhere in `value` is tracked (removed and self-tested)."""

@@ -147,7 +147,7 @@ Every string and every JSON key passes through the same steps.
 | `SUFFIX` | `SUFFIX-001` | the LDAP suffix `dc=...,dc=...` (also in its `\3D`/`\2C` escaped form) |
 | `INSTANCE` | `INSTANCE-001` | Directory Server instance names (`dirsrv@X.service`, `slapd-X`) |
 | `IP` | `IP-001` | IPv4 and IPv6 addresses (loopback and `0.0.0.0` are kept) |
-| `USER`, `GROUP`, `HOSTGROUP`, `SERVICE`, `EMAIL` | `USER-001` | principals, `uid=`, `cn=...,cn=groups`, `cn=...,cn=hostgroups`, unknown service principal names, `/home/<name>`, user and group fields |
+| `USER`, `GROUP`, `HOSTGROUP`, `SERVICE`, `EMAIL` | `USER-001` | principals, `uid=`, `cn=...,cn=groups`, `cn=...,cn=hostgroups`, unknown service principal names, `/home/<name>`, user and group fields (including the owner and group reported by ipa-healthcheck file checks) |
 
 - Pseudonyms are sequential and **bundle-local**. They are assigned in a fixed discovery order, not derived from the real value (no hash, no salt), so they cannot be reversed by guessing. Two different names get different pseudonyms; the exception is a user or group whose name is exactly a host's short name (they then share one pseudonym, because free text cannot tell them apart).
 - Two bundles of the same evidence number identifiers the same way. That reveals nothing about the real names, and no stable identity is carried across different evidence.
