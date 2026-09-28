@@ -27,6 +27,8 @@ _DOMAIN_RE = re.compile(rf"^{_LABEL}(?:\.{_LABEL})+$")
 _NETBIOS_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,14}$")
 _SERVICE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.+-]{0,63}$")
 _MAX_USER = 255
+_SID_RE = re.compile(r"^S-1-5-21-\d{1,10}-\d{1,10}-\d{1,10}-\d{1,10}$", re.IGNORECASE)
+SID_DOMAIN = "(SID)"
 
 
 class TargetError(ValueError):
@@ -43,6 +45,12 @@ class Targets:
     host_completed: bool = False
     """True when HOST was a short name and the IPA domain was appended (as hbactest does)."""
 
+    @property
+    def display_user(self) -> str:
+        if self.user_domain is None or self.user_domain == SID_DOMAIN:
+            return self.user
+        return f"{self.user}@{self.user_domain}"
+
 
 def _show(value: str) -> str:
     return repr(sanitize_text(value, 80))
@@ -53,6 +61,8 @@ def parse_user(raw: str, ipa_domain: Optional[str], ipa_realm: Optional[str]) ->
 
     if not isinstance(raw, str) or not raw or len(raw) > _MAX_USER:
         raise TargetError("USER must be an IPA user name (1-255 characters)")
+    if _SID_RE.fullmatch(raw):  # a trusted-domain security identifier, as hbactest accepts it
+        return raw.upper(), SID_DOMAIN
     name, domain = raw, None
     if "\\" in raw:
         domain, _, name = raw.partition("\\")

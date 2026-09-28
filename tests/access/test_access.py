@@ -120,7 +120,7 @@ def test_deny_is_policy_not_misconfiguration_and_no_grant_is_suggested(tmp_path,
     code, doc = run(tmp_path, capsys, w)
     assert code == 1
     assert doc["authorization"]["state"] == "FAIL"
-    assert doc["answer"].startswith("FreeIPA policy does not authorize")
+    assert doc["answer"].startswith("FreeIPA HBAC policy does not authorize")
     blob = json.dumps(doc).lower()
     for word in ("misconfig", "broken", "incorrect", "wrong"):
         assert word not in blob
@@ -139,7 +139,7 @@ def test_deny_text_output_has_all_sections_and_no_grant_command(tmp_path, capsys
     for section in ("AUTHENTICATION", "AUTHORIZATION", "RUNTIME ACCESS", "ROOT CAUSE", "WHY", "CHECKED FOR YOU",
                     "IMPACT", "RESOLUTION", "RISK", "VERIFY", "LIMITATIONS"):
         assert section in out
-    assert "FreeIPA policy does not authorize john" in out
+    assert "FreeIPA HBAC policy does not authorize john" in out
     assert not GRANT_WORDS.search(out)
 
 

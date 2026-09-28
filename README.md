@@ -323,7 +323,7 @@ keeps three things apart:
 - **RUNTIME ACCESS**: always "NOT VERIFIED". No login is attempted, and the host's SSSD, PAM, network and keytab
   are not checked. An HBAC allow does not mean SSH works.
 
-A deny is reported as "FreeIPA policy does not authorize this request". It is never called broken, and
+A deny is reported as "FreeIPA HBAC policy does not authorize this request". It is never called broken, and
 ipa-diagnose never suggests adding members or enabling rules to turn it into an allow. That is a decision for the
 policy owner. If the answer cannot be established (no ticket, API unreachable, user or host missing, evaluator
 errors), it is `UNKNOWN`, never a guess. Exit codes: 0 authorized by policy, 1 not authorized or the account cannot

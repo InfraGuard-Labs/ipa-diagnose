@@ -118,7 +118,8 @@ class World:
             ind = sorted(self._user_all_groups(u) - set(direct))
             rules_d = [r["name"] for r in self.rules if u in r["users"]]
             rules_i = [r["name"] for r in self.rules if self._user_all_groups(u) & set(r["groups"])]
-            entry = {"uid": [u], "nsaccountlock": attrs.get("disabled", False), "memberof_group": direct}
+            entry = {"uid": [u], "nsaccountlock": attrs.get("disabled", False), "memberof_group": direct,
+                     "preserved": attrs.get("preserved", False)}
             if "nsaccountlock_absent" in attrs:
                 del entry["nsaccountlock"]
             if ind:
@@ -161,11 +162,14 @@ class World:
         for r in self.rules:
             out.append({"method": "hbacrule_show", "args": [r["name"]],
                         "response": ok({"result": self.rule_entry(r), "value": r["name"]})})
-        out.append({"method": "hbactest", "args": [],
-                    "response": ok(self.hbactest_override if self.hbactest_override is not None else self.hbactest(user, host, svc))})
+        hbactest_options = {"user": user, "targethost": host, "service": svc}
+        answer = self.hbactest_override if self.hbactest_override is not None else self.hbactest(user, host, svc)
+        out.append({"method": "hbactest", "args": [], "options": hbactest_options, "response": ok(answer)})
         keyed = {(c["method"], tuple(a.lower() for a in c["args"])): c for c in out}
         for key, resp in self.overrides.items():
             keyed[key] = {"method": key[0], "args": list(key[1]), **resp}
+            if key[0] == "hbactest":
+                keyed[key]["options"] = hbactest_options
         return list(keyed.values())
 
     def write(self, directory: pathlib.Path, user: str, host: str, svc: str) -> pathlib.Path:

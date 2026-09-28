@@ -39,12 +39,12 @@ REQUIRED = [
     "A09-missing-user", "A10-missing-host", "A11-undefined-service", "A12-no-ticket", "A13-non-admin-caller",
     "A14-allow-all-missing-user", "A15-short-host-and-case", "A16-evaluator-unreachable", "A17-trusted-form",
     "A18-hostile-rule-name", "A19-group-cycle", "A20-disabled-rule-plus-allowing-rule", "A21-bundle-access",
-    "A22-expired-principal",
+    "A22-expired-principal", "A23-non-admin-sees-disabled-user", "A24-preserved-user",
 ]
 
 
 def dx(cmd: str, cc: str = ADMIN_CC, user: str = "root", timeout: int = 180, stdin: str = None):
-    env = f"KRB5CCNAME={cc} " if cc else ""
+    env = f"export KRB5CCNAME={cc}; " if cc else ""  # export: the command may be a list (a; b)
     argv = ["docker", "exec", "-i", "-u", user, C, "bash", "-c", env + cmd]
     start = time.monotonic()
     p = subprocess.run(argv, input=stdin, capture_output=True, text=True, timeout=timeout)
@@ -110,6 +110,13 @@ def setup() -> None:
     ipa("hbacrule-disable r_ivan_off", check=True)
     ipa("user-disable erin", check=True)
     ipa("user-mod judy --principal-expiration=20200101000000Z", check=True)
+    # a preserved (deleted, kept) user that a rule still names
+    ipa("user-add pres --first=pres --last=Lab")
+    ipa("hbacrule-add r_pres", check=True)
+    ipa("hbacrule-add-user r_pres --users=pres", check=True)
+    ipa(f"hbacrule-add-host r_pres --hosts={APP01}", check=True)
+    ipa("hbacrule-add-service r_pres --hbacsvcs=sshd", check=True)
+    ipa("user-del pres --preserve", check=True)
     # a hostile rule name (bidi override + escape-like text); FreeIPA may refuse it - that is recorded too
     out = ipa("hbacrule-add " + shlex.quote("zz‮evil\x1b[31m rule"))
     ok = "Added HBAC rule" in out
@@ -185,7 +192,7 @@ def row(sid: str, query, expected: dict, independent, rc, doc, err, secs, text, 
     obs = {"exit": rc}
     if doc:
         obs.update(authentication=doc["authentication"]["state"], authorization=doc["authorization"]["state"],
-                   runtime=doc["runtime_access"]["state"], matched=doc["authoritative_evaluation"]["matched_rules"],
+                   runtime=doc["runtime_access"]["state"], matched=doc["authoritative_evaluation"]["matched_rule_names"],
                    explanation=doc["explanation_status"], answer=doc["answer"],
                    findings=[f["code"] for f in doc["diagnosis"]["findings"]],
                    resolution=doc["resolution"]["status"], api_calls=doc["completeness"]["api_calls"])
@@ -247,7 +254,7 @@ def run() -> None:
     scenario("A01-direct-user-allow", "alice", APP01, "sshd",
              {"exit": 0, "authentication": NV, "authorization": PASS, "runtime": NV, "explanation": "COMPLETE"},
              lambda d, t: {"matched r_direct": "r_direct" in (d or {}).get("authoritative_evaluation", {}).get(
-                 "matched_rules", []), "user side direct": (side_how(d, "r_direct", "user") or [("",)])[0][0] == "direct"})
+                 "matched_rule_names", []), "user side direct": (side_how(d, "r_direct", "user") or [("",)])[0][0] == "direct"})
     scenario("A02-group-hostgroup-allow", "bob", APP02, "sshd",
              {"exit": 0, "authorization": PASS, "explanation": "COMPLETE"},
              lambda d, t: {"via ops": (side_how(d, "r_group", "user") or [("", "")])[0][:2] == ("group", "ops"),
@@ -318,11 +325,20 @@ def run() -> None:
                  "COMPLETE", "INCOMPLETE")})
     scenario("A20-disabled-rule-plus-allowing-rule", "ivan", APP01, "sshd", {"exit": 0, "authorization": PASS},
              lambda d, t: {"only the enabled rule explains": (d or {}).get("authoritative_evaluation", {}).get(
-                 "matched_rules") == ["r_ivan_on"] and "r_ivan_off" not in json.dumps(
+                 "matched_rule_names") == ["r_ivan_on"] and "r_ivan_off" not in json.dumps(
                  (d or {}).get("matched_rules", []))})
     scenario("A22-expired-principal", "judy", APP01, "sshd", {"exit": 1, "authentication": FAIL,
                                                              "authorization": PASS},
              lambda d, t: {"USER_PRINCIPAL_EXPIRED": _find(d, "USER_PRINCIPAL_EXPIRED")})
+    # A23: an ordinary user's ticket asks about a disabled account: the disabled flag must not read as "enabled"
+    _, out23, _, _ = dx("ipa user-show erin --all", cc="FILE:/root/alice.ccache")
+    (OUT / "access-A23-user-show-as-alice.txt").write_text(
+        " | ".join(ln.strip() for ln in out23.splitlines() if "disabled" in ln.lower() or "User login" in ln),
+        encoding="utf-8")
+    scenario("A23-non-admin-sees-disabled-user", "erin", APP01, "sshd", {"exit": 1, "authentication": FAIL},
+             cc="FILE:/root/alice.ccache")
+    scenario("A24-preserved-user", "pres", APP01, "sshd", {"exit": 1, "authentication": FAIL, "authorization": UNK},
+             independent=False)
     bundle()
     timing()
 
@@ -435,7 +451,8 @@ def summary() -> int:
         print("::notice title=access truth " + str(i // 4 + 1) + "::" + " ".join(compact[i:i + 4]).replace(
             "%", "%25").replace("\n", " "))
     facts = []
-    for name, f in (("group cycle", "access-cycle.txt"), ("hostile rule name", "access-hostile-rule.txt")):
+    for name, f in (("group cycle", "access-cycle.txt"), ("hostile rule name", "access-hostile-rule.txt"),
+                    ("erin as seen with alice's ticket", "access-A23-user-show-as-alice.txt")):
         p = OUT / f
         facts.append(f"{name}: {p.read_text(encoding='utf-8')[:200] if p.exists() else 'not recorded'}")
     raw14 = OUT / "access-A14-raw-hbactest.json"

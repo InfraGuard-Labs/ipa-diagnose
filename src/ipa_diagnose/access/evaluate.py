@@ -101,6 +101,7 @@ class AccountState:
     principal_expired: Optional[bool] = None
     password_expires: Optional[str] = None
     password_expired: Optional[bool] = None
+    preserved: Optional[bool] = None
 
 
 @dataclasses.dataclass
@@ -224,6 +225,8 @@ class _Run:
         self.findings: List[AccessFinding] = []
         self.index = RelationshipIndex()
         self.limit_notes: List[str] = []
+        self.rules_unread: List[str] = []
+        self.rules_cut = False  # more matched/related rules than MAX_RULES
 
     def call(self, name: str, method: str, args: List[str], options: Optional[Dict[str, Any]] = None) -> ApiResponse:
         resp = self.api.call(method, args, options)
@@ -246,20 +249,31 @@ class _Run:
                 st.exists = False
                 self.check("not_found", f"no IPA user named {self.t.user}")
                 self.find("USER_NOT_FOUND", f"No IPA user named {self.t.user}",
-                          "FreeIPA has no active user by this name (staged and preserved users cannot log in either). "
-                          "Check the spelling; a trusted-domain (AD) user must be written as name@domain.", True)
+                          "FreeIPA has no user by this name (a staged user cannot log in either). Check the "
+                          "spelling; the account may also be deliberately absent. A trusted-domain (AD) user must be "
+                          "written as name@domain.", True)
             else:
                 self.check("error", _describe_error(r))
+                self.find("OBJECT_UNREADABLE", f"The user {self.t.user} could not be read",
+                          _describe_error(r), True)
             return st, None
         res = r.entry
         uid = _first(res.get("uid"))
         if not isinstance(uid, str) or not uid:
             self.check("error", "the answer has no user name")
+            self.find("OBJECT_UNREADABLE", f"The user {self.t.user} could not be read", "unusable answer", True)
             return st, None
         st.exists, st.canonical = True, uid
+        if _bool(res.get("preserved")) is True:
+            st.preserved = True
+            self.check("problem", f"user {uid} is a preserved (deleted) user")
+            self.find("USER_PRESERVED", f"{uid} is a preserved (deleted) user",
+                      "FreeIPA keeps the deleted entry for possible restore, but a preserved user cannot "
+                      "authenticate or log in. Rules may still name it; they do not apply to it.", True)
+            return st, None
         st.disabled = _bool(res.get("nsaccountlock"))
         pe = _time(res.get("krbprincipalexpiration"))
-        st.principal_expires, st.principal_expired = _iso(pe), (pe <= self.now) if pe else False
+        st.principal_expires, st.principal_expired = _iso(pe), (pe <= self.now) if pe else None
         pw = _time(res.get("krbpasswordexpiration"))
         st.password_expires, st.password_expired = _iso(pw), (pw <= self.now) if pw else None
         node = self.index.node(NodeKind.USER, uid)
@@ -270,12 +284,15 @@ class _Run:
         if st.disabled:
             problems.append("disabled")
             self.find("USER_DISABLED", f"The IPA account {uid} is disabled",
-                      "FreeIPA marks the account disabled (nsAccountLock): the KDC refuses it, so it cannot "
-                      "authenticate to any IPA-joined host or service, whatever HBAC allows.", True)
+                      "FreeIPA marks the account disabled (nsAccountLock): the KDC refuses it, and SSSD's IPA access "
+                      "check refuses disabled accounts too (documented SSSD behaviour, so this also applies to SSH-key "
+                      "logins), whatever HBAC allows. A host answering from SSSD's offline cache may lag behind.", True)
         if st.principal_expired:
             problems.append("principal expired")
             self.find("USER_PRINCIPAL_EXPIRED", f"The Kerberos principal of {uid} expired at {st.principal_expires}",
-                      "The KDC refuses an expired principal, so the account cannot authenticate.", True)
+                      "The KDC refuses an expired principal: password and Kerberos (GSSAPI) logins fail. Whether a "
+                      "login that does not use the KDC (for example an SSH key) is refused depends on the host's "
+                      "SSSD, which this command does not check.", True)
         if st.password_expired:
             self.find("USER_PASSWORD_EXPIRED", f"The password of {uid} expired at {st.password_expires}",
                       "A password login must change the password first; logins that do not use the password "
@@ -283,8 +300,10 @@ class _Run:
         if st.disabled is None:
             self.check("problem", f"user {uid} exists; the disabled/enabled state is not readable by this identity")
         else:
+            expiry = ("principal not expired" if st.principal_expired is False
+                      else "no principal expiration set or readable")
             self.check("problem" if problems else "ok",
-                       f"user {uid} exists, " + (", ".join(problems) if problems else "enabled, principal not expired")
+                       f"user {uid} exists, " + (", ".join(problems) if problems else f"enabled, {expiry}")
                        + f"; {len(direct)} direct and {len(indirect)} nested groups")
         return st, Membership(node, direct, indirect) if node else None
 
@@ -297,15 +316,18 @@ class _Run:
                 st.exists = False
                 self.check("not_found", f"no IPA host named {self.t.host}")
                 self.find("HOST_NOT_FOUND", f"No IPA host named {self.t.host}",
-                          "The host is not enrolled in FreeIPA under this name, so FreeIPA's HBAC policy does not "
-                          "govern logins there. Check the name: SSSD on an enrolled host uses its full host name.", True)
+                          "No host is enrolled in FreeIPA under this exact name, so FreeIPA has no HBAC decision about "
+                          "it. Check the name: SSSD on an enrolled host uses its own full host name, which may differ "
+                          "from an alias or CNAME.", True)
             else:
                 self.check("error", _describe_error(r))
+                self.find("OBJECT_UNREADABLE", f"The host {self.t.host} could not be read", _describe_error(r), True)
             return st, None
         res = r.entry
         fqdn = _first(res.get("fqdn"))
         if not isinstance(fqdn, str) or not fqdn:
             self.check("error", "the answer has no host name")
+            self.find("OBJECT_UNREADABLE", f"The host {self.t.host} could not be read", "unusable answer", True)
             return st, None
         st.exists, st.canonical, st.has_keytab = True, fqdn, _bool(res.get("has_keytab"))
         node = self.index.node(NodeKind.HOST, fqdn)
@@ -316,7 +338,8 @@ class _Run:
                       "The host entry exists but has no keytab, which usually means it is not (or no longer) "
                       "enrolled: SSSD on it cannot use FreeIPA, whatever the policy says. Runtime access is not "
                       "checked by this command.", False)
-        self.check("ok", f"host {fqdn} exists; {len(direct)} direct and {len(indirect)} nested hostgroups"
+        self.check("ok" if st.has_keytab is not False else "problem",
+                   f"host {fqdn} exists; {len(direct)} direct and {len(indirect)} nested hostgroups"
                    + ("" if st.has_keytab is not False else "; no keytab in IPA"))
         return st, Membership(node, direct, indirect) if node else None
 
@@ -377,11 +400,15 @@ class _Run:
             return ev
         ev.granted = granted
         total = len(ev.matched) + ev.not_matched_count + len(ev.error_rules)
+        verdict = "granted" if granted else "denied"
+        if ev.error_rules or ev.truncated:
+            why = (f"{len(ev.error_rules)} rule(s) could not be evaluated" if ev.error_rules
+                   else "the rule list was truncated by a size limit")
+            self.check("problem", f"hbactest returned {verdict}, but {why}, so the result is not trusted")
+            return ev
         self.check("ok" if granted else "problem",
-                   f"FreeIPA evaluated {total} enabled HBAC rule(s): access {'granted' if granted else 'denied'}"
-                   + (f"; matched: {', '.join(ev.matched[:MAX_RULES])}" if ev.matched else "")
-                   + (f"; {len(ev.error_rules)} rule(s) could not be evaluated" if ev.error_rules else "")
-                   + ("; the rule list was truncated by a size limit" if ev.truncated else ""))
+                   f"FreeIPA evaluated {total} enabled HBAC rule(s): access {verdict}"
+                   + (f"; matched: {', '.join(ev.matched[:MAX_RULES])}" if ev.matched else ""))
         return ev
 
     # 5 / 6 ---------------------------------------------------------------- explanation (never the decision)
@@ -389,10 +416,12 @@ class _Run:
         r = self.call(f"rule {name}", "hbacrule_show", [name])
         if not r.ok:
             self.check("error", _describe_error(r))
+            self.rules_unread.append(name)
             return None
         rule = HbacRule.from_api(r.entry, f"hbacrule_show {name}")
         if rule is None:
             self.check("error", "the answer is not an HBAC rule")
+            self.rules_unread.append(name)
             return None
         rn = self.index.node(NodeKind.HBAC_RULE, rule.name)
         for side, rs, obj_kind, grp_kind in (("user", rule.user, NodeKind.USER, NodeKind.GROUP),
@@ -414,12 +443,19 @@ class _Run:
 
         if member is None or not wanted:
             return True
+
+        def known(w: str) -> bool:
+            target = self.index.node(kind, w)
+            if target is None:  # the index is at its size bound: the chain stays unknown
+                return False
+            return self.index.membership_path(member.node, target) is not None
+
         allowed = member.all_groups()
         frontier = sorted(member.direct, key=str.lower)
         seen: Set[str] = set()
         complete = True
         while frontier:
-            if all(self.index.membership_path(member.node, self.index.node(kind, w)) for w in wanted):
+            if all(known(w) for w in wanted):
                 return True
             nxt: List[str] = []
             for g in frontier:
@@ -438,10 +474,12 @@ class _Run:
                 res = r.entry
                 parents = [p for p in _strs(res.get(attr)) if p.lower() in allowed]
                 self.index.add_memberships(self.index.node(kind, g), kind, parents, [], f"{method} {g}")
-                self.check("ok", f"{g}: member of {len(parents)} of the relevant groups")
+                self.check("ok", f"{kind.value.lower()} {g} is a member of "
+                           + (", ".join(sorted(parents, key=str.lower)[:5]) if parents else "none of the other groups")
+                           + " (read to explain the nesting)")
                 nxt.extend(p for p in parents if p.lower() not in seen)
             frontier = sorted(set(nxt), key=str.lower)
-        return complete and all(self.index.membership_path(member.node, self.index.node(kind, w)) for w in wanted)
+        return complete and all(known(w) for w in wanted)
 
 
 def _explain(run: _Run, rule: HbacRule, user_m: Optional[Membership], host_m: Optional[Membership],
@@ -455,9 +493,9 @@ def _explain(run: _Run, rule: HbacRule, user_m: Optional[Membership], host_m: Op
         "user": explain_side(run.index, "user", rule.user, user_m, user, NodeKind.GROUP),
         "host": explain_side(run.index, "host", rule.host, host_m, host, NodeKind.HOSTGROUP),
         "service": explain_side(run.index, "service", rule.service, svc_member, service,
-                                NodeKind.HBAC_SERVICE_GROUP),
+                                NodeKind.HBAC_SERVICE_GROUP, groups_known=service_st.exists is not None),
     }
-    covered = all(any(s.how != "none" for s in v) for v in sides.values())
+    covered = all(any(s.how not in ("none", "unknown") for s in v) for v in sides.values())
     chains_known = all(s.chain_complete for v in sides.values() for s in v)
     data_complete = user_m is not None and host_m is not None and (service_st.exists is not None)
     if matched:
@@ -488,10 +526,10 @@ def diagnose(api: Api, targets: Targets, raw_query: Dict[str, str],
     explanations: List[RuleExplanation] = []
 
     if ctx.unavailable:
-        run.find("EVALUATOR_UNAVAILABLE", "FreeIPA could not be asked", ctx.unavailable, True)
+        run.find("EVALUATOR_UNAVAILABLE", "ipa-diagnose could not query FreeIPA", ctx.unavailable, True)
     elif targets.user_domain:
         run.find("TRUSTED_IDENTITY_UNSUPPORTED",
-                 f"{targets.user}@{targets.user_domain} is a trusted-domain identity",
+                 f"{targets.display_user} is a trusted-domain identity",
                  "Access diagnosis of trusted-domain (for example Active Directory) users is not supported in this "
                  "version: their groups come from the trusted domain and ID views, which it does not evaluate. "
                  "FreeIPA's own evaluator can still answer: ipa hbactest --user=NAME@DOMAIN --host=HOST "
@@ -502,8 +540,10 @@ def diagnose(api: Api, targets: Targets, raw_query: Dict[str, str],
         account, user_m = run.user()
         host_st, host_m = run.host()
         svc_st = run.service()
-        if account.exists and host_st.exists:
+        if account.exists and not account.preserved and host_st.exists:
             evaluation = run.hbactest(account.canonical, host_st.canonical, svc_st.canonical or targets.service)
+        elif account.preserved:
+            evaluation.error = "not evaluated: the user is a preserved (deleted) user"
         elif account.exists is False or host_st.exists is False:
             evaluation.error = "not evaluated: the user or the host does not exist in FreeIPA"
         else:
@@ -519,6 +559,7 @@ def diagnose(api: Api, targets: Targets, raw_query: Dict[str, str],
                 related = sorted(run._user_rules, key=str.lower)
                 names = related[:MAX_RULES]
                 if len(related) > MAX_RULES:
+                    run.rules_cut = True
                     run.limit_notes.append(f"only {MAX_RULES} of the {len(related)} rules naming this user are "
                                            "explained")
             rules = [r for r in (run.rule(n) for n in names) if r is not None]
@@ -532,10 +573,12 @@ def diagnose(api: Api, targets: Targets, raw_query: Dict[str, str],
                 explanations.append(_explain(run, r, user_m, host_m, user_c, host_c, svc_c, svc_st,
                                              matched=r.name.lower() in {m.lower() for m in evaluation.matched}))
             if len(evaluation.matched) > MAX_RULES:
+                run.rules_cut = True
                 run.limit_notes.append(f"only the first {MAX_RULES} of {len(evaluation.matched)} matched rules "
                                        "are explained")
-            if len(rules) < len(names):
-                run.limit_notes.append("some rules could not be read, so their part of the explanation is missing")
+            if run.rules_unread:
+                run.limit_notes.append("rule(s) that could not be read, so their part of the explanation is missing: "
+                                       + ", ".join(run.rules_unread))
 
     authn = _authentication(ctx, targets, account)
     authz, expl_status = _authorization(run, ctx, targets, account, host_st, evaluation, explanations)
@@ -560,11 +603,14 @@ def diagnose(api: Api, targets: Targets, raw_query: Dict[str, str],
 
 def _authentication(ctx, targets: Targets, account: AccountState) -> Verdict:
     if ctx.unavailable:
-        return Verdict(State.UNKNOWN, "FreeIPA could not be asked", [ctx.unavailable])
+        return Verdict(State.UNKNOWN, f"{targets.user}'s account was not read: ipa-diagnose could not query FreeIPA",
+                       [ctx.unavailable])
     if targets.user_domain:
         return Verdict(State.UNKNOWN, "trusted-domain identity: not evaluated by this version")
     if account.exists is False:
         return Verdict(State.FAIL, f"no IPA user named {targets.user}")
+    if account.preserved:
+        return Verdict(State.FAIL, f"{account.canonical} is a preserved (deleted) user")
     if account.exists is None:
         return Verdict(State.UNKNOWN, "the user could not be read")
     reasons = []
@@ -585,14 +631,18 @@ def _authentication(ctx, targets: Targets, account: AccountState) -> Verdict:
 def _authorization(run: _Run, ctx, targets: Targets, account: AccountState, host_st: HostState, ev: Evaluation,
                    explanations: List[RuleExplanation]) -> Tuple[Verdict, str]:
     if ctx.unavailable:
-        return Verdict(State.UNKNOWN, "FreeIPA's HBAC evaluator could not be asked", [ctx.unavailable]), "NONE"
+        return Verdict(State.UNKNOWN, "not evaluated: ipa-diagnose could not query FreeIPA", [ctx.unavailable]), "NONE"
     if targets.user_domain:
         return Verdict(State.UNKNOWN, "trusted-domain identity: not evaluated by this version"), "NONE"
+    if account.preserved:
+        return Verdict(State.UNKNOWN, "not evaluated: a preserved (deleted) user has no policy decision"), "NONE"
     if account.exists is False or host_st.exists is False:
         who = "user" if account.exists is False else "host"
         return Verdict(State.UNKNOWN, f"not evaluated: the {who} does not exist in FreeIPA, so there is no policy "
                        f"decision about it"), "NONE"
-    if not ev.ran or ev.error:
+    if not ev.ran:  # the user or host could not be read (OBJECT_UNREADABLE says which)
+        return Verdict(State.UNKNOWN, ev.error or "not evaluated"), "NONE"
+    if ev.error:
         run.find("EVALUATOR_FAILED", "FreeIPA's HBAC evaluation gave no usable answer",
                  ev.error or "the evaluation did not run", True)
         return Verdict(State.UNKNOWN, "FreeIPA's HBAC evaluation gave no usable answer", [ev.error or ""]), "NONE"
@@ -615,18 +665,18 @@ def _authorization(run: _Run, ctx, targets: Targets, account: AccountState, host
                  "The group and rule data read by ipa-diagnose does not reproduce FreeIPA's decision for: "
                  + ", ".join(e.rule for e in contradicting) + ". FreeIPA's decision stands; the data may have changed "
                  "between calls, or this is a gap in ipa-diagnose's model (please report it).", False)
-    elif incomplete or (ev.granted and not explanations):
+    elif incomplete or (ev.granted and not explanations) or run.rules_unread or run.rules_cut:
         status = "INCOMPLETE"
         run.find("RELATIONSHIP_INCOMPLETE", "The explanation is incomplete",
-                 "Some memberships or rules could not be read, so part of the 'why' is missing. FreeIPA's decision "
-                 "is not affected.", False)
+                 "Some memberships or rules could not be read, or more rules applied than are explained, so part of "
+                 "the 'why' is missing. FreeIPA's decision is not affected.", False)
     else:
         status = "COMPLETE"
     rules = ", ".join(ev.matched[:MAX_RULES])
     if ev.granted:
         return Verdict(State.PASS, f"FreeIPA HBAC policy allows this request (rule{'s' if len(ev.matched) > 1 else ''}: "
                        f"{rules})"), status
-    run.find("HBAC_DENIED", "FreeIPA policy does not authorize this request",
+    run.find("HBAC_DENIED", "FreeIPA HBAC policy does not authorize this request",
              "FreeIPA's HBAC evaluation found no enabled rule that matches this user, host and service together. "
              "This is the policy as configured, not by itself a fault.", True)
     return Verdict(State.FAIL, "FreeIPA HBAC policy does not authorize this request"), status

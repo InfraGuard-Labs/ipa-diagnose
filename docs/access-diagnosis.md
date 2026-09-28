@@ -16,7 +16,7 @@ The answer has three separate parts. They are never merged into one "access OK".
 
 | Part | States | Meaning |
 |---|---|---|
-| **AUTHENTICATION** | `FAIL`, `NOT_VERIFIED`, `UNKNOWN` (never `PASS`) | Can this IPA account authenticate at all, according to FreeIPA? `FAIL`: no such IPA user, the account is disabled, or its Kerberos principal expired. `NOT_VERIFIED`: nothing in FreeIPA blocks it, but **no credential was tested**, so a user existing is not an authentication pass. `UNKNOWN`: the account state could not be read. |
+| **AUTHENTICATION** | `FAIL`, `NOT_VERIFIED`, `UNKNOWN` (never `PASS`) | Can this IPA account authenticate at all, according to FreeIPA? `FAIL`: no such IPA user, a preserved (deleted) user, the account is disabled, or its Kerberos principal expired. For an expired principal, the KDC refuses Kerberos logins; whether an SSH-key login is refused depends on the host's SSSD. `NOT_VERIFIED`: nothing in FreeIPA blocks it, but **no credential was tested**, so a user existing is not an authentication pass. `UNKNOWN`: the account state could not be read. |
 | **AUTHORIZATION** | `PASS`, `FAIL`, `UNKNOWN` | FreeIPA's HBAC policy decision, taken **only** from FreeIPA's own evaluator (`hbactest`) for an existing user and host, with a complete rule list and no rule errors. Anything else is `UNKNOWN`. |
 | **RUNTIME ACCESS** | `NOT_VERIFIED` (always, in this version) | Whether a real login works. No login is attempted, and the host's SSSD, PAM stack, network path and keytab are not checked. An HBAC `PASS` never means SSH works. |
 
@@ -24,7 +24,7 @@ Then: **ROOT CAUSE**, **WHY**, **CHECKED FOR YOU**, **IMPACT**, **RESOLUTION**, 
 
 ### A deny is policy, not a fault
 
-`AUTHORIZATION: FAIL` means "FreeIPA policy does not authorize this request". That is often exactly what the policy
+`AUTHORIZATION: FAIL` means "FreeIPA HBAC policy does not authorize this request". That is often exactly what the policy
 owner intended. ipa-diagnose never calls a deny broken or misconfigured, and **never suggests adding the user, host
 or service to a rule, adding group members, or enabling a rule** to turn a deny into an allow. Who may log in where
 is a security and business decision. The RESOLUTION for a deny is always "no fix suggested", with that reason. The
@@ -86,7 +86,7 @@ Reading FreeIPA 4.13.3's `ipaserver/plugins/hbactest.py` (SOURCE evidence; confi
   the object's groups is listed. For users and hosts, "groups" means the direct **and** nested groups FreeIPA reports
   (`memberof_*` plus `memberofindirect_*`). For an HBAC service it means its direct service groups (HBAC service
   groups contain only services).
-- **Trusted-domain users** (`name@ad.domain`, `DOMAIN\name`, SIDs) take a separate path in `hbactest` (trust
+- **Trusted-domain users** (`name@ad.domain`, `DOMAIN\name`, `S-1-5-21-...` SIDs) take a separate path in `hbactest` (trust
   lookups, external groups). This version recognizes those forms and answers `UNKNOWN`. It prints FreeIPA's own
   command instead of guessing.
 
@@ -125,7 +125,8 @@ Every failure is reported as a failure. None of them produces a PASS or a FAIL.
 | API timeout, network error, non-JSON or malformed answer, call budget used up | UNKNOWN | 3 |
 | `hbactest` error (for example no permission), non-boolean verdict, inconsistent verdict | UNKNOWN | 3 |
 | truncated rule list, rule evaluation errors | UNKNOWN | 3 |
-| user or host does not exist | UNKNOWN (not evaluated) | 1 (missing user: AUTHENTICATION FAIL) / 3 |
+| user or host does not exist, or the user is preserved (deleted) | UNKNOWN (not evaluated); VERIFY then points to `ipa user-show` / `ipa host-show`, never to `hbactest` | 1 (user: AUTHENTICATION FAIL) / 3 (host) |
+| user or host cannot be read (timeout, no permission) | UNKNOWN (`OBJECT_UNREADABLE` names which) | 3 |
 | HBAC service not defined | evaluated normally; only rules for all services can match | 0 / 1 |
 | replay without a recorded answer for a call | UNKNOWN (never an empty success) | 3 |
 

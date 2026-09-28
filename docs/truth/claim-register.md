@@ -1,4 +1,4 @@
-# Article-claim evidence register (Slices 1 and 2)
+# Article-claim evidence register (Slices 1, 2 and 3)
 
 This is **not** an article draft. It lists every claim about ipa-diagnose that could be published, with its
 evidence tier and exact safe wording, so no claim is ever stronger than its evidence. Evidence rows are in
@@ -81,3 +81,24 @@ and review evidence: `tests/bundle/` and the review summary in the Slice 2 pull 
 **Operational detail that remains by design** (say so whenever the bundle is described): software versions, unit
 names, file paths and modes, error text, timestamps (including install time implied by certmonger request IDs),
 disk sizes, the list of ipa-healthcheck checks, and the shape of the topology.
+
+## Slice 3: access diagnosis (`ipa-diagnose access USER HOST SERVICE`)
+
+Evidence rows: [access-truth-matrix.md](access-truth-matrix.md). These are LIVE rows from the same lab and
+environment: a FreeIPA 4.13.3 / Fedora 43 container, single server, fake `LAB.TEST` identities, `allow_all`
+disabled. Fixture and synthetic evidence is in `tests/access/`. The contract is in `docs/access-diagnosis.md`.
+
+| ID | Claim | Tier | Evidence | Limits | Safe wording | Overclaim to avoid |
+|---|---|---|---|---|---|---|
+| X01 | The policy decision is FreeIPA's own | SOURCE + LIVE | `access/evaluate.py` (AUTHORIZATION PASS/FAIL only from `hbactest`); A01-A22 compared with an independent `ipa hbactest` | one version, single server | "The allow/deny answer comes from FreeIPA's own HBAC evaluation (`hbactest`, the libipa_hbac engine SSSD uses); ipa-diagnose explains it and never overrides it." | "ipa-diagnose evaluates HBAC", "reimplements SSSD" |
+| X02 | No false allow or false deny in the live scenarios | LIVE | access truth matrix: every scenario, 0 false allows, 0 false denies | 22 scenarios on one lab policy | "In 22 live scenarios (direct, group, nested group, nested hostgroup, service group, deny, disabled rule, disabled or expired account, missing objects, failures), no answer contradicted FreeIPA's own evaluation." | "never wrong", "validated on any deployment" |
+| X03 | Authentication, authorization and runtime access are kept apart | LIVE + SYNTHETIC | A08/A22 (FAIL/PASS), A01 (NOT_VERIFIED/PASS/NOT_VERIFIED); tests | runtime is never tested | "A disabled account with an allowing rule is reported as AUTHENTICATION FAIL and AUTHORIZATION PASS; runtime access is always reported as not verified." | "tells you whether the user can log in", "SSH will work" |
+| X04 | An HBAC allow is not a login test | design + docs | RUNTIME ACCESS is always NOT_VERIFIED | no SSSD/PAM/network/keytab check (Slice 4) | "It answers the policy question only; it does not attempt or verify a login." | any claim that PASS means SSH works |
+| X05 | Membership paths explain the decision | LIVE + FIXTURE | A02-A05 (group, hostgroup, nested chains `carol → backend → devs`, `app02 → web → prod`, service group Sudo) | at most 10 rules, chains up to 40 group reads, depth 12 | "For an allow it names the matched rule and how the user, host and service match it, including nested group chains." | "shows every path" |
+| X06 | A deny is reported as policy, with no grant advice | LIVE + SYNTHETIC | A06, A07 (no fix, no add/enable suggestion, not called broken) | - | "A deny is reported as 'FreeIPA policy does not authorize this request'; ipa-diagnose suggests no rule, group or account change, because that is the policy owner's decision." | "finds misconfigured HBAC" |
+| X07 | It does not repeat hbactest's allow for a user that does not exist | LIVE + SOURCE | A14: FreeIPA's `ipa hbactest` granted a nonexistent user under `allow_all`; ipa-diagnose answered UNKNOWN (not evaluated) with AUTHENTICATION FAIL | - | "FreeIPA's hbactest evaluates names that do not exist (so `allow_all` 'grants' them); ipa-diagnose checks that the user and host exist first and gives no policy verdict for a name with no IPA identity." | "detects all hbactest pitfalls" |
+| X08 | Failures are UNKNOWN, never a decision | LIVE + SYNTHETIC | A12 (no ticket), A16 (API unreachable), A10 (missing host), A17 (trusted form); tests for timeouts, malformed answers, truncation, rule errors | - | "Without a ticket, with the IPA API unreachable, or with incomplete evaluation, the answer is UNKNOWN (exit 3)." | - |
+| X09 | Works with a normal user's ticket | LIVE (one case) | A13 (alice's ticket; account state readable) | default ACIs only | "In the lab it worked with an ordinary user's Kerberos ticket, without root." | "works with any identity" |
+| X10 | Reads only what the question needs | SOURCE + SYNTHETIC | fixed call sequence; deny lists only rules naming the user; test that unrelated rule names are absent | the caller's ticket determines what FreeIPA returns | "It reads the user, host and service asked about, their own groups and the rules needed for the answer; it never lists other rules by name." | "no directory data leaves FreeIPA" |
+| X11 | Trusted-domain (AD) users | LIVE (recognition only) | A17 | not evaluated | "Trusted-domain users are recognized and answered UNKNOWN; they are not supported yet." | any AD trust claim |
+| X12 | Fast enough for a ticket queue | LIVE | truth matrix timing | one lab | "In the lab an answer took about 1 s, or about 4-5 s for a 12-level nested group chain." | performance claims beyond the lab |

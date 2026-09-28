@@ -272,8 +272,15 @@ class LiveApi(Api):
 REPLAY_FILE = "access_api.json"
 
 
-def call_key(method: str, args: List[str]) -> str:
-    return json.dumps([method, [a.lower() for a in args]], sort_keys=True)
+_KEYED_OPTIONS = {"hbactest": ("user", "targethost", "service")}
+
+
+def call_key(method: str, args: List[str], options: Optional[Dict[str, Any]] = None) -> str:
+    """Replay key: the method and its arguments, plus - for hbactest - the exact user, host and service asked,
+    so a replay can never answer a different (for example uncanonicalized) request."""
+
+    keyed = {k: str((options or {}).get(k, "")) for k in _KEYED_OPTIONS.get(method, ())}
+    return json.dumps([method, [a.lower() for a in args], keyed], sort_keys=True)
 
 
 class ReplayApi(Api):
@@ -313,11 +320,12 @@ class ReplayApi(Api):
             args = c.get("args") if isinstance(c.get("args"), list) else []
             if not all(isinstance(a, str) for a in args):
                 continue
-            self._answers[call_key(c["method"], args)] = c
+            opts = c.get("options") if isinstance(c.get("options"), dict) else {}
+            self._answers[call_key(c["method"], args, opts)] = c
         super().__init__(ctx, **kw)
 
     def _call(self, method: str, args: List[str], options: Dict[str, Any]) -> ApiResponse:
-        rec = self._answers.get(call_key(method, args))
+        rec = self._answers.get(call_key(method, args, options))
         if rec is None:
             return ApiResponse(method, args, error=ApiError("not_recorded", "this call was not recorded in the replay"))
         if isinstance(rec.get("transport_error"), dict):

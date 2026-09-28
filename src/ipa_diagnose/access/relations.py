@@ -206,7 +206,8 @@ class SideExplanation:
     side: str  # user | host | service
     how: str
     """``all`` (the rule's category is all), ``direct`` (the object is listed by name), ``group`` (through a direct
-    group), ``nested_group`` (through an indirect group), or ``none`` (the index holds no reason this side matches)."""
+    group), ``nested_group`` (through an indirect group), ``none`` (the index holds no reason this side matches), or
+    ``unknown`` (the rule lists groups, but the object's groups could not be read)."""
     via: Optional[str] = None
     """The listed group/hostgroup/service group the object matched through."""
     chain: List[str] = dataclasses.field(default_factory=list)
@@ -227,8 +228,9 @@ class Membership:
 
 
 def explain_side(index: RelationshipIndex, side: str, rule_side: RuleSide, member: Optional[Membership],
-                 object_name: str, group_kind: NodeKind) -> List[SideExplanation]:
-    """Every reason (there may be several) why ``rule_side`` covers the object; ``[how=none]`` when there is none."""
+                 object_name: str, group_kind: NodeKind, groups_known: bool = True) -> List[SideExplanation]:
+    """Every reason (there may be several) why ``rule_side`` covers the object; ``[how=none]`` when there is none,
+    ``[how=unknown]`` when the rule lists groups but the object's groups were never read (``groups_known`` False)."""
 
     if rule_side.category_all:
         return [SideExplanation(side, "all")]
@@ -252,4 +254,6 @@ def explain_side(index: RelationshipIndex, side: str, rule_side: RuleSide, membe
             else:
                 out.append(SideExplanation(side, "nested_group", via=g, chain=[member.node.name, "...", g],
                                            chain_complete=False))
+    if not out and member is None and not groups_known and rule_side.groups:
+        return [SideExplanation(side, "unknown")]
     return out or [SideExplanation(side, "none")]

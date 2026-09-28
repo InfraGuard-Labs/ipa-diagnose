@@ -32,29 +32,43 @@ def _c(v: Any, limit: int = 1200) -> Any:
 # ---------------------------------------------------------------- the answer in words
 
 
+def _codes(r: AccessResult) -> set:
+    return {f.code for f in r.findings}
+
+
 def headline(r: AccessResult) -> str:
     t = r.targets
-    who = f"{t.user}@{t.user_domain}" if t.user_domain else t.user
+    who = t.display_user
     q = f"{who} to access {t.host} through {t.service}"
     a, z = r.authentication.state, r.authorization.state
+    codes = _codes(r)
     if z == State.PASS and a == State.FAIL:
-        return f"FreeIPA policy authorizes {q}, but the account cannot authenticate."
+        return f"FreeIPA HBAC policy authorizes {q}, but the account cannot authenticate."
     if z == State.PASS:
-        return f"FreeIPA policy authorizes {q}."
+        return f"FreeIPA HBAC policy authorizes {q}."
     if z == State.FAIL:
-        return f"FreeIPA policy does not authorize {q}."
+        return f"FreeIPA HBAC policy does not authorize {q}."
+    if "EVALUATOR_UNAVAILABLE" in codes:
+        return "ipa-diagnose could not query FreeIPA, so nothing about this request is known yet."
     if r.account.exists is False:
-        return f"{who} is not an IPA user, so FreeIPA policy has no decision about it."
+        return f"{who} is not an IPA user, so FreeIPA HBAC policy has no decision about it."
+    if r.account.preserved:
+        return f"{who} is a preserved (deleted) IPA user, so FreeIPA HBAC policy has no decision about it."
+    if r.host.exists is False:
+        return f"{t.host} is not an IPA host, so FreeIPA HBAC policy has no decision about it."
     if a == State.FAIL:
-        return f"{who} cannot authenticate, and whether FreeIPA policy authorizes it could not be determined."
-    return f"Could not determine whether FreeIPA policy authorizes {q}."
+        return f"{who} cannot authenticate, and whether FreeIPA HBAC policy authorizes it could not be determined."
+    return f"Could not determine whether FreeIPA HBAC policy authorizes {q}."
 
 
 def root_cause(r: AccessResult) -> List[str]:
-    blocking = [f for f in r.findings if f.blocking]
-    if blocking:
-        return [f.title for f in blocking]
-    return []
+    return [f.title for f in r.findings if f.blocking]
+
+
+def no_blocker_text(r: AccessResult) -> str:
+    return ("no blocker found in FreeIPA HBAC policy or in the account attributes read (disabled, principal expiry, "
+            "preserved). Not checked: whether the password or other credential is valid, and lockout after failed "
+            "logins.")
 
 
 def _side_text(e: SideExplanation, obj: str) -> str:
@@ -67,6 +81,8 @@ def _side_text(e: SideExplanation, obj: str) -> str:
     if e.how == "nested_group":
         chain = " -> ".join(e.chain)
         return f"{obj} is a nested member of {e.via} ({chain}{'' if e.chain_complete else ', chain not fully read'})"
+    if e.how == "unknown":
+        return "could not be determined (the groups of this object were not read)"
     return "no reason found in the data read"
 
 
@@ -81,6 +97,25 @@ def rule_sentence(r: AccessResult, e: RuleExplanation) -> str:
     return f"rule {e.rule} ({state}) - " + " | ".join(parts)
 
 
+def _unmatched_reason(e: RuleExplanation) -> str:
+    missing = [s for s in ("user", "host", "service") if all(x.how == "none" for x in e.sides[s])]
+    unknown = [s for s in ("user", "host", "service") if all(x.how in ("none", "unknown") for x in e.sides[s])
+               and s not in missing]
+    parts = []
+    if e.enabled is False:
+        parts.append("the rule is disabled")
+    if missing:
+        parts.append(("it also does not cover the " if parts else "it does not cover the ") + " or the ".join(missing))
+    if unknown:
+        parts.append("whether it covers the " + " or the ".join(unknown) + " could not be determined")
+    if e.status == "CONTRADICTING":
+        return ("the data read says this rule covers this user, host and service, but FreeIPA did not match it "
+                "(explanation CONTRADICTING)")
+    if e.enabled is False and not missing and not unknown:
+        parts.append("it otherwise names this user, host and service")
+    return "; ".join(parts) or "no reason found in the data read"
+
+
 def why(r: AccessResult) -> List[str]:
     out: List[str] = []
     ev = r.evaluation
@@ -88,65 +123,82 @@ def why(r: AccessResult) -> List[str]:
         for e in r.rules:
             if e.matched_by_freeipa:
                 out.append("Matched " + rule_sentence(r, e))
-        if r.explanation_status != "COMPLETE":
-            out.append(f"Explanation {r.explanation_status.lower()}: FreeIPA's decision above stands either way.")
     elif r.authorization.state == State.FAIL:
         total = len(ev.matched) + ev.not_matched_count
         out.append(f"FreeIPA evaluated {total} enabled HBAC rule(s); none matches this user, host and service "
                    "together. Disabled rules are not evaluated (SSSD ignores them too).")
         related = [e for e in r.rules if not e.matched_by_freeipa]
         if related:
-            out.append("Rules that name this user (directly or through its groups) and why each "
-                       "does not apply:")
+            out.append("Rules that name this user (directly or through its groups), and why each does not apply:")
             for e in related:
-                missing = [s for s in ("user", "host", "service") if all(x.how == "none" for x in e.sides[s])]
-                if e.enabled is False:
-                    reason = "the rule is disabled"
-                elif missing:
-                    reason = "it does not cover the " + " or the ".join(missing)
-                else:
-                    reason = "no reason found in the data read"
-                out.append(f"  - {e.rule}: {reason}")
-        if r.explanation_status != "COMPLETE":
-            out.append(f"Explanation {r.explanation_status.lower()}: FreeIPA's decision above stands either way.")
+                out.append(f"  - {e.rule}: {_unmatched_reason(e)}")
+        else:
+            out.append(f"No HBAC rule names {r.account.canonical or r.targets.user} or any of its groups.")
+    if r.explanation_status in ("INCOMPLETE", "CONTRADICTING"):
+        out.append(f"Explanation {r.explanation_status}: FreeIPA's decision above stands either way (see ALSO NOTED).")
     for f in r.findings:
-        if f.blocking and f.code not in ("HBAC_DENIED",):
+        if f.blocking and f.code != "HBAC_DENIED":
             out.append(f"{f.title}: {f.detail}")
     return out
 
 
 def impact(r: AccessResult) -> str:
     t = r.targets
+    who = r.account.canonical or t.user
     a, z = r.authentication.state, r.authorization.state
-    if a == State.FAIL:
-        return (f"{t.user} cannot authenticate with FreeIPA, so logins to IPA-joined hosts fail regardless of "
-                "HBAC.")
+    codes = _codes(r)
+    if "USER_NOT_FOUND" in codes or "USER_PRESERVED" in codes:
+        return (f"{who} has no usable IPA account, so no IPA-based login is possible (a local account of that name on "
+                "the host is not governed by FreeIPA).")
+    if "USER_DISABLED" in codes:
+        return (f"{who} cannot authenticate with FreeIPA, and SSSD's IPA access check refuses disabled accounts, so "
+                "logins to IPA-joined hosts are expected to fail regardless of HBAC.")
+    if "USER_PRINCIPAL_EXPIRED" in codes:
+        return (f"Kerberos-based logins by {who} (password, GSSAPI) fail wherever the KDC is used, regardless of HBAC; "
+                "other login methods are not decided by this command.")
     if z == State.FAIL:
-        return (f"{t.user} is refused on {t.host} through {t.service} wherever SSSD enforces FreeIPA HBAC "
+        return (f"{who} is refused on {t.host} through {t.service} wherever SSSD enforces FreeIPA HBAC "
                 "(access_provider = ipa, the default on enrolled hosts). Other users, hosts and services are not "
                 "affected by this answer.")
     if z == State.PASS:
-        return ("Policy is not what stops this login. If the login still fails, the cause is elsewhere (credentials, "
-                "the host's SSSD/PAM/network/keytab), which this command does not test.")
-    return "Unknown: the policy decision could not be established."
+        return ("FreeIPA HBAC policy is not what stops this login. If the login still fails, the cause is elsewhere "
+                "(credentials, lockout, the host's SSSD, PAM, network or keytab), which this command does not test.")
+    return "Unknown: the HBAC policy decision could not be established."
 
 
 def resolution(r: AccessResult) -> Dict[str, Any]:
-    codes = {f.code for f in r.findings}
-    if "USER_DISABLED" in codes or "USER_PRINCIPAL_EXPIRED" in codes:
+    codes = _codes(r)
+    if "EVALUATOR_UNAVAILABLE" in codes:
+        reason = ("No fix: ipa-diagnose could not query FreeIPA (see WHY). Get a Kerberos ticket (kinit) or restore "
+                  "access to the IPA server, then run the command again.")
+    elif "TRUSTED_IDENTITY_UNSUPPORTED" in codes:
+        reason = "No fix: trusted-domain users are not supported by this version; use FreeIPA's own evaluation (VERIFY)."
+    elif "USER_NOT_FOUND" in codes or "USER_PRESERVED" in codes or "HOST_NOT_FOUND" in codes:
+        reason = ("No fix is suggested. Check the name; the account or host may also be deliberately absent "
+                  "(offboarded, deleted or not enrolled).")
+    elif "USER_DISABLED" in codes or "USER_PRINCIPAL_EXPIRED" in codes:
         reason = ("No fix is suggested. Accounts are usually disabled or expired on purpose (offboarding, security "
                   "incidents, contract end). Whether this account should be usable is a decision for its owner's "
                   "process, not for a diagnostic tool.")
+    elif "EVALUATOR_RULE_ERRORS" in codes:
+        reason = ("No fix is suggested. FreeIPA could not evaluate rule(s) " + ", ".join(r.evaluation.error_rules[:5])
+                  + "; inspect them with ipa hbacrule-show.")
+    elif r.authorization.state == State.FAIL and r.explanation_status == "CONTRADICTING":
+        reason = ("No policy change is suggested. The data read disagrees with FreeIPA's evaluation: run the command "
+                  "again, and check the rule named in WHY with ipa hbactest --rules=RULE.")
     elif r.authorization.state == State.FAIL:
-        reason = ("No fix is suggested. A deny is FreeIPA policy doing what it is configured to do; whether this "
+        reason = ("No fix is suggested. A deny is FreeIPA HBAC policy doing what it is configured to do; whether this "
                   "user should reach this host through this service is a security and business decision for the "
                   "policy owner. ipa-diagnose never proposes adding members, hosts or services to a rule, or "
                   "enabling a rule, just to turn a deny into an allow.")
     elif r.authorization.state == State.PASS:
-        reason = "Nothing to fix in FreeIPA policy for this request."
+        reason = "Nothing to fix in FreeIPA HBAC policy for this request."
+    elif "OBJECT_UNREADABLE" in codes:
+        reason = ("No fix: the user or host could not be read with this identity (see WHY). Run the command again, "
+                  "or with an identity that may read it.")
     else:
-        reason = ("No fix: the decision is unknown. Address the reason above (for example a missing Kerberos ticket "
-                  "or an unreachable IPA server) and run the command again.")
+        reason = (f"No fix: the decision is unknown (see WHY). If FreeIPA refused the evaluation for "
+                  f"{r.principal or 'this identity'}, run it with an identity that may use hbactest.")
     return {"status": "NONE", "procedure": None, "commands": [], "reason": reason}
 
 
@@ -160,18 +212,41 @@ def risk(r: AccessResult) -> str:
 
 def verify_steps(r: AccessResult) -> List[str]:
     t = r.targets
+    q = shlex.quote
     if t.user_domain:
-        return [f"ipa hbactest --user={shlex.quote(t.user + '@' + t.user_domain)} --host={shlex.quote(t.host)} "
-                f"--service={shlex.quote(t.service)}   (FreeIPA's own evaluation, read-only)"]
+        return [f"ipa hbactest --user={q(t.display_user)} --host={q(t.host)} --service={q(t.service)}   "
+                "(FreeIPA's own evaluation, read-only)"]
     user = r.account.canonical or t.user
     host = r.host.canonical or t.host
     svc = r.service.canonical or t.service
-    steps = [f"ipa-diagnose access {shlex.quote(user)} {shlex.quote(host)} {shlex.quote(svc)}   (again, after any "
-             "change the policy owner decides on)",
-             f"ipa hbactest --user={shlex.quote(user)} --host={shlex.quote(host)} --service={shlex.quote(svc)}   "
+    codes = _codes(r)
+    if r.account.exists is False or r.account.preserved or r.host.exists is False:
+        steps = []
+        if r.account.exists is False or r.account.preserved:
+            steps += [f"ipa user-show {q(user)}   (read-only)",
+                      f"ipa user-find --preserved=true --login={q(user)}   (read-only; a deleted but kept account)",
+                      f"ipa stageuser-show {q(user)}   (read-only; an account not yet activated)"]
+        if r.host.exists is False:
+            steps.append(f"ipa host-show {q(host)}   (read-only; the host may be enrolled under another name)")
+        steps.append("(do not use ipa hbactest for a name that does not exist: it evaluates such names anyway and "
+                     "can report access granted through rules for all users or hosts)")
+        return steps
+    if "EVALUATOR_UNAVAILABLE" in codes:
+        return ["klist   (is there a valid Kerberos ticket?)",
+                f"ipa-diagnose access {q(user)} {q(host)} {q(svc)}   (again, after kinit or once the server is "
+                "reachable)"]
+    steps = [f"ipa hbactest --user={q(user)} --host={q(host)} --service={q(svc)}   "
              "(FreeIPA's own evaluation, read-only)"]
+    if r.authorization.state == State.FAIL:
+        steps.insert(0, f"ipa-diagnose access {q(user)} {q(host)} {q(svc)}   (again, after any change the policy "
+                        "owner decides on)")
+    if r.authentication.state == State.FAIL:
+        steps.append(f"ipa user-show {q(user)} --all   (read-only; 'Account disabled' and 'Kerberos principal "
+                     "expiration')")
+    if r.authentication.state != State.FAIL:
+        steps.append(f"ipa user-status {q(user)}   (read-only; failed logins and lockout on each server)")
     if r.authorization.state == State.PASS and r.authentication.state != State.FAIL:
-        steps.append(f"on {host}, as root: sssctl user-checks {shlex.quote(user)} -a acct -s {shlex.quote(svc)}   "
+        steps.append(f"on {host}, as root: sssctl user-checks {q(user)} -a acct -s {q(svc)}   "
                      "(the host's SSSD account check for this service; read-only; runtime evidence this command "
                      "does not collect)")
     return steps
@@ -198,9 +273,9 @@ def to_dict(r: AccessResult) -> Dict[str, Any]:
         "source_mode": r.mode,
         "generated_at": r.generated_at,
         "query": {
-            "question": "Does FreeIPA policy authorize USER to access HOST through SERVICE, and why?",
+            "question": "Does FreeIPA HBAC policy authorize USER to access HOST through SERVICE, and why?",
             "input": r.raw_query,
-            "user": r.targets.user, "user_domain": r.targets.user_domain,
+            "user": r.targets.user, "user_domain": r.targets.user_domain, "user_display": r.targets.display_user,
             "host": r.targets.host, "host_completed_with_ipa_domain": r.targets.host_completed,
             "service": r.targets.service,
             "asked_as": r.principal, "ipa_server": r.server, "ipa_api_version": r.api_version,
@@ -209,7 +284,7 @@ def to_dict(r: AccessResult) -> Dict[str, Any]:
         "authentication": {"state": r.authentication.state.value, "summary": r.authentication.summary,
                            "reasons": r.authentication.reasons,
                            "account": {"exists": r.account.exists, "canonical_name": r.account.canonical,
-                                       "disabled": r.account.disabled,
+                                       "disabled": r.account.disabled, "preserved": r.account.preserved,
                                        "principal_expires": r.account.principal_expires,
                                        "principal_expired": r.account.principal_expired,
                                        "password_expires": r.account.password_expires,
@@ -222,7 +297,7 @@ def to_dict(r: AccessResult) -> Dict[str, Any]:
         "runtime_access": {"state": r.runtime.state.value, "summary": r.runtime.summary,
                            "reasons": r.runtime.reasons},
         "authoritative_evaluation": {
-            "ran": ev.ran, "granted": ev.granted, "request": ev.request, "matched_rules": ev.matched,
+            "ran": ev.ran, "granted": ev.granted, "request": ev.request, "matched_rule_names": ev.matched,
             "not_matched_rule_count": ev.not_matched_count, "error_rules": ev.error_rules,
             "rule_list_truncated": ev.truncated, "error": ev.error, "summary": ev.summary,
             "evaluates": "enabled HBAC rules only (as SSSD)",
@@ -262,7 +337,8 @@ def to_dict(r: AccessResult) -> Dict[str, Any]:
                            "system)", "read_only": True},
         },
         "completeness": r.completeness,
-        "diagnosis": {"root_cause": root_cause(r), "why": why(r), "impact": impact(r),
+        "diagnosis": {"root_cause": root_cause(r), "no_blocker": None if root_cause(r) else no_blocker_text(r),
+                      "why": why(r), "impact": impact(r),
                       "findings": [{"code": f.code, "title": f.title, "detail": f.detail, "blocking": f.blocking}
                                    for f in r.findings]},
         "resolution": resolution(r),
@@ -284,7 +360,7 @@ def render(r: AccessResult, console: Console, details: bool = False) -> None:
     q = d["query"]
     p = lambda text="", style=None: console.print(text, markup=False, soft_wrap=True, style=style)  # noqa: E731
     src = "LIVE" if r.mode == "LIVE" else "REPLAY of recorded evidence (describes no live system)"
-    p(f"ipa-diagnose access: {q['user'] if not q['user_domain'] else q['user'] + '@' + q['user_domain']} -> "
+    p(f"ipa-diagnose access: {q['user_display']} -> "
       f"{q['host']} via {q['service']}", "bold")
     p(f"  {src}; asked FreeIPA as {q['asked_as'] or 'unknown'}"
       + (f" on {q['ipa_server']}" if q["ipa_server"] else "")
@@ -306,10 +382,15 @@ def render(r: AccessResult, console: Console, details: bool = False) -> None:
     p()
     rc = d["diagnosis"]["root_cause"]
     p("ROOT CAUSE", "bold")
-    p("  " + ("; ".join(rc) if rc else "none found: nothing in FreeIPA policy or account state blocks this request"))
+    p("  " + ("; ".join(rc) if rc else d["diagnosis"]["no_blocker"]))
     p("WHY", "bold")
     for line in d["diagnosis"]["why"] or ["-"]:
         p("  " + line)
+    context = [f for f in d["diagnosis"]["findings"] if not f["blocking"]]
+    if context:
+        p("ALSO NOTED", "bold")
+        for f in context:
+            p(f"  {f['title']}: {f['detail']}")
     p("CHECKED FOR YOU", "bold")
     marks = {"ok": "ok  ", "problem": "!!  ", "not_found": "--  ", "error": "ERR ", "skipped": "skip"}
     for c in d["evidence"]["checks"]:
@@ -325,11 +406,6 @@ def render(r: AccessResult, console: Console, details: bool = False) -> None:
     p("VERIFY", "bold")
     for s in d["verify"]:
         p("  " + s)
-    context = [f for f in d["diagnosis"]["findings"] if not f["blocking"]]
-    if context:
-        p("ALSO NOTED", "bold")
-        for f in context:
-            p(f"  {f['title']}: {f['detail']}")
     if details:
         p("RELATIONSHIPS READ (explanation only; the decision is FreeIPA's)", "bold")
         for e in d["evidence"]["relationships"]:
