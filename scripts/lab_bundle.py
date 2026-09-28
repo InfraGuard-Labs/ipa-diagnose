@@ -55,6 +55,17 @@ def _read(path):
 
 
 def check(scenario, bundle_path, before_path, after_path, spec_text, tag=None):
+    # a scenario whose bundle is missing or unreadable is a FAIL row, never a missing row
+    try:
+        return _check(scenario, bundle_path, before_path, after_path, spec_text, tag)
+    except Exception as e:  # noqa: BLE001 - any harness error must fail the scenario
+        why = _read(f"out/{tag}-bundle.txt").strip().splitlines()[:1] if tag else []
+        _emit(scenario, "FAIL", [[False, f"bundle not checkable: {type(e).__name__}"
+                                         + (f" ({why[0][:120]})" if why else "")]], {})
+        return 1
+
+
+def _check(scenario, bundle_path, before_path, after_path, spec_text, tag=None):
     spec = json.loads(spec_text or "{}")
     checks = []
 
@@ -162,7 +173,10 @@ def main(argv):
         rows = [json.loads(x) for x in RESULTS.read_text(encoding="utf-8").splitlines()] if RESULTS.exists() else []
         for r in rows:
             print(f"{r['verdict']:5s} {r['scenario']}")
-        return 1 if any(r["verdict"] == "FAIL" for r in rows) or not rows else 0
+        missing = [x for x in argv[1:] if x not in {r["scenario"] for r in rows}]  # expected scenario IDs
+        for x in missing:
+            print(f"FAIL  {x} (no result row)")
+        return 1 if any(r["verdict"] == "FAIL" for r in rows) or not rows or missing else 0
     print(__doc__)
     return 2
 

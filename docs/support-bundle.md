@@ -165,7 +165,9 @@ Constants that carry technical meaning are kept:
 - `ipa-ca`, `localhost`, and public documentation domains (`freeipa.org`, `redhat.com`, ...), unless the
   diagnosed host is inside one of them: then that whole domain is pseudonymized, including the documentation
   links in it;
-- Python and Java module names.
+- generic host words (`www`, `mail`, `api`, `ldap`, `server`, ...) are never treated as a host's short name, only
+  as part of its full name;
+- Python and Java module names, and FreeIPA's `api.env.*` attributes in tracebacks.
 
 ## Leak self-test (fail closed)
 
@@ -262,6 +264,11 @@ diagnosis time: the bundle adds no collectors or network access.
     it) and `getcert request ... -P PIN`: no supported collector reads either;
   - non-English or leetspeak secret words (`passwort`, `p@ssword`);
   - bare user names that appear only in PAM fields (`ruser=`, `logname=`), in `id` output (`groups=...(name)`) or in PKI audit fields (`SubjectID=`, `UID x`). No collector reads PAM or `id` output, and the PKI audit accounts are usually system accounts;
+  - a value echoed by a Tomcat digester warning (`failed to set property [requiredSecret] to [X]`): the collected
+    `pki-tomcatd` journal does not include the Dogtag instance unit's output, and a real AJP secret (about 43
+    letters and digits) is caught by the random-token rule;
+  - the group or host group name of an automember rule that appears only in a replication-conflict DN
+    (`cn=<name>,cn=group,cn=automember,...`);
   - single-label (undotted) Kerberos realms;
   - trust domains whose top-level label is not a known TLD;
   - two hosts in different domains that share a short name: a bare short name then gets the diagnosed host's pseudonym.

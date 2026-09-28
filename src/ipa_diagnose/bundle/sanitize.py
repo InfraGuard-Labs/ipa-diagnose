@@ -50,7 +50,7 @@ _RESERVED = {c.lower() for c in CLASSES} | {"redacted", "removed", "omitted", "t
 CONST_WORDS = _RESERVED | {
     "localhost", "localhost4", "localhost6", "localhost.localdomain", "ipa", "server", "master", "replica", "ldap",
     "ldaps", "dns", "kdc", "ca", "www", "mail", "dc", "ad", "host", "test", "lab", "node", "primary", "secondary",
-    "idm", "freeipa", "auth", "id", "sso", "ns", "ipa-ca", "self",
+    "idm", "freeipa", "auth", "id", "sso", "ns", "ipa-ca", "self", "api",
 }
 CONST_ACCOUNTS = {
     "root", "bin", "daemon", "adm", "nobody", "dirsrv", "pkiuser", "named", "apache", "ipaapi", "kdcproxy", "ods",
@@ -861,7 +861,8 @@ class Sanitizer:
                 self.add_host(v)  # a host of a domain already known (whatever text is glued around it)
                 continue
             tld = _is_tld(labels[-1]) or (labels[-1] in _NOT_TLD2 and len(labels) >= 3)
-            code = labels[0] in _MODULE_ROOTS and (len(labels) < 3 or labels[1] in _MODULE_SUBPACKAGES)
+            code = (labels[0] in _MODULE_ROOTS and (len(labels) < 3 or labels[1] in _MODULE_SUBPACKAGES)
+                    or labels[:2] == ["api", "env"])  # FreeIPA's api.env.host in a traceback is code, not a host
             if (tld and not code
                     and not any(v.lower() == d or v.lower().endswith("." + d) for d in self._domains)):
                 if ("HOST", v.lower()) not in self._map and not self._public(v.lower()):

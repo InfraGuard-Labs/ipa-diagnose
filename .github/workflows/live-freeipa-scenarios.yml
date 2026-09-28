@@ -553,8 +553,11 @@ jobs:
 
       - name: Bundle assertions (fail the job on any FAIL)
         run: |
-          python3 scripts/lab_bundle.py summary; a=$?
+          # every scenario must have a result row: a bundle that was not written is a FAIL, never a silent gap
+          python3 scripts/lab_bundle.py summary B1-healthy-baseline B2-dirsrv-down B3-krb5kdc-down \
+            B4-healthcheck-missing B5-non-root B6-output-safety-PASS; a=$?
           if grep -q B6-output-safety-FAIL out/truth/bundle-results.jsonl; then a=1; fi
+          if ! grep -q '"scenario": "B0-fresh-install' out/truth/bundle-results.jsonl; then echo "FAIL  B0 (no result row)"; a=1; fi
           exit $a
 
       - name: Cleanup
