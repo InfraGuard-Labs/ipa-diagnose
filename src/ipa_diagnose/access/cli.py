@@ -101,5 +101,5 @@ def run(argv: List[str]) -> int:
     if args.json:
         print(json.dumps(to_dict(result), indent=2))
     else:
-        render(result, Console(highlight=False), details=args.details)
+        render(result, Console(highlight=False, emoji=False), details=args.details)
     return exit_code(result)

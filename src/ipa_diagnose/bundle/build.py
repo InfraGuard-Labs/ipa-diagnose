@@ -456,21 +456,18 @@ def _project_access(result: Any, mode: str, s: Sanitizer) -> Dict[str, Any]:
     def pn(cls: str, name: Optional[str]) -> Optional[str]:
         if not name:
             return None
-        low = name.strip().lower()
-        if cls == "HOST":
-            s.add_host(name, force=True)
-        elif cls in ("USER", "GROUP", "HOSTGROUP"):
-            s._add_account(cls, name)
-        elif cls == "SERVICE" and low in GENERIC_SERVICES:
+        low = name.strip().rstrip(".").lower()
+        if cls == "SERVICE" and low in GENERIC_SERVICES:
             return low
         key = (cls, low)
-        if key in s._map:
+        if key in s._map:  # the same identity already seen in the other members: the same pseudonym
             return s._map[key]
         if cls in ("USER", "GROUP") and low in CONST_ACCOUNTS:
             return low
         if key not in short:
-            # a name the text rules skip (too short to search for safely): a pseudonym number of its own, never
-            # registered, because it is only ever written here, structurally
+            # A pseudonym number of its own, NOT registered for text replacement: these names are only ever written
+            # here, structurally, and registering an access target such as "backup" or "support" would make the
+            # self-test find the word in the bundle's own README and refuse the bundle.
             short[key] = s._alloc(cls)
         return short[key]
 
@@ -479,7 +476,8 @@ def _project_access(result: Any, mode: str, s: Sanitizer) -> Dict[str, Any]:
     def side(sd, k: str) -> Dict[str, Any]:
         obj_cls, grp_cls = kinds[k]
         chain = [pn(obj_cls if i == 0 else grp_cls, c) if c != "..." else "..." for i, c in enumerate(sd.chain)]
-        return {"how": sd.how, "via": pn(grp_cls, sd.via), "chain": chain, "chain_complete": sd.chain_complete}
+        return {"how": sd.how, "via": pn(grp_cls, sd.via), "chain": chain, "chain_complete": sd.chain_complete,
+                "count": sd.count}
 
     ev = result.evaluation
     t = result.targets
@@ -561,11 +559,11 @@ def build(evidence: EvidenceBundle, report: DiagnosisReport, *, previous: Option
         s.track_secrets(f.keywords)
     for i in evidence.items:
         s.track_secrets(i.data)
-    if access is not None:
-        raw["access.json"] = _project_access(access, mode, s)
     try:
         for obj in raw.values():
             s.discover(obj)
+        if access is not None:  # after discovery, so a name also seen elsewhere keeps its pseudonym
+            raw["access.json"] = _project_access(access, mode, s)
         # REDACT -> PSEUDONYMIZE -> BOUND, for every key and string
         final = {name: s.transform(obj) for name, obj in raw.items()}
     except SanitizeTimeout:

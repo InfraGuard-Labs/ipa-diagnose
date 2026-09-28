@@ -86,6 +86,8 @@ class Evaluation:
     matched: List[str] = dataclasses.field(default_factory=list)
     not_matched_count: int = 0
     error_rules: List[str] = dataclasses.field(default_factory=list)
+    error_rules_own: List[str] = dataclasses.field(default_factory=list)
+    """The error rules that name this user (the only error-rule names ever shown)."""
     truncated: bool = False
     error: Optional[str] = None
     request: Dict[str, str] = dataclasses.field(default_factory=dict)
@@ -227,6 +229,8 @@ class _Run:
         self.limit_notes: List[str] = []
         self.rules_unread: List[str] = []
         self.rules_cut = False  # more matched/related rules than MAX_RULES
+        # the queried objects and their own groups (lower-case): the only names a rule may contribute to the output
+        self.relevant: Dict[str, Set[str]] = {"user": set(), "host": set(), "service": {targets.service.lower()}}
 
     def call(self, name: str, method: str, args: List[str], options: Optional[Dict[str, Any]] = None) -> ApiResponse:
         resp = self.api.call(method, args, options)
@@ -279,6 +283,7 @@ class _Run:
         node = self.index.node(NodeKind.USER, uid)
         direct, indirect = set(_strs(res.get("memberof_group"))), set(_strs(res.get("memberofindirect_group")))
         self.index.add_memberships(node, NodeKind.GROUP, direct, indirect, f"user_show {uid}")
+        self.relevant["user"] = {uid.lower()} | {g.lower() for g in direct | indirect}
         self._user_rules = set(_strs(res.get("memberof_hbacrule"))) | set(_strs(res.get("memberofindirect_hbacrule")))
         problems = []
         if st.disabled:
@@ -333,6 +338,7 @@ class _Run:
         node = self.index.node(NodeKind.HOST, fqdn)
         direct, indirect = set(_strs(res.get("memberof_hostgroup"))), set(_strs(res.get("memberofindirect_hostgroup")))
         self.index.add_memberships(node, NodeKind.HOSTGROUP, direct, indirect, f"host_show {fqdn}")
+        self.relevant["host"] = {fqdn.lower()} | {g.lower() for g in direct | indirect}
         if st.has_keytab is False:
             self.find("HOST_NO_KEYTAB", f"FreeIPA holds no Kerberos key for {fqdn}",
                       "The host entry exists but has no keytab, which usually means it is not (or no longer) "
@@ -366,6 +372,7 @@ class _Run:
         st.exists, st.canonical, st.groups = True, cn, sorted(set(_strs(res.get("memberof_hbacsvcgroup"))))
         node = self.index.node(NodeKind.HBAC_SERVICE, cn)
         self.index.add_memberships(node, NodeKind.HBAC_SERVICE_GROUP, st.groups, [], f"hbacsvc_show {cn}")
+        self.relevant["service"] = {cn.lower()} | {g.lower() for g in st.groups}
         self.check("ok", f"HBAC service {cn} is defined; in {len(st.groups)} service group(s)")
         return st
 
@@ -387,6 +394,8 @@ class _Run:
         ev.matched = _strs(res.get("matched"))
         ev.not_matched_count = len(_strs(res.get("notmatched")))
         ev.error_rules = _strs(res.get("error"))
+        own = {x.lower() for x in self._user_rules}
+        ev.error_rules_own = [x for x in ev.error_rules if x.lower() in own]
         ev.truncated = _is_truncated(r)
         summary = _first(res.get("summary"))
         ev.summary = summary if isinstance(summary, str) else None
@@ -428,10 +437,17 @@ class _Run:
                                              ("host", rule.host, NodeKind.HOST, NodeKind.HOSTGROUP),
                                              ("service", rule.service, NodeKind.HBAC_SERVICE,
                                               NodeKind.HBAC_SERVICE_GROUP)):
+            # Privacy: a rule's other members describe other people's access. Only the objects asked about and
+            # their own groups become edges; nothing else a rule names is kept or shown.
+            relevant = self.relevant[side]
             for n in rs.names:
-                self.index.add_edge(rn, self.index.node(obj_kind, n), EdgeKind.RULE_APPLIES_TO, rule.source, side)
+                if n.lower() in relevant:
+                    self.index.add_edge(rn, self.index.node(obj_kind, n), EdgeKind.RULE_APPLIES_TO, rule.source,
+                                        side)
             for g in rs.groups:
-                self.index.add_edge(rn, self.index.node(grp_kind, g), EdgeKind.RULE_APPLIES_TO, rule.source, side)
+                if g.lower() in relevant:
+                    self.index.add_edge(rn, self.index.node(grp_kind, g), EdgeKind.RULE_APPLIES_TO, rule.source,
+                                        side)
         state = {True: "enabled", False: "disabled", None: "enabled state unknown"}[rule.enabled]
         self.check("ok", f"rule {rule.name}: {state}")
         return rule

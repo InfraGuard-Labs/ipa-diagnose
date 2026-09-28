@@ -224,7 +224,9 @@ class LiveApi(Api):
     def _call(self, method: str, args: List[str], options: Dict[str, Any]) -> ApiResponse:
         url = f"https://{self.context.server}/ipa/json"
         body = json.dumps({"method": method, "params": [args, options], "id": 0})
-        argv = [self._curl, "--silent", "--show-error", "--negotiate", "--user", ":", "--cacert", self._ca,
+        # -q first: never read ~/.curlrc (it could add --insecure, a proxy or a trace file); HTTPS only; bounded size
+        argv = [self._curl, "-q", "--proto", "=https", "--max-filesize", str(MAX_RESPONSE_BYTES),
+                "--silent", "--show-error", "--negotiate", "--user", ":", "--cacert", self._ca,
                 "--max-time", str(self.TIMEOUT), "--header", "Content-Type: application/json",
                 "--header", "Accept: application/json", "--header", f"Referer: https://{self.context.server}/ipa",
                 "--data-binary", "@-", "--write-out", "\n%{http_code}", url]
@@ -257,7 +259,7 @@ class LiveApi(Api):
                                error=ApiError("unavailable", f"the IPA server answered HTTP {_clean(status, 10)}"))
         try:
             doc = json.loads(body_text)
-        except ValueError:
+        except (ValueError, RecursionError):
             return ApiResponse(method, args, error=ApiError("malformed", "the API answer is not JSON"), seconds=seconds)
         if isinstance(doc, dict):
             if isinstance(doc.get("principal"), str) and self.context.principal is None:
@@ -299,7 +301,7 @@ class ReplayApi(Api):
         except FileNotFoundError:
             ctx.unavailable = f"the replay directory has no recorded {REPLAY_FILE}"
             doc = {}
-        except (OSError, ValueError, UnicodeDecodeError):
+        except (OSError, ValueError, UnicodeDecodeError, RecursionError):
             ctx.unavailable = f"the recorded {REPLAY_FILE} is unreadable or malformed"
             doc = {}
         meta = doc.get("meta") if isinstance(doc.get("meta"), dict) else {}

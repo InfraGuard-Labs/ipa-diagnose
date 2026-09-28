@@ -81,6 +81,8 @@ def _side_text(e: SideExplanation, obj: str) -> str:
     if e.how == "nested_group":
         chain = " -> ".join(e.chain)
         return f"{obj} is a nested member of {e.via} ({chain}{'' if e.chain_complete else ', chain not fully read'})"
+    if e.how == "more":
+        return f"and {e.count} more of its groups"
     if e.how == "unknown":
         return "could not be determined (the groups of this object were not read)"
     return "no reason found in the data read"
@@ -181,8 +183,12 @@ def resolution(r: AccessResult) -> Dict[str, Any]:
                   "incidents, contract end). Whether this account should be usable is a decision for its owner's "
                   "process, not for a diagnostic tool.")
     elif "EVALUATOR_RULE_ERRORS" in codes:
-        reason = ("No fix is suggested. FreeIPA could not evaluate rule(s) " + ", ".join(r.evaluation.error_rules[:5])
-                  + "; inspect them with ipa hbacrule-show.")
+        ev = r.evaluation
+        own = ", ".join(ev.error_rules_own[:5])
+        reason = (f"No fix is suggested. FreeIPA could not evaluate {len(ev.error_rules)} HBAC rule(s)"
+                  + (f", including {own}, which names this user" if own else "")
+                  + "; the HBAC rule owner can inspect them with ipa hbacrule-show (FreeIPA's own "
+                  "ipa hbactest lists them by name).")
     elif r.authorization.state == State.FAIL and r.explanation_status == "CONTRADICTING":
         reason = ("No policy change is suggested. The data read disagrees with FreeIPA's evaluation: run the command "
                   "again, and check the rule named in WHY with ipa hbactest --rules=RULE.")
@@ -255,8 +261,17 @@ def verify_steps(r: AccessResult) -> List[str]:
 # ---------------------------------------------------------------- JSON
 
 
+MAX_LISTED_GROUPS = 200
+
+
+def _capped(names) -> List[str]:
+    """At most MAX_LISTED_GROUPS names; the total is in the matching *_count field."""
+    return sorted(names, key=str.lower)[:MAX_LISTED_GROUPS]
+
+
 def _side_dict(e: SideExplanation) -> Dict[str, Any]:
-    return {"side": e.side, "how": e.how, "via": e.via, "chain": e.chain, "chain_complete": e.chain_complete}
+    return {"side": e.side, "how": e.how, "via": e.via, "chain": e.chain, "chain_complete": e.chain_complete,
+            "count": e.count}
 
 
 def to_dict(r: AccessResult) -> Dict[str, Any]:
@@ -298,17 +313,20 @@ def to_dict(r: AccessResult) -> Dict[str, Any]:
                            "reasons": r.runtime.reasons},
         "authoritative_evaluation": {
             "ran": ev.ran, "granted": ev.granted, "request": ev.request, "matched_rule_names": ev.matched,
-            "not_matched_rule_count": ev.not_matched_count, "error_rules": ev.error_rules,
+            "not_matched_rule_count": ev.not_matched_count, "error_rule_count": len(ev.error_rules),
+            "error_rules_naming_this_user": ev.error_rules_own,
             "rule_list_truncated": ev.truncated, "error": ev.error, "summary": ev.summary,
             "evaluates": "enabled HBAC rules only (as SSSD)",
         },
         "objects": {
             "user": {"exists": r.account.exists, "canonical_name": r.account.canonical,
-                     "direct_groups": sorted(r.user_groups.direct) if r.user_groups else None,
-                     "nested_groups": sorted(r.user_groups.indirect) if r.user_groups else None},
+                     "direct_groups": _capped(r.user_groups.direct) if r.user_groups else None,
+                     "nested_groups": _capped(r.user_groups.indirect) if r.user_groups else None,
+                     "group_count": len(r.user_groups.direct | r.user_groups.indirect) if r.user_groups else None},
             "host": {"exists": r.host.exists, "canonical_name": r.host.canonical, "has_keytab": r.host.has_keytab,
-                     "direct_hostgroups": sorted(r.host_groups.direct) if r.host_groups else None,
-                     "nested_hostgroups": sorted(r.host_groups.indirect) if r.host_groups else None},
+                     "direct_hostgroups": _capped(r.host_groups.direct) if r.host_groups else None,
+                     "nested_hostgroups": _capped(r.host_groups.indirect) if r.host_groups else None,
+                     "hostgroup_count": len(r.host_groups.direct | r.host_groups.indirect) if r.host_groups else None},
             "service": {"exists": r.service.exists, "canonical_name": r.service.canonical,
                         "service_groups": r.service.groups},
         },

@@ -136,7 +136,13 @@ Every failure is reported as a failure. None of them produces a PASS or a FAIL.
   On a deny, only rules that name this user are listed. Rules that only name the host or the service describe other
   people's access, so they are not listed. The names of the other rules FreeIPA evaluated are never shown, only
   their count.
+- A rule that is read also lists its other members (other users, groups, hosts, hostgroups, services). None of those
+  are kept or shown, in text, JSON or `--details`. Only the objects asked about and their own groups appear.
+  FreeIPA rules that could not be evaluated are counted; they are named only when they name this user.
+- Output is bounded. A side lists at most 20 matching groups plus "and N more", and group lists hold at most 200
+  names plus a total count.
 - Error messages name only the requested objects.
+- The IPA API is called with `curl -q` (no `~/.curlrc`), HTTPS only, with a size limit.
 - The identity used is the caller's own ticket. Any authenticated IPA user can normally read HBAC rules and run
   `hbactest`. An identity that cannot read an attribute (for example the account lock state) gets `UNKNOWN` for that
   part, never a guess.

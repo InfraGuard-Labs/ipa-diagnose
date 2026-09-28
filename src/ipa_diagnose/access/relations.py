@@ -26,6 +26,7 @@ from typing import Dict, Iterable, List, Optional, Set, Tuple
 MAX_NODES = 2000
 MAX_EDGES = 5000
 MAX_DEPTH = 12
+MAX_SIDE_EXPLANATIONS = 20
 
 
 class NodeKind(enum.Enum):
@@ -213,6 +214,8 @@ class SideExplanation:
     chain: List[str] = dataclasses.field(default_factory=list)
     """Object -> ... -> listed group, when the chain of direct memberships is known."""
     chain_complete: bool = True
+    count: int = 0
+    """For ``how=more``: how many further matching groups were not explained (bounded output)."""
 
 
 @dataclasses.dataclass
@@ -240,9 +243,9 @@ def explain_side(index: RelationshipIndex, side: str, rule_side: RuleSide, membe
     if member is not None:
         direct = {g.lower() for g in member.direct}
         groups = member.all_groups()
-        for g in sorted(rule_side.groups, key=str.lower):
-            if g.lower() not in groups:
-                continue
+        listed = [g for g in sorted(rule_side.groups, key=str.lower) if g.lower() in groups]
+        extra = max(0, len(listed) - MAX_SIDE_EXPLANATIONS)
+        for g in listed[:MAX_SIDE_EXPLANATIONS]:
             if g.lower() in direct:
                 out.append(SideExplanation(side, "group", via=g, chain=[member.node.name, g]))
                 continue
@@ -254,6 +257,8 @@ def explain_side(index: RelationshipIndex, side: str, rule_side: RuleSide, membe
             else:
                 out.append(SideExplanation(side, "nested_group", via=g, chain=[member.node.name, "...", g],
                                            chain_complete=False))
+        if extra:
+            out.append(SideExplanation(side, "more", count=extra))
     if not out and member is None and not groups_known and rule_side.groups:
         return [SideExplanation(side, "unknown")]
     return out or [SideExplanation(side, "none")]

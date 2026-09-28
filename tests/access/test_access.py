@@ -61,7 +61,7 @@ def test_group_allow(tmp_path, capsys):
     code, doc = run(tmp_path, capsys, w)
     assert code == 0
     s = doc["matched_rules"][0]["sides"]
-    assert s["user"][0] == {"side": "user", "how": "group", "via": "devs", "chain": ["john", "devs"],
+    assert s["user"][0] == {"side": "user", "how": "group", "via": "devs", "chain": ["john", "devs"], "count": 0,
                             "chain_complete": True}
     assert s["host"][0]["how"] == "all"
 
