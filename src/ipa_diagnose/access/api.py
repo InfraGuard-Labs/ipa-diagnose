@@ -122,7 +122,9 @@ class Api:
         self.context = context
         self.max_calls = max_calls
         self.calls_made = 0
-        self._deadline = time.monotonic() + deadline_seconds
+        self.deadline_seconds = deadline_seconds
+        self._deadline: Optional[float] = None  # starts with the first call, not at construction (a bundle builds
+        # its diagnosis first, which can take minutes)
         self.log: List[ApiResponse] = []
 
     def call(self, method: str, args: Optional[List[str]] = None, options: Optional[Dict[str, Any]] = None) -> ApiResponse:
@@ -133,9 +135,12 @@ class Api:
             raise ValueError("API arguments must be strings")
         if self.context.unavailable:
             resp = ApiResponse(method, args, error=ApiError("unavailable", self.context.unavailable))
-        elif self.calls_made >= self.max_calls or time.monotonic() > self._deadline:
+        elif self.calls_made >= self.max_calls or (
+                self._deadline is not None and time.monotonic() > self._deadline):
             resp = ApiResponse(method, args, error=ApiError("budget", "the API call or time budget was used up"))
         else:
+            if self._deadline is None:
+                self._deadline = time.monotonic() + self.deadline_seconds
             self.calls_made += 1
             resp = self._call(method, args, dict(options or {}))
         self.log.append(resp)

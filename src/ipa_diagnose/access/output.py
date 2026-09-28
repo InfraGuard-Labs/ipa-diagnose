@@ -19,7 +19,7 @@ from ipa_diagnose.textsafe import sanitize_text
 ACCESS_SCHEMA_VERSION = "1.0"
 
 
-def _c(v: Any, limit: int = 300) -> Any:
+def _c(v: Any, limit: int = 1200) -> Any:
     if isinstance(v, str):
         return sanitize_text(v, limit)
     if isinstance(v, list):
@@ -43,8 +43,10 @@ def headline(r: AccessResult) -> str:
         return f"FreeIPA policy authorizes {q}."
     if z == State.FAIL:
         return f"FreeIPA policy does not authorize {q}."
+    if r.account.exists is False:
+        return f"{who} is not an IPA user, so FreeIPA policy has no decision about it."
     if a == State.FAIL:
-        return f"{who} cannot authenticate to FreeIPA; the policy question does not arise."
+        return f"{who} cannot authenticate, and whether FreeIPA policy authorizes it could not be determined."
     return f"Could not determine whether FreeIPA policy authorizes {q}."
 
 

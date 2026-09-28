@@ -195,6 +195,7 @@ sudo ipa-diagnose ai-preview      # see exactly what would be sent to an AI prov
 sudo ipa-diagnose --no-ai         # never contact any AI provider (also the default)
 sudo ipa-diagnose bundle --preview   # what a support bundle would contain; writes nothing
 sudo ipa-diagnose bundle             # write a sanitized support bundle to share (never uploaded)
+kinit admin; ipa-diagnose access john app03.example.com sshd   # may john log in there through sshd, and why?
 ```
 
 `ipa-diagnose` must run as **root on the IPA server** (it reads root-only
@@ -307,6 +308,27 @@ encrypted, and under `sudo` it belongs to root.
 Detection is pattern-based and cannot be perfect, and a bundle still contains operational detail such as unit
 names, versions and error text, so review it before sharing. Details:
 [docs/support-bundle.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/docs/support-bundle.md).
+
+## Access diagnosis
+
+`ipa-diagnose access USER HOST SERVICE` answers one question: does FreeIPA policy authorize USER to access HOST
+through SERVICE (a PAM/HBAC service such as `sshd`), and why? It needs no root. It uses your own Kerberos ticket
+(`kinit` first) to ask FreeIPA's own HBAC evaluator (`hbactest`) and reads only the objects involved. The answer
+keeps three things apart:
+
+- **AUTHENTICATION**: can the IPA account authenticate at all (exists, not disabled, principal not expired)?
+  No credential is tested, so this is never "PASS".
+- **AUTHORIZATION**: FreeIPA's HBAC decision, with the matched rule and the membership path (for example
+  `john -> backend -> devs`).
+- **RUNTIME ACCESS**: always "NOT VERIFIED". No login is attempted, and the host's SSSD, PAM, network and keytab
+  are not checked. An HBAC allow does not mean SSH works.
+
+A deny is reported as "FreeIPA policy does not authorize this request". It is never called broken, and
+ipa-diagnose never suggests adding members or enabling rules to turn it into an allow. That is a decision for the
+policy owner. If the answer cannot be established (no ticket, API unreachable, user or host missing, evaluator
+errors), it is `UNKNOWN`, never a guess. Exit codes: 0 authorized by policy, 1 not authorized or the account cannot
+authenticate, 3 unknown, 4 authorized but the account state is unreadable. Details, researched FreeIPA semantics
+and limits: [docs/access-diagnosis.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/docs/access-diagnosis.md).
 
 ## The evidence model
 

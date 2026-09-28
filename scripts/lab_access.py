@@ -123,7 +123,8 @@ def setup() -> None:
     ipa("group-add-member cyc1 --users=cyc")
     ipa("group-add-member cyc2 --groups=cyc1")
     cyc = ipa("group-add-member cyc1 --groups=cyc2")
-    (OUT / "access-cycle.txt").write_text(cyc, encoding="utf-8")
+    (OUT / "access-cycle.txt").write_text(("accepted: " if "Number of members added 1" in cyc else "refused: ")
+                                           + " ".join(cyc.split())[:300], encoding="utf-8")
     ipa("hbacrule-add r_cycle --hostcat=all --servicecat=all")
     ipa("hbacrule-add-user r_cycle --groups=cyc2")
     # performance: perf is in 150 flat groups and a 12-deep chain; the rule names the top of the chain
@@ -345,6 +346,8 @@ def bundle() -> None:
     if leaked:
         problems.append(f"identifiers in bundle: {leaked}")
     if a.get("hbac_policy_decision", {}).get("state") != "PASS":
+        problems.append(f"access findings {[f.get('code') for f in a.get('findings', [])]} checks "
+                        f"{[(c.get('call'), c.get('outcome')) for c in a.get('checks', [])]}")
         problems.append("access.json decision is not PASS")
     r = {"scenario": "A21-bundle-access", "query": ["alice", APP01, "sshd"], "expected": {"valid": True},
          "observed": {"exit": rc, "validate_exit": vrc, "decision": a.get("hbac_policy_decision"),
@@ -431,6 +434,14 @@ def summary() -> int:
     for i in range(0, len(compact), 4):
         print("::notice title=access truth " + str(i // 4 + 1) + "::" + " ".join(compact[i:i + 4]).replace(
             "%", "%25").replace("\n", " "))
+    facts = []
+    for name, f in (("group cycle", "access-cycle.txt"), ("hostile rule name", "access-hostile-rule.txt")):
+        p = OUT / f
+        facts.append(f"{name}: {p.read_text(encoding='utf-8')[:200] if p.exists() else 'not recorded'}")
+    raw14 = OUT / "access-A14-raw-hbactest.json"
+    facts.append("A14 raw ipa hbactest for a missing user under allow_all: "
+                 + (raw14.read_text(encoding="utf-8")[:200] if raw14.exists() else "not recorded"))
+    print("::notice title=access lab facts::" + " | ".join(facts).replace("%", "%25").replace("\n", " "))
     print(f"{len(REQUIRED) - bad}/{len(REQUIRED)} scenarios PASS")
     return 1 if bad else 0
 

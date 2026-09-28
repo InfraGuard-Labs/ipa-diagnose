@@ -126,6 +126,18 @@ views; `render/json_output.py` serializes the same `DiagnosisReport` for
 `--json`/automation use - both from the identical `DiagnosisReport` object,
 so there is exactly one source of truth for what a run concluded.
 
+## Access diagnosis (`access/`)
+
+`ipa-diagnose access USER HOST SERVICE` is a separate path. It does not use ipa-healthcheck, collectors or packs.
+`access/api.py` sends a fixed allowlist of read-only FreeIPA API calls (JSON-RPC over HTTPS with the caller's
+Kerberos ticket), or answers them from a recorded `access_api.json` in `--replay`. `access/evaluate.py` runs a
+fixed, bounded sequence: user, host, service, then `hbactest` (the decision), then only the rules and group chains
+needed to explain it. `access/relations.py` is the L2 relationship index: typed nodes and edges with provenance,
+deduplicated, cycle-safe and bounded. It explains the decision and never makes it. There is no investigation
+planner (planned for Slice 4). `access/output.py` renders the answer as text or as JSON
+(`access_schema_version`), a document separate from the v1 diagnosis report. Details:
+[access-diagnosis.md](access-diagnosis.md).
+
 ## Verification (`verify.py`)
 
 See [docs/verification.md](verification.md).

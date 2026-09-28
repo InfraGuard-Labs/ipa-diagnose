@@ -508,3 +508,36 @@ def test_json_contract(tmp_path, capsys):
     assert isinstance(doc["authoritative_evaluation"]["granted"], bool)
     assert doc["evidence"]["provenance"]["read_only"] is True
     assert "report_schema_version" not in doc  # the v1 diagnosis report is a different document
+
+
+def test_prose_is_not_truncated(tmp_path, capsys):
+    w = base().rule("r_other", users=["mary"], hostcat=True, servicecat=True).user("mary")
+    code, doc = run(tmp_path, capsys, w)
+    for text in [doc["resolution"]["reason"], doc["risk"], doc["diagnosis"]["impact"], *doc["limitations"]]:
+        assert not text.endswith("..."), text
+
+
+def test_time_budget_starts_with_the_first_call_not_at_construction(tmp_path):
+    """Live lab A21 (run 36483967139): `bundle --access` built the API client before its minutes-long diagnosis,
+    so the whole access time budget was gone before the first call and the answer became UNKNOWN."""
+
+    import time
+
+    from ipa_diagnose.access.api import ReplayApi
+
+    d = base().rule("allow_all", usercat=True, hostcat=True, servicecat=True).write(tmp_path / "fx", "john",
+                                                                                     "app03.lab.test", "sshd")
+    api = ReplayApi(str(d), deadline_seconds=0.05)
+    time.sleep(0.1)
+    assert api.call("user_show", ["john"]).ok
+    time.sleep(0.1)
+    assert api.call("host_show", ["app03.lab.test"]).error.kind == "budget"
+
+
+def test_only_allowlisted_read_only_methods_can_be_sent(tmp_path):
+    from ipa_diagnose.access.api import ReplayApi
+
+    api = ReplayApi(str(tmp_path))
+    for method in ("user_mod", "hbacrule_enable", "group_add_member", "user_enable", "batch"):
+        with pytest.raises(ValueError):
+            api.call(method, ["x"])
