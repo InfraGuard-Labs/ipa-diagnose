@@ -1,0 +1,6 @@
+pki-tomcatd@pki-tomcat.service loaded active running PKI Tomcat Server pki-tomcat
+pki-tomcatd.target             loaded active active  PKI Tomcat Server
+---
+ipaplatform pki_tomcatd: pki-tomcatd@pki-tomcat.service
+old -u pki-tomcatd lines: 0
+new -u pki-tomcatd@pki-tomcat.service lines: 176

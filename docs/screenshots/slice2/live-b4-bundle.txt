@@ -1,0 +1,13 @@
+Support bundle written: /root/b4.tar.gz
+  5.5 KiB, file mode 0600, SHA-256 013b70c3c13a09ddd60869654b046b08025b7be78499367044ada23ecb87473c
+  Source: LIVE diagnosis of this host, shown as HOST-001; overall status UNKNOWN, evidence insufficient
+  Contents: 0 diagnoses, 0 resolutions, 0 undiagnosed findings, 0 ipa-healthcheck problems (0 results), 1 evidence items, 1 collection errors
+  Pseudonymized: host 1, domain 1, realm 1, suffix 1, instance 1
+  Redacted: 0 value(s); secret-named fields removed: 0; raw output fields dropped: 0
+  Leak self-test: passed
+
+Before sharing, review it. It is pseudonymized and credential-scanned, but it still contains operational detail (service names, versions, error text, timestamps, topology shape). Nothing was uploaded; the file is not encrypted, so share it over a channel you trust.
+  List the files:  tar -tzf /root/b4.tar.gz
+  Read one:        tar -xzOf /root/b4.tar.gz ipa-diagnose-bundle/report.json | less
+  Check it:        ipa-diagnose bundle validate /root/b4.tar.gz
+exit=0

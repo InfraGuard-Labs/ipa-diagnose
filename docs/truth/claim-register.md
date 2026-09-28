@@ -1,4 +1,4 @@
-# Article-claim evidence register (Slice 1)
+# Article-claim evidence register (Slices 1 and 2)
 
 This is **not** an article draft. It lists every claim about ipa-diagnose that could be published, with its
 evidence tier and exact safe wording, so no claim is ever stronger than its evidence. Evidence rows are in
@@ -51,3 +51,33 @@ When quoting commands: generalise the lab names (`LAB-TEST`, `/data/...`); prese
 FreeIPA 4.13.3 / Fedora 43, with applicability unchanged; file permissions `LIVE_VERIFIED`; clock skew and expiring
 DS certificate `FIXTURE_ONLY`; expired DS certificate has no deterministic fix. Safe wording: "built-in verified on
 FreeIPA 4.13.3 / Fedora 43". Overclaim to avoid: "built-in verified" without that scope.
+
+## Slice 2: support bundle (`ipa-diagnose bundle`)
+
+Evidence rows: [bundle-truth-matrix.md](bundle-truth-matrix.md) (LIVE, same lab and environment as above: FreeIPA
+4.13.3 / Fedora 43 container, single server). Product commit for all Slice 2 LIVE rows: `01f181c` (run 36454126285);
+release candidate 36454102379 and Python matrix 36454116481 on the same commit. Real console captures: `docs/screenshots/slice2/`. Fixture, synthetic
+and review evidence: `tests/bundle/` and the review summary in the Slice 2 pull request.
+
+| ID | Claim | Tier | Evidence | Limits | Safe wording | Overclaim to avoid |
+|---|---|---|---|---|---|---|
+| B01 | Bundles are local only | SOURCE + SYNTHETIC + LIVE | no upload or network code in `bundle/`; tests with an AI provider configured; lab runs with fake AI/cloud keys in the environment | cannot observe network in the lab | "Creating a bundle writes one local file; there is no upload feature and no AI provider is contacted." | "private by design", "zero data exposure" |
+| B02 | Known identities are pseudonymized, relationships kept | LIVE + FIXTURE + SYNTHETIC | B0-B5 (lab host, domain, realm, instance, IP and a canary user absent); replication fixtures (`meToHOST-002`, `SUFFIX-001`) | single-server live topology; names that match no known identifier or pattern stay | "In the live lab, the server's host name, DNS domain, Kerberos realm, Directory Server instance and IP address did not appear in any bundle; they were replaced by bundle-local pseudonyms that keep replication relationships." | "anonymized", "cannot be linked to you" |
+| B03 | Known credential classes are excluded, and the bundle fails closed | LIVE (canaries) + FIXTURE (canaries) + SYNTHETIC (broken redactor) | B0-B5 with planted fake passwords, SSH key, AWS/AI keys, shell history and a canary ticket cache; B8: a fake AJP attribute echoed by Tomcat in the CA journal, redacted in the bundle; canary fixture; test that disables redaction and gets exit 5 with nothing written | pattern-based: it cannot guarantee that arbitrary free text (log lines, error messages) contains no secret, so every bundle is potentially sensitive and must be reviewed before sharing; residual shapes are listed in support-bundle.md "Known limitations"; the self-test's credential check uses the same detectors as redaction (it catches pipeline failures, not unknown formats); its identity check is independent | "Designed to exclude known credential classes and to refuse to write the bundle when its deterministic leak checks fire; planted fake credentials did not reach any bundle in the live lab." | "guaranteed secret-free", "contains no secrets", "safe to share anywhere", "safe to share without review" |
+| B04 | Redaction happens before truncation | SYNTHETIC | tests/bundle/test_sanitize.py | - | "Credentials are redacted on the full text before anything is shortened." | - |
+| B05 | Preview writes nothing | LIVE + SYNTHETIC | B0-B5 preview captures; CLI tests | - | "`--preview` shows the contents, sizes and privacy summary without writing a file." | - |
+| B06 | Creating a bundle does not change the system | LIVE | B0-B5: diagnosis before = after, IPA unit states and saved verify baseline unchanged | ipa-healthcheck's own certmonger side effect still applies (disclosed) | "In the live lab, creating a bundle left the diagnosis, the IPA service states and the verify baseline unchanged." | "read-only" without the certmonger caveat |
+| B07 | Fix commands are left out | LIVE + FIXTURE | B0 (file procedure), B2/B3 (service procedure) carried with `commands_omitted`, no command text | read-only pack suggestions with placeholders are kept | "Offered fixes appear by procedure, status and tier only; their commands are left out, and the bundle says a recorded fix is never a fix for another machine." | - |
+| B08 | Received bundles are validated without extraction | SYNTHETIC | tests/bundle/test_archive.py (traversal, links, devices, duplicates, bombs, appended data, malformed JSON, schema, nested archives) | - | "`bundle validate` reads a bundle in memory with size limits and refuses links, unexpected paths and malformed content; it never extracts files." | "safe to open any bundle" |
+| B09 | Checksums detect change | SYNTHETIC + LIVE | tamper tests; B0-B5 SHA256SUMS | not authenticity | "SHA-256 checksums detect accidental change. They are not a signature." | "tamper-proof", "signed", "authenticated" |
+| B10 | LIVE vs REPLAY labelling | LIVE + FIXTURE | B0-B5 LIVE in every file; replay tests | - | "Every file in a bundle says whether its evidence was collected live or read from recorded fixtures." | - |
+| B11 | Output file safety | LIVE + SYNTHETIC | B6 (existing file and symlink refused, untouched), mode 0600 unreadable by other users; tests | - | "The bundle file is created with mode 0600 and never overwrites a file or follows a symlink." | - |
+| B12 | Anonymous archive metadata | SYNTHETIC + LIVE + review | archive tests; privacy red team on the live bundles | - | "Archive entries carry no user, group, host or source-file metadata." | - |
+| B13 | No meaningful slowdown | LIVE (measured) | B7: 3 timed runs each of diagnose, preview and bundle on the healthy lab server | one server, container | "On the lab server a bundle took about as long as a normal diagnosis (about 11-14 seconds in the final run, 12-17 seconds in earlier runs); normal runs are unaffected because nothing is collected unless a bundle is requested." | performance claims for other hardware |
+| B14 | Packaged | CI | RPM release candidate (EL8/9/10, Fedora 43/44 lifecycle includes the bundle), Python 3.9-3.14 matrix, wheel | - | "The bundle command ships in the RPM and wheel with no new runtime dependency." | - |
+| B15 | Privacy red team | process | fresh reviewer given only the live bundles of run 36291228242 (commit `0a5cf66`) and the public doc | one reviewer, one lab, an earlier commit; not repeated on the final bundles | "A fresh reviewer given only live bundles could not recover the server's real names or any credential; install time, container environment, disk sizes and the incident timeline remained inferable." | "red-team proven" |
+| B16 | Code-level privacy review | process | 17 rounds of fresh adversarial reviewers with source access, each finding fixed with a regression test (tests/bundle/test_review_round*.py); from round 14 judged against the owner-set threat model (realistic evidence from the supported collectors); the final round and a fresh review of the last fix found no blocker | reviewers are model agents, not independent humans; residual shapes are listed in support-bundle.md "Known limitations" | "Repeated fresh adversarial reviews found no remaining realistic leak path in evidence the supported collectors gather; residual shapes are documented." | "independently audited", "proven leak-free" |
+
+**Operational detail that remains by design** (say so whenever the bundle is described): software versions, unit
+names, file paths and modes, error text, timestamps (including install time implied by certmonger request IDs),
+disk sizes, the list of ipa-healthcheck checks, and the shape of the topology.

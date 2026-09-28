@@ -86,7 +86,7 @@ class LdapQueryCollector(Collector):
     def _search_conflicts(self, suffix: str) -> List[EvidenceItem]:
         if shutil.which("ldapsearch") is None:
             raise CollectorError("ldapsearch is not installed or not on PATH")
-        command = f'ldapsearch -Y GSSAPI -H ldap://localhost -b {suffix} "{CONFLICT_FILTER}" dn nsds5ReplConflict'
+        command = f'ldapsearch -Y GSSAPI -H ldap://localhost -b {suffix} -LLL -o ldif-wrap=no "{CONFLICT_FILTER}" dn nsds5ReplConflict'
         try:
             proc = subprocess.run(
                 [
@@ -98,6 +98,8 @@ class LdapQueryCollector(Collector):
                     "-b",
                     suffix,
                     "-LLL",
+                    "-o",
+                    "ldif-wrap=no",
                     CONFLICT_FILTER,
                     "dn",
                     "nsds5ReplConflict",
@@ -293,7 +295,7 @@ def _parse_conflict_ldif(stdout: str, provenance: Provenance) -> List[EvidenceIt
                 )
             )
 
-    for line in stdout.splitlines():
+    for line in _unfold(stdout):
         if not line.strip():
             flush()
             current_dn = None
@@ -301,12 +303,39 @@ def _parse_conflict_ldif(stdout: str, provenance: Provenance) -> List[EvidenceIt
             continue
         if line.lower().startswith("dn:"):
             flush()
-            current_dn = line.split(":", 1)[1].strip()
+            current_dn = _ldif_value(line)
             current_message = ""
         elif line.lower().startswith("nsds5replconflict:"):
-            current_message = line.split(":", 1)[1].strip()
+            current_message = _ldif_value(line)
     flush()
     return items
+
+
+def _unfold(text: str) -> List[str]:
+    """LDIF continuation lines (a leading space) joined back onto the line they continue."""
+
+    lines: List[str] = []
+    for raw in text.splitlines():
+        if raw.startswith(" ") and lines and lines[-1].strip():
+            lines[-1] += raw[1:]
+        else:
+            lines.append(raw)
+    return lines
+
+
+def _ldif_value(line: str) -> str:
+    """The value of an LDIF "attr: value" or base64 "attr:: value" line."""
+
+    value = line.split(":", 1)[1]
+    if value.startswith(":"):
+        import base64
+        import binascii
+
+        try:
+            return base64.b64decode(value[1:].strip(), validate=True).decode("utf-8", "replace")
+        except (binascii.Error, ValueError):
+            return value[1:].strip()
+    return value.strip()
 
 
 def _suffix_from_fqdn(hostname: str) -> str:

@@ -59,6 +59,16 @@ check "procedure offered from the packaged catalogue (systemctl start dirsrv@LAB
 out4c=$(ipa-diagnose --replay /fixtures/resolution/service-not-running 2>&1)  # capture first: grep -q + pipefail races with SIGPIPE
 check "resolution contract rendered in the console" grep -q "WHAT THIS CHANGES" <<<"$out4c"
 
+step "4d. Slice 2: support bundle from the installed package (replay; nothing uploaded)"
+ipa-diagnose bundle --preview --replay /fixtures/replication/peer-unreachable > /tmp/bp.txt 2>&1; rc=$?; head -8 /tmp/bp.txt
+check "bundle --preview works and writes nothing" bash -c "test ${rc} -eq 0 && grep -q 'nothing was written' /tmp/bp.txt && ! ls /tmp/ipa-diagnose-bundle-* >/dev/null 2>&1"
+ipa-diagnose bundle --replay /fixtures/replication/peer-unreachable --output /tmp/pkg-bundle.tar.gz; rc=$?
+check "bundle created with mode 0600" bash -c "test ${rc} -eq 0 && test \"\$(stat -c %a /tmp/pkg-bundle.tar.gz)\" = 600"
+check "bundle validates" ipa-diagnose bundle validate /tmp/pkg-bundle.tar.gz
+check "bundle is pseudonymized (no fixture host name inside)" python3 -c "import gzip,sys; sys.exit(b'example.test' in gzip.open('/tmp/pkg-bundle.tar.gz').read().lower())"
+check "an existing bundle file is never overwritten (exit 5)" bash -c "ipa-diagnose bundle --replay /fixtures/replication/peer-unreachable --output /tmp/pkg-bundle.tar.gz; test \$? -eq 5"
+rm -f /tmp/pkg-bundle.tar.gz
+
 step "5. --json exposes evidence completeness"
 ipa-diagnose --replay /fixtures/replication/healthy --json > /tmp/j.json; python3 - <<'PY'
 import json

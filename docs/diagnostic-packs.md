@@ -31,8 +31,8 @@ presence is not evidence the link is broken.
 ## certificates (`src/ipa_diagnose/engine/packs/certificates.py`)
 
 Reads `ipahealthcheck.ipa.certs`, `ipahealthcheck.dogtag.ca`; adds the
-`certmonger` (`getcert list`) and `journal_pki` (`journalctl -u pki-tomcatd
--u certmonger`) collectors.
+`certmonger` (`getcert list`) and `journal_pki` (`journalctl -u
+pki-tomcatd@pki-tomcat.service -u certmonger`) collectors.
 
 | Rule | Fires on | Refuses to guess when |
 |---|---|---|

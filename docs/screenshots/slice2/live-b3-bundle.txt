@@ -1,0 +1,14 @@
+Support bundle written: /root/b3.tar.gz
+  18.9 KiB, file mode 0600, SHA-256 5cb665e482f3f04f77cc1bc67dc7b902be0d2417c670ba6f805798f179490b7e
+  Source: LIVE diagnosis of this host, shown as HOST-001; overall status CRITICAL, evidence complete
+  Contents: 3 diagnoses, 1 resolutions, 1 undiagnosed findings, 4 ipa-healthcheck problems (284 results), 4 evidence items, 0 collection errors
+  Pseudonymized: host 1, domain 1, realm 1, suffix 1, instance 1, user 1
+  Redacted: 0 value(s); secret-named fields removed: 0; raw output fields dropped: 0
+  Shortened to stay within limits: 1 text(s) truncated, 0 omitted as too large, entries dropped none
+  Leak self-test: passed
+
+Before sharing, review it. It is pseudonymized and credential-scanned, but it still contains operational detail (service names, versions, error text, timestamps, topology shape). Nothing was uploaded; the file is not encrypted, so share it over a channel you trust.
+  List the files:  tar -tzf /root/b3.tar.gz
+  Read one:        tar -xzOf /root/b3.tar.gz ipa-diagnose-bundle/report.json | less
+  Check it:        ipa-diagnose bundle validate /root/b3.tar.gz
+exit=0

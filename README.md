@@ -193,6 +193,8 @@ sudo ipa-diagnose --json          # machine-readable, for automation
 sudo ipa-diagnose verify          # did the problem actually clear?
 sudo ipa-diagnose ai-preview      # see exactly what would be sent to an AI provider
 sudo ipa-diagnose --no-ai         # never contact any AI provider (also the default)
+sudo ipa-diagnose bundle --preview   # what a support bundle would contain; writes nothing
+sudo ipa-diagnose bundle             # write a sanitized support bundle to share (never uploaded)
 ```
 
 `ipa-diagnose` must run as **root on the IPA server** (it reads root-only
@@ -281,6 +283,30 @@ otherwise the report says why no fix is shown. The first two procedures have bee
 in a live lab (FreeIPA 4.13.3 / Fedora 43 only); the clock and certificate procedures are tested against recorded
 evidence only, and each fix's label says which. Details, guarantees and the JSON format (`v2.resolutions`):
 [docs/resolution.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/docs/resolution.md).
+
+## Support bundle
+
+`sudo ipa-diagnose bundle` writes one `.tar.gz` file, mode 0600, that you can review and then share with someone
+helping you. It holds a fresh diagnosis in structured form:
+- status, evidence completeness, diagnoses and undiagnosed findings;
+- normalized ipa-healthcheck results and collection errors;
+- resolutions, listed by procedure and status with their commands omitted;
+- the replication view from this host;
+- a manifest with SHA-256 checksums.
+
+Host names, domains, realms, LDAP suffixes, IP addresses, users and groups are replaced by bundle-local pseudonyms
+(the diagnosed host is `HOST-001`). Values that look like credentials are redacted before anything is
+truncated. No collector records secret material to begin with (keytab keys, ticket contents, private keys,
+passwords).
+
+The file is written only if a final self-test finds none of the real identifiers and no credential pattern in it.
+Nothing is uploaded, and no AI provider is contacted. `--preview` shows what would be included without writing
+anything. `ipa-diagnose bundle validate FILE` checks a received bundle without extracting it. The file is not
+encrypted, and under `sudo` it belongs to root.
+
+Detection is pattern-based and cannot be perfect, and a bundle still contains operational detail such as unit
+names, versions and error text, so review it before sharing. Details:
+[docs/support-bundle.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/docs/support-bundle.md).
 
 ## The evidence model
 
@@ -413,6 +439,8 @@ saved last report used by `verify` (mode 0600, directory 0700): under
 runs use a separate `last_report.replay.json` so a demo never overwrites the real
 baseline. Removing the RPM does not delete this file (delete it yourself if you
 no longer want it). Set `IPA_DIAGNOSE_STATE_DIR` to change the location.
+`ipa-diagnose bundle` writes only the bundle file you asked for (mode 0600, never overwriting an existing file)
+and never changes the saved report.
 
 ## Limitations
 

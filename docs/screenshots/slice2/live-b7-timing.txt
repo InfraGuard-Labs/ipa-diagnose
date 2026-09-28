@@ -1,0 +1,12 @@
+Command exited with non-zero status 4
+diagnose run 1: 12.09 s
+preview  run 1: 12.96 s
+bundle   run 1: 13.37 s
+Command exited with non-zero status 4
+diagnose run 2: 13.66 s
+preview  run 2: 11.38 s
+bundle   run 2: 12.15 s
+Command exited with non-zero status 4
+diagnose run 3: 12.24 s
+preview  run 3: 11.94 s
+bundle   run 3: 12.20 s

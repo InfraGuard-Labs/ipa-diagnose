@@ -1,0 +1,13 @@
+Support bundle written: /root/b8.tar.gz
+  24.5 KiB, file mode 0600, SHA-256 c7cf291db1a58a1282c8813f7f3a3eb253cf1de45feb55c7a32a6ff0e401ee15
+  Source: LIVE diagnosis of this host, shown as HOST-001; overall status CRITICAL, evidence complete
+  Contents: 4 diagnoses, 1 resolutions, 4 undiagnosed findings, 13 ipa-healthcheck problems (288 results), 169 evidence items, 0 collection errors
+  Pseudonymized: host 2, domain 1, realm 1, suffix 1, instance 1, user 2
+  Redacted: 7 value(s) (certificate_serial, password_flag, tomcat_property_secret); secret-named fields removed: 0; raw output fields dropped: 0
+  Leak self-test: passed
+
+Before sharing, review it. It is pseudonymized and credential-scanned, but it still contains operational detail (service names, versions, error text, timestamps, topology shape). Nothing was uploaded; the file is not encrypted, so share it over a channel you trust.
+  List the files:  tar -tzf /root/b8.tar.gz
+  Read one:        tar -xzOf /root/b8.tar.gz ipa-diagnose-bundle/report.json | less
+  Check it:        ipa-diagnose bundle validate /root/b8.tar.gz
+exit=0

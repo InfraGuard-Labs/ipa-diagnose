@@ -1,0 +1,4 @@
+No bundle was created: the output file was not created.
+  - /root/b6-link already exists; it was not overwritten
+Nothing was written.
+exit=5
