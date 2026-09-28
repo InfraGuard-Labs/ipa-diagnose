@@ -162,7 +162,9 @@ Relationships survive:
 Constants that carry technical meaning are kept:
 - service principal types (`ldap`, `HTTP`, `host`, `krbtgt`, ...);
 - system accounts and IPA built-ins (`root`, `dirsrv`, `pkiuser`, `admin`, `admins`, ...);
-- `ipa-ca`, `localhost`, and public documentation domains (`freeipa.org`, `redhat.com`, ...);
+- `ipa-ca`, `localhost`, and public documentation domains (`freeipa.org`, `redhat.com`, ...), unless the
+  diagnosed host is inside one of them: then that whole domain is pseudonymized, including the documentation
+  links in it;
 - Python and Java module names.
 
 ## Leak self-test (fail closed)

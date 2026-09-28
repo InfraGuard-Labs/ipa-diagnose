@@ -284,6 +284,8 @@ PATTERNS: List[Pattern] = [
     ("config_secret", re.compile(  # space-separated token keywords: api_key X, access_token X, X-Api-Key X
         r"(?i)(?<![\w-])(?:api[_-]?key|access[_-]?token|auth[_-]?token|refresh[_-]?token|x-api-key|client[_-]?secret|"
         r"[A-Za-z]{1,30}pw)[ \t]+" + _NOT_MARKER + r"(?P<secret>[^\s=:]\S*)")),
+    ("config_secret", re.compile(  # a quoted value after the word: named.conf's key "x" { secret "..."; }
+        r"(?i)(?<![\w-])(?:secret|pass\s?phrase)[ \t]+(?P<secret>\"[^\"\n]{1,1024}\"|'[^'\n]{1,1024}')")),
     ("password_positional", re.compile(r"(?i)\bipa\s+passwd\s+\S+\s+" + _NOT_MARKER + r"(?P<secret>\S+)")),
     ("config_secret", re.compile(r"(?i)(?<![\w-])(?:bindpw|rootpw|[\w-]{0,40}authtok)[ \t]+" + _NOT_MARKER
                                  + r"(?P<secret>[^\s=:][^\n]*)")),
@@ -577,6 +579,7 @@ class Sanitizer:
         self._variants: Dict[Tuple[str, str], Tuple[str, str]] = {}  # (class, text form) -> map key
         self._domains: List[str] = []
         self._domain_set: set = set()
+        self._owned: set = set()  # public-listed domains that are this deployment's own (see own_public_parent)
         self._probes: List[Tuple[str, Tuple[str, str], Tuple[str, str]]] = []
         self._regex: Optional[bool] = None  # None: the per-subset regex cache below must be rebuilt
         self._cache: Dict[Tuple[Tuple[Tuple[str, str], ...], Tuple[str, ...]], Any] = {}
@@ -626,9 +629,19 @@ class Sanitizer:
             self._regex = None
         return self._map[key]
 
-    @staticmethod
-    def _public(low: str) -> bool:
-        return any(low == d or low.endswith("." + d) for d in PUBLIC_DOMAINS)
+    def _public(self, low: str) -> bool:
+        return any((low == d or low.endswith("." + d)) and d not in self._owned for d in PUBLIC_DOMAINS)
+
+    def own_public_parent(self, name: str) -> None:
+        """When the diagnosed host lies inside a public-listed domain (Fedora, Red Hat, CentOS, ... run FreeIPA
+        themselves), that whole domain is the deployment's own: every name in it is pseudonymized, including
+        peers in other subdomains, the parent domain, its LDAP suffix and e-mail addresses."""
+
+        low = name.strip().rstrip(".").lower()
+        for d in PUBLIC_DOMAINS:
+            if low == d or low.endswith("." + d):
+                self._owned.add(d)
+                self.add_domain(d, force=True)
 
     def _known(self, low: str) -> bool:
         parts = low.split(".")
@@ -727,8 +740,7 @@ class Sanitizer:
             dom = m.group("domain").lower()
             last = dom.rsplit(".", 1)[-1]
             in_known = any(dom == d or dom.endswith("." + d) for d in self._domains)
-            if last in _UNIT_SUFFIXES or not (last.isalpha() and len(last) >= 2) or (
-                    self._public(dom) and not self._known(dom)):
+            if last in _UNIT_SUFFIXES or not (last.isalpha() and len(last) >= 2):
                 continue  # e.g. dirsrv@EXAMPLE-TEST.service is a systemd unit, not an address
             k = text.rfind("://", max(0, m.start() - 200), m.start())
             if m.start() > 0 and text[m.start() - 1] == ":" and k >= 0 and not any(c.isspace() for c in text[k:m.start()]):

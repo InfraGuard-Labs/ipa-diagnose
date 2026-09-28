@@ -459,6 +459,7 @@ def build(evidence: EvidenceBundle, report: DiagnosisReport, *, previous: Option
         s.add_literal(home, "<home>")
     host = evidence.hostname.strip().rstrip(".")
     # the diagnosed host, its domain and realm are always pseudonymized, even inside a well-known public domain
+    s.own_public_parent(host)
     s.add_host(host, force=True)
     if "." in host:
         domain = host.split(".", 1)[1]
