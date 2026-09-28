@@ -23,7 +23,8 @@ from typing import Any, Dict, List, Optional
 
 from ipa_diagnose import __version__
 from ipa_diagnose.bundle.sanitize import (
-    HARD_LIMIT, KEY_LIMIT, MAX_DEPTH, MAX_DICT_KEYS, MAX_LIST_ITEMS, PROSE_LIMIT, TEXT_LIMIT, Sanitizer, SanitizeTimeout)
+    CONST_ACCOUNTS, HARD_LIMIT, KEY_LIMIT, MAX_DEPTH, MAX_DICT_KEYS, MAX_LIST_ITEMS, PROSE_LIMIT, TEXT_LIMIT, Sanitizer,
+    SanitizeTimeout)
 from ipa_diagnose.engine.model import DiagnosisReport
 from ipa_diagnose.evidence.healthcheck_catalog import CATALOG
 from ipa_diagnose.evidence.model import EvidenceBundle, Severity
@@ -34,7 +35,12 @@ BUNDLE_SCHEMA_VERSION = 1
 TOP_DIR = "ipa-diagnose-bundle"
 MEMBERS = ("README.txt", "manifest.json", "environment.json", "report.json", "healthcheck.json", "evidence.json",
            "collection-errors.json", "topology.json", "verification.json", "redaction-report.json", "SHA256SUMS")
+# Members present only when asked for (`bundle --access USER HOST SERVICE`); a bundle without them stays valid.
+OPTIONAL_MEMBERS = ("access.json",)
+ALL_MEMBERS = MEMBERS[:MEMBERS.index("verification.json") + 1] + OPTIONAL_MEMBERS + MEMBERS[MEMBERS.index(
+    "verification.json") + 1:]
 DESCRIPTIONS = {
+    "access.json": "one access question (ipa-diagnose access): states, FreeIPA's decision, rule paths; pseudonymized",
     "README.txt": "what this bundle is and is not, and how to inspect it",
     "manifest.json": "bundle format, versions, source mode, sanitization status, truncation, member checksums",
     "environment.json": "OS and FreeIPA component versions of the diagnosed host",
@@ -428,8 +434,94 @@ IF YOU RECEIVED THIS BUNDLE
 """
 
 
+# PAM/HBAC service names that identify nothing about a deployment; any other service name is pseudonymized.
+GENERIC_SERVICES = frozenset({
+    "sshd", "login", "su", "su-l", "sudo", "sudo-i", "gdm", "gdm-password", "gdm-autologin", "gdm-smartcard",
+    "kdm", "lightdm", "xdm", "sddm", "vsftpd", "proftpd", "pure-ftpd", "ftp", "crond", "systemd-user", "polkit-1",
+    "cockpit", "xrdp-sesman", "other", "passwd", "screen", "tmux", "httpd",
+})
+
+
+def _project_access(result: Any, mode: str, s: Sanitizer) -> Dict[str, Any]:
+    """STRUCTURE for one access answer: states, codes, flags, counts and rule paths only - no free text (summaries,
+    titles and details embed names), no commands. Every name is replaced by a bundle pseudonym here, structurally;
+    names the sanitizer keeps on purpose (admin, ipausers...) stay, and names too short for the text rules get a
+    pseudonym of their own class."""
+
+    from ipa_diagnose.access.evaluate import State
+    from ipa_diagnose.access.output import ACCESS_SCHEMA_VERSION
+
+    short: Dict[tuple, str] = {}
+
+    def pn(cls: str, name: Optional[str]) -> Optional[str]:
+        if not name:
+            return None
+        low = name.strip().lower()
+        if cls == "HOST":
+            s.add_host(name, force=True)
+        elif cls in ("USER", "GROUP", "HOSTGROUP"):
+            s._add_account(cls, name)
+        elif cls == "SERVICE" and low in GENERIC_SERVICES:
+            return low
+        key = (cls, low)
+        if key in s._map:
+            return s._map[key]
+        if cls in ("USER", "GROUP") and low in CONST_ACCOUNTS:
+            return low
+        if key not in short:
+            # a name the text rules skip (too short to search for safely): a pseudonym number of its own, never
+            # registered, because it is only ever written here, structurally
+            short[key] = s._alloc(cls)
+        return short[key]
+
+    kinds = {"user": ("USER", "GROUP"), "host": ("HOST", "HOSTGROUP"), "service": ("SERVICE", "SERVICE")}
+
+    def side(sd, k: str) -> Dict[str, Any]:
+        obj_cls, grp_cls = kinds[k]
+        chain = [pn(obj_cls if i == 0 else grp_cls, c) if c != "..." else "..." for i, c in enumerate(sd.chain)]
+        return {"how": sd.how, "via": pn(grp_cls, sd.via), "chain": chain, "chain_complete": sd.chain_complete}
+
+    ev = result.evaluation
+    t = result.targets
+    rule_names = {e.rule for e in result.rules} | set(ev.matched)
+    rule_pn = {n: f"RULE-{i + 1:03d}" for i, n in enumerate(sorted(rule_names, key=str.lower))}
+    return {
+        "source_mode": mode,
+        "access_schema_version": ACCESS_SCHEMA_VERSION,
+        "query": {"user": pn("USER", result.account.canonical or t.user),
+                  "user_is_trusted_domain_form": bool(t.user_domain),
+                  "host": pn("HOST", result.host.canonical or t.host),
+                  "service": pn("SERVICE", result.service.canonical or t.service)},
+        "authentication": {"state": result.authentication.state.value},
+        # AUTHORIZATION, under a key the bundle's secret-field rule (which removes any "authoriz..." key) keeps
+        "hbac_policy_decision": {"state": result.authorization.state.value,
+                          "decided_by": "FreeIPA hbactest"
+                          if result.authorization.state in (State.PASS, State.FAIL) else None},
+        "runtime_access": {"state": result.runtime.state.value},
+        "authoritative_evaluation": {"ran": ev.ran, "granted": ev.granted,
+                                     "matched_rules": [rule_pn[n] for n in ev.matched],
+                                     "not_matched_rule_count": ev.not_matched_count,
+                                     "error_rule_count": len(ev.error_rules), "rule_list_truncated": ev.truncated,
+                                     "failed": ev.error is not None},
+        "account": {"exists": result.account.exists, "disabled": result.account.disabled,
+                    "principal_expired": result.account.principal_expired,
+                    "password_expired": result.account.password_expired},
+        "host": {"exists": result.host.exists, "has_keytab": result.host.has_keytab},
+        "service": {"exists": result.service.exists},
+        "rules": [{"rule": rule_pn[e.rule], "matched_by_freeipa": e.matched_by_freeipa, "enabled": e.enabled,
+                   "explanation_status": e.status,
+                   "sides": {k: [side(x, k) for x in v] for k, v in e.sides.items()}} for e in result.rules],
+        "explanation_status": result.explanation_status,
+        "findings": [{"code": f.code, "blocking": f.blocking} for f in result.findings],
+        "checks": [{"call": c.call.split(" ", 1)[0], "outcome": c.outcome} for c in result.checks],
+        "resolution": {"status": "NONE", "commands_included": False},
+        "note": "Names are bundle pseudonyms (rules are RULE-nnn in this file only). The decision is FreeIPA's own "
+                "HBAC evaluation; runtime access was not tested.",
+    }
+
+
 def build(evidence: EvidenceBundle, report: DiagnosisReport, *, previous: Optional[Dict[str, Any]] = None,
-          created_at: Optional[str] = None) -> Built:
+          created_at: Optional[str] = None, access: Any = None) -> Built:
     mode = "REPLAY" if evidence.replay_source is not None else "LIVE"
     created_at = created_at or datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     dropped: collections.Counter = collections.Counter()
@@ -469,6 +561,8 @@ def build(evidence: EvidenceBundle, report: DiagnosisReport, *, previous: Option
         s.track_secrets(f.keywords)
     for i in evidence.items:
         s.track_secrets(i.data)
+    if access is not None:
+        raw["access.json"] = _project_access(access, mode, s)
     try:
         for obj in raw.values():
             s.discover(obj)
@@ -516,7 +610,7 @@ def build(evidence: EvidenceBundle, report: DiagnosisReport, *, previous: Option
     final["redaction-report.json"] = privacy
 
     members: Dict[str, bytes] = {"README.txt": _readme(mode, created_at, local_host).encode("utf-8")}
-    for name in MEMBERS:
+    for name in ALL_MEMBERS:
         if name in final:
             members[name] = _dumps(final[name])
 
@@ -550,12 +644,12 @@ def build(evidence: EvidenceBundle, report: DiagnosisReport, *, previous: Option
         "integrity": ("SHA-256 values detect accidental change. They are not a signature: anyone who edits the bundle "
                       "can recompute them."),
         "members": [{"name": n, "sha256": hashlib.sha256(members[n]).hexdigest(), "bytes": len(members[n]),
-                     "content": DESCRIPTIONS[n]} for n in MEMBERS if n in members],
+                     "content": DESCRIPTIONS[n]} for n in ALL_MEMBERS if n in members],
     }
     members["manifest.json"] = _dumps(manifest)
-    sums = "".join(f"{hashlib.sha256(members[n]).hexdigest()}  {n}\n" for n in MEMBERS if n in members)
+    sums = "".join(f"{hashlib.sha256(members[n]).hexdigest()}  {n}\n" for n in ALL_MEMBERS if n in members)
     members["SHA256SUMS"] = sums.encode("ascii")
-    members = {n: members[n] for n in MEMBERS}
+    members = {n: members[n] for n in ALL_MEMBERS if n in members}
 
     for name, data in members.items():
         if len(data) > LIMITS["member_bytes"]:

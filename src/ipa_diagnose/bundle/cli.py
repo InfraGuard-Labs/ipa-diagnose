@@ -1,6 +1,7 @@
 """`ipa-diagnose bundle` - create, preview or validate a support bundle.
 
     ipa-diagnose bundle [--output PATH] [--replay DIR] [--json]    create a bundle (nothing is uploaded)
+    ipa-diagnose bundle --access USER HOST SERVICE [...]           also include one access answer (access.json)
     ipa-diagnose bundle --preview [--replay DIR] [--json]         show what a bundle would contain; write nothing
     ipa-diagnose bundle validate BUNDLE [--json]                  check a bundle without extracting it
 
@@ -39,22 +40,26 @@ def build_parser() -> argparse.ArgumentParser:
                    "(default: ./ipa-diagnose-bundle-<UTC time>.tar.gz)")
     p.add_argument("--replay", metavar="FIXTURE_DIR", default=None,
                    help="build from a recorded fixture directory instead of the live host (marked REPLAY)")
+    p.add_argument("--access", nargs=3, metavar=("USER", "HOST", "SERVICE"), default=None,
+                   help="also include the answer of ipa-diagnose access USER HOST SERVICE (pseudonymized)")
     p.add_argument("--json", action="store_true", help="print the result as JSON")
     return p
 
 
 def _strip_command(argv: List[str]) -> List[str]:
-    out, skip, done = [], False, False
+    out, skip, done = [], 0, False
     for i, a in enumerate(argv):
         if skip:
-            skip = False
+            skip -= 1
             out.append(a)
             continue
         if not done and a == "bundle":
             done = True
             continue
-        if a in ("--replay", "--ai-provider", "--output", "-o"):
-            skip = True
+        if a == "--access":  # USER HOST SERVICE are values even when one of them is spelled "bundle"
+            skip = 3
+        elif a in ("--replay", "--ai-provider", "--output", "-o"):
+            skip = 1
         out.append(a)
     return out
 
@@ -73,11 +78,23 @@ def run(argv: List[str]) -> int:
     if args.action == "validate":
         if not args.bundle:
             parser.error("validate needs the bundle file to check")
-        if args.preview or args.output or args.replay:
+        if args.preview or args.output or args.replay or args.access:
             parser.error("validate takes only a bundle file (and --json)")
         return _validate(args, console)
     if args.bundle:
         parser.error(f"unexpected argument {args.bundle!r}")
+    if args.access:
+        from ipa_diagnose.access.api import LiveApi, ReplayApi
+        from ipa_diagnose.access.targets import TargetError, parse_targets
+
+        if args.replay is not None and not os.path.isdir(args.replay):
+            parser.error("--replay needs a directory of recorded evidence")
+        args.access_api = ReplayApi(args.replay) if args.replay else LiveApi()
+        try:
+            args.access_targets = parse_targets(*args.access, args.access_api.context.domain,
+                                                args.access_api.context.realm)
+        except TargetError as e:
+            parser.error(sanitize_text(str(e), 300))
     if args.preview and args.output:
         parser.error("--preview writes nothing, so --output does not apply")
     if args.replay is not None and not os.path.isdir(args.replay):
@@ -109,7 +126,7 @@ def _create(args: argparse.Namespace, console: Console, err: Console) -> int:
     evidence, report = _collect_and_diagnose(args)
     previous = load_previous_report(_state_path(args))  # read-only; bundles never save a baseline
     try:
-        built = build(evidence, report, previous=previous)
+        built = build(evidence, report, previous=previous, access=_access_answer(args))
         selftest.check(built.members, built.sanitizer.originals(), _forbidden(args), built.sanitizer.secret_values)
     except selftest.LeakDetected as e:
         return _refused(args, console, "the leak self-test found content that must not leave this host",
@@ -148,6 +165,18 @@ def _create(args: argparse.Namespace, console: Console, err: Console) -> int:
     return 0
 
 
+def _access_answer(args: argparse.Namespace):
+    """The `ipa-diagnose access` answer for --access USER HOST SERVICE, from the same source (LIVE or the same
+    replay directory) as the rest of the bundle; None when not asked for. The targets were validated in run()."""
+
+    if not args.access:
+        return None
+    from ipa_diagnose.access.evaluate import diagnose
+
+    user, host, service = args.access
+    return diagnose(args.access_api, args.access_targets, {"user": user, "host": host, "service": service})
+
+
 def _summary(built, report) -> Dict[str, Any]:
     return {
         "source_mode": built.source_mode,
@@ -161,6 +190,7 @@ def _summary(built, report) -> Dict[str, Any]:
         "raw_output_fields_dropped": built.privacy["raw_output_fields_dropped"],
         "truncation": built.privacy["truncation"],
         "content_complete": built.manifest["content_complete"],
+        "access_included": "access.json" in built.members,
         "leak_self_test": "passed",
     }
 
@@ -190,6 +220,9 @@ def _print_summary(console: Console, info: Dict[str, Any]) -> None:
         console.print(f"  Shortened to stay within limits: {t['strings_truncated']} text(s) truncated, "
                       f"{t['strings_omitted_as_too_large']} omitted as too large, entries dropped "
                       f"{t['entries_dropped_by_limits'] or 'none'}", markup=False, soft_wrap=True)
+    if info.get("access_included"):
+        console.print("  Access answer: included (access.json, pseudonymized, no commands)", markup=False,
+                      soft_wrap=True)
     console.print("  Leak self-test: passed", markup=False, soft_wrap=True)
 
 

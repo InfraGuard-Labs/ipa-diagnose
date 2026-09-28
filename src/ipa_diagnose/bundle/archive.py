@@ -1,6 +1,7 @@
 """Bundle archive: deterministic tar.gz writing, safe output-file creation, and validation of received bundles.
 
-Format: a gzip-compressed USTAR tar (Python standard library only) holding exactly the members in build.MEMBERS
+Format: a gzip-compressed USTAR tar (Python standard library only) holding the members in build.MEMBERS (plus
+build.OPTIONAL_MEMBERS when asked for)
 under one fixed directory, ipa-diagnose-bundle/. Every entry is a regular file with mode 0644, uid/gid 0, empty
 user/group names and the bundle's creation time as mtime; the gzip header carries no file name and mtime 0. Nothing
 about the creating user, host, working directory or source files is recorded in archive metadata.
@@ -27,7 +28,7 @@ import time
 import zlib
 from typing import Any, Dict, List, Optional
 
-from ipa_diagnose.bundle.build import BUNDLE_FORMAT, BUNDLE_SCHEMA_VERSION, LIMITS, MEMBERS, TOP_DIR
+from ipa_diagnose.bundle.build import ALL_MEMBERS, BUNDLE_FORMAT, BUNDLE_SCHEMA_VERSION, LIMITS, MEMBERS, TOP_DIR
 from ipa_diagnose.bundle.selftest import EVIDENCE_MEMBERS, scan_text, unremoved_secret_fields
 
 MAX_ARCHIVE_BYTES = 16 * 1024 * 1024
@@ -51,7 +52,9 @@ def make_archive(members: Dict[str, bytes], created_at: str) -> bytes:
     mtime = _epoch(created_at)
     raw = io.BytesIO()
     with tarfile.open(fileobj=raw, mode="w", format=tarfile.USTAR_FORMAT) as tar:
-        for name in MEMBERS:
+        for name in ALL_MEMBERS:
+            if name not in members:
+                continue
             data = members[name]
             ti = tarfile.TarInfo(f"{TOP_DIR}/{name}")
             ti.size, ti.mtime, ti.mode, ti.type = len(data), mtime, 0o644, tarfile.REGTYPE
@@ -322,7 +325,7 @@ def _validate(path: str) -> Validation:
                     continue
                 if (not name.isascii() or "\\" in name or "\x00" in name or name.startswith("/")
                         or ".." in name.split("/") or not name.startswith(TOP_DIR + "/")
-                        or name[len(TOP_DIR) + 1:] not in MEMBERS):
+                        or name[len(TOP_DIR) + 1:] not in ALL_MEMBERS):
                     v.problems.append(f"unexpected entry name {shown}")
                     continue
                 member = name[len(TOP_DIR) + 1:]
@@ -369,14 +372,14 @@ def _check_sums(contents: Dict[str, bytes], v: Validation) -> None:
     for ln in lines[:-1]:
         parts = ln.split("  ", 1)
         if (len(parts) != 2 or len(parts[0]) != 64 or any(c not in "0123456789abcdef" for c in parts[0])
-                or parts[1] not in MEMBERS or parts[1] == "SHA256SUMS"):
+                or parts[1] not in ALL_MEMBERS or parts[1] == "SHA256SUMS"):
             v.problems.append("SHA256SUMS has a malformed line")
             return
         if parts[1] in listed:
             v.problems.append(f"SHA256SUMS lists {parts[1]} twice")
             return
         listed[parts[1]] = parts[0]
-    for name in MEMBERS:
+    for name in ALL_MEMBERS:
         if name == "SHA256SUMS" or name not in contents:
             continue
         if name not in listed:
@@ -417,7 +420,7 @@ def _check_manifest(contents: Dict[str, bytes], v: Validation) -> Optional[Dict[
     if unknown:
         v.warnings.append(f"manifest.json has {len(unknown)} field(s) this version does not know; ignored")
     entries = m.get("members")
-    expected = [n for n in MEMBERS if n not in ("manifest.json", "SHA256SUMS")]
+    expected = [n for n in ALL_MEMBERS if n not in ("manifest.json", "SHA256SUMS") and (n in MEMBERS or n in contents)]
     if not isinstance(entries, list) or not all(isinstance(e, dict) for e in entries):
         v.problems.append("manifest.json members list is malformed")
         return m
@@ -443,7 +446,7 @@ def _check_content(contents: Dict[str, bytes], manifest: Optional[Dict[str, Any]
                 or (budget["strings"] % 256 == 0 and time.monotonic() > budget["deadline"])):
             raise _Budget()
         return scan_text(text, key, multiline)
-    for name in MEMBERS:
+    for name in ALL_MEMBERS:
         data = contents.get(name)
         if data is None or name == "SHA256SUMS":
             continue
