@@ -2,7 +2,7 @@ Warning: not running as root - live evidence collection will likely be
 incomplete, and the bundle will say so.
 
 Support bundle written: /tmp/b5.tar.gz
-  5.3 KiB, file mode 0600, SHA-256 d76794b99954c1a478958ae41d3829fd980926bbf8f2c522ccf85e9b229bc415
+  5.3 KiB, file mode 0600, SHA-256 a0e6c31b821d31b7faa33bb89766f057a1cf0a0ae90a0b987f52f2f34374222f
   Source: LIVE diagnosis of this host, shown as HOST-001; overall status UNKNOWN, evidence insufficient
   Contents: 0 diagnoses, 0 resolutions, 0 undiagnosed findings, 0 ipa-healthcheck problems (0 results), 0 evidence items, 2 collection errors
   Pseudonymized: host 1, domain 1, realm 1, suffix 1, instance 1
