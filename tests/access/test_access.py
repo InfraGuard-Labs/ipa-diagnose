@@ -331,7 +331,7 @@ def test_deny_is_never_turned_into_allow_by_a_permissive_looking_rule(tmp_path, 
 def test_partial_group_data_is_incomplete_not_a_decision_change(tmp_path, capsys):
     w = (base().user("john", ["ipausers", "backend"]).group("backend", ["devs"]).group("devs")
          .rule("r_nested", groups=["devs"], hostcat=True, servicecat=True))
-    w.overrides[("group_show", ("backend",))] = {"response": {"error": {"code": 903, "name": "InternalError",
+    w.overrides[("group_show", ("devs",))] = {"response": {"error": {"code": 903, "name": "InternalError",
                                                                         "message": "boom"}, "result": None}}
     code, doc = run(tmp_path, capsys, w)
     assert code == 0 and doc["authorization"]["state"] == "PASS"

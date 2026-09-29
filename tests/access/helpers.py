@@ -153,12 +153,15 @@ class World:
             if rd:
                 entry["memberof_hbacrule"] = rd
             out.append({"method": "hbacsvc_show", "args": [s], "response": ok({"result": entry, "value": s})})
-        for g, parents in self.group_parents.items():
-            out.append({"method": "group_show", "args": [g],
-                        "response": ok({"result": {"cn": [g], "memberof_group": parents}, "value": g})})
-        for g, parents in self.hostgroup_parents.items():
-            out.append({"method": "hostgroup_show", "args": [g],
-                        "response": ok({"result": {"cn": [g], "memberof_hostgroup": parents}, "value": g})})
+        for kind, parents_of, up, down in (("group_show", self.group_parents, "memberof_group", "member_group"),
+                                           ("hostgroup_show", self.hostgroup_parents, "memberof_hostgroup",
+                                            "member_hostgroup")):
+            for g, parents in parents_of.items():
+                children = sorted(c for c, ps in parents_of.items() if g in ps)
+                entry = {"cn": [g], up: parents}
+                if children:
+                    entry[down] = children
+                out.append({"method": kind, "args": [g], "response": ok({"result": entry, "value": g})})
         for r in self.rules:
             out.append({"method": "hbacrule_show", "args": [r["name"]],
                         "response": ok({"result": self.rule_entry(r), "value": r["name"]})})

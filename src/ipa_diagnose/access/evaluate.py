@@ -5,7 +5,8 @@
   3. hbacsvc_show SERVICE      whether the HBAC service is defined, its service groups
   4. hbactest                  FreeIPA's own HBAC evaluation (the DECISION), with the canonical names from 1-3
   5. hbacrule_show RULE        matched rules (ALLOW) or the rules naming these objects (DENY), at most MAX_RULES
-  6. group_show / hostgroup_show  only the user's/host's own groups, only to explain a nested membership chain
+  6. group_show / hostgroup_show  from the rule's group DOWN to the user's/host's own groups, only to explain a
+                                  nested membership chain
 
 States (docs/access-diagnosis.md has the full contract):
 - AUTHENTICATION: FAIL (FreeIPA says the account cannot authenticate: no such user, disabled, principal expired),
@@ -454,8 +455,11 @@ class _Run:
 
     def expand_chain(self, member: Optional[Membership], wanted: Set[str], method: str, attr: str,
                      kind: NodeKind) -> bool:
-        """Fetch only the member's own groups, breadth-first from its direct groups, until every wanted (nested)
-        group has a known chain. Returns False when bounds or errors left a chain unknown."""
+        """Find the chain from the member to each wanted (nested) group by walking DOWN from that group through its
+        member groups, keeping only groups the member itself belongs to. Only groups on a real path are read, however
+        many other groups the member is in (live lab: a user in 150 flat groups plus a 12-deep chain). ``attr`` is
+        the child-group attribute (``member_group`` / ``member_hostgroup``). Returns False when bounds or errors left
+        a chain unknown."""
 
         if member is None or not wanted:
             return True
@@ -467,35 +471,37 @@ class _Run:
             return self.index.membership_path(member.node, target) is not None
 
         allowed = member.all_groups()
-        frontier = sorted(member.direct, key=str.lower)
-        seen: Set[str] = set()
+        fetched: Set[str] = set()
         complete = True
-        while frontier:
-            if all(known(w) for w in wanted):
-                return True
-            nxt: List[str] = []
-            for g in frontier:
-                if g.lower() in seen:
-                    continue
-                seen.add(g.lower())
-                if len(seen) > MAX_GROUP_FETCHES:
-                    self.limit_notes.append(f"nested {kind.value.lower()} chains were followed for at most "
-                                            f"{MAX_GROUP_FETCHES} groups")
-                    return False
-                r = self.call(f"{kind.value.lower()} {g}", method, [g])
-                if not r.ok:
-                    self.check("error", _describe_error(r))
-                    complete = False
-                    continue
-                res = r.entry
-                parents = [p for p in _strs(res.get(attr)) if p.lower() in allowed]
-                self.index.add_memberships(self.index.node(kind, g), kind, parents, [], f"{method} {g}")
-                self.check("ok", f"{kind.value.lower()} {g} is a member of "
-                           + (", ".join(sorted(parents, key=str.lower)[:5]) if parents else "none of the other groups")
-                           + " (read to explain the nesting)")
-                nxt.extend(p for p in parents if p.lower() not in seen)
-            frontier = sorted(set(nxt), key=str.lower)
+        for w in sorted(wanted, key=str.lower):
+            frontier = [w]
+            while frontier and not known(w):
+                nxt: List[str] = []
+                for g in frontier:
+                    if g.lower() in fetched:
+                        continue
+                    if len(fetched) >= MAX_GROUP_FETCHES:
+                        self.limit_notes.append(f"nested {kind.value.lower()} chains were followed for at most "
+                                                f"{MAX_GROUP_FETCHES} groups")
+                        return False
+                    fetched.add(g.lower())
+                    r = self.call(f"{kind.value.lower()} {g}", method, [g])
+                    if not r.ok:
+                        self.check("error", _describe_error(r))
+                        complete = False
+                        continue
+                    children = [c for c in _strs(r.entry.get(attr)) if c.lower() in allowed]
+                    parent = self.index.node(kind, g)
+                    for c in children:
+                        self.index.add_edge(self.index.node(kind, c), parent, EdgeKind.MEMBER_OF, f"{method} {g}")
+                    self.check("ok", f"{kind.value.lower()} {g} contains "
+                               + (", ".join(sorted(children, key=str.lower)[:5]) if children
+                                  else "none of the other groups")
+                               + " of this object's groups (read to explain the nesting)")
+                    nxt.extend(c for c in children if c.lower() not in fetched)
+                frontier = sorted(set(nxt), key=str.lower)
         return complete and all(known(w) for w in wanted)
+
 
 
 def _explain(run: _Run, rule: HbacRule, user_m: Optional[Membership], host_m: Optional[Membership],
@@ -583,8 +589,8 @@ def diagnose(api: Api, targets: Targets, raw_query: Dict[str, str],
                       and user_m is not None and g.lower() in {x.lower() for x in user_m.indirect}}
             want_h = {g for r in rules for g in r.host.groups if not r.host.category_all
                       and host_m is not None and g.lower() in {x.lower() for x in host_m.indirect}}
-            run.expand_chain(user_m, want_u, "group_show", "memberof_group", NodeKind.GROUP)
-            run.expand_chain(host_m, want_h, "hostgroup_show", "memberof_hostgroup", NodeKind.HOSTGROUP)
+            run.expand_chain(user_m, want_u, "group_show", "member_group", NodeKind.GROUP)
+            run.expand_chain(host_m, want_h, "hostgroup_show", "member_hostgroup", NodeKind.HOSTGROUP)
             for r in rules:
                 explanations.append(_explain(run, r, user_m, host_m, user_c, host_c, svc_c, svc_st,
                                              matched=r.name.lower() in {m.lower() for m in evaluation.matched}))

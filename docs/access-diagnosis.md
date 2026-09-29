@@ -58,8 +58,9 @@ The call sequence is fixed and bounded. It is not a planner:
 3. `hbacsvc_show SERVICE`: whether the HBAC service exists, and its service groups.
 4. `hbactest` with the **canonical** user, FQDN and service from steps 1-3: **the decision**.
 5. `hbacrule_show` for the matched rules (ALLOW), or for the rules that name this user (DENY). At most 10.
-6. `group_show` / `hostgroup_show`, only for the user's or host's own groups, and only to explain a nested chain
-   (breadth-first, at most 40 fetches).
+6. `group_show` / `hostgroup_show`, only to explain a nested chain. The search starts at the group the rule names
+   and walks down through its member groups, keeping only the user's or host's own groups. Only groups on the path
+   are read, however many other groups the user is in (at most 40 reads).
 
 The only methods ever sent are these read-only ones. A method outside this allowlist is refused in code. There are
 at most 60 calls, 20 s per call, and 120 s in total.

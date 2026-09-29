@@ -115,3 +115,23 @@ def test_bundle_accepts_targets_named_like_common_words(tmp_path, capsys):
     assert code == 0, capsys.readouterr().out
     acc = json.loads(members_of(out.read_bytes())["access.json"])
     assert acc["query"]["user"].startswith("USER-") and acc["query"]["host"].startswith("HOST-")
+
+
+def test_nested_chain_reads_only_groups_on_the_path(tmp_path, capsys):
+    """Live run 36500100173 (A-perf): a user in 150 flat groups plus a 12-deep chain made the upward search hit its
+    40-read bound (45 API calls, explanation INCOMPLETE). The search now walks down from the rule's group."""
+
+    chain = [f"deep{i}" for i in range(12)]
+    w = base().user("john", [chain[0]] + [f"flat{i}" for i in range(150)])
+    for a, b in zip(chain, chain[1:]):
+        w.group(a, [b])
+    w.group(chain[-1])
+    for i in range(150):
+        w.group(f"flat{i}")
+    w.rule("r_deep", groups=[chain[-1]], hostcat=True, servicecat=True)
+    code, doc = run(tmp_path, capsys, w)
+    assert code == 0 and doc["explanation_status"] == "COMPLETE"
+    side = doc["matched_rules"][0]["sides"]["user"][0]
+    assert side["chain"] == ["john"] + chain
+    group_reads = [c for c in doc["evidence"]["checks"] if c["call"].startswith("group_show")]
+    assert len(group_reads) <= 12 and not any("flat" in c["call"] for c in group_reads)
