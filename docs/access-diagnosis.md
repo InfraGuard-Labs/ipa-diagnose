@@ -100,7 +100,7 @@ The explanation uses a small, typed, per-question index (`src/ipa_diagnose/acces
 - **Edges:** `MEMBER_OF` (direct), `MEMBER_OF_INDIRECT` (FreeIPA says nested, chain maybe unknown), and
   `RULE_APPLIES_TO` (with its side). Every edge carries the API call it came from.
 
-Edges are deduplicated. The chain search is breadth-first and cycle-safe, limited to depth 12, 2000 nodes and
+Edges are deduplicated. The chain search is breadth-first and cycle-safe, limited to depth 50, 2000 nodes and
 5000 edges. There is no graph database, no directory mirror, no persistent cache and no planner.
 
 For an **ALLOW**, each matched rule is explained per side: `all`, `direct`, `group` (the object is a direct

@@ -33,7 +33,7 @@ def test_trusted_user_on_an_existing_host_gets_freeipas_own_evaluation(tmp_path,
     d = w.write(tmp_path / "fx", "john", "app03.lab.test", "sshd")
     main(["access", "alice@ad.example.com", "app03.lab.test", "sshd", "--replay", str(d), "--json"])
     doc = json.loads(capsys.readouterr().out)
-    assert doc["verify"][0].startswith("ipa hbactest --user=alice@ad.example.com --host=app03.lab.test")
+    assert doc["verify"][1].startswith("only if it does: ipa hbactest --user=alice@ad.example.com --host=app03.lab.test")
 
 
 def test_unreadable_host_or_user_never_suggests_hbactest(tmp_path, capsys):

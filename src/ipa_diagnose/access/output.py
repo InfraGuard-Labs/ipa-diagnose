@@ -48,7 +48,7 @@ def headline(r: AccessResult) -> str:
         return f"FreeIPA HBAC policy authorizes {q}."
     if z == State.FAIL:
         return f"FreeIPA HBAC policy does not authorize {q}."
-    if "EVALUATOR_UNAVAILABLE" in codes:
+    if "EVALUATOR_UNAVAILABLE" in codes and r.account.exists is not True:
         return "ipa-diagnose could not query FreeIPA, so nothing about this request is known yet."
     if r.account.exists is False:
         return f"{who} is not an IPA user, so FreeIPA HBAC policy has no decision about it."
@@ -177,8 +177,8 @@ def resolution(r: AccessResult) -> Dict[str, Any]:
                   "access to the IPA server, then run the command again.")
     elif "TRUSTED_IDENTITY_UNSUPPORTED" in codes:
         reason = ("No fix: trusted-domain users are not supported by this version"
-                  + ("; check the host name first (see VERIFY)." if r.host.exists is False else
-                     "; use FreeIPA's own evaluation (VERIFY)."))
+                  + ("; check that the trusted identity resolves, then use FreeIPA's own evaluation (VERIFY)."
+                     if r.host.exists is True else "; check the host first (VERIFY)."))
     elif "USER_NOT_FOUND" in codes or "USER_PRESERVED" in codes or "HOST_NOT_FOUND" in codes:
         reason = ("No fix is suggested. Check the name; the account or host may also be deliberately absent "
                   "(offboarded, deleted or not enrolled).")
@@ -255,8 +255,10 @@ def verify_steps(r: AccessResult) -> List[str]:
         steps += [f"ipa-diagnose access {q(t.display_user)} {q(host)} {q(svc)}   (again, once they can be read)", warn]
         return steps
     if t.user_domain:
-        return [f"ipa hbactest --user={q(t.display_user)} --host={q(host)} --service={q(svc)}   "
-                "(FreeIPA's own evaluation for a trusted-domain user, read-only; the host exists)"]
+        # the host exists; the trusted identity's existence is established by the operator first
+        return [f"id {q(t.display_user)}   (on an IPA-enrolled host; read-only; does the trusted identity resolve?)",
+                f"only if it does: ipa hbactest --user={q(t.display_user)} --host={q(host)} --service={q(svc)}   "
+                "(FreeIPA's own evaluation for a trusted-domain user, read-only)"]
     steps = [f"ipa hbactest --user={q(user)} --host={q(host)} --service={q(svc)}   "
              "(FreeIPA's own evaluation, read-only)"]
     if r.authorization.state == State.FAIL:

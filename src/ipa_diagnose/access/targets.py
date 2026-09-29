@@ -44,9 +44,13 @@ class Targets:
     """Set when USER was written as a trusted-domain identity (name@DOMAIN or DOMAIN\\name) of another domain."""
     host_completed: bool = False
     """True when HOST was a short name and the IPA domain was appended (as hbactest does)."""
+    trusted_form: Optional[str] = None
+    """A trusted-domain identity exactly as typed (name@domain, DOMAIN\\name or a SID): shown and printed as is."""
 
     @property
     def display_user(self) -> str:
+        if self.trusted_form:
+            return self.trusted_form
         if self.user_domain is None or self.user_domain == SID_DOMAIN:
             return self.user
         return f"{self.user}@{self.user_domain}"
@@ -110,4 +114,5 @@ def parse_targets(user: str, host: str, service: str, ipa_domain: Optional[str],
                   ipa_realm: Optional[str]) -> Targets:
     name, domain = parse_user(user, ipa_domain, ipa_realm)
     h, completed = parse_host(host, ipa_domain)
-    return Targets(user=name, host=h, service=parse_service(service), user_domain=domain, host_completed=completed)
+    return Targets(user=name, host=h, service=parse_service(service), user_domain=domain, host_completed=completed,
+                   trusted_form=user if domain else None)

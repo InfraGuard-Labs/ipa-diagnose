@@ -25,7 +25,7 @@ from typing import Dict, Iterable, List, Optional, Set, Tuple
 
 MAX_NODES = 2000
 MAX_EDGES = 5000
-MAX_DEPTH = 12
+MAX_DEPTH = 50  # above the 40 group reads a chain may use, so a chain that was read is always found
 MAX_SIDE_EXPLANATIONS = 20
 
 

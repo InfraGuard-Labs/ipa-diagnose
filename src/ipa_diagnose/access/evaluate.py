@@ -230,6 +230,7 @@ class _Run:
         self.limit_notes: List[str] = []
         self.rules_unread: List[str] = []
         self.rules_cut = False  # more matched/related rules than MAX_RULES
+        self.chain_reads = 0  # group/hostgroup reads for nested chains, both sides together
         # the queried objects and their own groups (lower-case): the only names a rule may contribute to the output
         self.relevant: Dict[str, Set[str]] = {"user": set(), "host": set(), "service": {targets.service.lower()}}
 
@@ -477,7 +478,7 @@ class _Run:
             return self.index.membership_path(member.node, target) is not None
 
         allowed = member.all_groups()
-        fetched: Set[str] = set()
+        fetched: Set[str] = set()  # this side's reads; the bound is shared by both sides (self.chain_reads)
         complete = True
         for w in sorted(wanted, key=str.lower):
             frontier = [w]
@@ -486,11 +487,12 @@ class _Run:
                 for g in frontier:
                     if g.lower() in fetched:
                         continue
-                    if len(fetched) >= MAX_GROUP_FETCHES:
+                    if self.chain_reads >= MAX_GROUP_FETCHES:
                         self.limit_notes.append(f"nested {kind.value.lower()} chains were followed for at most "
                                                 f"{MAX_GROUP_FETCHES} groups")
                         return False
                     fetched.add(g.lower())
+                    self.chain_reads += 1
                     r = self.call(f"{kind.value.lower()} {g}", method, [g])
                     if not r.ok:
                         self.check("error", _describe_error(r))
@@ -505,6 +507,8 @@ class _Run:
                                   else "none of the other groups")
                                + " of this object's groups (read to explain the nesting)")
                     nxt.extend(c for c in children if c.lower() not in fetched)
+                    if known(w):  # stop reading as soon as the chain is known
+                        break
                 frontier = sorted(set(nxt), key=str.lower)
         return complete and all(known(w) for w in wanted)
 
@@ -552,6 +556,7 @@ def diagnose(api: Api, targets: Targets, raw_query: Dict[str, str],
     account, host_st, svc_st = AccountState(), HostState(), ServiceState()
     user_m = host_m = None
     explanations: List[RuleExplanation] = []
+    decided = False
 
     if ctx.unavailable:
         run.find("EVALUATOR_UNAVAILABLE", "ipa-diagnose could not query FreeIPA", ctx.unavailable, True)
@@ -560,7 +565,7 @@ def diagnose(api: Api, targets: Targets, raw_query: Dict[str, str],
                  f"{targets.display_user} is a trusted-domain identity",
                  "Access diagnosis of trusted-domain (for example Active Directory) users is not supported in this "
                  "version: their groups come from the trusted domain and ID views, which it does not evaluate. "
-                 "FreeIPA's own evaluator can answer for such users; see VERIFY.", True)
+                 "Nothing about its access is concluded here.", True)
         host_st, host_m = run.host()
         svc_st = run.service()
     else:
@@ -569,6 +574,7 @@ def diagnose(api: Api, targets: Targets, raw_query: Dict[str, str],
         svc_st = run.service()
         if account.exists and not account.preserved and host_st.exists:
             evaluation = run.hbactest(account.canonical, host_st.canonical, svc_st.canonical or targets.service)
+            decided = evaluation.error is None and evaluation.granted is not None and not ctx.unavailable
         elif account.preserved:
             evaluation.error = "not evaluated: the user is a preserved (deleted) user"
         elif account.exists is False or host_st.exists is False:
@@ -607,6 +613,12 @@ def diagnose(api: Api, targets: Targets, raw_query: Dict[str, str],
                 run.limit_notes.append("rule(s) that could not be read, so their part of the explanation is missing: "
                                        + ", ".join(run.rules_unread))
 
+    if decided and ctx.unavailable:
+        # the ticket was refused only AFTER FreeIPA decided: the decision stands, only the explanation is short
+        ctx.unavailable = None
+        run.rules_cut = True
+        run.limit_notes.append("the IPA server refused the Kerberos ticket after its decision, so the explanation "
+                               "is incomplete")
     if ctx.unavailable and not any(x.code == "EVALUATOR_UNAVAILABLE" for x in run.findings):
         # the ticket was refused during the run (HTTP 401): the same answer as having no ticket at all
         run.find("EVALUATOR_UNAVAILABLE", "ipa-diagnose could not query FreeIPA", ctx.unavailable, True)
@@ -632,7 +644,7 @@ def diagnose(api: Api, targets: Targets, raw_query: Dict[str, str],
 
 
 def _authentication(ctx, targets: Targets, account: AccountState) -> Verdict:
-    if ctx.unavailable:
+    if ctx.unavailable and account.exists is not True:  # an account already read keeps its state
         return Verdict(State.UNKNOWN, f"{targets.user}'s account was not read: ipa-diagnose could not query FreeIPA",
                        [ctx.unavailable])
     if targets.user_domain:
