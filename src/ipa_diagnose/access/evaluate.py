@@ -146,6 +146,10 @@ class AccessResult:
     index: RelationshipIndex
     completeness: Dict[str, Any]
     limitations: List[str]
+    client: Any = None
+    """Set only by `access --runtime`: the client-mode investigation of this host (Slice 4)."""
+    runtime_note: Optional[str] = None
+    """Set only by `access --runtime`: why the runtime side was or was not investigated."""
 
 
 # ---------------------------------------------------------------- helpers

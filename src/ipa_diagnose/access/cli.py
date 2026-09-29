@@ -9,6 +9,7 @@ Exit codes:
   1  a definite no: FreeIPA policy does not authorize it, or the account cannot authenticate
   3  unknown: no trustworthy policy decision (API unavailable, no ticket, missing user/host, evaluator errors...)
   4  FreeIPA policy authorizes it, but the account state could not be read
+  5  (only with --runtime) FreeIPA policy authorizes it, but a runtime check on this host shows the login would fail
   2  usage error (including a refused USER/HOST/SERVICE); 70 internal error; 130 interrupted
 Nothing is saved: `access` never touches the `verify` baseline.
 """
@@ -49,6 +50,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--details", action="store_true", help="also show API calls, relationships and all limitations")
     p.add_argument("--replay", metavar="FIXTURE_DIR", default=None,
                    help="answer from recorded API evidence (development/testing; marked REPLAY)")
+    p.add_argument("--runtime", action="store_true",
+                   help="when run as root ON HOST: continue into the runtime side (SSSD, NSS, PAM account phase) with "
+                   "client mode's planner; the HBAC decision itself is never changed")
     return p
 
 
@@ -72,6 +76,8 @@ def exit_code(r: AccessResult) -> int:
     a, z = r.authentication.state, r.authorization.state
     if a == State.FAIL or z == State.FAIL:
         return 1
+    if z == State.PASS and r.runtime.state == State.FAIL:  # only --runtime can set a runtime FAIL
+        return 5
     if z == State.PASS:
         return 4 if a == State.UNKNOWN else 0
     return 3
@@ -98,6 +104,18 @@ def run(argv: List[str]) -> int:
     except TargetError as e:
         parser.error(str(e))
     result = diagnose(api, targets, {"user": args.user, "host": args.host, "service": args.service})
+    if args.runtime:
+        from ipa_diagnose.access.runtime import extend, local_enrolled_host
+        from ipa_diagnose.resolution.checks import LiveRunner, ReplayRunner
+
+        if args.replay:
+            runner = ReplayRunner(args.replay, filename="client_checks.json")
+            local = runner.run("client.ipa_conf", {}).fields.get("host")
+            from ipa_diagnose.client.cli import _replay_root
+
+            extend(result, runner, local if isinstance(local, str) else None, is_root=_replay_root(args.replay))
+        else:
+            extend(result, LiveRunner(), local_enrolled_host())
     if args.json:
         print(json.dumps(to_dict(result), indent=2))
     else:

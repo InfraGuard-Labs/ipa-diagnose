@@ -187,12 +187,12 @@ def _curl_has_negotiate(curl: str) -> bool:
     return any(f in features.split() for f in ("SPNEGO", "GSS-API", "Kerberos"))
 
 
-def _has_ticket() -> Optional[bool]:
+def _has_ticket(env: Optional[Dict[str, str]] = None) -> Optional[bool]:
     klist = shutil.which("klist")
     if klist is None:
         return None
     try:
-        return subprocess.run([klist, "-s"], capture_output=True, timeout=5, check=False).returncode == 0
+        return subprocess.run([klist, "-s"], capture_output=True, timeout=5, check=False, env=env).returncode == 0
     except (OSError, subprocess.SubprocessError):
         return None
 
@@ -200,7 +200,9 @@ def _has_ticket() -> Optional[bool]:
 class LiveApi(Api):
     TIMEOUT = 20
 
-    def __init__(self, conf_path: str = DEFAULT_CONF, ca_path: str = DEFAULT_CA, **kw):
+    def __init__(self, conf_path: str = DEFAULT_CONF, ca_path: str = DEFAULT_CA, ccache: Optional[str] = None, **kw):
+        # ccache: a private credential cache (client mode uses one filled from the host keytab); None = the caller's
+        self._env = dict(os.environ, KRB5CCNAME=ccache) if ccache else None
         conf = read_ipa_conf(conf_path)
         ctx = ApiContext(mode="LIVE", server=_server_from_conf(conf), domain=(conf.get("domain") or "").lower() or None,
                          realm=conf.get("realm") or None)
@@ -216,7 +218,7 @@ class LiveApi(Api):
             ctx.unavailable = f"the IPA CA certificate {ca_path} is missing"
         elif not _curl_has_negotiate(self._curl):
             ctx.unavailable = "this curl cannot do Kerberos (SPNEGO) authentication"
-        elif _has_ticket() is False:
+        elif _has_ticket(self._env) is False:
             ctx.unavailable = ("no valid Kerberos ticket: run kinit as the IPA user whose view should be used "
                                "(for example: kinit admin), then run this again")
         super().__init__(ctx, **kw)
@@ -233,7 +235,7 @@ class LiveApi(Api):
         start = time.monotonic()
         try:
             proc = subprocess.run(argv, input=body.encode("utf-8"), capture_output=True, timeout=self.TIMEOUT + 5,
-                                  check=False)
+                                  check=False, env=getattr(self, "_env", None))
         except subprocess.TimeoutExpired:
             return ApiResponse(method, args, error=ApiError("timeout", f"no answer within {self.TIMEOUT} s"),
                                seconds=time.monotonic() - start)

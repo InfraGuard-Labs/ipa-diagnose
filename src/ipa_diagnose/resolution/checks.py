@@ -58,6 +58,19 @@ class CheckSpec:
     """parameter name -> type name (types.VALIDATORS)."""
     describe: str
     run: Callable[[Dict[str, str]], CheckResult]
+    # Registry metadata (Slice 4). Every check declares what it needs and what it may touch; the planner and
+    # --details show it, and tests/client/test_registry.py requires it for every client check.
+    privilege: str = "any"
+    """any | root: what the check needs to give a meaningful answer (without it: DENIED or NOT_RUN)."""
+    side_effects: str = "none"
+    """none, or a plain-language disclosure of what the check may change or cause besides reading."""
+    timeout: float = _TIMEOUT
+    evidence: tuple = ()
+    """The fields a successful (OK) result carries: the expected evidence shape."""
+    secrets: str = "none read"
+    """How secret-bearing input is handled (never printed, never stored)."""
+    applies: str = "any version"
+    """Version/platform applicability, checked by the caller before running (see client/plan.py)."""
 
 
 def _run(argv: List[str], timeout: float = _TIMEOUT) -> "tuple[Optional[int], str, str]":
@@ -422,7 +435,7 @@ def _certmonger_ds_cert(params):
                 f"request {request_id}: {fields['state']}, CA {fields['ca'] or '?'}, expires {not_after or '?'}", shlex.join(argv))
 
 
-_BINARIES = {"ipactl", "chronyc", "getcert", "systemctl"}
+_BINARIES = {"ipactl", "chronyc", "getcert", "systemctl", "sssctl", "sss_cache"}
 
 
 def _binary(params):
@@ -477,7 +490,9 @@ class Runner:
         self._cache: Dict[str, CheckResult] = {}
         self.runs = 0
 
-    def run(self, check_id: str, params: Dict[str, Any]) -> CheckResult:
+    def run(self, check_id: str, params: Dict[str, Any], fresh: bool = False) -> CheckResult:
+        """fresh=True runs the check again even if this run already has its result (a bounded planner retry)."""
+
         spec = REGISTRY.get(check_id)
         if spec is None:
             return _res(check_id, {}, FAILED, {}, "unknown check")
@@ -485,7 +500,7 @@ class Runner:
         if vp is None:
             return _res(check_id, {}, FAILED, {}, "parameters did not validate")
         key = _key(check_id, vp)
-        if key not in self._cache:
+        if fresh or key not in self._cache:
             self.runs += 1
             self._cache[key] = self._execute(spec, vp)
         return self._cache[key]
@@ -504,16 +519,34 @@ class LiveRunner(Runner):
     pass
 
 
+def _replay_value(v: Any, depth: int = 0) -> Any:
+    """A recorded field value is untrusted: strings are sanitized at every level, structures are bounded."""
+
+    if isinstance(v, str):
+        return sanitize_text(v, 240)
+    if isinstance(v, bool) or v is None or isinstance(v, int):
+        return v
+    if isinstance(v, float):
+        return v if v == v and v not in (float("inf"), float("-inf")) else None
+    if depth >= 4:
+        return None
+    if isinstance(v, list):
+        return [_replay_value(x, depth + 1) for x in v[:200]]
+    if isinstance(v, dict):
+        return {sanitize_text(k, 60): _replay_value(x, depth + 1) for k, x in list(v.items())[:100]}
+    return None
+
+
 class ReplayRunner(Runner):
     """Answers from ``resolution_checks.json`` in a replay fixture directory."""
 
     replay = True
 
-    def __init__(self, fixture_dir: Optional[str]) -> None:
+    def __init__(self, fixture_dir: Optional[str], filename: str = "resolution_checks.json") -> None:
         super().__init__()
         self._data: Dict[str, Any] = {}
         if fixture_dir:
-            p = pathlib.Path(fixture_dir) / "resolution_checks.json"
+            p = pathlib.Path(fixture_dir) / filename
             try:
                 raw = json.loads(p.read_text(encoding="utf-8"))
                 if isinstance(raw, dict):
@@ -526,8 +559,14 @@ class ReplayRunner(Runner):
         if not isinstance(entry, dict):
             return _res(spec.check_id, params, NOT_RUN, {}, "not recorded in this replay fixture")
         fields = entry.get("fields") if isinstance(entry.get("fields"), dict) else {}
-        fields = {str(k): (sanitize_text(v, 240) if isinstance(v, str) else v) for k, v in fields.items()}
+        fields = {sanitize_text(k, 60): _replay_value(v) for k, v in list(fields.items())[:200]}
         if "not_after_in_days" in fields and isinstance(fields["not_after_in_days"], int):
             fields["days_left"] = fields.pop("not_after_in_days")
         status = entry.get("status") if entry.get("status") in (OK, FAILED, NOT_RUN, DENIED) else FAILED
         return _res(spec.check_id, params, status, fields, str(entry.get("display", "")), str(entry.get("command", "")))
+
+
+# Client-mode checks (Slice 4) belong to the same closed registry.
+from ipa_diagnose.resolution import client_checks as _client_checks  # noqa: E402
+
+REGISTRY.update({s.check_id: s for s in _client_checks.specs()})

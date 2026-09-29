@@ -141,7 +141,75 @@ def _perm_type(v: Any) -> Optional[str]:
     return v if v in ("mode", "owner", "group") else None
 
 
+# ---- client mode (Slice 4): identities and names that reach getent, sssctl, sss_cache, kinit and DNS queries
+
+# IPA's user/group name pattern (ipaserver/plugins/baseuser.py). Never "all", never all digits (getent would read
+# a number as a UID), never starting with "-" (it would be read as an option).
+_IPA_NAME_RE = re.compile(r"^[a-zA-Z0-9_.][a-zA-Z0-9_.-]{0,254}[a-zA-Z0-9_.$-]?$")
+_LABEL = r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?"
+_FQDN_RE = re.compile(rf"^{_LABEL}(?:\.{_LABEL})+$")
+_REALM_RE = re.compile(r"^[A-Z0-9](?:[A-Z0-9.-]{0,251}[A-Z0-9])?$")
+_PAM_SERVICE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.+-]{0,63}$")
+_SSSD_DOMAIN_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,252}$")
+IPA_PORTS = ("88", "389", "443", "464", "636")
+
+
+def _ipa_name(v: Any) -> Optional[str]:
+    if not isinstance(v, str) or not _IPA_NAME_RE.fullmatch(v) or v.isdigit() or v.lower() == "all":
+        return None
+    return v
+
+
+def _fqdn(v: Any) -> Optional[str]:
+    if not isinstance(v, str) or len(v) > 253:
+        return None
+    v = v.lower()
+    return v if _FQDN_RE.fullmatch(v) else None
+
+
+def _realm(v: Any) -> Optional[str]:
+    return v if isinstance(v, str) and len(v) <= 253 and _REALM_RE.fullmatch(v) else None
+
+
+def _host_principal(v: Any) -> Optional[str]:
+    if not isinstance(v, str) or not v.startswith("host/") or v.count("@") != 1:
+        return None
+    host, _, realm = v[len("host/"):].partition("@")
+    return v if _fqdn(host) == host and _realm(realm) == realm else None
+
+
+def _pam_service(v: Any) -> Optional[str]:
+    return v if isinstance(v, str) and _PAM_SERVICE_RE.fullmatch(v) and v.lower() != "all" else None
+
+
+def _sssd_domain(v: Any) -> Optional[str]:
+    return v if isinstance(v, str) and _SSSD_DOMAIN_RE.fullmatch(v) and ".." not in v else None
+
+
+def _srv_name(v: Any) -> Optional[str]:
+    if not isinstance(v, str):
+        return None
+    for prefix in ("_ldap._tcp.", "_kerberos._tcp.", "_kerberos._udp."):
+        if v.startswith(prefix) and _fqdn(v[len(prefix):]) == v[len(prefix):]:
+            return v
+    return None
+
+
+def _ipa_port(v: Any) -> Optional[str]:
+    v = str(v) if isinstance(v, int) and not isinstance(v, bool) else v
+    return v if v in IPA_PORTS else None
+
+
 VALIDATORS: Dict[str, Callable[[Any], Optional[str]]] = {
+    "ipa_user": _ipa_name,
+    "ipa_group": _ipa_name,
+    "fqdn": _fqdn,
+    "host_principal": _host_principal,
+    "pam_service": _pam_service,
+    "sssd_domain": _sssd_domain,
+    "srv_name": _srv_name,
+    "ipa_port": _ipa_port,
+    "realm": _realm,
     "ipa_service": _ipa_service,
     "ipa_path": _abs_path,
     "file_mode": _mode,

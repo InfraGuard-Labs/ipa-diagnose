@@ -1,0 +1,63 @@
+# Client-side (Slice 4) causes that are established but for which ipa-diagnose deliberately prints no fix.
+- kind: no_procedure
+  id: none.client.not-enrolled
+  resolves:
+    diagnosis: client.not-enrolled
+  reason: >-
+    This host is not enrolled. Enrolling it (ipa-client-install) creates a host entry, a keytab and an SSSD
+    configuration and needs an enrollment credential: that is an administrator's decision, never an automatic fix.
+
+- kind: no_procedure
+  id: none.client.clock-skew
+  resolves:
+    diagnosis: client.clock-skew
+  reason: >-
+    The clock-step procedure is established for IPA servers only (with its own safety gates), not for clients. Check
+    this host's time service (chronyc tracking, chronyc sources) and the IPA servers' clocks; the wrong clock may be
+    on either side.
+
+- kind: no_procedure
+  id: none.client.keytab-missing
+  resolves:
+    diagnosis: client.host-keytab-problem
+    variant: missing
+  reason: >-
+    No keytab replacement is suggested. Retrieving a new host keytab (ipa-getkeytab) replaces the host's key in IPA
+    and invalidates every other copy; first look for a moved or restored copy, and decide with the IPA
+    administrators whether the host should be enrolled again.
+
+- kind: no_procedure
+  id: none.client.keytab-wrong-principal
+  resolves:
+    diagnosis: client.host-keytab-problem
+    variant: principal-missing
+  reason: >-
+    No fix is suggested. The keytab belongs to another name: this host was renamed after enrollment, or a keytab of
+    another host was copied here. Renaming or re-enrolling is an administrator's decision.
+
+- kind: no_procedure
+  id: none.client.key-rejected
+  resolves:
+    diagnosis: client.host-keytab-problem
+    variant: key-rejected
+  reason: >-
+    No keytab replacement is suggested. The KDC holds a newer key for this host than its keytab: usually the host
+    was enrolled again (possibly from another machine with the same name) or a keytab was retrieved for it. Find out
+    which machine should own this name before replacing any key; replacing it here breaks the other copy.
+
+- kind: no_procedure
+  id: none.client.host-principal-unknown
+  resolves:
+    diagnosis: client.host-principal-unknown
+  reason: >-
+    No automatic re-enrollment. The host entry is missing in IPA (deleted, or this host now has another name).
+    Whether this host should be enrolled again is an administrator's decision.
+
+- kind: no_procedure
+  id: none.client.cache-db-medium
+  resolves:
+    diagnosis: client.sssd-cache-db-error
+    variant: suspected
+  reason: >-
+    SSSD's cache is suspected but not proven to be damaged, so removing it (which deletes cached passwords) is not
+    suggested. Read SSSD's domain log (/var/log/sssd/sssd_DOMAIN.log) around the failed lookup first.

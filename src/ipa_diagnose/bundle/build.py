@@ -36,11 +36,13 @@ TOP_DIR = "ipa-diagnose-bundle"
 MEMBERS = ("README.txt", "manifest.json", "environment.json", "report.json", "healthcheck.json", "evidence.json",
            "collection-errors.json", "topology.json", "verification.json", "redaction-report.json", "SHA256SUMS")
 # Members present only when asked for (`bundle --access USER HOST SERVICE`); a bundle without them stays valid.
-OPTIONAL_MEMBERS = ("access.json",)
+OPTIONAL_MEMBERS = ("access.json", "client.json")
 ALL_MEMBERS = MEMBERS[:MEMBERS.index("verification.json") + 1] + OPTIONAL_MEMBERS + MEMBERS[MEMBERS.index(
     "verification.json") + 1:]
 DESCRIPTIONS = {
     "access.json": "one access question (ipa-diagnose access): states, FreeIPA's decision, rule paths; pseudonymized",
+    "client.json": "one client investigation (ipa-diagnose client): states, diagnosis codes, step outcomes; "
+                   "pseudonymized, structure only",
     "README.txt": "what this bundle is and is not, and how to inspect it",
     "manifest.json": "bundle format, versions, source mode, sanitization status, truncation, member checksums",
     "environment.json": "OS and FreeIPA component versions of the diagnosed host",
@@ -442,16 +444,11 @@ GENERIC_SERVICES = frozenset({
 })
 
 
-def _project_access(result: Any, mode: str, s: Sanitizer) -> Dict[str, Any]:
-    """STRUCTURE for one access answer: states, codes, flags, counts and rule paths only - no free text (summaries,
-    titles and details embed names), no commands. Every name is replaced by a bundle pseudonym here, structurally;
-    names the sanitizer keeps on purpose (admin, ipausers...) stay, and names too short for the text rules get a
-    pseudonym of their own class."""
+def _structural_pn(s: Sanitizer):
+    """Pseudonyms for names written only structurally (access.json, client.json). One table per bundle, kept on the
+    sanitizer, so the same user or host has the same pseudonym in every member."""
 
-    from ipa_diagnose.access.evaluate import State
-    from ipa_diagnose.access.output import ACCESS_SCHEMA_VERSION
-
-    short: Dict[tuple, str] = {}
+    short: Dict[tuple, str] = s.__dict__.setdefault("_structural_short", {})
 
     def pn(cls: str, name: Optional[str]) -> Optional[str]:
         if not name:
@@ -471,6 +468,72 @@ def _project_access(result: Any, mode: str, s: Sanitizer) -> Dict[str, Any]:
             short[key] = s._alloc(cls)
         return short[key]
 
+    return pn
+
+
+# client.json keeps only these facts (enumerations, booleans and numbers; never free text, examples or commands)
+_CLIENT_FACTS = {"state", "error", "tls", "offset", "online", "kind", "signals", "result", "exists",
+                 "account_has_sss", "auth_has_sss", "passwd_has_sss", "hostname_mismatch", "issues"}
+
+
+def _project_client(result: Any, mode: str, s: Sanitizer) -> Dict[str, Any]:
+    """STRUCTURE for one client investigation (ipa-diagnose client): states, diagnosis codes and roles, step
+    outcomes and a few enumerated facts. No free text (summaries embed names and log excerpts), no log examples, no
+    commands, no keytab principals or key versions."""
+
+    from ipa_diagnose.client.run import CLIENT_SCHEMA_VERSION
+
+    pn = _structural_pn(s)
+    env = result.environment
+
+    def fact_ok(k: str, v: Any) -> bool:
+        if k not in _CLIENT_FACTS:
+            return False
+        if isinstance(v, list):
+            return all(isinstance(x, str) and x.isidentifier() for x in v)
+        return v is None or isinstance(v, (bool, int, float)) or (isinstance(v, str) and v.replace("_", "").isalnum())
+
+    return {
+        "source_mode": mode,
+        "client_schema_version": CLIENT_SCHEMA_VERSION,
+        "status": result.status,
+        "host": pn("HOST", env.get("host")),
+        "ipa_server": pn("HOST", env.get("server")),
+        "versions": {"sssd": env.get("sssd"), "ipa_client": env.get("ipa_client"), "os": env.get("os"),
+                     "os_version": env.get("os_version"), "systemd": env.get("systemd")},
+        "query": {"user": pn("USER", result.inputs.get("user")),
+                  "service": pn("SERVICE", result.inputs.get("service"))},
+        "authentication": {"state": result.authentication.state},
+        "runtime_access": {"state": result.runtime.state},
+        "hbac_policy_decision": {"state": result.authorization.state},
+        "diagnoses": [{"code": d.code, "role": d.role, "capability": d.capability, "confidence": d.confidence,
+                       "severity": d.severity, "related_to": d.related_to, "variant": d.variant}
+                      for d in result.diagnoses],
+        "steps": [{"step": r.step_id, "capability": r.capability, "check": r.check, "outcome": r.outcome.value,
+                   "check_status": r.status or None, "skipped_because": r.skip_reason.split(":", 1)[0] or None,
+                   "reused_result": r.reused, "seconds": r.seconds,
+                   "facts": {k: v for k, v in r.facts.items() if fact_ok(k, v)}} for r in result.trace.records],
+        "resolution": [{"diagnosis": code, "status": v.status, "procedure_id": v.procedure_id,
+                        "risk": v.risk if v.steps else None, "tier": v.tier or None, "commands_included": False}
+                       for code, v in result.resolutions.items() if not code.startswith("_")],
+        "planner": {k: v for k, v in result.trace.summary().items() if k != "bounds"},
+        "completeness": {"level": result.completeness["level"],
+                         "not_verified_steps": [g["step"] for g in result.completeness["not_verified"]]},
+        "note": "Names are bundle pseudonyms. Structure only: no check output, log lines, commands or key material. "
+                "No login was attempted on the client.",
+    }
+
+
+def _project_access(result: Any, mode: str, s: Sanitizer) -> Dict[str, Any]:
+    """STRUCTURE for one access answer: states, codes, flags, counts and rule paths only - no free text (summaries,
+    titles and details embed names), no commands. Every name is replaced by a bundle pseudonym here, structurally;
+    names the sanitizer keeps on purpose (admin, ipausers...) stay, and names too short for the text rules get a
+    pseudonym of their own class."""
+
+    from ipa_diagnose.access.evaluate import State
+    from ipa_diagnose.access.output import ACCESS_SCHEMA_VERSION
+
+    pn = _structural_pn(s)
     kinds = {"user": ("USER", "GROUP"), "host": ("HOST", "HOSTGROUP"), "service": ("SERVICE", "SERVICE")}
 
     def side(sd, k: str) -> Dict[str, Any]:
@@ -519,7 +582,7 @@ def _project_access(result: Any, mode: str, s: Sanitizer) -> Dict[str, Any]:
 
 
 def build(evidence: EvidenceBundle, report: DiagnosisReport, *, previous: Optional[Dict[str, Any]] = None,
-          created_at: Optional[str] = None, access: Any = None) -> Built:
+          created_at: Optional[str] = None, access: Any = None, client: Any = None) -> Built:
     mode = "REPLAY" if evidence.replay_source is not None else "LIVE"
     created_at = created_at or datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     dropped: collections.Counter = collections.Counter()
@@ -564,6 +627,8 @@ def build(evidence: EvidenceBundle, report: DiagnosisReport, *, previous: Option
             s.discover(obj)
         if access is not None:  # after discovery, so a name also seen elsewhere keeps its pseudonym
             raw["access.json"] = _project_access(access, mode, s)
+        if client is not None:
+            raw["client.json"] = _project_client(client, mode, s)
         # REDACT -> PSEUDONYMIZE -> BOUND, for every key and string
         final = {name: s.transform(obj) for name, obj in raw.items()}
     except SanitizeTimeout:
