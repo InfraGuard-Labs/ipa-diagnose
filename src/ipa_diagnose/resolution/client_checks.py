@@ -634,6 +634,8 @@ def _pam_stack(params):
     seen: List[str] = []
     mods: Dict[str, List[str]] = {"auth": [], "account": []}
 
+    nested: List[tuple] = []
+
     def walk(name: str, depth: int) -> Optional[str]:
         if depth > 5 or len(seen) >= 12 or name in seen or not _PAM_NAME.fullmatch(name):
             return None
@@ -652,7 +654,9 @@ def _pam_stack(params):
             if inc:
                 target = inc.group(1) or inc.group(2)
                 # "account include system-auth" includes only the account lines of system-auth; tracked as a whole
-                walk(target, depth + 1)
+                sub = walk(target, depth + 1)
+                if sub is not None:  # an included file that cannot be read leaves the stack unknown (review 3d)
+                    nested.append((target, sub))
                 continue
             m = _PAM_LINE.match(line)
             if m and m.group(1) in mods:
@@ -664,6 +668,11 @@ def _pam_stack(params):
     state = walk(svc, 0)
     if state == "unreadable":
         return _res("pam.stack", params, DENIED, {}, f"{PAM_D}/{svc}: not readable")
+    if nested:
+        target, why = nested[0]
+        status = DENIED if why == "unreadable" else FAILED
+        return _res("pam.stack", params, status, {}, f"{PAM_D}/{_c(target, 64)} (included by {svc}) is {why}: the "
+                    "stack cannot be evaluated")
     present = state is None
     if not present:  # PAM falls back to /etc/pam.d/other for an unconfigured service
         walk("other", 0)

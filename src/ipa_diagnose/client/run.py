@@ -147,16 +147,18 @@ def _resolve(diags: List[ClientDiagnosis], env: Dict[str, Any], runner: Any) -> 
 
 def _authentication(diags: List[ClientDiagnosis], trace: Trace) -> Verdict:
     broken = [d for d in diags if _online_path_broken(d)]
+    # The service's own PAM auth stack does not reach SSSD: IPA password logins through it fail whatever else is
+    # true (review rounds 3c/3d). A LOCAL break: it comes first, and SSSD's cached credentials cannot help it.
+    local = [d for d in diags if d.code in _LOCAL_AUTH_BREAK]
+    if local:
+        return Verdict("FAIL", "password authentication of IPA users through this PAM service does not use SSSD: "
+                       + local[0].title,
+                       [d.title for d in broken] + ["no credential was tested; key-based logins do not use the PAM "
+                                                    "auth stack"])
     if broken:
         return Verdict("FAIL", "online authentication against IPA fails on this host: " + broken[0].title,
                        [d.title for d in broken] + ["users who logged in before may still authenticate offline with "
                                                     "cached credentials, if SSSD caches them"])
-    # the service's own PAM auth stack does not reach SSSD: IPA password logins through it fail (review round 3c);
-    # a LOCAL break, so neither the online-path wording nor the cached-credentials caveat applies
-    local = [d for d in diags if d.code in ("PAM_SERVICE_WITHOUT_SSSD", "PAM_AUTH_WITHOUT_SSSD")]
-    if local:
-        return Verdict("FAIL", "password authentication of IPA users through this PAM service does not use SSSD: "
-                       + local[0].title, ["no credential was tested; key-based logins do not use the PAM auth stack"])
     return Verdict("NOT_VERIFIED", "nothing on this host's authentication path was found broken; no credential was "
                    "tested", ["no password or ticket of any user was used"])
 
@@ -165,6 +167,7 @@ def _authentication(diags: List[ClientDiagnosis], trace: Trace) -> Verdict:
 # still log in with cached credentials or SSH keys. They set AUTHENTICATION, never RUNTIME ACCESS (review round 3).
 _AUTH_PATH_ONLY = ("DNS", "NETWORK", "TLS", "TIME", "KEYTAB", "KERBEROS", "SSSD_BACKEND")
 _AUTH_PATH_CODES = ("HOST_PRINCIPAL_UNKNOWN",)
+_LOCAL_AUTH_BREAK = ("PAM_SERVICE_WITHOUT_SSSD", "PAM_AUTH_WITHOUT_SSSD")
 
 
 def _runtime_blocker(d: ClientDiagnosis) -> bool:
@@ -190,6 +193,11 @@ def _runtime(diags: List[ClientDiagnosis], trace: Trace, inputs: Dict[str, Any])
         return Verdict("FAIL", f"a login{' by ' + user if user else ''}{' through ' + service if service else ''} "
                        f"is expected to fail on this host: {broken[0].title}", [d.title for d in broken[1:]])
     online = [d for d in diags if _online_path_broken(d) and not _runtime_blocker(d)]
+    if any(d.code in _LOCAL_AUTH_BREAK for d in diags):
+        return Verdict("NOT_VERIFIED", "password logins of IPA users through this PAM service fail (its auth stack does "
+                       "not use SSSD); only key-based logins may still work"
+                       + (f"; online authentication also fails ({online[0].title})" if online else ""),
+                       ["no login was attempted"])
     if online:
         return Verdict("NOT_VERIFIED", f"online authentication against IPA fails ({online[0].title}): logins that need "
                        "IPA (for example a first password login) fail; users with cached credentials or SSH keys may "

@@ -28,6 +28,8 @@ from here, via [claim-register.md](claim-register.md) (section "Slice 4").
 | [36577169643](https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36577169643) | 2a0a800 | 15/19 | **live finding:** `sssctl user-checks` prints its PAM result on **stderr** (SSSD 2.12); the parser read stdout only, so the PAM account check was UNKNOWN. Harness: repeated SSSD restarts hit systemd's start limit (C09b; ipa-diagnose correctly reported SSSD failed) |
 | [36579279971](https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36579279971) | 20d4d25 | **19/19 PASS**, 0 false root causes | parser reads both streams; lab resets the start limit |
 | [36581496915](https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36581496915) | 79081fc | **19/19 PASS**, 0 false root causes | after review round 2. Findings from its rows, fixed afterwards: in C13 the PAM account refusal while SSSD was offline was listed INDEPENDENT (now RELATED to the offline state, MEDIUM), and MIT krb5's "Cannot resolve servers for KDC" was not classified (now a name-resolution error tied to DNS) |
+| [36583971262](https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36583971262) | 3e85dea | **19/19 PASS**, 0 false root causes | after review round 3: online-path failures no longer claim RUNTIME FAIL |
+| [36585281095](https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36585281095) | 065ac2e | **19/19 PASS**, 0 false root causes | after review round 3b: online-path failures always make AUTHENTICATION FAIL |
 
 ## Scenarios (runs 36579279971 on 20d4d25 and 36581496915 on 79081fc: all PASS)
 

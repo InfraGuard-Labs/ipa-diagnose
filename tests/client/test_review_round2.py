@@ -241,3 +241,47 @@ def test_pam_auth_without_sssd_fails_authentication_but_not_runtime():
 def test_pam_service_without_sssd_fails_both():
     r = H.run("pam-not-integrated")
     assert r.authentication.state == "FAIL" and r.runtime.state == "FAIL"
+
+
+# ---- focused re-review (round 3d)
+@pytest.mark.parametrize("scenario", ["dns-failure", "kdc-unreachable", "time-skew", "sssd-offline-unexplained",
+                                      "sssd-stopped"])
+@pytest.mark.parametrize("pam", ["auth_only", "none"])
+def test_local_pam_break_is_never_hidden_by_the_online_path(scenario, pam):
+    def m(d):
+        k = key("pam.stack", service="sshd")
+        if pam == "auth_only":
+            d[k]["fields"].update(auth_modules=["pam_unix.so"], auth_has_sss=False)
+        else:
+            S.pam_not_integrated(d)
+
+    r = H.run(scenario, mutate=m)
+    text = " ".join([r.authentication.summary] + r.authentication.reasons)
+    assert r.authentication.state == "FAIL" and "does not use SSSD" in r.authentication.summary
+    assert "cached credentials" not in text
+    assert "cached credentials" not in r.runtime.summary
+
+
+def test_pam_auth_only_runtime_says_only_keys_may_work():
+    def m(d):
+        d[key("pam.stack", service="sshd")]["fields"].update(auth_modules=["pam_unix.so"], auth_has_sss=False)
+
+    r = H.run("dns-failure", mutate=m)
+    assert r.runtime.state == "NOT_VERIFIED" and "only key-based logins may still work" in r.runtime.summary
+
+
+def test_unreadable_included_pam_file_is_not_a_failure(tmp_path, monkeypatch):
+    (tmp_path / "sshd").write_text("auth substack password-auth\naccount include password-auth\n")
+    pa = tmp_path / "password-auth"
+    pa.write_text("auth sufficient pam_sss.so\naccount required pam_sss.so\n")
+    monkeypatch.setattr(C, "PAM_D", str(tmp_path))
+    real_open = open
+
+    def fake_open(path, *a, **k):
+        if str(path).endswith("password-auth"):
+            raise PermissionError(13, "denied")
+        return real_open(path, *a, **k)
+
+    monkeypatch.setattr("builtins.open", fake_open)
+    r = C._pam_stack({"service": "sshd"})
+    assert r.status == "DENIED" and "password-auth" in r.display
