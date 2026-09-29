@@ -27,9 +27,9 @@ LIVE evidence for `ipa-diagnose access USER HOST SERVICE`. Claims about access d
 | Accounts | erin disabled (`ipa user-disable`); judy principal expired (2020-01-01); pres deleted with `--preserve` (still named by r_pres); alice has a password (non-admin caller) |
 | Hosts | app01, app02 added with `--force` (no keytab); no host `nohost` |
 
-## Rows (final run: product commit 0e13a0c, run 36502681544)
+## Rows (final run: product commit 1e3a4fd, run 36505832843)
 
-Run: https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36502681544 (conclusion: success).
+Run: https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36505832843 (conclusion: success). Runs 36502681544 (0e13a0c) and 36504997796 (dc50e01) gave the same 25/25.
 
 | # | Scenario | Query | Independent `ipa hbactest` | ipa-diagnose (exit, AUTHN / AUTHZ, explanation) | False decision? | Verdict |
 |---|---|---|---|---|---|---|
@@ -69,16 +69,18 @@ Run: https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36502681544 (c
 | 36494758327 | a10a1bf | 21/22 | A21: a harness bug (the ticket cache variable applied only to the first command). The product correctly reported UNKNOWN without a ticket. The same bug meant the 150 "flat" groups of the performance user were **never created in runs 1-2**, so those timings are withdrawn. |
 | 36500100173 | f76417b | 24/24 | With the 150 groups really present, the upward chain search hit its 40-read bound (45 API calls, explanation INCOMPLETE). It now walks down from the rule's group. |
 | 36501684754 | f473d46 | 24/24 | Nested chain COMPLETE in 16 API calls. |
-| 36502681544 | 0e13a0c | 25/25 | Final (adds A25). |
+| 36502681544 | 0e13a0c | 25/25 | Adds A25. |
+| 36504997796 | dc50e01 | 25/25 | - |
+| 36505832843 | 1e3a4fd | 25/25 | Final (the pull request's product code). |
 
 ## Timing (final run, three runs each, in the container)
 
 | Case | Wall time | API calls | Explanation |
 |---|---|---|---|
-| direct allow (alice) | 0.64-1.35 s | 5 | COMPLETE |
-| nested chain 12 deep, user in 150 other groups (perf) | 2.25-2.56 s | 16 | COMPLETE |
-| deny (dave) | 0.48-1.06 s | 4 | COMPLETE |
-| IPA API unreachable | 0.14 s | - | - |
+| direct allow (alice) | 1.38-1.72 s | 5 | COMPLETE |
+| nested chain 12 deep, user in 150 other groups (perf) | 3.87-4.13 s | 16 | COMPLETE |
+| deny (dave) | 1.05-1.10 s | 4 | COMPLETE |
+| IPA API unreachable | 0.22 s | - | - |
 
 ## Real API shapes (every run)
 
