@@ -532,7 +532,9 @@ def diagnose(trace: Trace, inputs: Dict[str, Any]) -> List[ClientDiagnosis]:
                                     next_steps=[f"ipa-diagnose access {_q(user)} {_q(host)} {_q(service)}   (why, "
                                                 "from FreeIPA's own evaluation)"]))
         elif res == "authinfo_unavail":
-            add(ClientDiagnosis("RUNTIME_ACCOUNT_UNAVAILABLE", "SSSD could not decide the account check", "PAM",
+            add(ClientDiagnosis("RUNTIME_ACCOUNT_UNAVAILABLE", ("SSSD could not decide the account check"
+                                if t.f("pam.stack", "account_has_sss") is not False else
+                                "The PAM account phase could not decide (SSSD is not part of it)"), "PAM",
                                 "MEDIUM", t.s("pam.acct") + ".", f"{user} cannot log in here now.", ["pam.acct"],
                                 blocks_runtime=True, related_to=find("SSSD_OFFLINE").code if find("SSSD_OFFLINE")
                                 else None, kind=None if find("SSSD_OFFLINE") else UNDIAGNOSED))

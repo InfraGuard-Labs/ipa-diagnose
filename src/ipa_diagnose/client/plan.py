@@ -493,7 +493,7 @@ def client_plan() -> list:
         Step("pam.stack", "PAM", "pam.stack", "PAM service reaches SSSD",
              "The service's PAM stack must call pam_sss for IPA users to authenticate and for HBAC to be enforced.",
              params={"service": ("input", "service")}, when=g_service, classify=c_pam_stack),
-        Step("pam.acct", "PAM", "pam.user_checks", "SSSD's account check for the user (PAM account phase)",
+        Step("pam.acct", "PAM", "pam.user_checks", "PAM account phase for the user (sssctl user-checks)",
              "Runs only the PAM account phase for the service, as at login, without any password: SSSD applies HBAC "
              "and account state on this host.",
              params={"user": ("input", "user"), "service": ("input", "service")},
