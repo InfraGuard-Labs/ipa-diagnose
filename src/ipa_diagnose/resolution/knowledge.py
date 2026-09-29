@@ -31,6 +31,8 @@ CHANGES_MIN_RISK = {
     "service-start": "MEDIUM",
     "service-restart": "MEDIUM",
     "time-resync": "MEDIUM",
+    "cache-expire": "LOW",
+    "cache-remove": "HIGH",
 }
 TIERS = ("BUILT_IN_VERIFIED", "LIVE_VERIFIED", "FIXTURE_ONLY")
 AUTHORITATIVE_SOURCES = ("upstream-code", "upstream-docs", "vendor-docs")
@@ -41,7 +43,10 @@ _ARG_LITERAL_RE = re.compile(r"^[A-Za-z0-9@._/=:+%-]{1,128}$")
 # Programs a CONFIRM FIRST command may use: read-only inspection only.
 CONFIRM_PROGRAMS = {"stat": None, "readlink": {"-f"}}
 # Programs a fix step or rollback may run. Anything else (even well-formed) makes the catalogue invalid.
-FIX_PROGRAMS = frozenset({"systemctl", "chmod", "chown", "chgrp", "chronyc", "getcert"})
+FIX_PROGRAMS = frozenset({"systemctl", "chmod", "chown", "chgrp", "chronyc", "getcert", "sss_cache", "sssctl"})
+# sssctl sub-commands a fix may use (sssctl also has commands that are not fixes at all)
+SSSCTL_FIX_COMMANDS = frozenset({"cache-remove"})
+ROLES = (["ipa-server"], ["ipa-client"])
 _ID_RE = re.compile(r"^[a-z][a-z0-9_.-]{2,80}$")
 _TEMPLATE_RE = re.compile(r"\{(bind|item|ref)\.([A-Za-z0-9_]+)(?:\.([A-Za-z0-9_]+))?\}")
 
@@ -254,8 +259,8 @@ def _validate_procedure(proc: Dict[str, Any]) -> None:
         v = proc["applies_to"].get(k)
         if v is not None and not (isinstance(v, str) and _VERSION_RE.fullmatch(v) and int(v.split(".")[0]) >= 4):
             _fail(pid, f"applies_to.{k} must be a FreeIPA version (4.x or later)")
-    if proc["applies_to"]["roles"] != ["ipa-server"]:
-        _fail(pid, "applies_to.roles: only ipa-server is supported in this version")
+    if proc["applies_to"]["roles"] not in ROLES:
+        _fail(pid, "applies_to.roles: exactly one of ipa-server or ipa-client")
     _validate_provenance(pid, proc)
 
     checks = {}
@@ -323,6 +328,8 @@ def _validate_procedure(proc: Dict[str, Any]) -> None:
         _check_argv(pid, s["command"], f"step {s['id']}.command", ctx)
         if s["command"][0] not in FIX_PROGRAMS:
             _fail(pid, f"step {s['id']}: {s['command'][0]!r} is not an allowed fix program")
+        if s["command"][0] == "sssctl" and (len(s["command"]) < 2 or s["command"][1] not in SSSCTL_FIX_COMMANDS):
+            _fail(pid, f"step {s['id']}: only these sssctl commands may be a fix step: {sorted(SSSCTL_FIX_COMMANDS)}")
         if "only_if" in s:
             _check_pred(pid, s["only_if"], f"step {s['id']}.only_if", ctx)
         _check_text(pid, s["text"], f"step {s['id']}.text", ctx)

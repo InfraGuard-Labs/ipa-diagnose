@@ -1,0 +1,298 @@
+# Client-side (Slice 4) fixes. Each is offered only after `ipa-diagnose client` has established the cause with the
+# planner (DNS, time, reachability, host key, SSSD service/config/domain, identity) and every gate below passes.
+# Never: `rm /var/lib/sss/db/*`, re-enrollment, keytab replacement, config edits, or Upstart-era initctl commands.
+
+- kind: procedure
+  id: proc.client.start-sssd
+  title: Start SSSD
+  resolves:
+    diagnosis: client.sssd-not-running
+  min_confidence: HIGH
+  bindings: {}
+  applies_to:
+    freeipa_min: "4.9"
+    freeipa_below: "5.0"
+    roles: [ipa-client]
+  provenance:
+    tier: LIVE_VERIFIED
+    sources:
+      - kind: upstream-docs
+        ref: https://sssd.io/troubleshooting/basics.html
+        title: "SSSD troubleshooting basics: first check whether sssd is running at all (systemctl status sssd)"
+    verified_on:
+      - freeipa: "4.13.4"
+        os: fedora-43
+        tier: LIVE
+        evidence: https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36579279971
+        date: "2026-09-29"
+    reviews: []
+    tests:
+      - tests/client/test_client_procedures.py
+  investigate:
+    - id: root
+      check: host.privilege
+      params: {}
+      label: Privileges
+    - id: env
+      check: client.versions
+      params: {}
+      label: Service manager and SSSD version
+    - id: unit
+      check: systemd.unit
+      params: {service: sssd}
+      label: State of sssd.service
+    - id: config
+      check: sssd.config_check
+      params: {}
+      label: SSSD configuration (sssctl config-check)
+    - id: journal
+      check: systemd.journal_tail
+      params:
+        unit: {ref: unit, field: unit}
+      label: Recent log of {ref.unit.unit}
+  withhold_if:
+    - when: {left: {ref: env, field: systemd}, op: is_false}
+      reason: >-
+        This host does not run systemd. ipa-diagnose prints service commands for systemd only; Upstart-era
+        procedures (/sbin/initctl stop sssd, /sbin/initctl start sssd) are obsolete on every supported OS and are
+        never printed.
+    - when: {left: {ref: config, field: valid}, op: is_false}
+      reason: >-
+        The SSSD configuration has errors (sssctl config-check). Starting SSSD would fail the same way or run
+        with ignored options: fix the configuration first (sssctl config-check lists each issue).
+    - when: {left: {ref: unit, field: load_state}, op: eq, right: masked}
+      reason: "{ref.unit.unit} is masked: someone disabled it on purpose. ipa-diagnose will not suggest unmasking it."
+    - when: {left: {ref: unit, field: load_state}, op: ne, right: loaded}
+      reason: "{ref.unit.unit} is not a loaded unit on this host (load state {ref.unit.load_state})."
+    - when: {left: {ref: unit, field: active_state}, op: eq, right: active}
+      reason: "{ref.unit.unit} is running now (checked just now): there is nothing to start. Run ipa-diagnose client again."
+    - when: {left: {ref: unit, field: active_state}, op: in, right: [activating, deactivating, reloading]}
+      reason: "{ref.unit.unit} is currently {ref.unit.active_state}. Wait for it to settle, then run ipa-diagnose client again."
+    - when: {left: {ref: unit, field: unit_file_state}, op: eq, right: disabled}
+      reason: "{ref.unit.unit} is disabled in systemd, which may be intentional. Find out why before starting it."
+  prerequisites:
+    - id: root
+      text: ipa-diagnose is running as root (starting a system service needs root)
+      when: {left: {ref: root, field: is_root}, op: is_true}
+  steps:
+    - id: start-unit
+      text: Start only {ref.unit.unit}; no other service is started or stopped
+      run_on: local
+      command: [systemctl, start, {ref: unit, field: unit, type: systemd_unit}]
+      risk: MEDIUM
+      changes: [service-start]
+      expected: >-
+        the command returns without an error and {ref.unit.unit} is active. If it fails, it stays stopped and
+        'systemctl status sssd' shows why.
+  what_changes:
+    - text: >-
+        {ref.unit.unit} goes from {ref.unit.active_state} to running. SSSD reads its existing configuration and cache;
+        nothing is edited or deleted.
+  rollback:
+    - text: Stop it again (back to the state it was in)
+      command: [systemctl, stop, {ref: unit, field: unit, type: systemd_unit}]
+  verify:
+    - text: "{ref.unit.unit} is active"
+      check: systemd.unit
+      params: {service: sssd}
+      when: {left: {ref: this, field: active_state}, op: eq, right: active}
+    - text: SSSD resolves the group admins (present in every IPA domain)
+      check: nss.group_sss
+      params: {group: admins}
+      when: {left: {ref: this, field: found}, op: is_true}
+  limitations: >-
+    This starts SSSD; it does not establish why it stopped. If it stopped because of a failure (see the last result
+    and log line above), the same cause can stop it again.
+
+- kind: procedure
+  id: proc.client.expire-sssd-user-entry
+  title: Make SSSD fetch the user again from IPA
+  resolves:
+    diagnosis: client.sssd-stale-user-entry
+  min_confidence: MEDIUM
+  bindings:
+    user: {type: ipa_user}
+    domain: {type: sssd_domain}
+  applies_to:
+    freeipa_min: "4.9"
+    freeipa_below: "5.0"
+    roles: [ipa-client]
+  provenance:
+    tier: FIXTURE_ONLY
+    sources:
+      - kind: upstream-code
+        ref: https://github.com/SSSD/sssd/blob/master/src/tools/sss_cache.c
+        title: "sss_cache: invalidates (expires) cached entries; they are fetched again on the next lookup"
+      - kind: upstream-docs
+        ref: https://sssd.io/troubleshooting/basics.html
+        title: "SSSD troubleshooting basics: force a cache refresh on the next lookup with sssctl cache-expire (which runs sss_cache)"
+    verified_on: []
+    reviews: []
+    tests:
+      - tests/client/test_client_procedures.py
+  investigate:
+    - id: root
+      check: host.privilege
+      params: {}
+      label: Privileges
+    - id: unit
+      check: systemd.unit
+      params: {service: sssd}
+      label: State of sssd.service
+    - id: domain
+      check: sssd.domain_status
+      params:
+        domain: {bind: domain}
+      label: SSSD online state for {bind.domain}
+    - id: entry
+      check: sssd.cache_user
+      params:
+        user: {bind: user}
+      label: SSSD cache entry of {bind.user}
+    - id: tool
+      check: binary.present
+      params: {name: sss_cache}
+      label: sss_cache installed
+  withhold_if:
+    - when: {left: {ref: unit, field: active_state}, op: ne, right: active}
+      reason: SSSD is not running; start it first (reported as its own problem).
+    - when: {left: {ref: domain, field: online}, op: is_false}
+      reason: >-
+        SSSD is offline now. An expired entry cannot be fetched again while offline; fix the connection first
+        (reported as its own problem).
+    - when: {left: {ref: entry, field: present}, op: is_false}
+      reason: SSSD's cache holds no entry for {bind.user} now, so there is nothing to expire.
+  prerequisites:
+    - id: root
+      text: ipa-diagnose is running as root (sss_cache needs root)
+      when: {left: {ref: root, field: is_root}, op: is_true}
+    - id: tool
+      text: sss_cache is installed
+      when: {left: {ref: tool, field: present}, op: is_true}
+  steps:
+    - id: expire
+      text: Mark SSSD's cached entry for {bind.user} as expired
+      run_on: local
+      command: [sss_cache, -u, {bind: user, type: ipa_user}]
+      risk: LOW
+      changes: [cache-expire]
+      expected: the command prints nothing and returns 0; the next lookup of {bind.user} asks IPA again.
+  what_changes:
+    - text: >-
+        SSSD marks its cached entry for {bind.user} as expired; nothing is deleted. The next lookup fetches the user
+        from IPA. While SSSD is offline an expired entry is still served, and cached passwords are kept.
+  rollback:
+    - text: Nothing to roll back - the entry is fetched again from IPA; no data is removed.
+  verify:
+    - text: SSSD resolves {bind.user} again
+      check: nss.user_sss
+      params:
+        user: {bind: user}
+      when: {left: {ref: this, field: found}, op: is_true}
+  limitations: >-
+    This refreshes one user's entry. If the lookup still fails afterwards, the cache is not the cause; run
+    ipa-diagnose client again.
+
+- kind: procedure
+  id: proc.client.remove-sssd-cache
+  title: Remove SSSD's cache with sssctl (keeps a backup of local overrides)
+  resolves:
+    diagnosis: client.sssd-cache-db-error
+  min_confidence: HIGH
+  bindings:
+    user: {type: ipa_user}
+    domain: {type: sssd_domain}
+  applies_to:
+    freeipa_min: "4.9"
+    freeipa_below: "5.0"
+    roles: [ipa-client]
+  impact_note: >-
+    Every cached identity and cached password on this host is removed. Until users log in again while IPA is
+    reachable, they cannot log in offline (cached credentials are gone), and the first lookups are slower.
+  provenance:
+    tier: FIXTURE_ONLY
+    sources:
+      - kind: upstream-code
+        ref: https://github.com/SSSD/sssd/blob/master/src/tools/sssctl/sssctl_data.c
+        title: "sssctl cache-remove: refuses while SSSD runs (unless --stop), exports local overrides to /var/lib/sss/backup, removes the cache, optionally starts SSSD (--start)"
+      - kind: upstream-docs
+        ref: https://sssd.io/troubleshooting/basics.html
+        title: "SSSD troubleshooting basics: do not remove the cache files if the system is offline and relies on SSSD authentication"
+    verified_on: []
+    reviews: []
+    tests:
+      - tests/client/test_client_procedures.py
+  investigate:
+    - id: root
+      check: host.privilege
+      params: {}
+      label: Privileges
+    - id: env
+      check: client.versions
+      params: {}
+      label: Service manager and SSSD version
+    - id: unit
+      check: systemd.unit
+      params: {service: sssd}
+      label: State of sssd.service
+    - id: files
+      check: sssd.cache_files
+      params:
+        domain: {bind: domain}
+      label: SSSD cache database of {bind.domain}
+    - id: tool
+      check: binary.present
+      params: {name: sssctl}
+      label: sssctl installed
+  withhold_if:
+    - when: {left: {ref: env, field: systemd}, op: is_false}
+      reason: This host does not run systemd; sssctl's --stop/--start manage SSSD through systemd.
+    - when: {left: {ref: files, field: present}, op: is_false}
+      reason: There is no cache database for {bind.domain} to remove.
+  prerequisites:
+    - id: root
+      text: ipa-diagnose is running as root (removing SSSD's cache needs root)
+      when: {left: {ref: root, field: is_root}, op: is_true}
+    - id: tool
+      text: sssctl is installed
+      when: {left: {ref: tool, field: present}, op: is_true}
+    - id: offline-impact
+      kind: confirm_by_admin
+      text: >-
+        cached passwords are removed: users who are not able to reach IPA (laptops, a network
+        outage) cannot log in here until they log in once online again. sssctl first exports local overrides to
+        /var/lib/sss/backup; if that backup fails it removes nothing.
+  steps:
+    - id: remove
+      text: Stop SSSD, back up local overrides, remove the cache, start SSSD (sssctl does all four, in this order)
+      run_on: local
+      command: [sssctl, cache-remove, --stop, --start]
+      risk: HIGH
+      changes: [cache-remove, service-restart]
+      expected: >-
+        sssctl prints 'Creating backup of local data...' and 'Removing cache files...' and starts SSSD again. If it
+        says it cannot create the backup, nothing was removed, but SSSD may be left stopped: start it with
+        systemctl start sssd.
+  what_changes:
+    - text: >-
+        The SSSD cache databases under /var/lib/sss/db are removed and rebuilt from IPA on the next lookups, including
+        cached passwords (offline logins). SSSD restarts once. Local overrides are exported to /var/lib/sss/backup
+        first. Nothing in IPA changes.
+  rollback:
+    - text: >-
+        A removed cache cannot be put back; SSSD rebuilds it from IPA. If sssctl left SSSD stopped, start it again.
+      command: [systemctl, start, {ref: unit, field: unit, type: systemd_unit}]
+  verify:
+    - text: "{ref.unit.unit} is active"
+      check: systemd.unit
+      params: {service: sssd}
+      when: {left: {ref: this, field: active_state}, op: eq, right: active}
+    - text: SSSD resolves {bind.user} again
+      check: nss.user_sss
+      params:
+        user: {bind: user}
+      when: {left: {ref: this, field: found}, op: is_true}
+  limitations: >-
+    This is the supported replacement for deleting /var/lib/sss/db/* by hand, and still a last resort: it is shown
+    only when IPA has the user, SSSD is online, DNS, time and the host key are fine, and SSSD itself reports cache
+    database errors. It does not explain why the database was damaged (for example a full disk).

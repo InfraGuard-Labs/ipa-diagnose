@@ -51,13 +51,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "command",
         nargs="?",
-        choices=["diagnose", "verify", "ai-preview", "bundle", "access"],
+        choices=["diagnose", "verify", "ai-preview", "bundle", "access", "client"],
         default="diagnose",
         help="diagnose (default): run diagnosis. verify: check if previously diagnosed problems cleared. "
         "ai-preview: show exactly what would be sent to the AI provider. "
         "bundle: create, preview or validate a sanitized support bundle (see 'ipa-diagnose bundle --help'). "
         "access USER HOST SERVICE: does FreeIPA policy authorize this login, and why "
-        "(see 'ipa-diagnose access --help').",
+        "(see 'ipa-diagnose access --help'). "
+        "client: is this IPA client enrolled and able to resolve and authenticate IPA identities, and why not "
+        "(see 'ipa-diagnose client --help').",
     )
     _add_common_args(parser)
     return parser
@@ -255,7 +257,7 @@ def _first_positional(argv: list) -> Optional[str]:
     for a in argv:
         if skip:
             skip = False
-        elif a in ("--replay", "--ai-provider"):
+        elif a in ("--replay", "--ai-provider", "--user", "--service"):
             skip = True
         elif a == "--":
             return None
@@ -278,6 +280,11 @@ def main(argv: Optional[list] = None) -> int:
         from ipa_diagnose.access.cli import run as run_access
 
         return _guarded(lambda: run_access(argv), err_console)
+    if _first_positional(argv) == "client":
+        # `client` has its own options (--user, --service, --verify); nothing else changes.
+        from ipa_diagnose.client.cli import run as run_client
+
+        return _guarded(lambda: run_client(argv), err_console)
 
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -300,6 +307,11 @@ def main(argv: Optional[list] = None) -> int:
 
             return run_bundle(["bundle"] + (["--replay", args.replay] if args.replay else [])
                               + (["--json"] if args.json else []))
+        if command == "client":  # reached only through an unusual spelling such as `ipa-diagnose -- client`
+            from ipa_diagnose.client.cli import run as run_client
+
+            return run_client(["client"] + (["--replay", args.replay] if args.replay else [])
+                              + (["--json"] if args.json else []) + (["--details"] if args.details else []))
         if command == "access":  # `ipa-diagnose -- access` carries no USER HOST SERVICE
             err_console.print("usage: ipa-diagnose access USER HOST SERVICE [--json] [--details] [--replay DIR]",
                               markup=False)

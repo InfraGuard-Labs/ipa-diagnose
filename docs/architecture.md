@@ -133,10 +133,22 @@ so there is exactly one source of truth for what a run concluded.
 Kerberos ticket), or answers them from a recorded `access_api.json` in `--replay`. `access/evaluate.py` runs a
 fixed, bounded sequence: user, host, service, then `hbactest` (the decision), then only the rules and group chains
 needed to explain it. `access/relations.py` is the L2 relationship index: typed nodes and edges with provenance,
-deduplicated, cycle-safe and bounded. It explains the decision and never makes it. There is no investigation
-planner (planned for Slice 4). `access/output.py` renders the answer as text or as JSON
+deduplicated, cycle-safe and bounded. It explains the decision and never makes it. With `--runtime` (on HOST itself) it hands the runtime side to client mode (below). `access/output.py` renders the answer as text or as JSON
 (`access_schema_version`), a document separate from the v1 diagnosis report. Details:
 [access-diagnosis.md](access-diagnosis.md).
+
+## Planner and client mode (`planner/`, `client/`)
+
+`planner/core.py` is L3: a bounded, deterministic executor for an explicit, ordered graph of steps. Each step names a
+check from the closed registry (`resolution/checks.py` REGISTRY, with `resolution/client_checks.py` for the client
+checks and their privilege, timeout, side-effect and secret metadata), its prerequisites, a relevance gate over the
+results already collected, and a classifier. A plan is validated before it runs (a step may depend only on earlier
+steps, so it is acyclic; depth and fan-out are bounded); the run is bounded in checks, wall clock, per-check timeout
+and retries, suppresses duplicate checks, keeps partial evidence on cancellation and records a full trace.
+`client/plan.py` is the client plan, `client/diagnose.py` (L4) turns a trace into diagnoses with causal roles,
+`client/run.py` attaches fixes through the Slice 1 resolution engine (L5) and builds the verdicts, and
+`client/verify.py` (L6) re-checks with fresh evidence. `access/runtime.py` connects `access --runtime` to it. The
+L2 relationship index stays in `access/`. Details: [client-mode.md](client-mode.md).
 
 ## Verification (`verify.py`)
 

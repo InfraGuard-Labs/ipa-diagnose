@@ -2,6 +2,7 @@
 
     ipa-diagnose bundle [--output PATH] [--replay DIR] [--json]    create a bundle (nothing is uploaded)
     ipa-diagnose bundle --access USER HOST SERVICE [...]           also include one access answer (access.json)
+    ipa-diagnose bundle --client [--user USER --service SERVICE] also include a client investigation (client.json)
     ipa-diagnose bundle --preview [--replay DIR] [--json]         show what a bundle would contain; write nothing
     ipa-diagnose bundle validate BUNDLE [--json]                  check a bundle without extracting it
 
@@ -42,6 +43,10 @@ def build_parser() -> argparse.ArgumentParser:
                    help="build from a recorded fixture directory instead of the live host (marked REPLAY)")
     p.add_argument("--access", nargs=3, metavar=("USER", "HOST", "SERVICE"), default=None,
                    help="also include the answer of ipa-diagnose access USER HOST SERVICE (pseudonymized)")
+    p.add_argument("--client", action="store_true",
+                   help="also include this host's client investigation (ipa-diagnose client; structure only)")
+    p.add_argument("--user", metavar="USER", default=None, help="with --client: the IPA user to check")
+    p.add_argument("--service", metavar="SERVICE", default=None, help="with --client: the PAM service to check")
     p.add_argument("--json", action="store_true", help="print the result as JSON")
     return p
 
@@ -58,7 +63,7 @@ def _strip_command(argv: List[str]) -> List[str]:
             continue
         if a == "--access":  # USER HOST SERVICE are values even when one of them is spelled "bundle"
             skip = 3
-        elif a in ("--replay", "--ai-provider", "--output", "-o"):
+        elif a in ("--replay", "--ai-provider", "--output", "-o", "--user", "--service"):
             skip = 1
         out.append(a)
     return out
@@ -78,7 +83,7 @@ def run(argv: List[str]) -> int:
     if args.action == "validate":
         if not args.bundle:
             parser.error("validate needs the bundle file to check")
-        if args.preview or args.output or args.replay or args.access:
+        if args.preview or args.output or args.replay or args.access or args.client or args.user or args.service:
             parser.error("validate takes only a bundle file (and --json)")
         return _validate(args, console)
     if args.bundle:
@@ -95,6 +100,17 @@ def run(argv: List[str]) -> int:
                                                 args.access_api.context.realm)
         except TargetError as e:
             parser.error(sanitize_text(str(e), 300))
+    if (args.user or args.service) and not args.client:
+        parser.error("--user and --service belong to --client")
+    if args.client:
+        from ipa_diagnose.resolution import types as T
+
+        if args.user is not None and T.validate("ipa_user", args.user) is None:
+            parser.error("--user must be an IPA user name")
+        if args.service is not None and T.validate("pam_service", args.service) is None:
+            parser.error("--service must be a PAM service name such as sshd")
+        if args.service and not args.user:
+            parser.error("--service needs --user")
     if args.preview and args.output:
         parser.error("--preview writes nothing, so --output does not apply")
     if args.replay is not None and not os.path.isdir(args.replay):
@@ -126,7 +142,7 @@ def _create(args: argparse.Namespace, console: Console, err: Console) -> int:
     evidence, report = _collect_and_diagnose(args)
     previous = load_previous_report(_state_path(args))  # read-only; bundles never save a baseline
     try:
-        built = build(evidence, report, previous=previous, access=_access_answer(args))
+        built = build(evidence, report, previous=previous, access=_access_answer(args), client=_client_answer(args))
         selftest.check(built.members, built.sanitizer.originals(), _forbidden(args), built.sanitizer.secret_values)
     except selftest.LeakDetected as e:
         return _refused(args, console, "the leak self-test found content that must not leave this host",
@@ -177,6 +193,23 @@ def _access_answer(args: argparse.Namespace):
     return diagnose(args.access_api, args.access_targets, {"user": user, "host": host, "service": service})
 
 
+def _client_answer(args: argparse.Namespace):
+    """This host's `ipa-diagnose client` investigation for --client, from the same source as the rest of the bundle
+    (LIVE, or client_checks.json in the same replay directory); None when not asked for."""
+
+    if not args.client:
+        return None
+    from ipa_diagnose.client.run import investigate
+    from ipa_diagnose.resolution.checks import LiveRunner, ReplayRunner
+
+    if args.replay:
+        from ipa_diagnose.client.cli import _replay_root
+
+        return investigate(ReplayRunner(args.replay, filename="client_checks.json"), user=args.user,
+                           service=args.service, is_root=_replay_root(args.replay))
+    return investigate(LiveRunner(), user=args.user, service=args.service)
+
+
 def _summary(built, report) -> Dict[str, Any]:
     return {
         "source_mode": built.source_mode,
@@ -191,6 +224,7 @@ def _summary(built, report) -> Dict[str, Any]:
         "truncation": built.privacy["truncation"],
         "content_complete": built.manifest["content_complete"],
         "access_included": "access.json" in built.members,
+        "client_included": "client.json" in built.members,
         "leak_self_test": "passed",
     }
 
@@ -220,6 +254,9 @@ def _print_summary(console: Console, info: Dict[str, Any]) -> None:
         console.print(f"  Shortened to stay within limits: {t['strings_truncated']} text(s) truncated, "
                       f"{t['strings_omitted_as_too_large']} omitted as too large, entries dropped "
                       f"{t['entries_dropped_by_limits'] or 'none'}", markup=False, soft_wrap=True)
+    if info.get("client_included"):
+        console.print("  Client investigation: included (client.json, pseudonymized, structure only)", markup=False,
+                      soft_wrap=True)
     if info.get("access_included"):
         console.print("  Access answer: included (access.json, pseudonymized, no commands)", markup=False,
                       soft_wrap=True)

@@ -346,7 +346,8 @@ def resolve_diagnosis(d: Diagnosis, env: Optional[EnvironmentInfo], runner: Runn
                    impact_note=proc.get("impact_note", ""), replay=bool(getattr(runner, "replay", False)))
     fmin = proc["applies_to"].get("freeipa_min")
     fbel = proc["applies_to"].get("freeipa_below")
-    r.applies_to = ("FreeIPA server " + (f"{fmin} or later" if fmin else "") + (f", below {fbel}" if fbel else "")).strip()
+    client_role = proc["applies_to"]["roles"] == ["ipa-client"]
+    r.applies_to = (("IPA client " if client_role else "FreeIPA server ") + (f"{fmin} or later" if fmin else "") + (f", below {fbel}" if fbel else "")).strip()
 
     # 1b. a symptom gets no fix of its own: its cause is reported above and must be fixed first (for example
     # dirsrv stopped because its database disk is full - starting it again is not the fix; red-team round 4)
@@ -371,10 +372,13 @@ def resolve_diagnosis(d: Diagnosis, env: Optional[EnvironmentInfo], runner: Runn
     here = _version(env.freeipa_version) if env else None
     if here is None:
         if r.replay:
-            r.reasons.append("This recorded evidence does not include the FreeIPA version or the checks a fix needs, "
-                             "so no fix can be confirmed from it.")
+            r.reasons.append(("This recorded evidence does not include the IPA client version" if client_role else
+                              "This recorded evidence does not include the FreeIPA version")
+                             + " or the checks a fix needs, so no fix can be confirmed from it.")
         else:
-            r.reasons.append("Could not read the FreeIPA server version (rpm -q freeipa-server), so it is not "
+            r.reasons.append("Could not read the IPA client version (rpm -q freeipa-client), so it is not established "
+                             "that this procedure applies here." if client_role else
+                             "Could not read the FreeIPA server version (rpm -q freeipa-server), so it is not "
                              "established that this procedure applies here.")
         return r
     if fmin and here < _version(fmin):

@@ -18,6 +18,9 @@ from ipa_diagnose.access.targets import SID_DOMAIN
 from ipa_diagnose.textsafe import sanitize_text
 
 ACCESS_SCHEMA_VERSION = "1.0"
+ACCESS_RUNTIME_SCHEMA_VERSION = "1.1"
+"""Only `access --runtime` output uses 1.1 (additive: runtime_access.investigated/note/checked_on/client); without
+--runtime the output is exactly Slice 3's 1.0."""
 
 
 def _c(v: Any, limit: int = 1200) -> Any:
@@ -45,6 +48,10 @@ def headline(r: AccessResult) -> str:
     codes = _codes(r)
     if z == State.PASS and a == State.FAIL:
         return f"FreeIPA HBAC policy authorizes {q}, but the account cannot authenticate."
+    if z == State.PASS and r.runtime.state == State.FAIL and r.client is not None:
+        why = _client_primary(r)
+        return (f"FreeIPA HBAC policy authorizes {q}, but the login is expected to fail on this host"
+                + (f": {why}." if why else "."))
     if z == State.PASS:
         return f"FreeIPA HBAC policy authorizes {q}."
     if z == State.FAIL:
@@ -62,8 +69,21 @@ def headline(r: AccessResult) -> str:
     return f"Could not determine whether FreeIPA HBAC policy authorizes {q}."
 
 
+def _client_primary(r: AccessResult) -> str:
+    c = r.client
+    if c is None:
+        return ""
+    d = next((x for x in c.diagnoses if x.role == "PRIMARY"), None) or next(
+        (x for x in c.diagnoses if x.severity == "FAIL"), None)
+    return d.title if d else ""
+
+
 def root_cause(r: AccessResult) -> List[str]:
-    return [f.title for f in r.findings if f.blocking]
+    out = [f.title for f in r.findings if f.blocking]
+    if r.client is not None and r.runtime.state == State.FAIL:
+        out += [f"on this host: {d.title}" for d in r.client.diagnoses
+                if d.role in ("PRIMARY", "INDEPENDENT", "CONTRADICTING", "UNDIAGNOSED") and d.severity == "FAIL"]
+    return out
 
 
 def no_blocker_text(r: AccessResult) -> str:
@@ -169,6 +189,9 @@ def impact(r: AccessResult) -> str:
         return (f"{who} is refused on {t.host} through {t.service} wherever SSSD enforces FreeIPA HBAC "
                 "(access_provider = ipa, the default on enrolled hosts). Other users, hosts and services are not "
                 "affected by this answer.")
+    if z == State.PASS and r.runtime.state == State.FAIL and r.client is not None:
+        return ("FreeIPA HBAC policy is not what stops this login: the runtime side on this host is ("
+                + (_client_primary(r) or "see RUNTIME") + "). Fixing the policy would not help.")
     if z == State.PASS:
         return ("FreeIPA HBAC policy is not what stops this login. If the login still fails, the cause is elsewhere "
                 "(credentials, lockout, the host's SSSD, PAM, network or keytab), which this command does not test.")
@@ -390,6 +413,27 @@ def to_dict(r: AccessResult) -> Dict[str, Any]:
         "verify": verify_steps(r),
         "limitations": r.limitations,
     }
+    if r.runtime_note is not None:
+        doc["access_schema_version"] = ACCESS_RUNTIME_SCHEMA_VERSION
+        rt = doc["runtime_access"]
+        rt["investigated"] = r.client is not None
+        rt["note"] = r.runtime_note
+        if r.client is not None:
+            from ipa_diagnose.client.output import to_dict as client_dict
+
+            cd = client_dict(r.client)
+            rt["checked_on"] = cd["environment"].get("host")
+            rt["client"] = {k: cd[k] for k in ("status", "answer", "diagnoses", "ruled_out", "resolution",
+                                               "planner_summary", "completeness")}
+            rt["client"]["steps"] = [{k: s[k] for k in ("step", "title", "outcome", "summary", "skip_reason",
+                                                         "side_effects")}
+                                     for s in cd["steps"]]
+            if any(v["status"] == "OFFERED" for v in cd["resolution"].values()):
+                doc["verify"].append("after a fix on this host: ipa-diagnose client --verify   (fresh checks)")
+            doc["verify"] = [s for s in doc["verify"] if "sssctl user-checks" not in s]
+            doc["limitations"] = ["Runtime prerequisites were checked on this host with client mode (SSSD, identity "
+                                  "lookup, NSS, PAM stack and account phase); no login is attempted and no "
+                                  "credential is tested."] + doc["limitations"][1:]
     return _c(doc)
 
 
@@ -435,6 +479,36 @@ def render(r: AccessResult, console: Console, details: bool = False) -> None:
         p("ALSO NOTED", "bold")
         for f in context:
             p(f"  {f['title']}: {f['detail']}")
+    rt = d["runtime_access"]
+    if rt.get("note") is not None:
+        p("RUNTIME (--runtime)", "bold")
+        p("  " + rt["note"])
+        c = rt.get("client")
+        if c:
+            for x in c["diagnoses"]:
+                p(f"  [{x['role']}] {x['title']} - confidence {x['confidence']}")
+                p(f"      {x['detail']}")
+            sym = {"PASS": "ok  ", "WARN": "!   ", "FAIL": "!!  ", "UNKNOWN": "?   "}
+            ran = [s for s in c["steps"] if s["outcome"] != "SKIPPED"]
+            for s in ran:
+                if details or s["outcome"] != "PASS":
+                    p(f"  [{sym.get(s['outcome'], '?   ')}] {s['title']}: {s['summary']}")
+                    if details and s.get("side_effects") not in (None, "none"):
+                        p(f"         note: {s['side_effects']}", "dim")
+            if not details:
+                p(f"  ({sum(1 for s in ran if s['outcome'] == 'PASS')} runtime check(s) on this host passed; "
+                  "--details lists them)", "dim")
+            for code, rr in c["resolution"].items():
+                if rr["status"] == "OFFERED":
+                    p(f"  Fix on this host: {rr['title']} (risk {rr['risk']}; ipa-diagnose never runs it)")
+                    for stp in rr["steps"]:
+                        p(f"       {stp['command']}", "bold cyan")
+                    for pr in rr["prerequisites"]:
+                        if pr["state"] == "confirm":
+                            p(f"       Before running, accept that: {pr['text']}")
+                else:
+                    for reason in rr["reasons"][:2]:
+                        p(f"  No fix shown: {reason}")
     p("CHECKED FOR YOU", "bold")
     marks = {"ok": "ok  ", "problem": "!!  ", "not_found": "--  ", "error": "ERR ", "skipped": "skip"}
     for c in d["evidence"]["checks"]:
