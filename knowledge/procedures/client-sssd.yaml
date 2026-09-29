@@ -14,12 +14,17 @@
     freeipa_below: "5.0"
     roles: [ipa-client]
   provenance:
-    tier: FIXTURE_ONLY
+    tier: LIVE_VERIFIED
     sources:
       - kind: upstream-docs
         ref: https://sssd.io/troubleshooting/basics.html
         title: "SSSD troubleshooting basics: first check whether sssd is running at all (systemctl status sssd)"
-    verified_on: []
+    verified_on:
+      - freeipa: "4.13.4"
+        os: fedora-43
+        tier: LIVE
+        evidence: https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36579279971
+        date: "2026-09-29"
     reviews: []
     tests:
       - tests/client/test_client_procedures.py
@@ -254,7 +259,7 @@
     - id: offline-impact
       kind: confirm_by_admin
       text: >-
-        you accept that cached passwords are removed: users who are not able to reach IPA (laptops, a network
+        cached passwords are removed: users who are not able to reach IPA (laptops, a network
         outage) cannot log in here until they log in once online again. sssctl first exports local overrides to
         /var/lib/sss/backup; if that backup fails it removes nothing.
   steps:

@@ -27,8 +27,9 @@ from here, via [claim-register.md](claim-register.md) (section "Slice 4").
 | [36513399083](https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36513399083) | 00fd9e5 | 14/19 | every healthy run with `--user/--service` came out NOT_FULLY_VERIFIED; cause not visible in annotations (debug added) |
 | [36577169643](https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36577169643) | 2a0a800 | 15/19 | **live finding:** `sssctl user-checks` prints its PAM result on **stderr** (SSSD 2.12); the parser read stdout only, so the PAM account check was UNKNOWN. Harness: repeated SSSD restarts hit systemd's start limit (C09b; ipa-diagnose correctly reported SSSD failed) |
 | [36579279971](https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36579279971) | 20d4d25 | **19/19 PASS**, 0 false root causes | parser reads both streams; lab resets the start limit |
+| [36581496915](https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36581496915) | 79081fc | **19/19 PASS**, 0 false root causes | after review round 2. Findings from its rows, fixed afterwards: in C13 the PAM account refusal while SSSD was offline was listed INDEPENDENT (now RELATED to the offline state, MEDIUM), and MIT krb5's "Cannot resolve servers for KDC" was not classified (now a name-resolution error tied to DNS) |
 
-## Scenarios (run 36579279971 on 20d4d25: all PASS)
+## Scenarios (runs 36579279971 on 20d4d25 and 36581496915 on 79081fc: all PASS)
 
 | # | Scenario | Fault (injected, independently confirmed) | Expected (and forbidden) | Fix | Verify |
 |---|---|---|---|---|---|
@@ -47,12 +48,11 @@ from here, via [claim-register.md](claim-register.md) (section "Slice 4").
 | C09 | HBAC PASS + SSSD stopped | `ipa hbactest` granted; SSSD stopped | `access --runtime`: AUTHORIZATION PASS (unchanged), RUNTIME FAIL, exit 5, client PRIMARY SSSD_NOT_RUNNING | - | - |
 | C09b | HBAC PASS + host refuses | `access_provider = simple`, `simple_allow_users = bob`; `sssctl user-checks` denies | AUTHORIZATION PASS, RUNTIME FAIL, exit 5, RUNTIME_DENIED_HBAC_ALLOWS **CONTRADICTING** | none | - |
 | C10 | recovery + verify | SSSD stopped → printed fix | - | `systemctl start sssd.service` | RESOLVED, exit 0; `access --runtime` exit 0, RUNTIME NOT VERIFIED |
-| C11 | cache database damaged | domain cache file overwritten with random bytes while SSSD stopped | no false root cause; no generic delete; if cache removal is offered, the printed command must verify RESOLVED | recorded in the row | - |
+| C11 | cache database damaged | domain cache file overwritten with random bytes while SSSD stopped | no false root cause; no generic delete; if cache removal is offered, the printed command must verify RESOLVED | **observed: SSSD 2.12 started and served lookups anyway; ipa-diagnose found nothing (exit 0) and offered nothing.** The cache-database diagnosis and `sssctl cache-remove` therefore stay FIXTURE_ONLY: a damaged cache that breaks lookups could not be produced safely | - |
 | C12 | insufficient privilege | run as `nobody` | NOT_FULLY_VERIFIED, exit 4, no confident cause, no fix | none | - |
 | C13 | two failures at once | dead resolver + `ipa_srever` typo in sssd.conf | both SSSD_CONFIG_INVALID and a DNS cause as PRIMARY/INDEPENDENT | none | - |
 | C14 | support bundle | fake canary in the SSSD domain log; SSSD stopped | bundle created, `bundle validate` 0, `client.json` present, no raw user/host/realm or canary in the bundle, no canary in client output | - | - |
 
-Per-row timings, planner counts (checks run / skipped) and the exact outputs are in the run's artifact and
-annotations. **Limitations of this evidence:** one server, one client, one FreeIPA/SSSD version; C05 simulates the
+**Selectivity and time (run 36581496915):** healthy client 21 of 28 checks with `--user/--service` (18 without); failures 17-23; each run 0.3-0.8 s, except when the resolvers time out (C03 9.5 s, C13 29.5 s: DNS and SRV timeouts plus kinit). Exact outputs are in the run's artifact and annotations. **Limitations of this evidence:** one server, one client, one FreeIPA/SSSD version; C05 simulates the
 clock of ipa-diagnose's own process only (a container cannot have its own kernel clock); the C11 outcome depends on
 what SSSD 2.12 does with a damaged file and is recorded, not generalized; logins were never attempted.

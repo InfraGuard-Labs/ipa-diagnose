@@ -328,7 +328,8 @@ def diagnose(trace: Trace, inputs: Dict[str, Any]) -> List[ClientDiagnosis]:
         else:
             add(ClientDiagnosis("KERBEROS_FAILED", "Kerberos with the host key failed", "KERBEROS", "LOW",
                                 t.s("krb"), "SSSD may not be able to authenticate this host.", ["krb"],
-                                kind=UNDIAGNOSED, blocks_runtime=True))
+                                kind=None if upstream else UNDIAGNOSED, blocks_runtime=True,
+                                related_to=upstream.code if upstream else None))
 
     # ---------------------------------------------------------------- SSSD service / configuration / backend
     cfg_bad = t.o("sssd.config") == F
@@ -369,16 +370,15 @@ def diagnose(trace: Trace, inputs: Dict[str, Any]) -> List[ClientDiagnosis]:
         add(ClientDiagnosis("SSSD_OFFLINE", "SSSD is offline", "SSSD_BACKEND",
                             "HIGH" if upstream_net else "MEDIUM",
                             t.s("sssd.domain") + (f"; explained by: {upstream_net.title}" if upstream_net else
-                                                  "; the server name resolves, the server answers and the KDC "
-                                                  "accepts this host's key, so the reason is inside SSSD's own "
-                                                  "connection") + (f". SSSD log signals: {', '.join(signals)}"
+                                                  "; the reason was not found in DNS, the server's ports, TLS trust, the "
+                                                  "clock or the host key: look at SSSD's own log") + (f". SSSD log signals: {', '.join(signals)}"
                                                                    if signals else "") + ".",
                             "Only cached users and groups resolve, and only users who logged in before can log in "
                             "(with cached credentials, if enabled). New users and policy changes are not seen.",
                             ["sssd.domain", "sssd.logs"], blocks_runtime=True,
                             related_to=upstream_net.code if upstream_net else None,
                             kind=None if upstream_net or explaining else UNDIAGNOSED,
-                            next_steps=["sssctl domain-status $(sssctl domain-list | head -1) -o -a   (read-only)",
+                            next_steps=[f"sssctl domain-status {_q(t.f('sssd', 'sssd_domain') or 'DOMAIN')} -o -a   (read-only)",
                                         "journalctl -u sssd -n 50   (read-only)"]))
 
     # ---------------------------------------------------------------- identity
@@ -489,6 +489,8 @@ def diagnose(trace: Trace, inputs: Dict[str, Any]) -> List[ClientDiagnosis]:
         res = t.f("pam.acct", "result")
         ap = (t.f("sssd", "access_provider") or "ipa").lower()
         hbac = inputs.get("hbac_state")
+        # SSSD offline (or its upstream broken) decides access from cached rules: the refusal follows from that first
+        offline_upstream = find("SSSD_OFFLINE") or upstream_net
         if res == "permission_denied":
             if hbac == "PASS":
                 add(ClientDiagnosis("RUNTIME_DENIED_HBAC_ALLOWS", f"This host refuses {user} although FreeIPA HBAC "
@@ -504,12 +506,13 @@ def diagnose(trace: Trace, inputs: Dict[str, Any]) -> List[ClientDiagnosis]:
                                                 " (read-only)", f"cat /etc/pam.d/{service}   (read-only)"]))
             else:
                 add(ClientDiagnosis("RUNTIME_ACCOUNT_DENIED", f"SSSD's account check refuses {user} through {service}",
-                                    "PAM", "HIGH",
+                                    "PAM", "MEDIUM" if offline_upstream else "HIGH",
                                     f"The PAM account phase answered 'Permission denied' (access_provider = {ap}). With "
                                     "access_provider = ipa this is FreeIPA HBAC (or the account state) as SSSD "
                                     "evaluates it on this host.",
                                     f"{user} cannot log in here through {service}.", ["pam.acct", "sssd"],
                                     blocks_runtime=True,
+                                    related_to=offline_upstream.code if offline_upstream else None,
                                     next_steps=[f"ipa-diagnose access {_q(user)} {_q(host)} {_q(service)}   (why, "
                                                 "from FreeIPA's own evaluation)"]))
         elif res == "authinfo_unavail":
@@ -543,7 +546,7 @@ def _roles(out: List[ClientDiagnosis]) -> List[ClientDiagnosis]:
             d.role, primary_set = PRIMARY, True
         else:
             d.role = INDEPENDENT
-    order = {PRIMARY: 0, INDEPENDENT: 1, RELATED: 2, CONTRADICTING: 3, UNDIAGNOSED: 4, WARNING: 5}
+    order = {PRIMARY: 0, INDEPENDENT: 1, UNDIAGNOSED: 2, CONTRADICTING: 3, RELATED: 4, WARNING: 5}
     return sorted(out, key=lambda x: (order[x.role], LAYER.get(x.capability, 99)))
 
 
@@ -564,7 +567,7 @@ RULED_OUT = {
     "sssd.config": "the SSSD configuration is valid",
     "sssd.domain": "SSSD is online",
     "id.user": "SSSD resolves the user",
-    "id.group": "SSSD resolves identities",
+    "id.group": "SSSD resolves the group admins",
     "ipa.user": "IPA has the user",
     "nss.system": "the system NSS stack resolves the user",
     "pam.stack": "the PAM service uses SSSD",

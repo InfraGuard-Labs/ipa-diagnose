@@ -155,12 +155,31 @@ def _authentication(diags: List[ClientDiagnosis], trace: Trace) -> Verdict:
                    "tested", ["no password or ticket of any user was used"])
 
 
+# Layers that break ONLINE authentication but not every login: with SSSD offline, users who logged in before can
+# still log in with cached credentials or SSH keys. They set AUTHENTICATION, never RUNTIME ACCESS (review round 3).
+_AUTH_PATH_ONLY = ("DNS", "NETWORK", "TLS", "TIME", "KEYTAB", "KERBEROS", "SSSD_BACKEND")
+_AUTH_PATH_CODES = ("HOST_PRINCIPAL_UNKNOWN",)
+
+
+def _runtime_blocker(d: ClientDiagnosis) -> bool:
+    return (d.blocks_runtime and d.severity == "FAIL" and d.capability not in _AUTH_PATH_ONLY
+            and d.code not in _AUTH_PATH_CODES)
+
+
 def _runtime(diags: List[ClientDiagnosis], trace: Trace, inputs: Dict[str, Any]) -> Verdict:
-    broken = [d for d in diags if d.blocks_runtime and d.severity == "FAIL"]
+    """FAIL only for a runtime prerequisite shown broken for this user/service on this host: SSSD not configured or
+    not running, the identity not resolvable, NSS or PAM not using SSSD, SSSD's account phase refusing."""
+
+    broken = [d for d in diags if _runtime_blocker(d)]
     user, service = inputs.get("user"), inputs.get("service")
     if broken:
         return Verdict("FAIL", f"a login{' by ' + user if user else ''}{' through ' + service if service else ''} "
-                       f"is expected to fail on this host: {broken[0].title}", [d.title for d in broken])
+                       f"is expected to fail on this host: {broken[0].title}", [d.title for d in broken[1:]])
+    online = [d for d in diags if d.severity == "FAIL" and not _runtime_blocker(d) and d.blocks_authentication]
+    if online:
+        return Verdict("NOT_VERIFIED", f"online authentication against IPA fails ({online[0].title}): logins that need "
+                       "IPA (for example a first password login) fail; users with cached credentials or SSH keys may "
+                       "still log in", ["no login was attempted"])
     checked = []
     for sid, what in (("id.user", "the user resolves through SSSD"), ("nss.system", "the system NSS stack "
                                                                                   "resolves the user"),

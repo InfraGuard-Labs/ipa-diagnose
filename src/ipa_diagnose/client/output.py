@@ -51,8 +51,12 @@ def headline(r: ClientResult) -> str:
     prim = next((d for d in r.diagnoses if d.role == "PRIMARY"), None)
     if r.status == "PROBLEM_FOUND":
         if prim:
+            more = [d for d in r.diagnoses if d.role == "INDEPENDENT"]
+            if more:
+                return (f"{host}: {1 + len(more)} independent problems: {prim.title}; "
+                        + "; ".join(d.title for d in more) + ".")
             return f"{host}: {prim.title}."
-        return f"{host}: a problem was found, but its cause is not established (see UNKNOWN)."
+        return f"{host}: a problem was found, but its cause is not established (see UNDIAGNOSED under ROOT CAUSE)."
     if r.status == "NOT_FULLY_VERIFIED":
         return f"{host}: no problem found in what could be checked, but not everything could be checked."
     if r.status == "HEALTHY_WITH_WARNINGS":
@@ -200,6 +204,8 @@ def render(r: ClientResult, console: Console, details: bool = False) -> None:
                 p(f"    Why it matters: {rr['impact_note']}")
             for rb in rr["rollback"]:
                 p(f"    Rollback: {rb['text']}" + (f"  ->  {rb['command']}" if rb.get("command") else ""))
+            if rr.get("limitations"):
+                p(f"    Note: {rr['limitations']}")
         elif rr["status"] == "NONE":
             p(f"  For '{x['title']}': no fix is shown. " + " ".join(rr["reasons"]))
         else:
@@ -207,8 +213,9 @@ def render(r: ClientResult, console: Console, details: bool = False) -> None:
             for reason in rr["reasons"]:
                 p(f"    - {reason}")
     if not shown:
-        p("  No fix is suggested" + (": nothing to fix." if not diags else
-                                     "; the next read-only steps are below."))
+        p("  No fix is suggested" + ((": nothing was found in what could be checked (see NOT VERIFIED)."
+                                      if d["completeness"]["not_verified"] else ": nothing to fix.") if not diags
+                                     else "; the next read-only steps are below."))
     nxt = [(x["title"], s) for x in diags for s in x["next_steps"]]
     if nxt:
         p("NEXT READ-ONLY STEPS", "bold")

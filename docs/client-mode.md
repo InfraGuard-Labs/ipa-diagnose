@@ -21,7 +21,7 @@ Three states are always kept apart:
 |---|---|---|
 | **AUTHENTICATION** | *FAIL* when something on this host's authentication path to IPA is shown broken (clock, KDC, host key, SSSD, PAM auth stack); otherwise *NOT VERIFIED*. | PASS: no credential of any user is tested. |
 | **AUTHORIZATION** | Not decided by client mode (*NOT VERIFIED*). With `access --runtime` it is FreeIPA's own `hbactest` decision, unchanged. | Rewritten by runtime evidence. |
-| **RUNTIME ACCESS** | *FAIL* when a runtime prerequisite on this host is shown broken for the user/service asked (SSSD down, identity not resolvable, NSS or PAM not using SSSD, SSSD's PAM account phase refusing). Otherwise *NOT VERIFIED*, with what was checked. | PASS: no login is attempted and no session is opened. |
+| **RUNTIME ACCESS** | *FAIL* when a runtime prerequisite on this host is shown broken for the user/service asked (SSSD down, identity not resolvable, NSS or PAM not using SSSD, SSSD's PAM account phase refusing). Otherwise *NOT VERIFIED*, with what was checked. A broken *online* path (DNS, KDC, clock, host key, SSSD offline) makes AUTHENTICATION FAIL but not RUNTIME ACCESS: users with cached credentials or SSH keys may still log in. | PASS: no login is attempted and no session is opened. |
 
 SSSD's account check on the host (`sssctl user-checks USER -a acct -s SERVICE`, the PAM **account** phase only, no
 password) is runtime evidence. When it refuses a user that FreeIPA's `hbactest` authorizes, the result is

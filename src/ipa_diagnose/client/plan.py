@@ -322,7 +322,9 @@ def g_ipa_user(ctx) -> Tuple[bool, str]:
         return False, "no --user given"
     if ctx.outcome("id.user") == F:
         return True, "SSSD does not resolve the user: does IPA itself have it?"
-    return False, "SSSD resolves the user, so IPA has it"
+    if ctx.outcome("id.user") == P:
+        return False, "SSSD resolves the user, so IPA has it"
+    return False, "the user lookup did not run, so there is no lookup failure to explain"
 
 
 def g_nss_system(ctx) -> Tuple[bool, str]:
@@ -330,7 +332,9 @@ def g_nss_system(ctx) -> Tuple[bool, str]:
         return False, "no --user given"
     if ctx.outcome("id.user") == P:
         return True, "SSSD resolves the user: does the system's NSS stack (used by logins) resolve it too?"
-    return False, "SSSD does not resolve the user, so the system stack cannot either"
+    if ctx.outcome("id.user") == F:
+        return False, "SSSD does not resolve the user, so the system stack cannot either"
+    return False, "the user lookup through SSSD did not run"
 
 
 def g_nsswitch(ctx) -> Tuple[bool, str]:
@@ -489,7 +493,7 @@ def client_plan() -> list:
         Step("pam.stack", "PAM", "pam.stack", "PAM service reaches SSSD",
              "The service's PAM stack must call pam_sss for IPA users to authenticate and for HBAC to be enforced.",
              params={"service": ("input", "service")}, when=g_service, classify=c_pam_stack),
-        Step("pam.acct", "PAM", "pam.user_checks", "SSSD's account check accepts the user (PAM account phase)",
+        Step("pam.acct", "PAM", "pam.user_checks", "SSSD's account check for the user (PAM account phase)",
              "Runs only the PAM account phase for the service, as at login, without any password: SSSD applies HBAC "
              "and account state on this host.",
              params={"user": ("input", "user"), "service": ("input", "service")},

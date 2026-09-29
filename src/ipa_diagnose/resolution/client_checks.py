@@ -386,7 +386,7 @@ def _keytab(params):
 _KINIT_ERRORS = (
     ("clock_skew", re.compile(r"(?i)clock skew too great")),
     ("kdc_unreachable", re.compile(r"(?i)cannot contact any kdc|cannot find kdc|unable to reach any kdc")),
-    ("kdc_unresolvable", re.compile(r"(?i)cannot resolve network address for kdc")),
+    ("kdc_unresolvable", re.compile(r"(?i)cannot resolve network address for kdc|cannot resolve servers for kdc")),
     ("principal_unknown", re.compile(r"(?i)client .{0,300} not found in kerberos database|client not found")),
     ("keytab_no_entry", re.compile(r"(?i)keytab contains no suitable keys|no key table entry found|"
                                    r"key table entry not found|no such file or directory")),

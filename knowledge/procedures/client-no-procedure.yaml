@@ -5,7 +5,7 @@
     diagnosis: client.not-enrolled
   reason: >-
     This host is not enrolled. Enrolling it (ipa-client-install) creates a host entry, a keytab and an SSSD
-    configuration and needs an enrollment credential: that is an administrator's decision, never an automatic fix.
+    configuration and needs enrollment rights in IPA, so it is an administrator's decision, never an automatic fix.
 
 - kind: no_procedure
   id: none.client.clock-skew

@@ -65,7 +65,7 @@
   {
    "id": "none.client.not-enrolled",
    "kind": "no_procedure",
-   "reason": "This host is not enrolled. Enrolling it (ipa-client-install) creates a host entry, a keytab and an SSSD configuration and needs an enrollment credential: that is an administrator's decision, never an automatic fix.",
+   "reason": "This host is not enrolled. Enrolling it (ipa-client-install) creates a host entry, a keytab and an SSSD configuration and needs enrollment rights in IPA, so it is an administrator's decision, never an automatic fix.",
    "resolves": {
     "diagnosis": "client.not-enrolled"
    }
@@ -658,7 +658,7 @@
     {
      "id": "offline-impact",
      "kind": "confirm_by_admin",
-     "text": "you accept that cached passwords are removed: users who are not able to reach IPA (laptops, a network outage) cannot log in here until they log in once online again. sssctl first exports local overrides to /var/lib/sss/backup; if that backup fails it removes nothing."
+     "text": "cached passwords are removed: users who are not able to reach IPA (laptops, a network outage) cannot log in here until they log in once online again. sssctl first exports local overrides to /var/lib/sss/backup; if that backup fails it removes nothing."
     }
    ],
    "provenance": {
@@ -856,8 +856,16 @@
     "tests": [
      "tests/client/test_client_procedures.py"
     ],
-    "tier": "FIXTURE_ONLY",
-    "verified_on": []
+    "tier": "LIVE_VERIFIED",
+    "verified_on": [
+     {
+      "date": "2026-09-29",
+      "evidence": "https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36579279971",
+      "freeipa": "4.13.4",
+      "os": "fedora-43",
+      "tier": "LIVE"
+     }
+    ]
    },
    "resolves": {
     "diagnosis": "client.sssd-not-running"

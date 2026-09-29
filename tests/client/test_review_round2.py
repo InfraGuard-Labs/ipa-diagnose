@@ -142,3 +142,56 @@ def test_host_identity_api_uses_a_minimal_environment(monkeypatch):
     monkeypatch.setattr(api, "read_ipa_conf", lambda path: {})
     a = api.LiveApi(ccache="FILE:/tmp/x/cc")
     assert "SSLKEYLOGFILE" not in a._env and "https_proxy" not in a._env and a._env["KRB5CCNAME"] == "FILE:/tmp/x/cc"
+
+
+# ---- BLOCKER (fresh-user review): a broken ONLINE authentication path is not "the login will fail"
+@pytest.mark.parametrize("scenario", ["dns-failure", "time-skew", "keytab-mismatch", "server-unreachable",
+                                      "kdc-unreachable", "host-entry-missing", "ca-untrusted"])
+def test_auth_path_failures_do_not_claim_runtime_failure(scenario):
+    r = H.run(scenario)
+    assert r.runtime.state == "NOT_VERIFIED" and r.authentication.state in ("FAIL", "NOT_VERIFIED")
+    if r.authentication.state == "FAIL":
+        assert "cached credentials or SSH keys may still log in" in r.runtime.summary
+
+
+def test_auth_path_failure_with_hbac_pass_is_not_exit_5(tmp_path, capsys, monkeypatch):
+    monkeypatch.setenv("IPA_DIAGNOSE_STATE_DIR", str(tmp_path / "state"))
+    d = tmp_path / "fx"
+    H.write_checks(H.scenario("dns-failure"), directory=d)
+    w = World().user("alice").host(S.HOST).service("sshd")
+    w.rule("r1", users=["alice"], hosts=[S.HOST], services=["sshd"])
+    w.write(d, "alice", S.HOST, "sshd")
+    code = main(["access", "alice", S.HOST, "sshd", "--replay", str(d), "--json", "--runtime"])
+    doc = json.loads(capsys.readouterr().out)
+    assert code == 0 and doc["runtime_access"]["state"] == "NOT_VERIFIED"
+
+
+def test_identity_failure_while_offline_is_still_a_runtime_failure():
+    r = H.run("sssd-offline-unexplained")
+    assert r.runtime.state == "FAIL"
+
+
+# ---- live run 4 (C13): consequences of an offline SSSD are RELATED, not independent causes
+def test_account_denial_while_offline_is_related_not_independent():
+    def m(d):
+        S.dns_down(d)
+        S.pam_denied(d)
+
+    r = H.run("healthy", mutate=m)
+    c = H.codes(r)
+    assert c.get("RUNTIME_ACCOUNT_DENIED") == "RELATED"
+    assert next(x for x in r.diagnoses if x.code == "RUNTIME_ACCOUNT_DENIED").confidence == "MEDIUM"
+
+
+def test_new_mit_wording_for_unresolvable_kdc_is_classified():
+    assert C._classify_kinit("kinit: Cannot resolve servers for KDC in realm \"LAB.TEST\" while getting initial "
+                             "credentials") == "kdc_unresolvable"
+
+
+def test_unclassified_kerberos_error_under_a_dns_failure_is_related():
+    def m(d):
+        S.dns_down(d)
+        d[key("krb.host_kinit", principal=PRINCIPAL)]["fields"].update(error_class="other")
+
+    r = H.run("healthy", mutate=m)
+    assert H.codes(r).get("KERBEROS_FAILED") == "RELATED"
