@@ -38,9 +38,22 @@ same applies to disabled or expired accounts: they are usually disabled on purpo
 | 1 | A definite no: policy does not authorize it, or the account cannot authenticate |
 | 3 | Unknown: no trustworthy policy decision (API unreachable, no ticket, missing user or host, evaluator errors, truncated rules, trusted-domain user) |
 | 4 | Policy authorizes it, but the account state could not be read |
+| 5 | Only with `--runtime`: policy authorizes it, but a runtime check on this host shows the login would fail |
 | 2 | Usage error, including a refused USER/HOST/SERVICE; 70 internal error; 130 interrupted |
 
 The existing commands (`diagnose`, `verify`, `ai-preview`, `bundle`) and their exit codes are unchanged.
+
+### `--runtime`: continuing past the policy decision (Slice 4)
+
+`sudo ipa-diagnose access USER HOST SERVICE --runtime`, run **on HOST itself** (its enrolled name in
+`/etc/ipa/default.conf` must be HOST), continues into the runtime side with client mode's planner
+([client-mode.md](client-mode.md)): SSSD, identity lookup, NSS, the service's PAM stack and SSSD's PAM account phase
+for USER. AUTHORIZATION stays FreeIPA's `hbactest` decision, unchanged. RUNTIME ACCESS becomes FAIL when a runtime
+prerequisite on this host is shown broken (exit 5); otherwise it stays NOT VERIFIED (no login is attempted). When
+SSSD's account check refuses a user that `hbactest` authorizes, the answer is CONTRADICTING, never a rewritten
+deny. It is not investigated when the policy or the account already refuses, and it never runs anything on another
+host: elsewhere it prints the `ipa-diagnose client` command to run on HOST. Without `--runtime` the output is exactly
+the Slice 3 answer (`access_schema_version` 1.0; with `--runtime` 1.1, additive).
 
 ## How the decision is made
 

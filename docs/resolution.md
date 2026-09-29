@@ -45,6 +45,10 @@ a high-risk procedure that ipa-diagnose has not verified, so it points to the do
 | Directory Server certificate **expiring** (lib389 DSCERTLE0001) | `getcert resubmit -i <request>` | MEDIUM | certmonger runs and tracks the certificate with the IPA CA using IPA's standard service profile (`caIPAserviceCert`); the request is MONITORING with no error; it expires within 30 days but has not expired; its post-save command restarts Directory Server |
 | Directory Server certificate **already expired** | none - documented procedure linked | - | - |
 | Kerberos reports skew but this host's clock is fine | none - the wrong clock may be elsewhere | - | - |
+| **Client** (`ipa-diagnose client`): SSSD is not running | `systemctl start sssd.service`, rollback `systemctl stop` | MEDIUM | the host runs systemd; `sssctl config-check` reports no issue; the unit is loaded, not masked, not disabled, still stopped; the stop is not a symptom of another cause (an invalid configuration, cache-database errors at start) |
+| **Client**: one user's SSSD cache entry is inconsistent | `sss_cache -u USER` (expire; nothing deleted) | LOW | IPA has the user (asked with the host's identity), SSSD runs and is online, SSSD holds an entry for the user, yet a lookup through SSSD fails |
+| **Client**: SSSD's cache database is failing | `sssctl cache-remove --stop --start` (backs up local overrides; removes cached passwords) | HIGH | all of the above plus SSSD's own log reporting cache-database errors and the cache entry unreadable; you accept the loss of offline logins first. Never `rm /var/lib/sss/db/*` |
+| **Client**: clock skew, stale/missing/wrong host keytab, host principal unknown, not enrolled | none - reasons shown (no clock step on clients, no keytab replacement, no re-enrollment) | - | - |
 
 ### Verification status
 

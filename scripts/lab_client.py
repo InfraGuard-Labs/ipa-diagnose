@@ -170,6 +170,7 @@ def _commands(doc) -> str:
 
 def row(sid: str, expect: dict, rc: int, doc, secs: float, independent: dict, extra: dict = None) -> dict:
     problems = []
+    extra = dict(extra or {}, debug=_debug(doc))
     got = diag(doc)
     prim = primary(doc)
     if doc is None:
@@ -213,6 +214,16 @@ def row(sid: str, expect: dict, rc: int, doc, secs: float, independent: dict, ex
     return r
 
 
+def _debug(doc) -> dict:
+    steps = [f"{s['step']}={s['outcome']}: {s['summary']}"[:220] for s in (doc or {}).get("steps", [])
+             if s["outcome"] not in ("PASS", "SKIPPED")]
+    rt = (doc or {}).get("runtime_access") or {}
+    steps += [f"client:{s['step']}={s['outcome']}: {s['summary']}"[:220]
+              for s in (rt.get("client") or {}).get("steps", []) if s["outcome"] not in ("PASS", "SKIPPED")]
+    gaps = [f"{g['step']}: {g['reason']}"[:200] for g in ((doc or {}).get("completeness") or {}).get("not_verified", [])]
+    return {"non_pass_steps": steps[:12], "gaps": gaps[:8]}
+
+
 def _write(r: dict) -> None:
     (OUT / "truth").mkdir(parents=True, exist_ok=True)
     with open(ROWS, "a", encoding="utf-8") as f:
@@ -221,6 +232,8 @@ def _write(r: dict) -> None:
     print(f"::notice title={r['scenario']}::{json.dumps(brief, sort_keys=True)[:900]}")
     if r.get("problems"):
         print(f"::warning title={r['scenario']} problems::{'; '.join(r['problems'])[:900]}")
+        if r.get("debug"):
+            print(f"::warning title={r['scenario']} debug::{json.dumps(r['debug'])[:1800]}")
 
 
 def confirm(name: str, cmd: str, expect_substring: str = None, expect_rc: int = None, container: str = C,
@@ -291,7 +304,7 @@ def c01_c02():
     ok = items == {"SSSD_NOT_RUNNING": "RESOLVED"} and rc == 0
     _write({"scenario": "C02-sssd-recovered-verify", "result": "PASS" if ok and applied else "FAIL",
             "problems": [] if ok and applied else [f"verify items {items}, exit {rc}, applied {applied}"],
-            "applied_fix": applied, "verify_items": items, "exit": rc, "seconds": secs,
+            "applied_fix": applied, "verify_items": items, "exit": rc, "seconds": secs, "debug": _debug((doc or {}).get("current")),
             "independent": {"active": confirm("sssd", "systemctl is-active sssd", "active")}})
 
 
@@ -322,7 +335,7 @@ def c04():
 
 
 def c05():
-    lib = sh(C, "ls /usr/lib64/faketime/libfaketime.so.1 2>/dev/null").strip()
+    lib = sh(C, "rpm -ql libfaketime | grep -m1 'libfaketime.so.1$'").strip()
     env = f"LD_PRELOAD={lib} FAKETIME=+2h" if lib else ""
     ind = {"faketime": {"command": "ls libfaketime", "observed": lib, "confirmed": bool(lib)}}
     rc, doc, err, secs = client(ARGS, env=env)
@@ -422,7 +435,7 @@ def c09b():
     if cd.get("RUNTIME_DENIED_HBAC_ALLOWS") != "CONTRADICTING":
         problems.append(f"client diagnoses {cd}")
     _write({"scenario": "C09b-hbac-pass-host-denies", "result": "FAIL" if problems or not (
-        hbac["confirmed"] and host_denies["confirmed"]) else "PASS", "problems": problems, "exit": rc,
+        hbac["confirmed"] and host_denies["confirmed"]) else "PASS", "problems": problems, "debug": _debug(doc), "exit": rc,
             "authorization": (doc or {}).get("authorization", {}).get("state"), "runtime": rt.get("state"),
             "client_diagnoses": cd, "seconds": secs, "independent": {"hbactest": hbac, "host": host_denies}})
     restore_client()
@@ -446,7 +459,7 @@ def c10():
     if rc3 != 0 or ((adoc or {}).get("runtime_access") or {}).get("state") != "NOT_VERIFIED":
         problems.append(f"access --runtime after the fix: exit {rc3}")
     _write({"scenario": "C10-recovery-verify-resolved", "result": "FAIL" if problems else "PASS",
-            "problems": problems, "verify_items": items, "exit": rc2, "seconds": secs + secs2,
+            "problems": problems, "debug": _debug((vdoc or {}).get("current")), "verify_items": items, "exit": rc2, "seconds": secs + secs2,
             "independent": {"active": confirm("sssd", "systemctl is-active sssd", "active")}})
 
 

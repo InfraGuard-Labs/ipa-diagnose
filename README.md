@@ -196,6 +196,7 @@ sudo ipa-diagnose --no-ai         # never contact any AI provider (also the defa
 sudo ipa-diagnose bundle --preview   # what a support bundle would contain; writes nothing
 sudo ipa-diagnose bundle             # write a sanitized support bundle to share (never uploaded)
 kinit admin; ipa-diagnose access john app03.example.com sshd   # may john log in there through sshd, and why?
+sudo ipa-diagnose client --user john --service sshd   # on a client: enrolled? resolves john? why not?
 ```
 
 `ipa-diagnose` must run as **root on the IPA server** (it reads root-only
@@ -329,6 +330,21 @@ policy owner. If the answer cannot be established (no ticket, API unreachable, u
 errors), it is `UNKNOWN`, never a guess. Exit codes: 0 authorized by policy, 1 not authorized or the account cannot
 authenticate, 3 unknown, 4 authorized but the account state is unreadable. Details, researched FreeIPA semantics
 and limits: [docs/access-diagnosis.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/docs/access-diagnosis.md).
+With `--runtime`, run as root on HOST itself, it continues past FreeIPA's decision into the runtime side on that
+host (below); the HBAC decision itself never changes.
+
+## Client mode
+
+`sudo ipa-diagnose client [--user USER --service SERVICE]` answers: is this FreeIPA client correctly enrolled and
+able to resolve and authenticate IPA identities, and if not, why? A bounded, deterministic planner picks the next
+relevant read-only check from what it has already seen (enrollment, DNS, reachability, TLS trust, clock, host keytab,
+the KDC's answer to the host key, SSSD service, configuration and online state, identity lookup, NSS, PAM, and only
+when the evidence points there SSSD's cache), stops when it knows enough, and reports PRIMARY, RELATED, INDEPENDENT,
+UNDIAGNOSED or CONTRADICTING causes with what was ruled out. Fixes follow the same rules as resolutions: `systemctl
+start sssd.service` (withheld when the SSSD configuration is invalid), `sss_cache -u USER` for one inconsistent
+cache entry, and `sssctl cache-remove` only on proven cache-database errors, never `rm /var/lib/sss/db/*`.
+`--verify` re-checks with fresh evidence. No login is attempted: RUNTIME ACCESS is FAIL or NOT VERIFIED, never
+PASS. Details: [docs/client-mode.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/docs/client-mode.md).
 
 ## The evidence model
 
@@ -463,6 +479,8 @@ baseline. Removing the RPM does not delete this file (delete it yourself if you
 no longer want it). Set `IPA_DIAGNOSE_STATE_DIR` to change the location.
 `ipa-diagnose bundle` writes only the bundle file you asked for (mode 0600, never overwriting an existing file)
 and never changes the saved report.
+`ipa-diagnose client` saves its last result for `client --verify` next to it (`client_last.json`, replay runs
+`client_last.replay.json`; same modes and directory). `ipa-diagnose access` saves nothing.
 
 ## Limitations
 
