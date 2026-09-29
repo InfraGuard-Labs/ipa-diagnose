@@ -159,8 +159,11 @@ def _authentication(diags: List[ClientDiagnosis], trace: Trace) -> Verdict:
         return Verdict("FAIL", "online authentication against IPA fails on this host: " + broken[0].title,
                        [d.title for d in broken] + ["users who logged in before may still authenticate offline with "
                                                     "cached credentials, if SSSD caches them"])
+    pam = trace.get("pam.stack")
+    unread = ["the service's PAM stack could not be evaluated (" + pam.summary + ")"] \
+        if pam is not None and pam.outcome == Outcome.UNKNOWN else []
     return Verdict("NOT_VERIFIED", "nothing on this host's authentication path was found broken; no credential was "
-                   "tested", ["no password or ticket of any user was used"])
+                   "tested", unread + ["no password or ticket of any user was used"])
 
 
 # Layers that break ONLINE authentication but not every login: with SSSD offline, users who logged in before can
@@ -209,6 +212,9 @@ def _runtime(diags: List[ClientDiagnosis], trace: Trace, inputs: Dict[str, Any])
                       ("pam.acct", "SSSD's account check (PAM account phase) accepts the user")):
         r = trace.get(sid)
         if r and r.outcome == Outcome.PASS:
+            if sid == "pam.acct" and trace.get("pam.stack") and trace.get("pam.stack").fields.get(
+                    "account_has_sss") is False:  # review round 3f: SSSD was not part of that account phase
+                what = "the PAM account phase passed WITHOUT SSSD (FreeIPA HBAC was not applied)"
             checked.append(what)
     missing = []
     if not user:

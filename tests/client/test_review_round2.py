@@ -232,7 +232,7 @@ def test_pam_auth_without_sssd_fails_authentication_but_not_runtime():
         d[key("pam.stack", service="sshd")]["fields"].update(auth_modules=["pam_unix.so"], auth_has_sss=False)
 
     r = H.run("healthy", mutate=m, hbac="PASS")
-    assert H.codes(r) == {"PAM_AUTH_WITHOUT_SSSD": "WARNING"}
+    assert H.codes(r) == {"PAM_AUTH_WITHOUT_SSSD": "PRIMARY"}
     assert r.authentication.state == "FAIL" and "does not use SSSD" in r.authentication.summary
     assert "cached credentials" not in " ".join([r.authentication.summary] + r.authentication.reasons)
     assert r.runtime.state == "NOT_VERIFIED" and "online authentication" not in r.runtime.summary
@@ -321,3 +321,40 @@ def test_account_phase_without_sssd_is_an_enforcement_gap_not_an_auth_failure():
     r = H.run("healthy", mutate=m, hbac="PASS")
     assert H.codes(r) == {"PAM_ACCOUNT_WITHOUT_SSSD": "WARNING"}
     assert r.authentication.state == "NOT_VERIFIED" and r.runtime.state == "NOT_VERIFIED"
+
+
+# ---- focused re-review (round 3f)
+def test_auth_stack_without_sssd_is_a_problem_not_healthy():
+    def m(d):
+        d[key("pam.stack", service="sshd")]["fields"].update(auth_modules=["pam_unix.so"], auth_has_sss=False)
+
+    r = H.run("healthy", mutate=m)
+    assert r.status == "PROBLEM_FOUND" and r.authentication.state == "FAIL"
+
+
+def test_account_pass_without_sssd_is_not_credited_to_sssd():
+    def m(d):
+        d[key("pam.stack", service="sshd")]["fields"].update(account_modules=["pam_unix.so"], account_has_sss=False)
+
+    r = H.run("healthy", mutate=m)
+    assert "SSSD's account check (PAM account phase) accepts the user" not in r.runtime.summary
+    assert "WITHOUT SSSD" in r.runtime.summary
+
+
+def test_account_denial_without_sssd_is_not_blamed_on_hbac():
+    def m(d):
+        d[key("pam.stack", service="sshd")]["fields"].update(account_modules=["pam_unix.so"], account_has_sss=False)
+        S.pam_denied(d)
+
+    r = H.run("healthy", mutate=m, hbac="PASS")
+    c = H.codes(r)
+    assert "RUNTIME_ACCOUNT_DENIED_LOCAL" in c and "RUNTIME_ACCOUNT_DENIED" not in c
+    assert "RUNTIME_DENIED_HBAC_ALLOWS" not in c and r.runtime.state == "FAIL"
+
+
+def test_unevaluated_pam_stack_is_named_in_authentication():
+    def m(d):
+        d[key("pam.stack", service="sshd")] = S.ok({}, "/etc/pam.d/password-auth is unreadable", status="DENIED")
+
+    r = H.run("healthy", mutate=m, is_root=False)
+    assert any("could not be evaluated" in x for x in r.authentication.reasons)

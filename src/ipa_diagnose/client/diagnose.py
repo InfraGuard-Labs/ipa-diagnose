@@ -492,7 +492,7 @@ def diagnose(trace: Trace, inputs: Dict[str, Any]) -> List[ClientDiagnosis]:
         add(ClientDiagnosis("PAM_AUTH_WITHOUT_SSSD", f"PAM service {service} checks accounts with SSSD but does not "
                             "authenticate with it", "PAM", "MEDIUM", t.s("pam.stack") + ".",
                             f"Password logins of IPA users through {service} fail; key-based logins may work.",
-                            ["pam.stack"], severity="WARN"))
+                            ["pam.stack"]))
     if t.o("pam.acct") == F:
         res = t.f("pam.acct", "result")
         ap = (t.f("sssd", "access_provider") or "ipa").lower()
@@ -500,7 +500,15 @@ def diagnose(trace: Trace, inputs: Dict[str, Any]) -> List[ClientDiagnosis]:
         # SSSD offline (or its upstream broken) decides access from cached rules: the refusal follows from that first
         offline_upstream = find("SSSD_OFFLINE") or upstream_net
         if res == "permission_denied":
-            if hbac == "PASS":
+            if t.f("pam.stack", "account_has_sss") is False:  # review round 3f: SSSD was not asked at all
+                add(ClientDiagnosis("RUNTIME_ACCOUNT_DENIED_LOCAL", f"The PAM account phase refuses {user} through "
+                                    f"{service} (SSSD is not part of it)", "PAM", "HIGH",
+                                    f"The account phase answered 'Permission denied', and the service's account "
+                                    "phase does not call pam_sss: another PAM module on this host refused. This is "
+                                    "not FreeIPA HBAC.", f"{user} cannot log in here through {service}.",
+                                    ["pam.acct", "pam.stack"], blocks_runtime=True,
+                                    next_steps=[f"cat /etc/pam.d/{service}   (read-only)"]))
+            elif hbac == "PASS":
                 add(ClientDiagnosis("RUNTIME_DENIED_HBAC_ALLOWS", f"This host refuses {user} although FreeIPA HBAC "
                                     "allows it", "PAM", "MEDIUM",
                                     f"FreeIPA's own hbactest authorizes {user} through {service} for this host, but "
