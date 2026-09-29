@@ -262,6 +262,13 @@ def ca_untrusted(d):
     _set(d, key("sssd.log_signals", domain=DOMAIN), counts={"offline": 2, "tls": 4})
 
 
+def sssd_fails_cache_db(d):
+    sssd_stopped(d)
+    _set(d, key("systemd.unit", service="sssd"), active_state="failed", result="exit-code")
+    _set(d, key("sssd.log_signals", domain=DOMAIN), counts={"cache_db": 3},
+         examples={"cache_db": "Could not open cache database: Input/output error"})
+
+
 def dns_and_config(d):
     dns_down(d)
     sssd_config_invalid(d)
@@ -334,6 +341,7 @@ SCENARIOS: Dict[str, Callable[[Dict[str, Any]], None]] = {
     "pam-denied": pam_denied,
     "ca-untrusted": ca_untrusted,
     "dns-and-config": dns_and_config,
+    "sssd-fails-cache-db": sssd_fails_cache_db,
     "collector-timeout": collector_timeout,
     "unsupported-sssd": unsupported_sssd,
     "unknown-sssd": unknown_sssd,

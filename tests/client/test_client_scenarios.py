@@ -19,6 +19,7 @@ EXPECT = {
     "keytab-mismatch": ("HOST_KEY_REJECTED", "PROBLEM_FOUND", "FAIL", "FAIL"),
     "keytab-wrong-principal": ("HOST_KEYTAB_WRONG_PRINCIPAL", "PROBLEM_FOUND", "FAIL", "FAIL"),
     "sssd-config-invalid": ("SSSD_CONFIG_INVALID", "PROBLEM_FOUND", "FAIL", "FAIL"),
+    "sssd-fails-cache-db": ("SSSD_CACHE_DB_ERROR", "PROBLEM_FOUND", "FAIL", "FAIL"),
     "user-missing-in-ipa": ("USER_NOT_IN_IPA", "PROBLEM_FOUND", "FAIL", "NOT_VERIFIED"),
     "stale-cache": ("SSSD_CACHE_INCONSISTENT", "PROBLEM_FOUND", "FAIL", "NOT_VERIFIED"),
     "cache-db-error": ("SSSD_CACHE_DB_ERROR", "PROBLEM_FOUND", "FAIL", "NOT_VERIFIED"),

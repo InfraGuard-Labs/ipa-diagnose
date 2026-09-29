@@ -191,8 +191,12 @@ def diagnose(trace: Trace, inputs: Dict[str, Any]) -> List[ClientDiagnosis]:
     # ---------------------------------------------------------------- time
     krb_err = t.f("krb", "error") if t.o("krb") == F else None
     if t.o("time.server") == F:
-        add(ClientDiagnosis("CLOCK_SKEW", "This host's clock is too far from the IPA server's", "TIME", "HIGH",
-                            t.s("time.server") + ".",
+        krb_ok = t.o("krb") == P
+        add(ClientDiagnosis("CLOCK_SKEW", "This host's clock is too far from the IPA server's", "TIME",
+                            "MEDIUM" if krb_ok else "HIGH",
+                            t.s("time.server") + (". Yet the KDC accepted this host's key just now: the KDC that "
+                                                  "answered may be another server, or a clock just changed"
+                                                  if krb_ok else "."),
                             "Kerberos refuses tickets across more than 300 s: the host key, user passwords and "
                             "GSSAPI logins fail; SSSD goes offline.", ["time.server", "time.local", "krb"],
                             blocks_runtime=True, blocks_authentication=True, resolution_key="client.clock-skew",
@@ -290,12 +294,25 @@ def diagnose(trace: Trace, inputs: Dict[str, Any]) -> List[ClientDiagnosis]:
                             "SSSD may refuse to start or ignore options; restarting it does not fix this.",
                             ["sssd.config"], blocks_runtime=t.o("sssd.service") == F,
                             next_steps=["sssctl config-check   (read-only; lists each issue)"]))
+    db_at_start = t.o("sssd.service") == F and "cache_db" in (t.f("sssd.logs", "signals") or []) and not cfg_bad
+    if db_at_start:
+        add(ClientDiagnosis("SSSD_CACHE_DB_ERROR", "SSSD's log reports cache database errors while it is down",
+                            "CACHE", "MEDIUM",
+                            "SSSD is not running and its recent log reports errors opening or reading its cache "
+                            "database. Whether the database stopped it cannot be proven while SSSD is down (the "
+                            "server, the user and the cache entry cannot be checked through it).",
+                            "Starting SSSD again may fail the same way.", ["sssd.service", "sssd.logs",
+                                                                          "cache.files"],
+                            blocks_runtime=True, resolution_key="client.sssd-cache-db-error", variant="suspected",
+                            next_steps=["journalctl -u sssd -n 50   (read-only)",
+                                        "ls -l /var/lib/sss/db/   (read-only)", "df -h /var/lib/sss   (read-only)"]))
     if t.o("sssd.service") == F:
         add(ClientDiagnosis("SSSD_NOT_RUNNING", "SSSD is not running", "SSSD_SERVICE", "HIGH",
                             t.s("sssd.service") + ".",
                             "No IPA user or group resolves here (apart from nscd/memory caches), and no IPA login "
                             "works.", ["sssd.service"], blocks_runtime=True, blocks_authentication=True,
-                            related_to="SSSD_CONFIG_INVALID" if cfg_bad else None,
+                            related_to="SSSD_CONFIG_INVALID" if cfg_bad else "SSSD_CACHE_DB_ERROR" if db_at_start
+                            else None,
                             resolution_key="client.sssd-not-running",
                             next_steps=["systemctl status sssd   (read-only)",
                                         "journalctl -u sssd -n 30   (read-only)"]))

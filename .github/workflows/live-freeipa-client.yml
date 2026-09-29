@@ -1,0 +1,116 @@
+name: Live FreeIPA client diagnosis
+
+# Slice 4 live lab: one real FreeIPA server and one real, enrolled FreeIPA client (both throwaway, created and
+# destroyed inside this job) on a private Docker network. scripts/lab_client.py plays the administrator: it seeds a
+# known HBAC policy, injects each fault on the disposable client, confirms the fault independently (systemctl, kinit,
+# ipa hbactest, ...), and then runs ipa-diagnose blind. A scenario without a result row is a FAIL.
+# Only fake lab identities and fake canaries. ipa-diagnose itself never changes anything; only the lab script does.
+#
+# Manual: workflow_dispatch. On the development branch it also runs when .github/live-client-trigger changes.
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      image:
+        description: "freeipa/freeipa-server image tag (server)"
+        required: false
+        default: "fedora-43"
+        type: string
+  push:
+    branches: ["slice4/planner-client-mode"]
+    paths: [".github/live-client-trigger"]
+
+env:
+  IMAGE: ${{ inputs.image || 'fedora-43' }}
+  IPA_PASSWORD: LiveLabSecret123
+
+jobs:
+  client:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Private network and a real FreeIPA server (integrated DNS + CA)
+        run: |
+          set +e
+          docker network create --subnet 172.30.0.0/24 ipanet
+          docker volume create ipa-data
+          docker run -d --name ipa-s --privileged --cgroupns=host \
+            -v /sys/fs/cgroup:/sys/fs/cgroup:rw -v ipa-data:/data \
+            --network ipanet --ip 172.30.0.10 -h ipa01.lab.test -e PASSWORD=${IPA_PASSWORD} \
+            freeipa/freeipa-server:$IMAGE \
+            ipa-server-install -U -r LAB.TEST --no-ntp --skip-mem-check --setup-dns --no-forwarders \
+              --auto-reverse --ip-address=172.30.0.10
+          for i in $(seq 1 120); do
+            sleep 10
+            if docker exec ipa-s systemctl is-active ipa.service 2>/dev/null | grep -qx active; then echo "active after ~$((i*10))s"; sleep 20; break; fi
+          done
+          docker exec ipa-s ipactl status || { docker logs ipa-s 2>&1 | tail -40; exit 1; }
+
+      - name: Build and start a Fedora 43 client (systemd, freeipa-client, sssd-tools)
+        run: |
+          set -e
+          cat > Containerfile.client <<'EOF'
+          FROM registry.fedoraproject.org/fedora:43
+          RUN for a in 1 2 3; do dnf -y install freeipa-client sssd-tools sssd-dbus systemd dbus-broker \
+                openssh-server python3 python3-pip procps-ng chrony bind-utils iptables-nft libfaketime \
+                util-linux && break; sleep 20; done && dnf clean all
+          CMD ["/usr/sbin/init"]
+          EOF
+          docker build -t lab-client -f Containerfile.client .
+          docker run -d --name ipa-c --privileged --cgroupns=host -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
+            --network ipanet --ip 172.30.0.20 -h client1.lab.test lab-client
+          sleep 15
+          docker exec ipa-c systemctl is-system-running --wait || true
+
+      - name: Install ipa-diagnose (this commit) on the client
+        run: |
+          set -e
+          docker cp "$GITHUB_WORKSPACE" ipa-c:/ipa-diagnose-source
+          docker exec ipa-c python3 -m venv /opt/ipd
+          docker exec ipa-c /opt/ipd/bin/pip install -q /ipa-diagnose-source
+          docker exec ipa-c /opt/ipd/bin/ipa-diagnose --version
+
+      - name: Enroll the client (and prove the enrollment)
+        run: python3 scripts/lab_client.py enroll
+
+      - name: Record environment
+        run: |
+          mkdir -p out
+          {
+            echo "commit: $GITHUB_SHA"; echo "server image: freeipa/freeipa-server:$IMAGE"
+            docker exec ipa-c /opt/ipd/bin/ipa-diagnose --version
+            docker exec ipa-s rpm -q freeipa-server
+            docker exec ipa-c rpm -q freeipa-client sssd-common sssd-tools
+            docker exec ipa-c cat /etc/os-release | grep -E '^(NAME|VERSION)='
+          } | tee env.txt
+          echo "::notice title=client lab environment::$(tr '\n' ' ' < env.txt)"
+
+      - name: Seed the lab HBAC policy
+        run: python3 scripts/lab_client.py setup
+
+      - name: Client scenarios (fault injection, independent confirmation, then ipa-diagnose blind)
+        run: python3 scripts/lab_client.py run
+
+      - name: Client assertions (fail on any FAIL or missing row)
+        run: python3 scripts/lab_client.py summary
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker rm -f ipa-c ipa-s 2>/dev/null || true
+          docker volume rm ipa-data 2>/dev/null || true
+          docker network rm ipanet 2>/dev/null || true
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-client-evidence-${{ inputs.image || 'fedora-43' }}
+          path: |
+            env.txt
+            out/
+          retention-days: 30

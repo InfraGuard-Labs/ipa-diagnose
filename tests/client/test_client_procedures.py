@@ -185,3 +185,10 @@ def test_client_procedures_are_client_role_only_and_server_ones_unchanged():
     assert all(p["provenance"]["tier"] == "FIXTURE_ONLY" or p["provenance"]["verified_on"] for p in client)
     server = [p for p in cat if p.get("kind") == "procedure" and not p["id"].startswith("proc.client.")]
     assert all(p["applies_to"]["roles"] == ["ipa-server"] for p in server)
+
+
+def test_sssd_failing_on_its_cache_database_gets_no_start_and_no_removal():
+    r = H.run("sssd-fails-cache-db")
+    assert H.codes(r) == {"SSSD_CACHE_DB_ERROR": "PRIMARY", "SSSD_NOT_RUNNING": "RELATED"}
+    assert not H.offered(r)
+    assert r.resolutions["SSSD_CACHE_DB_ERROR"].status == "NONE"
