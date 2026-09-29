@@ -24,7 +24,7 @@ EXPECT = {
     "stale-cache": ("SSSD_CACHE_INCONSISTENT", "PROBLEM_FOUND", "FAIL", "NOT_VERIFIED"),
     "cache-db-error": ("SSSD_CACHE_DB_ERROR", "PROBLEM_FOUND", "FAIL", "NOT_VERIFIED"),
     "nss-not-integrated": ("NSS_NOT_USING_SSSD", "PROBLEM_FOUND", "FAIL", "NOT_VERIFIED"),
-    "pam-not-integrated": ("PAM_SERVICE_WITHOUT_SSSD", "PROBLEM_FOUND", "FAIL", "NOT_VERIFIED"),
+    "pam-not-integrated": ("PAM_SERVICE_WITHOUT_SSSD", "PROBLEM_FOUND", "FAIL", "FAIL"),
     "pam-denied": ("RUNTIME_ACCOUNT_DENIED", "PROBLEM_FOUND", "FAIL", "NOT_VERIFIED"),
     "ca-untrusted": ("CA_TRUST_FAILED", "PROBLEM_FOUND", "NOT_VERIFIED", "FAIL"),
     "not-enrolled": ("CLIENT_NOT_ENROLLED", "PROBLEM_FOUND", "FAIL", "FAIL"),

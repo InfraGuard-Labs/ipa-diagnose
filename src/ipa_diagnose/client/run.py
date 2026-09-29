@@ -151,6 +151,12 @@ def _authentication(diags: List[ClientDiagnosis], trace: Trace) -> Verdict:
         return Verdict("FAIL", "online authentication against IPA fails on this host: " + broken[0].title,
                        [d.title for d in broken] + ["users who logged in before may still authenticate offline with "
                                                     "cached credentials, if SSSD caches them"])
+    # the service's own PAM auth stack does not reach SSSD: IPA password logins through it fail (review round 3c);
+    # a LOCAL break, so neither the online-path wording nor the cached-credentials caveat applies
+    local = [d for d in diags if d.code in ("PAM_SERVICE_WITHOUT_SSSD", "PAM_AUTH_WITHOUT_SSSD")]
+    if local:
+        return Verdict("FAIL", "password authentication of IPA users through this PAM service does not use SSSD: "
+                       + local[0].title, ["no credential was tested; key-based logins do not use the PAM auth stack"])
     return Verdict("NOT_VERIFIED", "nothing on this host's authentication path was found broken; no credential was "
                    "tested", ["no password or ticket of any user was used"])
 

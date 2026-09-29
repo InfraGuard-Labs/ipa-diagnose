@@ -224,3 +224,20 @@ def test_incomplete_default_conf_is_not_a_runtime_failure():
 
     r = H.run("healthy", mutate=m)
     assert "CLIENT_CONFIG_INCOMPLETE" in H.codes(r) and r.runtime.state == "NOT_VERIFIED"
+
+
+# ---- focused re-review (round 3c): a PAM auth stack without SSSD is an AUTHENTICATION failure, not silence
+def test_pam_auth_without_sssd_fails_authentication_but_not_runtime():
+    def m(d):
+        d[key("pam.stack", service="sshd")]["fields"].update(auth_modules=["pam_unix.so"], auth_has_sss=False)
+
+    r = H.run("healthy", mutate=m, hbac="PASS")
+    assert H.codes(r) == {"PAM_AUTH_WITHOUT_SSSD": "WARNING"}
+    assert r.authentication.state == "FAIL" and "does not use SSSD" in r.authentication.summary
+    assert "cached credentials" not in " ".join([r.authentication.summary] + r.authentication.reasons)
+    assert r.runtime.state == "NOT_VERIFIED" and "online authentication" not in r.runtime.summary
+
+
+def test_pam_service_without_sssd_fails_both():
+    r = H.run("pam-not-integrated")
+    assert r.authentication.state == "FAIL" and r.runtime.state == "FAIL"
