@@ -136,6 +136,8 @@ def why(r: AccessResult) -> List[str]:
                 out.append(f"  - {e.rule}: {_unmatched_reason(e)}")
         else:
             out.append(f"No HBAC rule names {r.account.canonical or r.targets.user} or any of its groups.")
+        out.append("Rules that apply to all users, and rules that name only other users, are not listed here (they "
+                   "describe other people's access); FreeIPA's evaluation above already took them into account.")
     if r.explanation_status in ("INCOMPLETE", "CONTRADICTING"):
         out.append(f"Explanation {r.explanation_status}: FreeIPA's decision above stands either way (see ALSO NOTED).")
     for f in r.findings:
@@ -174,7 +176,9 @@ def resolution(r: AccessResult) -> Dict[str, Any]:
         reason = ("No fix: ipa-diagnose could not query FreeIPA (see WHY). Get a Kerberos ticket (kinit) or restore "
                   "access to the IPA server, then run the command again.")
     elif "TRUSTED_IDENTITY_UNSUPPORTED" in codes:
-        reason = "No fix: trusted-domain users are not supported by this version; use FreeIPA's own evaluation (VERIFY)."
+        reason = ("No fix: trusted-domain users are not supported by this version"
+                  + ("; check the host name first (see VERIFY)." if r.host.exists is False else
+                     "; use FreeIPA's own evaluation (VERIFY)."))
     elif "USER_NOT_FOUND" in codes or "USER_PRESERVED" in codes or "HOST_NOT_FOUND" in codes:
         reason = ("No fix is suggested. Check the name; the account or host may also be deliberately absent "
                   "(offboarded, deleted or not enrolled).")
@@ -219,28 +223,40 @@ def risk(r: AccessResult) -> str:
 def verify_steps(r: AccessResult) -> List[str]:
     t = r.targets
     q = shlex.quote
-    if t.user_domain:
-        return [f"ipa hbactest --user={q(t.display_user)} --host={q(t.host)} --service={q(t.service)}   "
-                "(FreeIPA's own evaluation, read-only)"]
     user = r.account.canonical or t.user
     host = r.host.canonical or t.host
     svc = r.service.canonical or t.service
     codes = _codes(r)
-    if r.account.exists is False or r.account.preserved or r.host.exists is False:
+    warn = ("(do not use ipa hbactest for a name that does not exist: it evaluates such names anyway and can report "
+            "access granted through rules for all users or hosts)")
+    # ipa hbactest is only ever suggested once the user (or trusted identity) and the host are known to exist
+    if "EVALUATOR_UNAVAILABLE" in codes:
+        return ["klist   (is there a valid Kerberos ticket?)",
+                f"ipa-diagnose access {q(t.display_user)} {q(host)} {q(svc)}   (again, after kinit or once the "
+                "server is reachable)"]
+    user_missing = not t.user_domain and (r.account.exists is False or r.account.preserved)
+    if user_missing or r.host.exists is False:
         steps = []
-        if r.account.exists is False or r.account.preserved:
+        if user_missing:
             steps += [f"ipa user-show {q(user)}   (read-only)",
                       f"ipa user-find --preserved=true --login={q(user)}   (read-only; a deleted but kept account)",
                       f"ipa stageuser-show {q(user)}   (read-only; an account not yet activated)"]
         if r.host.exists is False:
             steps.append(f"ipa host-show {q(host)}   (read-only; the host may be enrolled under another name)")
-        steps.append("(do not use ipa hbactest for a name that does not exist: it evaluates such names anyway and "
-                     "can report access granted through rules for all users or hosts)")
+        steps.append(warn)
         return steps
-    if "EVALUATOR_UNAVAILABLE" in codes:
-        return ["klist   (is there a valid Kerberos ticket?)",
-                f"ipa-diagnose access {q(user)} {q(host)} {q(svc)}   (again, after kinit or once the server is "
-                "reachable)"]
+    user_unread = not t.user_domain and r.account.exists is None
+    if user_unread or r.host.exists is None:
+        steps = []
+        if user_unread:
+            steps.append(f"ipa user-show {q(user)}   (read-only; does the user exist, and may this identity read it?)")
+        if r.host.exists is None:
+            steps.append(f"ipa host-show {q(host)}   (read-only; does the host exist, and may this identity read it?)")
+        steps += [f"ipa-diagnose access {q(t.display_user)} {q(host)} {q(svc)}   (again, once they can be read)", warn]
+        return steps
+    if t.user_domain:
+        return [f"ipa hbactest --user={q(t.display_user)} --host={q(host)} --service={q(svc)}   "
+                "(FreeIPA's own evaluation for a trusted-domain user, read-only; the host exists)"]
     steps = [f"ipa hbactest --user={q(user)} --host={q(host)} --service={q(svc)}   "
              "(FreeIPA's own evaluation, read-only)"]
     if r.authorization.state == State.FAIL:

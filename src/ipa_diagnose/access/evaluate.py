@@ -235,6 +235,10 @@ class _Run:
 
     def call(self, name: str, method: str, args: List[str], options: Optional[Dict[str, Any]] = None) -> ApiResponse:
         resp = self.api.call(method, args, options)
+        if resp.error is not None and resp.error.kind == "auth" and not self.api.context.unavailable:
+            # the server refused the OPERATOR's ticket (expired, clock skew, other realm): nothing more can be read,
+            # and it says nothing about the user being asked about
+            self.api.context.unavailable = resp.error.message
         self._last = (name, f"{method} {' '.join(args)}".strip(), resp)
         return resp
 
@@ -243,6 +247,8 @@ class _Run:
         self.checks.append(Check(name, call, outcome, summary, round(resp.seconds, 3)))
 
     def find(self, code: str, title: str, detail: str, blocking: bool) -> None:
+        if code == "OBJECT_UNREADABLE" and self.api.context.unavailable:
+            return  # the object is not the problem: FreeIPA could not be queried at all (EVALUATOR_UNAVAILABLE)
         self.findings.append(AccessFinding(code, title, detail, blocking))
 
     # 1 ---------------------------------------------------------------- user
@@ -554,8 +560,7 @@ def diagnose(api: Api, targets: Targets, raw_query: Dict[str, str],
                  f"{targets.display_user} is a trusted-domain identity",
                  "Access diagnosis of trusted-domain (for example Active Directory) users is not supported in this "
                  "version: their groups come from the trusted domain and ID views, which it does not evaluate. "
-                 "FreeIPA's own evaluator can still answer: ipa hbactest --user=NAME@DOMAIN --host=HOST "
-                 "--service=SERVICE.", True)
+                 "FreeIPA's own evaluator can answer for such users; see VERIFY.", True)
         host_st, host_m = run.host()
         svc_st = run.service()
     else:
@@ -602,6 +607,9 @@ def diagnose(api: Api, targets: Targets, raw_query: Dict[str, str],
                 run.limit_notes.append("rule(s) that could not be read, so their part of the explanation is missing: "
                                        + ", ".join(run.rules_unread))
 
+    if ctx.unavailable and not any(x.code == "EVALUATOR_UNAVAILABLE" for x in run.findings):
+        # the ticket was refused during the run (HTTP 401): the same answer as having no ticket at all
+        run.find("EVALUATOR_UNAVAILABLE", "ipa-diagnose could not query FreeIPA", ctx.unavailable, True)
     authn = _authentication(ctx, targets, account)
     authz, expl_status = _authorization(run, ctx, targets, account, host_st, evaluation, explanations)
     runtime = _runtime(authn, authz, host_st)

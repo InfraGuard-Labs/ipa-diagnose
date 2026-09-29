@@ -40,6 +40,7 @@ REQUIRED = [
     "A14-allow-all-missing-user", "A15-short-host-and-case", "A16-evaluator-unreachable", "A17-trusted-form",
     "A18-hostile-rule-name", "A19-group-cycle", "A20-disabled-rule-plus-allowing-rule", "A21-bundle-access",
     "A22-expired-principal", "A23-non-admin-sees-disabled-user", "A24-preserved-user",
+    "A25-trusted-user-missing-host",
 ]
 
 
@@ -338,6 +339,12 @@ def run() -> None:
     scenario("A23-non-admin-sees-disabled-user", "erin", APP01, "sshd", {"exit": 1, "authentication": FAIL},
              cc="FILE:/root/alice.ccache")
     scenario("A24-preserved-user", "pres", APP01, "sshd", {"exit": 1, "authentication": FAIL, "authorization": UNK},
+             independent=False)
+    # A25: a trusted-domain user on a host that does not exist: VERIFY must never send the admin to hbactest
+    scenario("A25-trusted-user-missing-host", "someone@ad.example.com", f"nohost.{DOMAIN}", "sshd",
+             {"exit": 3, "authorization": UNK},
+             lambda d, t: {"no hbactest in VERIFY": not any("ipa hbactest --user" in s for s in (d or {}).get(
+                 "verify", [])), "host-show in VERIFY": any("ipa host-show" in s for s in (d or {}).get("verify", []))},
              independent=False)
     bundle()
     timing()
