@@ -51,11 +51,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "command",
         nargs="?",
-        choices=["diagnose", "verify", "ai-preview", "bundle"],
+        choices=["diagnose", "verify", "ai-preview", "bundle", "access"],
         default="diagnose",
         help="diagnose (default): run diagnosis. verify: check if previously diagnosed problems cleared. "
         "ai-preview: show exactly what would be sent to the AI provider. "
-        "bundle: create, preview or validate a sanitized support bundle (see 'ipa-diagnose bundle --help').",
+        "bundle: create, preview or validate a sanitized support bundle (see 'ipa-diagnose bundle --help'). "
+        "access USER HOST SERVICE: does FreeIPA policy authorize this login, and why "
+        "(see 'ipa-diagnose access --help').",
     )
     _add_common_args(parser)
     return parser
@@ -271,6 +273,11 @@ def main(argv: Optional[list] = None) -> int:
         from ipa_diagnose.bundle.cli import run as run_bundle
 
         return _guarded(lambda: run_bundle(argv), err_console)
+    if _first_positional(argv) == "access":
+        # `access` has its own positional USER HOST SERVICE; nothing else changes.
+        from ipa_diagnose.access.cli import run as run_access
+
+        return _guarded(lambda: run_access(argv), err_console)
 
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -293,6 +300,10 @@ def main(argv: Optional[list] = None) -> int:
 
             return run_bundle(["bundle"] + (["--replay", args.replay] if args.replay else [])
                               + (["--json"] if args.json else []))
+        if command == "access":  # `ipa-diagnose -- access` carries no USER HOST SERVICE
+            err_console.print("usage: ipa-diagnose access USER HOST SERVICE [--json] [--details] [--replay DIR]",
+                              markup=False)
+            return 2
         if command == "verify":
             return cmd_verify(args, console)
         if command == "ai-preview":

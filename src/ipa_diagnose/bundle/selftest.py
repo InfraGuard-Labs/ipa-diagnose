@@ -26,8 +26,8 @@ _LABEL_BEFORE_DOMAIN = re.compile(r"(?<![A-Za-z0-9_.-])((?:[A-Za-z0-9_-]{1,63}\.
 _PSEUDONYM_LABEL = re.compile(r"(?:HOST|DOMAIN|REALM|INSTANCE|IP|USER|GROUP|HOSTGROUP|SERVICE|EMAIL)-\d{3,}")
 
 # members that carry evidence (the manifest and redaction report are generated and name categories, not values)
-EVIDENCE_MEMBERS = ("environment.json", "report.json", "healthcheck.json", "evidence.json", "collection-errors.json",
-                    "topology.json", "verification.json")
+EVIDENCE_MEMBERS = ("environment.json", "access.json", "report.json", "healthcheck.json", "evidence.json",
+                    "collection-errors.json", "topology.json", "verification.json")
 
 
 def unremoved_secret_fields(value, named=None) -> int:

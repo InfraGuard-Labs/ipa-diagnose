@@ -1,0 +1,97 @@
+name: Live FreeIPA access diagnosis
+
+# Slice 3 live lab: one real single-node FreeIPA server (throwaway, created and destroyed inside the job), a known
+# HBAC policy seeded by scripts/lab_access.py (playing the administrator), then every access scenario: FreeIPA's own
+# `ipa hbactest` establishes the expected answer independently, and `ipa-diagnose access` answers blind. A scenario
+# without a result row is a FAIL. Truth rows: out/truth/access-results.jsonl (artifact) and compact public
+# annotations. Only fake lab identities; ipa-diagnose itself never changes anything.
+#
+# Manual: workflow_dispatch. On the development branch it also runs when .github/live-access-trigger changes.
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      image:
+        description: "freeipa/freeipa-server image tag"
+        required: false
+        default: "fedora-43"
+        type: string
+  push:
+    branches: ["slice3/access-diagnosis"]
+    paths: [".github/live-access-trigger"]
+
+env:
+  IMAGE: ${{ inputs.image || 'fedora-43' }}
+  IPA_PASSWORD: LiveLabSecret123
+
+jobs:
+  access:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Boot a real FreeIPA server (integrated DNS + CA)
+        run: |
+          set +e
+          echo "image: freeipa/freeipa-server:$IMAGE" | tee image.txt
+          docker volume create ipa-data
+          docker run -d --name ipa-s --privileged --cgroupns=host \
+            -v /sys/fs/cgroup:/sys/fs/cgroup:rw -v ipa-data:/data \
+            -h ipa01.lab.test -e PASSWORD=${IPA_PASSWORD} \
+            freeipa/freeipa-server:$IMAGE \
+            ipa-server-install -U -r LAB.TEST --no-ntp --skip-mem-check --setup-dns --auto-forwarders --auto-reverse
+          for i in $(seq 1 120); do
+            sleep 10
+            if docker exec ipa-s systemctl is-active ipa.service 2>/dev/null | grep -qx active; then echo "active after ~$((i*10))s"; sleep 20; break; fi
+          done
+          docker exec ipa-s ipactl status || { docker logs ipa-s 2>&1 | tail -40; exit 1; }
+
+      - name: Install ipa-diagnose (this commit)
+        run: |
+          set +e
+          docker exec ipa-s bash -c 'cp /etc/resolv.conf /etc/resolv.conf.bak; printf "nameserver 1.1.1.1\nnameserver 8.8.8.8\n" > /etc/resolv.conf'
+          docker exec ipa-s bash -c 'for a in 1 2 3; do dnf install -y python3-pip && break; sleep 15; done'
+          docker exec ipa-s python3 -m pip install pipx
+          docker cp "$GITHUB_WORKSPACE" ipa-s:/ipa-diagnose-source
+          docker exec ipa-s python3 -m pipx install /ipa-diagnose-source
+          docker exec ipa-s cp /etc/resolv.conf.bak /etc/resolv.conf
+          mkdir -p out
+          docker exec ipa-s /root/.local/bin/ipa-diagnose --version | tee env.txt
+          echo "commit: $GITHUB_SHA" | tee -a env.txt
+          cat image.txt >> env.txt
+          docker exec ipa-s rpm -q freeipa-server freeipa-client sssd-client curl | tee -a env.txt
+          docker exec ipa-s python3 --version | tee -a env.txt
+          docker exec ipa-s cat /etc/os-release | grep -E '^(NAME|VERSION)=' | tee -a env.txt
+          echo "::notice title=access lab environment::$(tr '\n' ' ' < env.txt)"
+
+      - name: Seed the lab HBAC policy
+        run: python3 scripts/lab_access.py setup
+
+      - name: Record the real API answer shapes (key names and value types)
+        run: python3 scripts/lab_access.py shapes
+
+      - name: Access scenarios (independent hbactest, then ipa-diagnose blind)
+        run: python3 scripts/lab_access.py run
+
+      - name: Access assertions (fail on any FAIL or missing row)
+        run: |
+          cat out/access-timing.txt 2>/dev/null | head -12 | tr '\n' ' ' | sed 's/^/::notice title=access timing::/'; echo
+          python3 scripts/lab_access.py summary
+
+      - name: Cleanup
+        if: always()
+        run: docker rm -f ipa-s 2>/dev/null || true; docker volume rm ipa-data 2>/dev/null || true
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-access-evidence-${{ inputs.image || 'fedora-43' }}
+          path: |
+            env.txt
+            image.txt
+            out/
+          retention-days: 30
