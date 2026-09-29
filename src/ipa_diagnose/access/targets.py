@@ -115,4 +115,4 @@ def parse_targets(user: str, host: str, service: str, ipa_domain: Optional[str],
     name, domain = parse_user(user, ipa_domain, ipa_realm)
     h, completed = parse_host(host, ipa_domain)
     return Targets(user=name, host=h, service=parse_service(service), user_domain=domain, host_completed=completed,
-                   trusted_form=user if domain else None)
+                   trusted_form=(name if domain == SID_DOMAIN else user) if domain else None)

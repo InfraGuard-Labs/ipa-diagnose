@@ -478,39 +478,47 @@ class _Run:
             return self.index.membership_path(member.node, target) is not None
 
         allowed = member.all_groups()
-        fetched: Set[str] = set()  # this side's reads; the bound is shared by both sides (self.chain_reads)
+        # children already read (by any earlier search on this side), so a group shared by two chains is read once
+        # and its children are still followed for the second chain (diamonds)
+        read_children: Dict[str, List[str]] = {}
         complete = True
         for w in sorted(wanted, key=str.lower):
-            frontier = [w]
+            frontier, visited = [w], set()
             while frontier and not known(w):
                 nxt: List[str] = []
                 for g in frontier:
-                    if g.lower() in fetched:
+                    if g.lower() in visited:
                         continue
-                    if self.chain_reads >= MAX_GROUP_FETCHES:
-                        self.limit_notes.append(f"nested {kind.value.lower()} chains were followed for at most "
-                                                f"{MAX_GROUP_FETCHES} groups")
-                        return False
-                    fetched.add(g.lower())
-                    self.chain_reads += 1
-                    r = self.call(f"{kind.value.lower()} {g}", method, [g])
-                    if not r.ok:
-                        self.check("error", _describe_error(r))
-                        complete = False
-                        continue
-                    children = [c for c in _strs(r.entry.get(attr)) if c.lower() in allowed]
-                    parent = self.index.node(kind, g)
-                    for c in children:
-                        self.index.add_edge(self.index.node(kind, c), parent, EdgeKind.MEMBER_OF, f"{method} {g}")
-                    self.check("ok", f"{kind.value.lower()} {g} contains "
-                               + (", ".join(sorted(children, key=str.lower)[:5]) if children
-                                  else "none of the other groups")
-                               + " of this object's groups (read to explain the nesting)")
-                    nxt.extend(c for c in children if c.lower() not in fetched)
+                    visited.add(g.lower())
+                    if g.lower() not in read_children:
+                        if self.chain_reads >= MAX_GROUP_FETCHES:
+                            self.limit_notes.append(f"nested group and hostgroup chains share a budget of "
+                                                    f"{MAX_GROUP_FETCHES} reads, which was used up before the "
+                                                    f"{kind.value.lower()} chain was complete")
+                            return False
+                        self.chain_reads += 1
+                        r = self.call(f"{kind.value.lower()} {g}", method, [g])
+                        if not r.ok:
+                            self.check("error", _describe_error(r))
+                            read_children[g.lower()] = []
+                            complete = False
+                            continue
+                        children = [c for c in _strs(r.entry.get(attr)) if c.lower() in allowed]
+                        read_children[g.lower()] = children
+                        parent = self.index.node(kind, g)
+                        for c in children:
+                            self.index.add_edge(self.index.node(kind, c), parent, EdgeKind.MEMBER_OF,
+                                                f"{method} {g}")
+                        self.check("ok", f"{kind.value.lower()} {g} contains "
+                                   + (", ".join(sorted(children, key=str.lower)[:5]) if children
+                                      else "none of the other groups")
+                                   + " of this object's groups (read to explain the nesting)")
+                    nxt.extend(c for c in read_children[g.lower()] if c.lower() not in visited)
                     if known(w):  # stop reading as soon as the chain is known
                         break
                 frontier = sorted(set(nxt), key=str.lower)
         return complete and all(known(w) for w in wanted)
+
 
 
 
@@ -631,6 +639,7 @@ def diagnose(api: Api, targets: Targets, raw_query: Dict[str, str],
         "relationship_index": {"nodes": len(run.index.nodes()), "edges": len(run.index.edges()),
                                "truncated": run.index.truncated},
         "rules_explained": len(explanations),
+        "rules_unread": list(run.rules_unread),
         "notes": run.limit_notes,
     }
     if run.index.truncated:
@@ -644,7 +653,7 @@ def diagnose(api: Api, targets: Targets, raw_query: Dict[str, str],
 
 
 def _authentication(ctx, targets: Targets, account: AccountState) -> Verdict:
-    if ctx.unavailable and account.exists is not True:  # an account already read keeps its state
+    if ctx.unavailable and account.exists is None:  # an account already read (or found missing) keeps its state
         return Verdict(State.UNKNOWN, f"{targets.user}'s account was not read: ipa-diagnose could not query FreeIPA",
                        [ctx.unavailable])
     if targets.user_domain:

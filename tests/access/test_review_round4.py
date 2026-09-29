@@ -98,3 +98,52 @@ def test_chain_longer_than_twelve_is_found(tmp_path, capsys):
     code, doc = run(tmp_path, capsys, w)
     assert doc["explanation_status"] == "COMPLETE"
     assert doc["matched_rules"][0]["sides"]["user"][0]["chain"] == ["john"] + chain
+
+
+# ---------------------------------------------------------------- round-4 review (no blocker), MINOR 1-4
+
+
+def test_deny_with_an_unreadable_rule_does_not_claim_no_rule_names_the_user(tmp_path, capsys):
+    w = base().user("john", ["ops"]).group("ops").rule("r_ops", groups=["ops"], hosts=["other.lab.test"],
+                                                       servicecat=True)
+    w.overrides[("hbacrule_show", ("r_ops",))] = {"transport_error": {"kind": "timeout", "message": "x"}}
+    code, doc = run(tmp_path, capsys, w)
+    assert code == 1
+    why = " ".join(doc["diagnosis"]["why"])
+    assert "No HBAC rule names" not in why and "could not be read" in why and "r_ops" in why
+
+
+def test_diamond_with_two_wanted_groups_is_complete(tmp_path, capsys):
+    w = (base().user("john", ["t1"]).group("t1", ["x", "y"]).group("x", ["a"]).group("y", ["b"]).group("b", ["a"])
+         .group("a").rule("r_a", groups=["a"], hostcat=True, servicecat=True)
+         .rule("r_b", groups=["b"], hostcat=True, servicecat=True))
+    code, doc = run(tmp_path, capsys, w)
+    assert code == 0 and doc["explanation_status"] == "COMPLETE"
+    chains = {m["rule"]: m["sides"]["user"][0]["chain"] for m in doc["matched_rules"]}
+    assert chains["r_b"] == ["john", "t1", "y", "b"]
+
+
+def test_shared_chain_budget_note_names_the_shared_budget(tmp_path, capsys):
+    chain = [f"d{i}" for i in range(45)]
+    w = base().user("john", [chain[0]]).host("app03.lab.test", ["h0"]).hostgroup("h0", ["h1"]).hostgroup("h1")
+    for a, b in zip(chain, chain[1:]):
+        w.group(a, [b])
+    w.group(chain[-1]).rule("r", groups=[chain[-1]], hostgroups=["h1"], servicecat=True)
+    code, doc = run(tmp_path, capsys, w)
+    notes = " ".join(doc["completeness"]["notes"])
+    assert "share a budget" in notes and "followed for at most" not in notes
+
+
+def test_missing_user_then_401_keeps_the_missing_user(tmp_path, capsys):
+    w = base()
+    w.overrides[("user_show", ("ghost",))] = {"response": not_found("ghost")}
+    w.overrides[("host_show", ("app03.lab.test",))] = {"transport_error": {"kind": "auth", "message": "HTTP 401"}}
+    code, doc = run(tmp_path, capsys, w, user="ghost")
+    assert code == 1 and doc["authentication"]["state"] == "FAIL"
+    assert not doc["answer"].startswith("ipa-diagnose could not query")
+
+
+def test_sid_on_existing_host_is_checked_with_trust_resolve(tmp_path, capsys):
+    code, doc = _trusted(tmp_path, capsys, "s-1-5-21-1111111111-2222222222-3333333333-1104")
+    assert doc["verify"][0].startswith("ipa trust-resolve --sids=S-1-5-21-1111111111-2222222222-3333333333-1104")
+    assert doc["query"]["user_display"] == "S-1-5-21-1111111111-2222222222-3333333333-1104"

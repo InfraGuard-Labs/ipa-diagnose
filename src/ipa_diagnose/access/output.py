@@ -14,6 +14,7 @@ from rich.console import Console
 
 from ipa_diagnose.access.evaluate import AccessResult, RuleExplanation, State
 from ipa_diagnose.access.relations import SideExplanation
+from ipa_diagnose.access.targets import SID_DOMAIN
 from ipa_diagnose.textsafe import sanitize_text
 
 ACCESS_SCHEMA_VERSION = "1.0"
@@ -48,7 +49,7 @@ def headline(r: AccessResult) -> str:
         return f"FreeIPA HBAC policy authorizes {q}."
     if z == State.FAIL:
         return f"FreeIPA HBAC policy does not authorize {q}."
-    if "EVALUATOR_UNAVAILABLE" in codes and r.account.exists is not True:
+    if "EVALUATOR_UNAVAILABLE" in codes and r.account.exists is None:
         return "ipa-diagnose could not query FreeIPA, so nothing about this request is known yet."
     if r.account.exists is False:
         return f"{who} is not an IPA user, so FreeIPA HBAC policy has no decision about it."
@@ -130,11 +131,15 @@ def why(r: AccessResult) -> List[str]:
         out.append(f"FreeIPA evaluated {total} enabled HBAC rule(s); none matches this user, host and service "
                    "together. Disabled rules are not evaluated (SSSD ignores them too).")
         related = [e for e in r.rules if not e.matched_by_freeipa]
+        unread = r.completeness.get("rules_unread") or []
         if related:
             out.append("Rules that name this user (directly or through its groups), and why each does not apply:")
             for e in related:
                 out.append(f"  - {e.rule}: {_unmatched_reason(e)}")
-        else:
+        if unread:
+            out.append(f"Rule(s) naming {r.account.canonical or r.targets.user} could not be read, so why they do "
+                       "not apply is not known: " + ", ".join(unread[:10]))
+        if not related and not unread:
             out.append(f"No HBAC rule names {r.account.canonical or r.targets.user} or any of its groups.")
         out.append("Rules that apply to all users, and rules that name only other users, are not listed here (they "
                    "describe other people's access); FreeIPA's evaluation above already took them into account.")
@@ -256,7 +261,10 @@ def verify_steps(r: AccessResult) -> List[str]:
         return steps
     if t.user_domain:
         # the host exists; the trusted identity's existence is established by the operator first
-        return [f"id {q(t.display_user)}   (on an IPA-enrolled host; read-only; does the trusted identity resolve?)",
+        first = (f"ipa trust-resolve --sids={q(t.display_user)}   (read-only; does the SID resolve to a "
+                 "trusted-domain name?)" if t.user_domain == SID_DOMAIN else
+                 f"id {q(t.display_user)}   (on an IPA-enrolled host; read-only; does the trusted identity resolve?)")
+        return [first,
                 f"only if it does: ipa hbactest --user={q(t.display_user)} --host={q(host)} --service={q(svc)}   "
                 "(FreeIPA's own evaluation for a trusted-domain user, read-only)"]
     steps = [f"ipa hbactest --user={q(user)} --host={q(host)} --service={q(svc)}   "
