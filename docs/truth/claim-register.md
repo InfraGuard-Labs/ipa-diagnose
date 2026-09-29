@@ -2,7 +2,7 @@
 
 This is **not** an article draft. It lists every claim about ipa-diagnose that could be published, with its
 evidence tier and exact safe wording, so no claim is ever stronger than its evidence. Evidence rows are in
-[truth-matrix.md](truth-matrix.md). Product commit for all LIVE rows: `46c844d` (runs 36258032392 and 36258035064). One maintainer; "independent review" means fresh AI reviewer agents that did not write the code.
+[truth-matrix.md](truth-matrix.md). Product commit for all LIVE rows of Slices 1-2: `46c844d` (runs 36258032392 and 36258035064). One maintainer; "independent review" means fresh AI reviewer agents that did not write the code.
 
 **Evidence tiers:** LIVE (disposable real FreeIPA server in the free GitHub-hosted lab, current code) ·
 FIXTURE (recorded or constructed evidence replayed through current code) · HISTORICAL (live evidence from an
@@ -108,7 +108,8 @@ disabled. Fixture and synthetic evidence is in `tests/access/`. The contract is 
 Evidence: [client-truth-matrix.md](client-truth-matrix.md) (live lab: one FreeIPA 4.13.3 server and one enrolled
 Fedora 43 client with freeipa-client 4.13.4 and SSSD 2.12.0; rows E00, C00-C14). Fixture and synthetic evidence:
 `tests/client/` (REPLAY scenarios, red-team regressions). Reviews: fresh model reviewer agents (planner and resolution
-red team, security and privacy, focused re-reviews, fresh-user/support), not independent humans.
+red team, security and privacy, fresh-user/support, and a fresh focused re-review after every blocker fix: 15
+blockers found and fixed with regression tests; the last focused review found none), not independent humans.
 
 | ID | Claim | Tier | Evidence | Limits | Safe wording | Overclaim to avoid |
 |---|---|---|---|---|---|---|

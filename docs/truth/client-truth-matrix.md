@@ -30,8 +30,12 @@ from here, via [claim-register.md](claim-register.md) (section "Slice 4").
 | [36581496915](https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36581496915) | 79081fc | **19/19 PASS**, 0 false root causes | after review round 2. Findings from its rows, fixed afterwards: in C13 the PAM account refusal while SSSD was offline was listed INDEPENDENT (now RELATED to the offline state, MEDIUM), and MIT krb5's "Cannot resolve servers for KDC" was not classified (now a name-resolution error tied to DNS) |
 | [36583971262](https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36583971262) | 3e85dea | **19/19 PASS**, 0 false root causes | after review round 3: online-path failures no longer claim RUNTIME FAIL |
 | [36585281095](https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36585281095) | 065ac2e | **19/19 PASS**, 0 false root causes | after review round 3b: online-path failures always make AUTHENTICATION FAIL |
+| [36616260610](https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36616260610) | c9e6927 | **19/19 PASS**, 0 false root causes | after review round 3c (PAM auth stack without SSSD fails AUTHENTICATION) |
+| [36617895386](https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36617895386) | c2b560a | **19/19 PASS**, 0 false root causes | after review round 3d (local PAM break first; unreadable PAM includes are UNKNOWN) |
+| [36620155281](https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36620155281) | a7f5cce | **19/19 PASS**, 0 false root causes | after review rounds 3e-3f (PAM 'other' fallback; account phase vs authentication) |
+| [36621111151](https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36621111151) | **5823d79 (final)** | **19/19 PASS**, 0 false root causes | final code; C13 now shows the Kerberos error and the offline-time PAM denial as RELATED (the run-4 findings confirmed fixed live) |
 
-## Scenarios (runs 36579279971 on 20d4d25 and 36581496915 on 79081fc: all PASS)
+## Scenarios (all PASS on every run since 20d4d25; final: 36621111151 on 5823d79)
 
 | # | Scenario | Fault (injected, independently confirmed) | Expected (and forbidden) | Fix | Verify |
 |---|---|---|---|---|---|
@@ -55,6 +59,6 @@ from here, via [claim-register.md](claim-register.md) (section "Slice 4").
 | C13 | two failures at once | dead resolver + `ipa_srever` typo in sssd.conf | both SSSD_CONFIG_INVALID and a DNS cause as PRIMARY/INDEPENDENT | none | - |
 | C14 | support bundle | fake canary in the SSSD domain log; SSSD stopped | bundle created, `bundle validate` 0, `client.json` present, no raw user/host/realm or canary in the bundle, no canary in client output | - | - |
 
-**Selectivity and time (run 36581496915):** healthy client 21 of 28 checks with `--user/--service` (18 without); failures 17-23; each run 0.3-0.8 s, except when the resolvers time out (C03 9.5 s, C13 29.5 s: DNS and SRV timeouts plus kinit). Exact outputs are in the run's artifact and annotations. **Limitations of this evidence:** one server, one client, one FreeIPA/SSSD version; C05 simulates the
+**Selectivity and time (final run 36621111151):** healthy client 21 of 28 checks with `--user/--service` (18 without); failures 17-23; each run 0.2-0.6 s, except when the resolvers time out (C03 9.3 s, C13 29.3 s: DNS and SRV timeouts plus kinit). Exact outputs are in the run's artifact and annotations. **Limitations of this evidence:** one server, one client, one FreeIPA/SSSD version; C05 simulates the
 clock of ipa-diagnose's own process only (a container cannot have its own kernel clock); the C11 outcome depends on
 what SSSD 2.12 does with a damaged file and is recorded, not generalized; logins were never attempted.
