@@ -474,12 +474,20 @@ def diagnose(trace: Trace, inputs: Dict[str, Any]) -> List[ClientDiagnosis]:
                             blocks_runtime=True, kind=None if no_sss else UNDIAGNOSED,
                             next_steps=["authselect current   (read-only)", "grep -E '^(passwd|group):' "
                                         "/etc/nsswitch.conf   (read-only)"]))
-    if t.o("pam.stack") == F:
+    pam_steps = ["authselect current   (read-only)", f"cat /etc/pam.d/{service}   (read-only)"]
+    if t.o("pam.stack") == F and t.f("pam.stack", "auth_has_sss"):
+        # review round 3e: account phase without pam_sss is an ENFORCEMENT gap, not an authentication failure
+        add(ClientDiagnosis("PAM_ACCOUNT_WITHOUT_SSSD", f"PAM service {service} does not ask SSSD in its account phase",
+                            "PAM", "HIGH", t.s("pam.stack") + ".",
+                            f"FreeIPA HBAC (and SSSD's account checks) are not enforced for logins through {service} "
+                            "on this host: users may get in whom policy does not authorize. Logins are not expected "
+                            "to fail because of this.", ["pam.stack"], severity="WARN", next_steps=pam_steps))
+    elif t.o("pam.stack") == F:
         add(ClientDiagnosis("PAM_SERVICE_WITHOUT_SSSD", f"PAM service {service} does not use SSSD", "PAM", "HIGH",
                             t.s("pam.stack") + ".",
-                            f"Logins through {service} do not reach SSSD: IPA users cannot authenticate there, and "
-                            "FreeIPA HBAC is not enforced by SSSD for it.", ["pam.stack"], blocks_runtime=True,
-                            next_steps=["authselect current   (read-only)", f"cat /etc/pam.d/{service}   (read-only)"]))
+                            f"Password logins of IPA users through {service} do not reach SSSD and fail; key-based "
+                            "logins may still get in, and FreeIPA HBAC is not enforced by SSSD for this service.",
+                            ["pam.stack"], next_steps=pam_steps))
     elif t.o("pam.stack") == W:
         add(ClientDiagnosis("PAM_AUTH_WITHOUT_SSSD", f"PAM service {service} checks accounts with SSSD but does not "
                             "authenticate with it", "PAM", "MEDIUM", t.s("pam.stack") + ".",

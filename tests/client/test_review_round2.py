@@ -238,9 +238,10 @@ def test_pam_auth_without_sssd_fails_authentication_but_not_runtime():
     assert r.runtime.state == "NOT_VERIFIED" and "online authentication" not in r.runtime.summary
 
 
-def test_pam_service_without_sssd_fails_both():
+def test_pam_service_without_sssd_fails_authentication_only():
     r = H.run("pam-not-integrated")
-    assert r.authentication.state == "FAIL" and r.runtime.state == "FAIL"
+    assert r.authentication.state == "FAIL"
+    assert r.runtime.state == "NOT_VERIFIED" and "only key-based logins may still work" in r.runtime.summary
 
 
 # ---- focused re-review (round 3d)
@@ -285,3 +286,38 @@ def test_unreadable_included_pam_file_is_not_a_failure(tmp_path, monkeypatch):
     monkeypatch.setattr("builtins.open", fake_open)
     r = C._pam_stack({"service": "sshd"})
     assert r.status == "DENIED" and "password-auth" in r.display
+
+
+# ---- focused re-review (round 3e)
+@pytest.mark.parametrize("other_text,pa", [("auth include pa\naccount include pa\n", "unreadable"),
+                                           ("auth include pa\naccount include pa\n", "missing"),
+                                           (None, None)])
+def test_other_fallback_is_held_to_the_same_rule(tmp_path, monkeypatch, other_text, pa):
+    if other_text is not None:
+        (tmp_path / "other").write_text(other_text)
+    else:
+        (tmp_path / "other").write_text("x")
+    if pa == "unreadable":
+        (tmp_path / "pa").write_text("account required pam_sss.so\n")
+    monkeypatch.setattr(C, "PAM_D", str(tmp_path))
+    real_open = open
+
+    def fake_open(path, *a, **k):
+        if (pa == "unreadable" and str(path).endswith("/pa")) or (other_text is None and str(path).endswith("/other")):
+            raise PermissionError(13, "denied")
+        return real_open(path, *a, **k)
+
+    monkeypatch.setattr("builtins.open", fake_open)
+    r = C._pam_stack({"service": "nosuchservice"})
+    assert r.status in ("DENIED", "FAILED") and "cannot be evaluated" in r.display
+
+
+def test_account_phase_without_sssd_is_an_enforcement_gap_not_an_auth_failure():
+    def m(d):
+        d[key("pam.stack", service="sshd")]["fields"].update(account_modules=["pam_unix.so"],
+                                                             auth_modules=["pam_unix.so", "pam_sss.so"],
+                                                             account_has_sss=False, auth_has_sss=True)
+
+    r = H.run("healthy", mutate=m, hbac="PASS")
+    assert H.codes(r) == {"PAM_ACCOUNT_WITHOUT_SSSD": "WARNING"}
+    assert r.authentication.state == "NOT_VERIFIED" and r.runtime.state == "NOT_VERIFIED"

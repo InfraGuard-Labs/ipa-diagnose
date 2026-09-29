@@ -668,14 +668,17 @@ def _pam_stack(params):
     state = walk(svc, 0)
     if state == "unreadable":
         return _res("pam.stack", params, DENIED, {}, f"{PAM_D}/{svc}: not readable")
-    if nested:
-        target, why = nested[0]
-        status = DENIED if why == "unreadable" else FAILED
-        return _res("pam.stack", params, status, {}, f"{PAM_D}/{_c(target, 64)} (included by {svc}) is {why}: the "
-                    "stack cannot be evaluated")
     present = state is None
     if not present:  # PAM falls back to /etc/pam.d/other for an unconfigured service
-        walk("other", 0)
+        other = walk("other", 0)
+        if other is not None:  # review round 3e: the fallback is held to the same rule as the service file
+            return _res("pam.stack", params, DENIED if other == "unreadable" else FAILED, {},
+                        f"{PAM_D}/{svc} does not exist and {PAM_D}/other is {other}: the stack cannot be evaluated")
+    if nested:  # an include of the service file OR of the 'other' fallback that could not be read
+        target, why = nested[0]
+        status = DENIED if why == "unreadable" else FAILED
+        return _res("pam.stack", params, status, {}, f"{PAM_D}/{_c(target, 64)} (included by "
+                    f"{svc if present else 'other'}) is {why}: the stack cannot be evaluated")
     fields = {"service_file": present, "files": seen, "account_modules": mods["account"][:24],
               "auth_modules": mods["auth"][:24], "account_has_sss": "pam_sss.so" in mods["account"],
               "auth_has_sss": "pam_sss.so" in mods["auth"]}
