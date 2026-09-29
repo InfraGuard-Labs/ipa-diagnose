@@ -146,7 +146,7 @@ def _resolve(diags: List[ClientDiagnosis], env: Dict[str, Any], runner: Any) -> 
 
 
 def _authentication(diags: List[ClientDiagnosis], trace: Trace) -> Verdict:
-    broken = [d for d in diags if d.blocks_authentication and d.severity == "FAIL"]
+    broken = [d for d in diags if _online_path_broken(d)]
     if broken:
         return Verdict("FAIL", "online authentication against IPA fails on this host: " + broken[0].title,
                        [d.title for d in broken] + ["users who logged in before may still authenticate offline with "
@@ -166,6 +166,14 @@ def _runtime_blocker(d: ClientDiagnosis) -> bool:
             and d.code not in _AUTH_PATH_CODES)
 
 
+def _online_path_broken(d: ClientDiagnosis) -> bool:
+    """This host's online path to IPA (authentication, SSSD's connection) is shown broken: every FAIL cause that
+    blocks authentication, and every FAIL cause that affects logins but is not a runtime blocker of its own (SSSD
+    offline, TLS trust, LDAP, SRV discovery, ...). Review round 3b: these must never vanish from both verdicts."""
+
+    return d.severity == "FAIL" and (d.blocks_authentication or (d.blocks_runtime and not _runtime_blocker(d)))
+
+
 def _runtime(diags: List[ClientDiagnosis], trace: Trace, inputs: Dict[str, Any]) -> Verdict:
     """FAIL only for a runtime prerequisite shown broken for this user/service on this host: SSSD not configured or
     not running, the identity not resolvable, NSS or PAM not using SSSD, SSSD's account phase refusing."""
@@ -175,7 +183,7 @@ def _runtime(diags: List[ClientDiagnosis], trace: Trace, inputs: Dict[str, Any])
     if broken:
         return Verdict("FAIL", f"a login{' by ' + user if user else ''}{' through ' + service if service else ''} "
                        f"is expected to fail on this host: {broken[0].title}", [d.title for d in broken[1:]])
-    online = [d for d in diags if d.severity == "FAIL" and not _runtime_blocker(d) and d.blocks_authentication]
+    online = [d for d in diags if _online_path_broken(d) and not _runtime_blocker(d)]
     if online:
         return Verdict("NOT_VERIFIED", f"online authentication against IPA fails ({online[0].title}): logins that need "
                        "IPA (for example a first password login) fail; users with cached credentials or SSH keys may "

@@ -102,7 +102,7 @@ def diagnose(trace: Trace, inputs: Dict[str, Any]) -> List[ClientDiagnosis]:
             return _roles(out)
         add(ClientDiagnosis("CLIENT_CONFIG_INCOMPLETE", "The IPA client configuration is incomplete", "ENROLLMENT",
                             "HIGH", t.s("enroll"), "Checks that need the IPA server, domain or realm cannot run.",
-                            ["enroll"], blocks_runtime=True))
+                            ["enroll"]))
     if t.o("sssd") == F:
         state = t.f("sssd", "state")
         add(ClientDiagnosis("SSSD_NOT_CONFIGURED", "SSSD is not configured for the IPA domain", "SSSD_CONFIG", "HIGH",

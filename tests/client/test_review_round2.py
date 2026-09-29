@@ -149,9 +149,8 @@ def test_host_identity_api_uses_a_minimal_environment(monkeypatch):
                                       "kdc-unreachable", "host-entry-missing", "ca-untrusted"])
 def test_auth_path_failures_do_not_claim_runtime_failure(scenario):
     r = H.run(scenario)
-    assert r.runtime.state == "NOT_VERIFIED" and r.authentication.state in ("FAIL", "NOT_VERIFIED")
-    if r.authentication.state == "FAIL":
-        assert "cached credentials or SSH keys may still log in" in r.runtime.summary
+    assert r.runtime.state == "NOT_VERIFIED" and r.authentication.state == "FAIL"
+    assert "cached credentials or SSH keys may still log in" in r.runtime.summary
 
 
 def test_auth_path_failure_with_hbac_pass_is_not_exit_5(tmp_path, capsys, monkeypatch):
@@ -195,3 +194,33 @@ def test_unclassified_kerberos_error_under_a_dns_failure_is_related():
 
     r = H.run("healthy", mutate=m)
     assert H.codes(r).get("KERBEROS_FAILED") == "RELATED"
+
+
+# ---- focused re-review (round 3b): an online-path failure never vanishes from both verdicts
+@pytest.mark.parametrize("mutation", ["offline", "ldap", "srv_only", "keytab_unreadable"])
+def test_online_path_failures_always_fail_authentication(mutation):
+    def m(d):
+        dom = key("sssd.domain_status", domain=DOMAIN)
+        d[dom]["fields"].update(online=False)
+        d[key("sssd.log_signals", domain=DOMAIN)]["fields"].update(counts={"offline": 3})
+        if mutation == "ldap":
+            d[key("net.tcp", host=S.SERVER, port="389")]["fields"].update(state="timeout", open=False)
+        if mutation == "srv_only":
+            d[key("sssd.conf")]["fields"].update(ipa_server=["_srv_"], uses_srv=True)
+            S.srv_missing_fixed_fallback(d)
+        if mutation == "keytab_unreadable":
+            d[key("krb.keytab")]["fields"].update(readable=False, error="permission denied")
+
+    r = H.run("healthy", mutate=m)
+    assert r.authentication.state == "FAIL", H.codes(r)
+    assert r.runtime.state in ("NOT_VERIFIED", "FAIL")
+    if r.runtime.state == "NOT_VERIFIED":
+        assert "cached credentials or SSH keys may still log in" in r.runtime.summary
+
+
+def test_incomplete_default_conf_is_not_a_runtime_failure():
+    def m(d):
+        d[key("client.ipa_conf")]["fields"].update(server=None)
+
+    r = H.run("healthy", mutate=m)
+    assert "CLIENT_CONFIG_INCOMPLETE" in H.codes(r) and r.runtime.state == "NOT_VERIFIED"

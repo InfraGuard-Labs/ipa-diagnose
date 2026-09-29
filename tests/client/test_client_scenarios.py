@@ -26,7 +26,7 @@ EXPECT = {
     "nss-not-integrated": ("NSS_NOT_USING_SSSD", "PROBLEM_FOUND", "FAIL", "NOT_VERIFIED"),
     "pam-not-integrated": ("PAM_SERVICE_WITHOUT_SSSD", "PROBLEM_FOUND", "FAIL", "NOT_VERIFIED"),
     "pam-denied": ("RUNTIME_ACCOUNT_DENIED", "PROBLEM_FOUND", "FAIL", "NOT_VERIFIED"),
-    "ca-untrusted": ("CA_TRUST_FAILED", "PROBLEM_FOUND", "NOT_VERIFIED", "NOT_VERIFIED"),
+    "ca-untrusted": ("CA_TRUST_FAILED", "PROBLEM_FOUND", "NOT_VERIFIED", "FAIL"),
     "not-enrolled": ("CLIENT_NOT_ENROLLED", "PROBLEM_FOUND", "FAIL", "FAIL"),
     "collector-timeout": (None, "NOT_FULLY_VERIFIED", "NOT_VERIFIED", "NOT_VERIFIED"),
     "unsupported-sssd": (None, "NOT_FULLY_VERIFIED", "NOT_VERIFIED", "NOT_VERIFIED"),
