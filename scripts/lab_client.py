@@ -570,6 +570,15 @@ def summary() -> int:
     passed = [s for s in REQUIRED if s in by and s not in failed]
     print(f"client lab: {len(passed)}/{len(REQUIRED)} PASS; failed {failed}; missing {missing}")
     print(f"::notice title=client lab summary::{len(passed)}/{len(REQUIRED)} PASS; failed {failed}; missing {missing}")
+    # GitHub keeps at most 10 notices per step: publish every row compactly from this (separate) step
+    compact = [f"{r['scenario']}={r['result']} exit={r.get('exit')} primary={r.get('primary')} "
+               f"offered={list((r.get('offered') or {}).values())} t={r.get('seconds')}s "
+               f"run={((r.get('planner') or {}).get('steps_run'))}/{((r.get('planner') or {}).get('steps_in_plan'))}"
+               + (f" diag={r.get('diagnoses')}" if r["scenario"].startswith(("C11", "C13")) else "")
+               + (f" verify={r.get('verify_items')}" if r.get("verify_items") else "")
+               for r in rows]
+    for i in range(0, len(compact), 3):
+        print(f"::notice title=rows {i + 1}-{min(i + 3, len(compact))}::{' || '.join(compact[i:i + 3])[:3900]}")
     false_root = [r["scenario"] for r in rows if r.get("false_root_cause")]
     if false_root:
         print(f"::error title=false root cause::{false_root}")

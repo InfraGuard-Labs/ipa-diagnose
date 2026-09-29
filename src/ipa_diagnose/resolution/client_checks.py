@@ -696,7 +696,9 @@ def _user_checks(params):
     nss_found = bool(re.search(r"SSSD nss user lookup result:\s*\n\s*-\s*user name", out))
     fields = {"exit": rc, "pam_result": result, "result_class": cls, "nss_found": nss_found}
     if result is None:
-        fields["error"] = _c(_redact_log_line(err or out), 200)
+        # never the NSS lookup block (" - user name/gecos/home ..." lines)
+        text = "\n".join(ln for ln in (err or out).splitlines() if not ln.lstrip().startswith("- "))
+        fields["error"] = _c(_redact_log_line(text), 200)
         return _res("pam.user_checks", params, FAILED, fields,
                     f"sssctl user-checks gave no PAM account result ({fields['error'] or 'exit ' + str(rc)})",
                     f"sssctl user-checks {user} -a acct -s {svc}")
@@ -757,10 +759,13 @@ def _log_signals(params):
         lines.extend(out.splitlines()[-300:])
     path = os.path.join(SSSD_LOG_DIR, f"sssd_{dom}.log")
     try:
-        size = os.path.getsize(path)
-        with open(path, "rb") as f:
-            f.seek(max(0, size - 262144))
-            lines.extend(f.read(262144).decode("utf-8", "replace").splitlines()[-2000:])
+        # never through a symlink, and only a regular file (the log directory may belong to the sssd user)
+        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0))
+        with os.fdopen(fd, "rb") as f:
+            st = os.fstat(f.fileno())
+            if _stat.S_ISREG(st.st_mode):
+                f.seek(max(0, st.st_size - 262144))
+                lines.extend(f.read(262144).decode("utf-8", "replace").splitlines()[-2000:])
     except OSError:
         pass
     counts: Dict[str, int] = {}
@@ -783,7 +788,11 @@ def _cache_files(params):
     dom = params["domain"]
     path = os.path.join(SSS_DB, f"cache_{dom}.ldb")
     try:
-        st = os.stat(path)
+        st = os.lstat(path)  # metadata of the entry itself; a symlink is reported, never followed
+        if not _stat.S_ISREG(st.st_mode):
+            return _res("sssd.cache_files", params, OK, {"present": True, "size": 0, "mode": "%04o" % (st.st_mode & 0o7777),
+                                                          "empty": False, "not_regular": True, "modified_seconds_ago": 0},
+                        f"{path} is not a regular file", f"stat {path}")
     except FileNotFoundError:
         return _res("sssd.cache_files", params, OK, {"present": False, "dir_present": os.path.isdir(SSS_DB)},
                     f"{path} does not exist", f"stat {path}")

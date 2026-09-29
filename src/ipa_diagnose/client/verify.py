@@ -65,18 +65,39 @@ def to_state(r: ClientResult) -> Dict[str, Any]:
 
 
 def save(path: pathlib.Path, r: ClientResult) -> None:
+    """The same hardened write as the diagnosis baseline (verify.save_report): never through a symlink or into a
+    directory another user owns; a per-process O_EXCL temporary file; fsync; atomic replace."""
+
+    from ipa_diagnose.verify import _state_location_ok
+
+    if not _state_location_ok(path):
+        return
     try:
         path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-        tmp = path.with_name(path.name + ".tmp")
-        fd = os.open(str(tmp), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            json.dump(to_state(r), f, indent=1)
-        os.replace(tmp, path)
+        os.chmod(path.parent, 0o700)
+        data = json.dumps(to_state(r), indent=1).encode("utf-8")
+        tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+        fd = os.open(str(tmp), os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600)
+        try:
+            with os.fdopen(fd, "wb") as fh:
+                fh.write(data)
+                fh.flush()
+                os.fsync(fh.fileno())
+            os.replace(str(tmp), str(path))
+        finally:
+            if tmp.exists():
+                tmp.unlink()
     except OSError:
         pass  # a baseline that cannot be written only means --verify has nothing to compare with
 
 
 def load(path: pathlib.Path) -> Optional[Dict[str, Any]]:
+    from ipa_diagnose.verify import _state_location_ok
+
+    if not path.exists() and not os.path.islink(path):
+        return None
+    if not _state_location_ok(path):
+        raise UnreadableState("the saved result is in a location this user does not own, or behind a symlink")
     try:
         if path.stat().st_size > 1024 * 1024:
             raise UnreadableState("too large")

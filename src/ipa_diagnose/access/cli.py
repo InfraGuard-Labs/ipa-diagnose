@@ -51,8 +51,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--replay", metavar="FIXTURE_DIR", default=None,
                    help="answer from recorded API evidence (development/testing; marked REPLAY)")
     p.add_argument("--runtime", action="store_true",
-                   help="when run as root ON HOST: continue into the runtime side (SSSD, NSS, PAM account phase) with "
-                   "client mode's planner; the HBAC decision itself is never changed")
+                   help="when run as root ON HOST: continue into the runtime side with client mode's read-only planner "
+                   "(SSSD, NSS, the PAM account phase; also DNS and TCP probes of the IPA server, one Kerberos AS "
+                   "request and one read-only API call with this host's key); the HBAC decision itself never changes")
     return p
 
 

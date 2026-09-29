@@ -425,7 +425,8 @@ def to_dict(r: AccessResult) -> Dict[str, Any]:
             rt["checked_on"] = cd["environment"].get("host")
             rt["client"] = {k: cd[k] for k in ("status", "answer", "diagnoses", "ruled_out", "resolution",
                                                "planner_summary", "completeness")}
-            rt["client"]["steps"] = [{k: s[k] for k in ("step", "title", "outcome", "summary", "skip_reason")}
+            rt["client"]["steps"] = [{k: s[k] for k in ("step", "title", "outcome", "summary", "skip_reason",
+                                                         "side_effects")}
                                      for s in cd["steps"]]
             if any(v["status"] == "OFFERED" for v in cd["resolution"].values()):
                 doc["verify"].append("after a fix on this host: ipa-diagnose client --verify   (fresh checks)")
@@ -492,6 +493,8 @@ def render(r: AccessResult, console: Console, details: bool = False) -> None:
             for s in ran:
                 if details or s["outcome"] != "PASS":
                     p(f"  [{sym.get(s['outcome'], '?   ')}] {s['title']}: {s['summary']}")
+                    if details and s.get("side_effects") not in (None, "none"):
+                        p(f"         note: {s['side_effects']}", "dim")
             if not details:
                 p(f"  ({sum(1 for s in ran if s['outcome'] == 'PASS')} runtime check(s) on this host passed; "
                   "--details lists them)", "dim")

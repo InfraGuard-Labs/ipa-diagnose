@@ -202,7 +202,12 @@ class LiveApi(Api):
 
     def __init__(self, conf_path: str = DEFAULT_CONF, ca_path: str = DEFAULT_CA, ccache: Optional[str] = None, **kw):
         # ccache: a private credential cache (client mode uses one filled from the host keytab); None = the caller's
-        self._env = dict(os.environ, KRB5CCNAME=ccache) if ccache else None
+        if ccache:  # a minimal environment, as for kinit: root's own proxy, trace or key-log variables do not apply
+            from ipa_diagnose.resolution.checks import _SAFE_ENV
+
+            self._env = dict(_SAFE_ENV, KRB5CCNAME=ccache)
+        else:
+            self._env = None
         conf = read_ipa_conf(conf_path)
         ctx = ApiContext(mode="LIVE", server=_server_from_conf(conf), domain=(conf.get("domain") or "").lower() or None,
                          realm=conf.get("realm") or None)

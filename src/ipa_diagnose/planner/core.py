@@ -242,6 +242,15 @@ def _resolve_params(step: Step, ctx: Context) -> Tuple[Optional[Dict[str, Any]],
     return out, ""
 
 
+def _safe_gate(fn: Callable[["Context"], Tuple[bool, str]], ctx: "Context") -> Tuple[bool, str]:
+    """A gate that cannot read the evidence it needs does not run its step (never runs it on a guess)."""
+
+    try:
+        return fn(ctx)
+    except (TypeError, ValueError, AttributeError, KeyError, OverflowError, IndexError):
+        return False, "the evidence this decision needs has an unexpected type or value"
+
+
 def _default_classify(res: Any, ctx: Context) -> Classified:
     return Classified(Outcome.PASS if res.ok else Outcome.UNKNOWN, res.display)
 
@@ -278,15 +287,17 @@ def run_plan(plan: Sequence[Step], runner: Any, inputs: Dict[str, Any], *, is_ro
             rec.blocked_by = b.step
             continue
         if step.applies is not None:
-            ok, why = step.applies(ctx)
+            ok, why = _safe_gate(step.applies, ctx)
             if not ok:
                 rec.skip_reason = f"not applicable: {why}"
                 continue
         if step.when is not None:
-            ok, why = step.when(ctx)
+            ok, why = _safe_gate(step.when, ctx)
             rec.selected_because = why
             if not ok:
-                rec.skip_reason = f"not needed: {why}"
+                # unusable evidence is a gap in what could be checked, not a check that was not needed
+                rec.skip_reason = (f"not applicable: {why}" if why.startswith("the evidence this decision needs")
+                                   else f"not needed: {why}")
                 continue
         if step.needs_root and not is_root:
             rec.skip_reason = "privilege: needs root (run ipa-diagnose client as root)"
@@ -336,10 +347,17 @@ def run_plan(plan: Sequence[Step], runner: Any, inputs: Dict[str, Any], *, is_ro
             # timeout is not "SSSD is stopped"). Classifiers only ever see successful results.
             rec.outcome, rec.summary = Outcome.UNKNOWN, f"{what}: {res.display}" if res.display else what
         else:
-            c = (step.classify or _default_classify)(res, ctx)
+            try:
+                c = (step.classify or _default_classify)(res, ctx)
+            except (TypeError, ValueError, AttributeError, KeyError, OverflowError, IndexError):
+                # evidence of an unexpected shape or type (recorded or live) is never interpreted: UNKNOWN
+                c = Classified(Outcome.UNKNOWN, "the evidence has an unexpected type or value and was not interpreted")
             rec.outcome, rec.summary, rec.facts = c.outcome, sanitize_text(c.summary, 400), dict(c.facts)
         if step.stop is not None:
-            why_stop = step.stop(ctx)
+            try:
+                why_stop = step.stop(ctx)
+            except (TypeError, ValueError, AttributeError, KeyError, OverflowError, IndexError):
+                why_stop = None
             if why_stop:
                 stop_reason = why_stop
     if not stop_reason:

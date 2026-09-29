@@ -183,6 +183,8 @@ def _runtime(diags: List[ClientDiagnosis], trace: Trace, inputs: Dict[str, Any])
 
 
 def _status(diags: List[ClientDiagnosis], completeness: Dict[str, Any]) -> str:
+    if diags and all(d.code == "EVIDENCE_UNUSABLE" for d in diags):
+        return "NOT_FULLY_VERIFIED"
     if any(d.severity == "FAIL" or d.role in (UNDIAGNOSED, CONTRADICTING) for d in diags):
         return "PROBLEM_FOUND"
     if completeness["level"] != "complete":
@@ -213,7 +215,13 @@ def investigate(runner: Any, user: Optional[str] = None, service: Optional[str] 
     inputs = plan_inputs(user, service)
     kw = {"max_seconds": max_seconds} if max_seconds else {}
     trace, _ctx = run_plan(client_plan(), runner, inputs, is_root=root, registry=REGISTRY, **kw)
-    diags = diagnose(trace, dict(inputs, hbac_state=hbac_state))
+    try:
+        diags = diagnose(trace, dict(inputs, hbac_state=hbac_state))
+    except (TypeError, ValueError, AttributeError, KeyError, OverflowError, IndexError):
+        # evidence of an unexpected type reached a rule: nothing is concluded from it (and nothing is fixed)
+        diags = [ClientDiagnosis("EVIDENCE_UNUSABLE", "The collected evidence could not be interpreted", "ENROLLMENT",
+                                 "LOW", "A check returned a value of an unexpected type, so no cause is concluded.",
+                                 "Unknown.", [], kind=UNDIAGNOSED, role=UNDIAGNOSED)]
     env = _env(trace)
     resolutions = _resolve(diags, env, runner)
     completeness = _completeness(trace)

@@ -142,17 +142,27 @@ def diagnose(trace: Trace, inputs: Dict[str, Any]) -> List[ClientDiagnosis]:
         add(dns_fail)
     else:
         srv_fails = [sid for sid in ("dns.srv_ldap", "dns.srv_kerberos") if t.o(sid) == F]
-        if srv_fails:
-            fixed = [s for s in (t.f("sssd", "ipa_server") or []) if s != "_srv_"]
-            kinds = {t.f(s, "kind") for s in srv_fails}
+        fixed = [s for s in (t.f("sssd", "ipa_server") or []) if s != "_srv_"]
+        missing = [s for s in srv_fails if t.f(s, "kind") == "missing"]
+        query_failed = [s for s in srv_fails if t.f(s, "kind") != "missing"]
+        if query_failed:  # the resolvers failed (timeout, SERVFAIL, no resolver): nothing says the records are absent
+            add(ClientDiagnosis(
+                "DNS_SRV_QUERY_FAILED", "The DNS resolvers do not answer IPA SRV queries", "DNS", "HIGH",
+                ", ".join(t.s(s) for s in query_failed) + ". Whether the records exist is not known.",
+                ("SSSD discovers servers through these records; it falls back to the listed server(s) "
+                 f"{', '.join(fixed)}." if fixed else
+                 "SSSD is configured to find servers only through DNS SRV records, so it finds none."),
+                query_failed, severity="WARN" if fixed else "FAIL", blocks_runtime=not fixed,
+                next_steps=["cat /etc/resolv.conf   (read-only)",
+                            f"dig -t SRV {_q(t.f('enroll', 'srv_ldap'))}   (read-only)"]))
+        if missing:
             add(ClientDiagnosis(
                 "DNS_SRV_MISSING", "IPA SRV records are not found in DNS", "DNS", "HIGH",
-                ", ".join(t.s(s) for s in srv_fails) + (". The resolvers did not answer." if
-                                                         "resolver_timeout" in kinds else "."),
+                ", ".join(t.s(s) for s in missing) + ".",
                 ("SSSD discovers servers through these records; it falls back to the listed server(s) "
                  f"{', '.join(fixed)}, so failover to other replicas does not work." if fixed else
                  "SSSD is configured to find servers only through DNS SRV records, so it finds none."),
-                srv_fails, severity="WARN" if fixed else "FAIL", blocks_runtime=not fixed,
+                missing, severity="WARN" if fixed else "FAIL", blocks_runtime=not fixed,
                 next_steps=[f"dig -t SRV {_q(t.f('enroll', 'srv_ldap'))}   (read-only)"]))
     net = {p: t.o(f"net.{p}") for p in ("https", "ldap", "kdc")}
     if t.o("dns.server") == P and net["https"] == F and net["ldap"] == F:
@@ -253,18 +263,28 @@ def diagnose(trace: Trace, inputs: Dict[str, Any]) -> List[ClientDiagnosis]:
         upstream = dns_fail or find("SERVER_UNREACHABLE")
         if krb_err == "kdc_unresolvable":
             # a NAME-RESOLUTION failure of the Kerberos library, not a KDC that does not answer
-            srv = find("DNS_SRV_MISSING")
-            krb_srv_missing = t.o("dns.srv_kerberos") in (F, W) and t.f("dns.srv_kerberos", "kind") != "found"
+            krb_kind = t.f("dns.srv_kerberos", "kind") if t.o("dns.srv_kerberos") in (F, W) else None
+            # SSSD's configuration read: whether the SRV answer is on this host's path is known
+            conf_known = t.o("sssd") in (P, W)
             if dns_fail:
                 related, conf, kind, why = dns_fail.code, "HIGH", None, f"; explained by: {dns_fail.title}"
-            elif krb_srv_missing:
+            elif krb_kind == "missing":
+                srv = find("DNS_SRV_MISSING")
                 if srv is not None and srv.severity == "WARN":
                     # SSSD falls back to its fixed server, but Kerberos needs the SRV records: no longer only a warning
                     srv.severity, srv.blocks_runtime = "FAIL", True
-                    srv.impact += (" Kerberos on this host also finds its KDC only through these records, and fails "
+                    srv.impact += (" Kerberos on this host also finds its KDC through these records, and fails "
                                    "without them.")
-                related, conf, kind = (srv.code if srv else None), "HIGH", None
-                why = "; the _kerberos SRV records are missing, and this host's Kerberos looks its KDC up through them"
+                related, conf, kind = (srv.code if srv else None), ("HIGH" if conf_known else "MEDIUM"), None
+                why = ("; the _kerberos SRV records are missing (NXDOMAIN or no answer records), and the KDC was "
+                       "not found without them")
+            elif krb_kind is not None:
+                srv = find("DNS_SRV_QUERY_FAILED")
+                if srv is not None and srv.severity == "WARN":
+                    srv.severity, srv.blocks_runtime = "FAIL", True
+                related, conf, kind = (srv.code if srv else None), "MEDIUM", None
+                why = ("; the resolvers did not answer the _kerberos SRV query either "
+                       f"({krb_kind.replace('_', ' ')}), so whether the records exist is not known")
             else:
                 related, conf, kind = None, "LOW", UNDIAGNOSED
                 why = "; which name failed to resolve could not be established from the DNS checks"
