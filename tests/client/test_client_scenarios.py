@@ -61,7 +61,7 @@ def test_simultaneous_failures_are_primary_plus_independent_not_one_story():
     assert c["SSSD_CONFIG_INVALID"] == "PRIMARY"
     assert c["DNS_RESOLVER_NOT_ANSWERING"] == "INDEPENDENT"
     assert c["SSSD_NOT_RUNNING"] == "RELATED"
-    assert c["KDC_UNREACHABLE"] == "RELATED"
+    assert c["KDC_NOT_RESOLVABLE"] == "RELATED"
 
 
 def test_offline_with_healthy_upstream_is_undiagnosed_not_guessed():

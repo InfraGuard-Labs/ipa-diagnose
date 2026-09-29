@@ -251,8 +251,32 @@ def diagnose(trace: Trace, inputs: Dict[str, Any]) -> List[ClientDiagnosis]:
                             next_steps=["ls -lZ /etc/krb5.keytab   (read-only)"]))
     if krb_err and krb_err != "clock_skew":
         upstream = dns_fail or find("SERVER_UNREACHABLE")
-        if krb_err in ("kdc_unreachable", "kdc_unresolvable"):
-            add(ClientDiagnosis("KDC_UNREACHABLE", "No KDC answers this host", "KERBEROS", "HIGH",
+        if krb_err == "kdc_unresolvable":
+            # a NAME-RESOLUTION failure of the Kerberos library, not a KDC that does not answer
+            srv = find("DNS_SRV_MISSING")
+            krb_srv_missing = t.o("dns.srv_kerberos") in (F, W) and t.f("dns.srv_kerberos", "kind") != "found"
+            if dns_fail:
+                related, conf, kind, why = dns_fail.code, "HIGH", None, f"; explained by: {dns_fail.title}"
+            elif krb_srv_missing:
+                if srv is not None and srv.severity == "WARN":
+                    # SSSD falls back to its fixed server, but Kerberos needs the SRV records: no longer only a warning
+                    srv.severity, srv.blocks_runtime = "FAIL", True
+                    srv.impact += (" Kerberos on this host also finds its KDC only through these records, and fails "
+                                   "without them.")
+                related, conf, kind = (srv.code if srv else None), "HIGH", None
+                why = "; the _kerberos SRV records are missing, and this host's Kerberos looks its KDC up through them"
+            else:
+                related, conf, kind = None, "LOW", UNDIAGNOSED
+                why = "; which name failed to resolve could not be established from the DNS checks"
+            add(ClientDiagnosis("KDC_NOT_RESOLVABLE", "Kerberos cannot resolve a KDC address", "KERBEROS", conf,
+                                t.s("krb") + why + ".",
+                                "Kerberos authentication (host and users) fails; SSSD goes offline.", ["krb"],
+                                blocks_runtime=True, blocks_authentication=True, related_to=related, kind=kind,
+                                next_steps=[f"dig -t SRV _kerberos._tcp.{str(t.f('enroll', 'realm') or '').lower()}  "
+                                            " (read-only)", "grep -A5 '\\[realms\\]' /etc/krb5.conf   (read-only)"]))
+        elif krb_err == "kdc_unreachable":
+            add(ClientDiagnosis("KDC_UNREACHABLE", "No KDC answers this host", "KERBEROS",
+                                "MEDIUM" if t.o("net.kdc") == P else "HIGH",
                                 t.s("krb") + (". TCP 88 on the server is " + str(t.f("net.kdc", "state"))
                                               if t.o("net.kdc") in (P, F) else "") + ".",
                                 "Kerberos authentication (host and users) fails; SSSD goes offline.",
@@ -358,6 +382,9 @@ def diagnose(trace: Trace, inputs: Dict[str, Any]) -> List[ClientDiagnosis]:
             ce_state = t.f("cache.entry", "state")
             signals = t.f("sssd.logs", "signals") or []
             db_bad = "cache_db" in signals or ce_state == "error" or t.o("cache.files") == F
+            # proven only when SSSD's log reports cache-database errors AND reading this user's entry failed or the
+            # database file is empty; an absent entry is ordinary (filter_users, ID ranges) and proves nothing
+            strong_db = "cache_db" in signals and (ce_state == "error" or t.o("cache.files") == F)
             if fq:
                 add(ClientDiagnosis("NAME_NOT_QUALIFIED", f"SSSD expects fully qualified names ({user}@DOMAIN)",
                                     "IDENTITY", "HIGH",
@@ -369,7 +396,7 @@ def diagnose(trace: Trace, inputs: Dict[str, Any]) -> List[ClientDiagnosis]:
                                                 "(read-only)"]))
             elif db_bad:
                 add(ClientDiagnosis("SSSD_CACHE_DB_ERROR", "SSSD's cache database is failing", "CACHE",
-                                    "HIGH" if ("cache_db" in signals and ce_state in ("error", "absent")) else "MEDIUM",
+                                    "HIGH" if strong_db else "MEDIUM",
                                     f"IPA has {user}, SSSD is online and the server, DNS, time and host key are fine, "
                                     f"yet SSSD does not resolve {user}"
                                     + (", and SSSD's log reports cache database errors" if "cache_db" in signals else "")
@@ -378,8 +405,7 @@ def diagnose(trace: Trace, inputs: Dict[str, Any]) -> List[ClientDiagnosis]:
                                     "Lookups through SSSD fail on this host even though IPA is healthy.",
                                     ["id.user", "ipa.user", "sssd.domain", "cache.entry", "sssd.logs", "cache.files"],
                                     blocks_runtime=True, resolution_key="client.sssd-cache-db-error",
-                                    variant=None if ("cache_db" in signals and ce_state in ("error", "absent"))
-                                    else "suspected",
+                                    variant=None if strong_db else "suspected",
                                     bindings={"user": user, "domain": t.f("sssd", "sssd_domain")}))
             elif ce_state in ("present", "expired"):
                 add(ClientDiagnosis("SSSD_CACHE_INCONSISTENT", f"SSSD's cached entry for {user} is not being served",

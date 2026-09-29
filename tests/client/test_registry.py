@@ -211,3 +211,13 @@ def test_getent_keeps_only_name_uid_gid(monkeypatch):
     assert r.fields == {"found": True, "exit": 0, "seconds": r.fields["seconds"], "name": "alice", "uid": 1234,
                         "gid": 1234}
     assert "Secret Name" not in repr(r)
+
+
+def test_user_checks_result_printed_on_stderr_is_read(monkeypatch):
+    """Live lab run 2: sssctl user-checks prints 'pam_acct_mgmt: ...' on stderr."""
+
+    monkeypatch.setattr(C, "_is_root", lambda: True)
+    monkeypatch.setattr(C, "_run", lambda argv, timeout=45: (
+        0, "user: alice\naction: acct\nservice: sshd\n\n", "pam_acct_mgmt: Success\n\nPAM Environment:\n - no env -\n"))
+    r = C._user_checks({"user": "alice", "service": "sshd"})
+    assert r.status == "OK" and r.fields["result_class"] == "success"

@@ -132,3 +132,19 @@ def test_no_baseline_is_a_plain_run(state, capsys):
 def test_replay_state_never_touches_the_live_baseline(state, capsys):
     _first(capsys, _fx(state, "sssd-stopped"))
     assert V.state_path(True).exists() and not V.state_path(False).exists()
+
+
+# ---- red-team round 1 (F1): a different --user/--service is never a RESOLVED
+@pytest.mark.parametrize("scenario,first,second", [
+    ("user-missing-in-ipa", ["--user", "alice", "--service", "sshd"], ["--user", "bob", "--service", "sshd"]),
+    ("pam-not-integrated", ["--user", "alice", "--service", "sshd"], ["--user", "alice", "--service", "login"]),
+    ("pam-denied", ["--user", "alice", "--service", "sshd"], ["--user", "bob", "--service", "sshd"]),
+])
+def test_verify_with_other_inputs_is_unable_not_resolved(state, capsys, scenario, first, second):
+    fx = _fx(state, scenario)
+    main(["client", *first, "--json", "--replay", str(fx)])
+    capsys.readouterr()
+    healthy = H.write_checks(H.scenario("healthy"), directory=state / f"any-{scenario}")
+    code = main(["client", "--verify", *second, "--json", "--replay", str(healthy)])
+    doc = json.loads(capsys.readouterr().out)
+    assert {i["outcome"] for i in doc["items"]} == {"UNABLE_TO_VERIFY"} and code == 4

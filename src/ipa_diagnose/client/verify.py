@@ -26,6 +26,8 @@ from ipa_diagnose.client.run import ClientResult
 from ipa_diagnose.planner.core import Outcome
 
 STATE_VERSION = 1
+# symptom steps whose answer depends on --user / --service (their result for another name proves nothing)
+_INPUT_DEPENDENT = ("id", "ipa", "nss", "pam", "cache")
 _CODE_RE = re.compile(r"^[A-Z][A-Z0-9_]{1,60}$")
 _STEP_RE = re.compile(r"^[a-z][a-z0-9_.]{0,40}$")
 
@@ -108,8 +110,14 @@ def compare(previous: Dict[str, Any], fresh: ClientResult, runner: Any) -> Dict[
 
     now_codes = {d.code: d for d in fresh.diagnoses}
     items: List[VerifyItem] = []
+    changed_inputs = [k for k in ("user", "service") if (previous.get("inputs") or {}).get(k) != fresh.inputs.get(k)]
     for old in previous["diagnoses"]:
         code, title = old["code"], old["title"]
+        if changed_inputs and (old["symptom_step"] or "").split(".")[0] in _INPUT_DEPENDENT:
+            items.append(VerifyItem(code, title, "UNABLE_TO_VERIFY",
+                                    "it was found for another " + " and ".join(changed_inputs) + " than this run asks "
+                                    "about; run --verify with the same --user and --service"))
+            continue
         if code in now_codes:
             items.append(VerifyItem(code, title, "STILL_PRESENT", "found again with fresh evidence"))
             continue

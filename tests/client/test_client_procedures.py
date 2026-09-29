@@ -192,3 +192,16 @@ def test_sssd_failing_on_its_cache_database_gets_no_start_and_no_removal():
     assert H.codes(r) == {"SSSD_CACHE_DB_ERROR": "PRIMARY", "SSSD_NOT_RUNNING": "RELATED"}
     assert not H.offered(r)
     assert r.resolutions["SSSD_CACHE_DB_ERROR"].status == "NONE"
+
+
+def test_one_log_line_and_an_absent_entry_do_not_justify_cache_removal():
+    """Red-team round 1 (F2): an absent cache entry is ordinary; one cache_db log line is not proof."""
+
+    def m(d):
+        S.stale_cache(d)
+        d[key("sssd.cache_user", user=USER)]["fields"].update(present=False)
+        d[key("sssd.log_signals", domain=DOMAIN)]["fields"].update(counts={"cache_db": 1})
+
+    r = H.run("healthy", mutate=m)
+    d = next(x for x in r.diagnoses if x.code == "SSSD_CACHE_DB_ERROR")
+    assert d.confidence == "MEDIUM" and d.variant == "suspected" and not H.offered(r)

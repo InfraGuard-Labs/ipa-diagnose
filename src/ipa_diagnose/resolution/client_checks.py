@@ -685,6 +685,7 @@ def _user_checks(params):
     if bad:
         return bad
     rc, out, err = got
+    out = out + "\n" + err  # sssctl prints the PAM results on stderr (live: SSSD 2.12, Fedora 43)
     m = _ACCT_RESULT.search(out)
     result = _c(m.group(1).strip(), 120) if m else None
     low = (result or "").lower()

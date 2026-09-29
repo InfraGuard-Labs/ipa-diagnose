@@ -138,3 +138,33 @@ def test_https_only_problem_is_not_blamed_on_ldap():
     r = H.run("healthy", mutate=m)
     assert "SERVER_UNREACHABLE" not in H.codes(r) and "LDAP_UNREACHABLE" not in H.codes(r)
     assert H.codes(r).get("HTTPS_UNREACHABLE") == "WARNING" and r.runtime.state == "NOT_VERIFIED"
+
+
+# ---- red-team round 1 (F3): "cannot resolve a KDC address" is a name-resolution problem, not "no KDC answers"
+def test_kdc_unresolvable_with_missing_kerberos_srv_is_dns():
+    def m(d):
+        S.srv_missing_fixed_fallback(d)
+        d[key("krb.host_kinit", principal=PRINCIPAL)]["fields"].update(ok=False, error_class="kdc_unresolvable")
+        d[key("sssd.domain_status", domain=DOMAIN)]["fields"].update(online=False)
+
+    r = H.run("healthy", mutate=m)
+    c = H.codes(r)
+    assert "KDC_UNREACHABLE" not in c
+    assert H.primary(r) == "DNS_SRV_MISSING" and c["KDC_NOT_RESOLVABLE"] == "RELATED"
+
+
+def test_kdc_unresolvable_without_dns_evidence_is_undiagnosed():
+    def m(d):
+        d[key("dns.address", name=SERVER)] = S.ok({}, "getent: timed out", status="NOT_RUN")
+        d[key("krb.host_kinit", principal=PRINCIPAL)]["fields"].update(ok=False, error_class="kdc_unresolvable")
+
+    r = H.run("healthy", mutate=m)
+    assert H.codes(r).get("KDC_NOT_RESOLVABLE") == "UNDIAGNOSED" and "KDC_UNREACHABLE" not in H.codes(r)
+
+
+def test_cannot_contact_kdc_while_tcp_88_answers_is_not_high():
+    def m(d):
+        d[key("krb.host_kinit", principal=PRINCIPAL)]["fields"].update(ok=False, error_class="kdc_unreachable")
+
+    r = H.run("healthy", mutate=m)
+    assert next(x for x in r.diagnoses if x.code == "KDC_UNREACHABLE").confidence == "MEDIUM"

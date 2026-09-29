@@ -249,7 +249,7 @@ def confirm(name: str, cmd: str, expect_substring: str = None, expect_rc: int = 
 
 
 def restore_client() -> None:
-    sh(C, "iptables -F OUTPUT 2>/dev/null; cp /root/resolv.conf.ipa /etc/resolv.conf; "
+    sh(C, "systemctl reset-failed sssd; iptables -F OUTPUT 2>/dev/null; cp /root/resolv.conf.ipa /etc/resolv.conf; "
           "if ! [ -f /etc/krb5.keytab ] && [ -f /root/krb5.keytab.moved ]; then mv /root/krb5.keytab.moved "
           "/etc/krb5.keytab; fi; cmp -s /etc/sssd/sssd.conf /root/sssd.conf.enrolled || { cp /root/sssd.conf.enrolled "
           "/etc/sssd/sssd.conf; chmod 600 /etc/sssd/sssd.conf; }; systemctl restart sssd; sleep 3")
@@ -419,7 +419,7 @@ def c09b():
     sh(C, "sed -i 's/^access_provider = ipa/access_provider = simple\\nsimple_allow_users = bob/' "
           "/etc/sssd/sssd.conf; grep -q '^access_provider = simple' /etc/sssd/sssd.conf || "
           "sed -i '/^\\[domain\\//a access_provider = simple\\nsimple_allow_users = bob' /etc/sssd/sssd.conf; "
-          "systemctl restart sssd; sleep 3")
+          "systemctl reset-failed sssd; systemctl restart sssd; sleep 3")
     hbac = confirm("hbactest", f"ipa hbactest --user=alice --host={HOST} --service=sshd", "Access granted: True",
                    container=S)
     host_denies = confirm("user-checks", "sssctl user-checks alice -a acct -s sshd", "Permission denied")
