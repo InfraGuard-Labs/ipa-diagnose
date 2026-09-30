@@ -41,14 +41,24 @@ def test_promotion_keeps_the_live_record_and_the_applicability():
     assert p["applies_to"] == {"freeipa_min": "4.9", "freeipa_below": "5.0", "roles": ["ipa-server"]}
     live = [v for v in p["provenance"]["verified_on"] if v["tier"] == "LIVE"]
     assert live == [{"freeipa": "4.13.3", "os": "fedora-43", "tier": "LIVE", "date": "2026-09-26",
-                     "evidence": "https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36258032392"}]
+                     "evidence": "https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36258032392"},
+                    # freeze campaign: the lab image moved to 4.13.4; S3/S5 applied verbatim and verified again
+                    {"freeipa": "4.13.4", "os": "fedora-43", "tier": "LIVE", "date": "2026-09-30",
+                     "evidence": "https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36724948194"}]
     assert any(r["independent"] is True for r in p["provenance"]["reviews"])
 
 
 def test_exact_live_verified_environment_gets_the_definitive_label():
     r = res_of(report_for(DIRSRV_DOWN, SERVICE_OK, env=EXACT)[0], SVC)
     assert r.status == OFFERED and r.tier == "BUILT_IN_VERIFIED" and r.definitive
-    assert r.verification_label == "Verified in a live lab on FreeIPA 4.13.3 / fedora-43; independently reviewed."
+    assert r.verification_label == ("Verified in a live lab on FreeIPA 4.13.3 / fedora-43, FreeIPA 4.13.4 / fedora-43; "
+                                    "independently reviewed.")
+
+
+def test_the_second_live_verified_environment_is_definitive_too():
+    env = EnvironmentInfo(distro="fedora", distro_version="43", freeipa_version="4.13.4-2.fc43")
+    r = res_of(report_for(DIRSRV_DOWN, SERVICE_OK, env=env)[0], SVC)
+    assert r.status == OFFERED and r.definitive
 
 
 @pytest.mark.parametrize("env", [

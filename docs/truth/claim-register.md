@@ -1,4 +1,4 @@
-# Article-claim evidence register (Slices 1, 2, 3, 4 and 5)
+# Article-claim evidence register (Slices 1-5 and the integrated freeze)
 
 This is **not** an article draft. It lists every claim about ipa-diagnose that could be published, with its
 evidence tier and exact safe wording, so no claim is ever stronger than its evidence. Evidence rows are in
@@ -51,6 +51,7 @@ When quoting commands: generalise the lab names (`LAB-TEST`, `/data/...`); prese
 FreeIPA 4.13.3 / Fedora 43, with applicability unchanged; file permissions `LIVE_VERIFIED`; clock skew and expiring
 DS certificate `FIXTURE_ONLY`; expired DS certificate has no deterministic fix. Safe wording: "built-in verified on
 FreeIPA 4.13.3 / Fedora 43". Overclaim to avoid: "built-in verified" without that scope.
+**Freeze update:** the lab image now ships FreeIPA 4.13.4; the service-start and file-permission procedures were applied verbatim and verified again on it (run 36724948194), so the service-start label is definitive on FreeIPA 4.13.3 and 4.13.4 / Fedora 43 (tier unchanged). Safe wording: "built-in verified on FreeIPA 4.13.3 and 4.13.4 / Fedora 43".
 
 ## Slice 2: support bundle (`ipa-diagnose bundle`)
 
@@ -93,7 +94,7 @@ disabled. Fixture and synthetic evidence is in `tests/access/`. The contract is 
 | X01 | The policy decision is FreeIPA's own | SOURCE + LIVE | `access/evaluate.py` (AUTHORIZATION PASS/FAIL only from `hbactest`); A01-A22 compared with an independent `ipa hbactest` | one version, single server | "The allow/deny answer comes from FreeIPA's own HBAC evaluation (`hbactest`, the libipa_hbac engine SSSD uses); ipa-diagnose explains it and never overrides it." | "ipa-diagnose evaluates HBAC", "reimplements SSSD" |
 | X02 | No false allow or false deny in the live scenarios | LIVE | access truth matrix (final run 36505832843 on 1e3a4fd): 25/25, 0 false allows, 0 false denies | 25 scenarios on one lab policy | "In 25 live scenarios (direct, group, nested group, nested hostgroup, service group, deny, disabled rule, disabled or expired account, missing objects, failures), no answer contradicted FreeIPA's own evaluation." | "never wrong", "validated on any deployment" |
 | X03 | Authentication, authorization and runtime access are kept apart | LIVE + SYNTHETIC | A08/A22 (FAIL/PASS), A01 (NOT_VERIFIED/PASS/NOT_VERIFIED); tests | runtime is never tested | "A disabled account with an allowing rule is reported as AUTHENTICATION FAIL and AUTHORIZATION PASS; runtime access is always reported as not verified." | "tells you whether the user can log in", "SSH will work" |
-| X04 | An HBAC allow is not a login test | design + docs | RUNTIME ACCESS is always NOT_VERIFIED | no SSSD/PAM/network/keytab check (Slice 4) | "It answers the policy question only; it does not attempt or verify a login." | any claim that PASS means SSH works |
+| X04 | An HBAC allow is not a login test | design + docs | without `--runtime` RUNTIME ACCESS is always NOT_VERIFIED; with `--runtime` see Y05 (FAIL or NOT_VERIFIED, never PASS) | no login is attempted in either case | "It answers the policy question only; it does not attempt or verify a login." | any claim that PASS means SSH works |
 | X05 | Membership paths explain the decision | LIVE + FIXTURE | A02-A05 (group, hostgroup, nested chains `carol → backend → devs`, `app02 → web → prod`, service group Sudo) | at most 10 rules, chains up to 40 group reads in total | "For an allow it names the matched rule and how the user, host and service match it, including nested group chains." | "shows every path" |
 | X06 | A deny is reported as policy, with no grant advice | LIVE + SYNTHETIC | A06, A07 (no fix, no add/enable suggestion, not called broken) | - | "A deny is reported as 'FreeIPA policy does not authorize this request'; ipa-diagnose suggests no rule, group or account change, because that is the policy owner's decision." | "finds misconfigured HBAC" |
 | X07 | It does not repeat hbactest's allow for a user that does not exist | LIVE + SOURCE | A14: FreeIPA's `ipa hbactest` granted a nonexistent user under `allow_all`; ipa-diagnose answered UNKNOWN (not evaluated) with AUTHENTICATION FAIL | - | "FreeIPA's hbactest evaluates names that do not exist (so `allow_all` 'grants' them); ipa-diagnose checks that the user and host exist first and gives no policy verdict for a name with no IPA identity." | "detects all hbactest pitfalls" |
@@ -152,3 +153,19 @@ not independent humans. **Only one FreeIPA version, one OS and one topology shap
 | Z11 | Stale RUV, changelog purge, generation-ID mismatch | FIXTURE | tests only | never reproduced live (it would mean damaging 389-DS) | "RUV elements without a current server and replica-data errors are recognized in tests and reported as candidates or administrator decisions, never with a clean-up command." | "detects stale RUVs" (live) |
 | Z12 | Replication bundle is structure only | LIVE + SYNTHETIC | R11 (no lab host, domain, realm or IP inside; validates), tests | pattern-based redaction elsewhere unchanged | "`bundle --replication` adds per-suffix, per-direction states, diagnosis codes and cause-chain structure under pseudonyms, without status text, commands, principals or LDAP entries." | "secret-free" |
 | Z13 | Fast | LIVE | truth matrix timing | one lab | "In the lab a replication investigation took about 2-4 s per server, and 12-15 s with an unreachable peer (timeouts)." | performance beyond the lab |
+
+## Freeze: integrated validation of Slices 1-5 as one product
+
+Evidence: [freeze-audit.md](freeze-audit.md) (every live lab re-run on the freeze candidate, the product-wide invariant
+sweeps, the No-Google / Resolution Safety / false-root-cause / false-resolution / false-RESOLVED campaigns) and the
+real captures in [../screenshots/1.0-candidate/](../screenshots/1.0-candidate/index.md). The live image now ships
+FreeIPA **4.13.4** (the Slice 1-3 rows were 4.13.3). Reviews: fresh model reviewer agents, not independent humans.
+
+| ID | Claim | Tier | Evidence | Limits | Safe wording | Overclaim to avoid |
+|---|---|---|---|---|---|---|
+| F01 | All five parts work together on the current code | LIVE | FREEZE_LIVE_ROWS | Fedora 43, FreeIPA 4.13.4, lab topologies | "On one code base, the server, access, client, replication and bundle labs all passed again in the live lab (FreeIPA 4.13.4 / Fedora 43)." | "production-proven", "validated on RHEL" |
+| F02 | The server diagnosis and replication mode agree on a server's own cause | LIVE | J01, J03 (same injected state; same printed argv), J02 (no local cause invented for a peer's stopped Directory Server) | three cases | "In the same injected fault, the server diagnosis and replication mode named the same local cause and printed the same command; for a fault on the peer, the server diagnosis invented no local cause." | "consistent in every case" |
+| F03 | Printed fixes carry their expected result on every surface | SOURCE + SYNTHETIC | `tests/test_freeze_consistency.py` | the text is the procedure's own | "Every printed fix step shows what should happen, and, where the procedure states it, what a failure looks like." | "No-Google everywhere" (only replication mode makes that machine-checked claim) |
+| F04 | No inappropriate fix in any recorded scenario | SYNTHETIC / FIXTURE | `tests/test_freeze_campaigns.py`: 124 server fixtures, 29 client scenarios as root and non-root, 25 replication scenarios | recorded evidence only | "Across every recorded scenario, no fix was offered for a symptom, an unknown, another server's cause or without root, and every offered fix had an expected result, a rollback and a verification." | "can never suggest a wrong fix" |
+| F05 | The live-verified fixes were followed blind | LIVE | S3, S5, F1/P1, C02/C10, R02b/R02c, R05/R05b on the freeze candidate | three procedure types | "In the live lab, the printed service-start, file-permission and SSSD-start fixes were run exactly as printed, and the fresh verify reported RESOLVED." | "fixes FreeIPA problems" |
+| F06 | Screenshots are real output | LIVE (+ LIVE SIMULATED labelled) | `docs/screenshots/1.0-candidate/captures/` (raw text, command, commit, run) | lab names | "The README screenshots are the exact text ipa-diagnose printed in the live lab." | calling any image live that is not |

@@ -1,544 +1,228 @@
 # ipa-diagnose
 
-**`ipa-healthcheck` tells you a check failed. `ipa-diagnose` tells you which
-failures are related, what's actually wrong, why you should believe that,
-what it affects, what to do first, whether that's safe, and how to confirm
-it's fixed.**
-
-It is a deterministic, evidence-grounded correlation engine that sits on top
-of `ipa-healthcheck` plus a handful of targeted, read-only collectors
-(`journalctl`, `getcert list`, `ipa-replica-manage`, `dig`, `klist`/`kvno`,
-read-only `ldapsearch`). AI (OpenAI, Anthropic, or AWS Bedrock) is entirely
-optional and only ever explains a diagnosis the deterministic engine already
-computed - it never decides the root cause, invents evidence, or invents a
-command to run.
-
-![Primary root-cause diagnosis](https://raw.githubusercontent.com/InfraGuard-Labs/ipa-diagnose/master/artifacts/screenshots/03_primary_root_cause.png)
-
-## Why this exists
-
-`ipa-healthcheck` is FreeIPA's own excellent diagnostic tool, and
-`ipa-diagnose` does not reimplement or replace it - it reads its JSON output.
-But by design, `ipa-healthcheck` only checks one host in isolation: it does
-not correlate two related failures into one story, does not read logs, does
-not explain impact, and does not recommend a next step (this is confirmed by
-reading its own source and documentation, not assumed - see
-[docs/research.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/docs/research.md)). An administrator staring at ten
-failing checks after a bad night still has to work out, by hand, which one
-is the actual problem and which nine are just symptoms.
-
-`ipa-diagnose` is the layer that does that correlation, deterministically,
-with every claim traceable back to real evidence:
+**Evidence-backed root causes for FreeIPA / Red Hat IdM: servers, clients, access policy and replication. When a fix
+is proven safe it prints the fix, and afterwards it checks with fresh evidence that the original problem is gone.**
 
 ```text
-DETECT → COLLECT EVIDENCE → CORRELATE → DIAGNOSE → EXPLAIN → RECOMMEND → VERIFY
+DETECT → INVESTIGATE → CORRELATE → ROOT CAUSE → RESOLVE → VERIFY
 ```
 
-## Example
+`ipa-healthcheck` tells you which checks failed on one host. `ipa-diagnose` reads its output, runs its own read-only
+checks and works out which failures are one problem, what the deepest proven cause is, and what was ruled out. It
+never runs a fix: when it can prove a fix applies here and is safe, it prints the exact command, the expected result,
+the rollback and how to verify, and otherwise it says why it shows none. When the evidence is not enough, the answer
+is `UNKNOWN` or *undiagnosed*, never a guess. The engine is deterministic. AI is optional and can only reword a
+diagnosis that is already computed.
 
-Three independent-looking `ipa-healthcheck` failures - a DNS record check, a
-`named` service check, and a Kerberos KDC-discovery failure on a client -
-turn out to be one problem:
+## What it does
 
-![Correlated findings](https://raw.githubusercontent.com/InfraGuard-Labs/ipa-diagnose/master/artifacts/screenshots/04_correlated_findings.png)
+| # | Capability | Command | Question it answers | Limit (not claimed) |
+|---|---|---|---|---|
+| 1 | Diagnose a FreeIPA server | `sudo ipa-diagnose` | What is wrong on this server? | One host's view; covers ipa-healthcheck plus 5 diagnostic packs (replication, certificates, Kerberos, DNS, Directory Server), not every subsystem |
+| 2 | Correlate failing checks | same | Which failures are one problem, which are symptoms, which are independent? | A fixed, documented causal model (DNS → Kerberos → replication → certificates, Directory Server under all); a new kind of link shows up as two problems |
+| 3 | Reach the deepest supported root cause | `ipa-diagnose`, `client`, `replication` | What is the deepest cause the evidence proves? | Stops where the evidence stops and names the next read-only step |
+| 4 | Show evidence and what was ruled out | `--details` | Why should I believe it? | Every fact carries the command that produced it and whether it is LIVE or recorded |
+| 5 | Print a safe, complete fix when one is proven | printed `FIX` | What exactly do I run, where, and what should happen? | Printed, never run. 7 procedures; 3 applied verbatim and verified in the live lab (start a stopped IPA service, restore an IPA file's owner/group/mode, start SSSD) |
+| 6 | Verify recovery with fresh evidence | `verify`, `client --verify`, `replication --verify` | Is the original incident really gone? | Never trusts a command's exit code; RESOLVED needs fresh evidence and the fix's own checks; replication can answer PENDING |
+| 7 | Diagnose HBAC access policy | `ipa-diagnose access USER HOST SERVICE` | Does FreeIPA policy allow this, and why? | The decision is FreeIPA's own `hbactest`; a deny is policy, never "broken"; trusted-domain (AD) users are UNKNOWN |
+| 8 | Continue from policy into the runtime side | `access ... --runtime` (as root on HOST) | Policy allows it, but would the login fail on this host? | No login is attempted: RUNTIME ACCESS is FAIL or NOT VERIFIED, never PASS |
+| 9 | Diagnose a FreeIPA client and SSSD | `sudo ipa-diagnose client [--user U --service S]` | Is this client enrolled and able to resolve and authenticate IPA identities? | No credential is tested; one host; no cache deletion, re-enrollment, keytab replacement or clock step is ever printed |
+| 10 | Diagnose replication per suffix and direction | `sudo ipa-diagnose replication [--peer FQDN]` | Does replication to and from this server work, and what is the deepest cause? | One server's view; the reverse direction needs your Kerberos ticket; never prints re-initialization, RUV clean-up or topology changes |
+| 11 | Model the environment it reasons about | `replication` (topology, roles, segments) | Which servers, roles and paths matter for this answer? | A bounded, per-run, lookup-only model (at most 8 agreements per run); not a directory mirror |
+| 12 | Create a privacy-reduced support bundle | `sudo ipa-diagnose bundle [--preview]`, `bundle validate FILE` | What can I hand to someone helping me? | Pseudonymized and credential-scanned, **not** secret-free: review it before sharing; nothing is uploaded |
+| 13 | Produce JSON | `--json` on every command | Can a script consume the answer? | Versioned schemas; `--json` is pure JSON on stdout |
+| 14 | Explain with AI (optional) | `--ai-provider openai\|anthropic\|bedrock`, `ai-preview`, `--no-ai` | Can the diagnosis be reworded in plain language? | Server diagnoses only; AI never chooses the cause or supplies a command; `ai-preview` shows the exact payload |
 
-And when the evidence genuinely isn't enough to tell two causes apart,
-`ipa-diagnose` says so instead of guessing:
+## See it in action
 
-![Unknown result](https://raw.githubusercontent.com/InfraGuard-Labs/ipa-diagnose/master/artifacts/screenshots/06_unknown_insufficient_evidence.png)
+Every image below is the exact text `ipa-diagnose` printed in the live lab: FreeIPA 4.13.4 on Fedora 43, disposable
+containers on a free GitHub runner, fake `lab.test` names. They are not mock-ups. The faults were injected on purpose
+and the tool was not told what they were. Commands, commits, runs and limits for each image:
+[docs/screenshots/1.0-candidate/](docs/screenshots/1.0-candidate/index.md).
 
-See [artifacts/screenshots/index.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/artifacts/screenshots/index.md) for the
-27 fixture-based scenarios (healthy, degraded, multiple independent problems,
-`--details`, `--json`, CAUTION/HIGH-RISK actions, `verify`, the AI providers,
-AI-failure fallback, the `ai-preview` redaction view, malformed input, and
-real RPM/PyPI installs). Those were produced by the real CLI running against
-**recorded fixture evidence**, not a live FreeIPA server. Screenshots from a
-**real FreeIPA 4.13.3 lab** (evidence completeness, stopped Directory Server /
-KDC, `verify`, and more) are in
-[docs/screenshots/v0.1.2/index.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/docs/screenshots/v0.1.2/index.md), each
-labelled with its provenance.
+**Root cause, evidence and the printed fix.** The Directory Server is stopped. ipa-diagnose names the unit and prints
+`systemctl start` for exactly that unit. It does not print `ipactl start`, which stops every IPA service when one of
+them fails to start.
 
-## Installation
+![ipa-diagnose on a server whose Directory Server is stopped: CRITICAL, root cause 'dirsrv is not running', read-only checks, and a printed systemctl start fix with rollback and verify](SCREENSHOT_SERVER_ROOT_CAUSE)
 
-`ipa-diagnose` needs to run where `ipa-healthcheck` and the FreeIPA/389-DS
-tooling it shells out to already exist - i.e., on an actual IPA server or
-client, as root. **If you'll be running it routinely as root, prefer the
-RPM path below** - it installs to `/usr/bin`, so plain `sudo ipa-diagnose`
-just works with no caveats. pipx is the right path for development, testing,
-or a quick evaluation.
+**Verify with fresh evidence.** The printed command was run as shown, then `ipa-diagnose verify` re-collected
+everything:
 
-See [docs/compatibility.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/docs/compatibility.md) for the full,
-evidence-backed platform support matrix - what's actually tested vs.
-researched-only, by platform generation.
+![ipa-diagnose verify after the printed fix: RESOLVED items and whether the fresh evidence was complete](SCREENSHOT_SERVER_VERIFY)
 
-### RPM (RHEL / Rocky / AlmaLinux 8, 9, 10, and Fedora)
+**A client and SSSD.** The IPA server's ports are blocked from the client. The unreachable server is the cause, and
+SSSD being offline is shown as a consequence of it, not as a second problem:
 
-Each target has its own RPM, built and lifecycle-tested (install, dependency
-resolution, `--version`, CLI startup, graceful degradation without a live
-FreeIPA environment, `--replay`, uninstall, reinstall) in Docker against a
-clean container of that exact distro - see
-[docs/compatibility.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/docs/compatibility.md) for exactly what was tested
-where, and [packaging/rpm/README.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/packaging/rpm/README.md) for how to
-build them yourself.
+![ipa-diagnose client: the IPA server is unreachable (PRIMARY) and SSSD offline is RELATED to it, with what was checked and ruled out](SCREENSHOT_CLIENT)
 
-**RHEL/Rocky/AlmaLinux 9 or 10** - the `rich` runtime dependency comes from
-EPEL, so enable it first:
+**Policy vs runtime.** FreeIPA's HBAC policy allows alice, but SSSD is stopped on the host. AUTHORIZATION stays
+FreeIPA's decision, RUNTIME ACCESS fails, and no login is attempted:
 
-```bash
-sudo dnf install -y epel-release dnf-plugins-core
-sudo dnf config-manager --set-enabled crb    # "PowerTools" on some 8.x mirrors
-sudo dnf install ./ipa-diagnose-<version>.el9.noarch.rpm   # or .el10.noarch.rpm
-sudo ipa-diagnose
-```
+![ipa-diagnose access --runtime: AUTHORIZATION PASS from FreeIPA hbactest, RUNTIME ACCESS FAIL because SSSD is not running on the host](SCREENSHOT_ACCESS_RUNTIME)
 
-**RHEL/Rocky/AlmaLinux 8** - EL8's default Python (3.6) is too old for this
-project; the RPM depends on the `python39` module stream instead, installed
-alongside it, not replacing it:
+**Replication: a cause chain across servers.** ipa02's Directory Server is stopped, seen from ipa01. The chain stops at
+what ipa01 can prove, and ipa-diagnose prints the command to run on ipa02 instead of changing anything there:
 
-```bash
-sudo dnf install -y python39
-sudo dnf install ./ipa-diagnose-<version>.el8.noarch.rpm
-sudo ipa-diagnose
-```
+![ipa-diagnose replication on ipa01: per-suffix, per-direction states, a cause chain ending at 'ipa02 refuses connections on 389', and a handoff to ipa02](SCREENSHOT_REPLICATION_CHAIN)
 
-**What "not replacing it" precisely means (tested on both Rocky and
-AlmaLinux 8, confirmed to differ):** `platform-python`
-(`/usr/libexec/platform-python`), the interpreter `dnf`/`rpm`/`yum`
-themselves actually depend on, is never touched on either distro - verified
-with `rpm -V platform-python` showing zero drift before/after install,
-uninstall, and reinstall. The *visible* `/usr/bin/python3` symlink's
-behavior differs by distro, though: on Rocky Linux 8 a pre-existing
-`python3.6` alternative keeps `python3 --version` pinned at 3.6 even after
-installing `python39`; on a minimal AlmaLinux 8 host with no `python3`
-symlink registered at all yet, installing `python39` is what *creates* it,
-pointing at 3.9 - which can look like a change on AlmaLinux where there
-wasn't one to begin with on Rocky. Either way, nothing your system
-tooling depends on is affected.
+**A complete fix, when it is proven.** This server's own KDC is stopped. Every step shows its host, its expected
+result, what to do if it fails, backup, rollback and verification tied to the incident:
 
-(The `rich` runtime dependency is vendored into the EL8 package itself,
-since no EL8-compatible `python39-rich` package exists anywhere to depend
-on - see [docs/compatibility.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/docs/compatibility.md) for what that
-means for security updates.)
+![ipa-diagnose replication on ipa01 with its KDC stopped: the NO-GOOGLE fix block for systemctl start krb5kdc.service](SCREENSHOT_REPLICATION_FIX)
 
-**Fedora** (current stable):
+**No guessing.** With `ipa-healthcheck` unavailable there is no base evidence, so the answer is UNKNOWN (exit 3),
+never healthy:
 
-```bash
-sudo dnf install ./ipa-diagnose-<version>.fc44.noarch.rpm
-sudo ipa-diagnose
-```
-
-Download the correct artifact for your platform from the
-[latest release](https://github.com/InfraGuard-Labs/ipa-diagnose/releases/latest)
-(the release page lists the files). Names look like
-`ipa-diagnose-0.1.3-1.el9.el9.noarch.rpm` (the target - `.el8.`, `.el9.`,
-`.el10.`, `.fc44.` - is repeated by the build; that is cosmetic). Verify the
-download, in the same directory as `SHA256SUMS`:
-
-```bash
-sha256sum -c --ignore-missing SHA256SUMS
-```
-
-`dnf` warns "skipped OpenPGP checks" for a local RPM file: the packages are
-not GPG-signed, which is why the checksum step matters. The command is
-installed at `/usr/bin/ipa-diagnose` (`/usr/sbin` points to it on merged-`/usr`
-systems). Fedora 43 works too (tested), but only the `.fc44.` file is
-published; install it on 44, or use pipx.
-
-### PyPI / pipx
-
-```bash
-pipx install ipa-diagnose
-ipa-diagnose --version
-```
-
-On RHEL/Rocky/AlmaLinux 9 and 10, `pipx` itself comes from EPEL
-(`sudo dnf install -y epel-release && sudo dnf install -y pipx`); on Fedora
-it is plain `sudo dnf install -y pipx` (no EPEL); on 8, EPEL has no `pipx`
-package, so use the `python39` module instead:
-
-```bash
-sudo dnf install -y python39 && python3.9 -m pip install --user pipx
-python3.9 -m pipx ensurepath      # then open a new shell so ~/.local/bin is on PATH
-```
-
-**Root/sudo caveat (tested, not assumed):** `pipx install` puts the
-executable in the installing user's `~/.local/bin`, which is *not* on
-`sudo`'s `secure_path` by default on RHEL-family systems - confirmed
-directly: after `pipx install ipa-diagnose` as a regular user, plain
-`sudo ipa-diagnose` fails with `sudo: ipa-diagnose: command not found`,
-**even if pipx was run as root itself** (root's own `~/.local/bin` isn't on
-`secure_path` either). Two tested, working options, neither of which
-touches `sudoers` or weakens `secure_path`:
-
-```bash
-# Option A: install and run as root directly (no further `sudo` needed)
-sudo -i
-pipx install ipa-diagnose
-ipa-diagnose            # already root - just works
-
-# Option B: invoke via the absolute path (works from a normal login)
-pipx install ipa-diagnose
-sudo "$HOME/.local/bin/ipa-diagnose"
-```
-
-If you need `sudo ipa-diagnose` (unqualified) to just work, use the RPM
-path instead.
+![ipa-diagnose with ipa-healthcheck unavailable: overall UNKNOWN, what could not be collected, and no cause claimed](SCREENSHOT_UNKNOWN)
 
 ## Quick start
 
 ```bash
-sudo ipa-diagnose                 # diagnose (default)
-sudo ipa-diagnose --details       # full evidence, confidence, every action
-sudo ipa-diagnose --json          # machine-readable, for automation
-sudo ipa-diagnose verify          # did the problem actually clear?
-sudo ipa-diagnose ai-preview      # see exactly what would be sent to an AI provider
-sudo ipa-diagnose --no-ai         # never contact any AI provider (also the default)
+sudo ipa-diagnose                    # on an IPA server: diagnose (the default command)
+sudo ipa-diagnose --details          # full evidence, confidence, what each check found
+sudo ipa-diagnose --json             # machine-readable, for monitoring and automation
+sudo ipa-diagnose verify             # after a fix: is the problem found last time really gone?
+
+kinit alice; ipa-diagnose access john app03.example.test sshd      # does FreeIPA policy allow john there, and why?
+sudo ipa-diagnose access john app03.example.test sshd --runtime    # on app03 itself: would the login fail there?
+
+sudo ipa-diagnose client --user john --service sshd                # on a client: enrolled, resolving, why not?
+sudo ipa-diagnose replication                                      # on a server: per suffix and direction, why not?
+
 sudo ipa-diagnose bundle --preview   # what a support bundle would contain; writes nothing
-sudo ipa-diagnose bundle             # write a sanitized support bundle to share (never uploaded)
-kinit admin; ipa-diagnose access john app03.example.com sshd   # may john log in there through sshd, and why?
-sudo ipa-diagnose client --user john --service sshd   # on a client: enrolled? resolves john? why not?
-sudo ipa-diagnose replication                         # on a server: replication per suffix and direction, why not?
+sudo ipa-diagnose bundle             # write one (review it before sharing; nothing is uploaded)
+
+sudo ipa-diagnose ai-preview         # exactly what an AI provider would receive
+sudo ipa-diagnose --no-ai            # never contact an AI provider (also what happens when none is configured)
 ```
 
-`ipa-diagnose` must run as **root on the IPA server** (it reads root-only
-FreeIPA/389-DS state). It never changes anything itself: every suggested step
-is only *printed*. One upstream side effect to know about: ipa-diagnose runs
-`ipa-healthcheck`, whose certificate checks use FreeIPA's certmonger client, and
-that client **starts certmonger if it is stopped** (unless the unit is masked).
-When that happens, the report says so. Suggested steps are labelled:
+For the reverse replication direction, run `sudo -i`, `kinit admin` and then `ipa-diagnose replication` in that root
+session (sudo does not pass your ticket on). To try it without a FreeIPA host, replay recorded evidence from a git
+checkout: `ipa-diagnose --replay tests/fixtures/resolution/service-not-running`. Replayed output is labelled as such.
 
-- **SAFE** - read-only, changes nothing.
-- **CAUTION** - changes state, but is reversible and scoped. Never run for you.
-- **HIGH RISK** - potentially disruptive; understand the blast radius first.
-  Never run for you.
+**In monitoring, alert on any non-zero exit.** 0 means healthy (or resolved). 3 and 4 mean "could not tell" and
+"not fully verified", and neither counts as OK. The codes for every command are in
+[docs/exit-codes.md](docs/exit-codes.md).
 
-Try it without a live FreeIPA host, against recorded evidence. The fixtures
-live in this repository's `tests/fixtures/` directory (a git checkout or the
-source tarball - they are not installed by the RPM):
+## How it stays safe
 
-```bash
-ipa-diagnose --replay tests/fixtures/replication/peer-unreachable diagnose
-```
+- **Investigation is read-only.** Every check is a fixed command (no shell) with a timeout. One upstream side effect:
+  ipa-healthcheck's certificate checks start a stopped certmonger unless it is masked, and the report says when that
+  happened.
+- **Fixes are printed, never executed.** A fix appears only when its values come from structured evidence and
+  validate as safe values of their type, the FreeIPA version is in range, fresh read-only checks find nothing
+  contradicting, and the prerequisites are met. Otherwise the report says "No fix is shown" and why.
+- **Procedures are evidence-gated data** (`knowledge/procedures/`). Each has a knowledge tier, and the output says
+  where it was verified live. A symptom (RELATED) never gets its own fix, and neither does a cause on another server.
+- **Dangerous recovery is withheld on purpose.** It never prints `ipactl start`, `rm /var/lib/sss/db/*`, re-enrollment,
+  keytab replacement, clock steps on clients, re-initialization, force-sync, RUV clean-up or topology changes. The
+  reason is explained and the decision is left to you.
+- **The core is deterministic.** The same evidence gives the same answer, and every claim traces back to evidence.
+  `UNKNOWN` is a first-class answer.
+- **AI only explains.** It is optional, it only sees what the privacy pipeline allows (`ai-preview` shows exactly
+  that), and its text is discarded if it contains anything that looks like a command.
 
 ## Architecture
 
 ```text
-ipa-healthcheck JSON  +  targeted read-only evidence
-        │           (journalctl, getcert, ipa-replica-manage, dig, klist/kvno, ldapsearch)
-        ▼
-Evidence Normalizer  (every fact keeps its provenance: which command produced it)
-        ▼
-Privacy / Redaction  (secret detection + minimum-evidence-selection, before anything
-        │             could reach an AI provider - see docs/security-privacy.md)
-        ▼
-Diagnostic Engine  (5 versioned packs: replication, certificates, kerberos, dns,
-        │           directory-server - see docs/diagnostic-packs.md)
-        ▼
-Correlation + Prioritization  (deterministic - PRIMARY / RELATED SYMPTOM /
-        │                      SECONDARY INDEPENDENT / WARNING; UNKNOWN is a first-class outcome)
-        ▼
-Structured Diagnosis
-   ┌────────┴────────┐
-   ▼                 ▼
-Local Explanation   Optional AI (OpenAI | Anthropic | Bedrock) - explains only,
-   └────────┬────────┘          never decides (see docs/ai-configuration.md)
-            ▼
-           CLI
-            ▼
-        Verification  (`ipa-diagnose verify` re-collects evidence and re-diagnoses -
-                        never trusts a remediation command's exit code alone)
+            SERVER               ACCESS                   CLIENT                  REPLICATION
+  L0  ipa-healthcheck +      read-only FreeIPA       closed read-only check registry (SSSD, DNS, TCP, TLS, clock,
+      staged collectors      JSON-RPC (hbactest)     keytab, KDC, NSS, PAM | LDAPI topology, peers, GSSAPI bind)
+  L1  typed evidence with provenance: the command that produced each fact, when, LIVE or REPLAY
+  L2  causal chain           relationship index      facts of earlier steps  EnvironmentGraph
+  L3  staged collection      fixed call sequence     bounded deterministic planner (steps, gates, budgets, trace)
+  L4  packs + correlation    FreeIPA decides         diagnosis rules         cause chains (registered discriminators)
+      -> PRIMARY / RELATED / INDEPENDENT / UNDIAGNOSED / CONTRADICTING; UNKNOWN is a first-class answer
+  L5  resolution: procedure catalogue + gates, printed only (replication adds Resolution Safety + No-Google gates)
+  L6  verification with fresh evidence: RESOLVED / STILL_PRESENT / PARTIALLY_RESOLVED / CHANGED / UNABLE_TO_VERIFY
+      (replication also PENDING)
+  side paths: support bundle (pseudonymized structure, fail-closed leak self-test) | optional AI (explains only)
 ```
 
-Full writeup, including the design rationale for each stage, is in
-[docs/architecture.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/docs/architecture.md).
+Details: [docs/architecture.md](docs/architecture.md).
 
-## Supported diagnoses (v1)
+## Installation
 
-Five diagnostic packs, chosen because they're where `ipa-healthcheck`'s own
-single-host, no-correlation, no-log-analysis design leaves the most value on
-the table (see [docs/research.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/docs/research.md) for the full gap
-analysis against `ipa-healthcheck`):
+**RPM** (recommended when you run it as root, which the server and client commands need). Download the file for your
+platform from the [latest release](https://github.com/InfraGuard-Labs/ipa-diagnose/releases/latest) and check it
+against `SHA256SUMS`:
 
-| Pack | Covers | Ambiguity it explicitly refuses to guess through |
+```bash
+# RHEL / Rocky / AlmaLinux 9 or 10 (rich comes from EPEL)
+sudo dnf install -y epel-release dnf-plugins-core && sudo dnf config-manager --set-enabled crb
+sudo dnf install ./ipa-diagnose-<version>.el9.noarch.rpm        # or .el10.
+# RHEL / Rocky / AlmaLinux 8 (uses the python39 module, installed alongside the system Python)
+sudo dnf install -y python39 && sudo dnf install ./ipa-diagnose-<version>.el8.noarch.rpm
+# Fedora
+sudo dnf install ./ipa-diagnose-<version>.fc44.noarch.rpm
+```
+
+**pipx** (development, testing, evaluation):
+
+```bash
+pipx install ipa-diagnose
+```
+
+**Root/sudo caveat:** pipx installs into your `~/.local/bin`, which is not on `sudo`'s `secure_path`, so plain
+`sudo ipa-diagnose` fails after a pipx install (even one done as root). Either run it in a root shell (`sudo -i`,
+then `pipx install ipa-diagnose` and `ipa-diagnose`), or call it by path: `sudo "$HOME/.local/bin/ipa-diagnose"`.
+The RPM installs to `/usr/bin` and has no such caveat.
+
+Per-distribution details, what the EL8 package does to Python, unsigned-package checksums, AI extras and the files
+it writes: [docs/installation.md](docs/installation.md).
+
+## Supported and validated environments
+
+| Evidence | What was covered | Where it is recorded |
 |---|---|---|
-| **Replication** | Peer connectivity breaks, replication conflicts, stale RUVs, topology disconnection (tested on recorded/constructed evidence; a replica that had just died was **not** detected in the live lab - see docs/truth/truth-matrix.md, R1) | Conflict entries mean replication *is* transmitting writes, not that it's broken - a documented trap this pack does not fall into |
-| **Certificates / CA** | Stuck certmonger renewals, expired certs, RA-agent/Dogtag desync, unreachable renewal master | `CA_UNREACHABLE` has 3+ unrelated root causes sharing one state name; only DIAGNOSES when the actual error text is specific enough |
-| **Kerberos** | Clock skew, keytab/KVNO mismatch, DNS-caused KDC discovery failure | "Preauthentication failed" is a generic bucket produced by all three causes - only a direct KVNO comparison counts as proof of a keytab problem |
-| **DNS** | `named`/bind-dyndb-ldap down, forward-zone/empty-zone collisions, broken SRV/autodiscovery records | A documented `ipa-healthcheck` false-positive (issue #270) means WARNING-only SRV findings are treated with extra skepticism, not trusted blindly |
-| **Directory Server / LDAP** | Disk exhaustion, ownership/SELinux mismatches, NSS/TLS DB format issues, missing indexes | An NSS DB format mismatch looks exactly like an expired certificate - this pack explicitly says so rather than misattributing it |
+| **LIVE** | Disposable `freeipa/freeipa-server:fedora-43` containers on free GitHub runners. FreeIPA 4.13.3 for the Slice 1-3 runs, 4.13.4 for Slices 4-5 and the freeze runs; Fedora 43 only. Labs: a single server (DNS + CA); a server plus an enrolled Fedora 43 client (SSSD 2.12); three servers in a line (two with a CA). Every fault injected and independently confirmed, the tool run blind, printed fixes applied verbatim, then verified | [docs/truth/](docs/truth/) |
+| **LIVE SIMULATED** | Clock skew: only ipa-diagnose's own process clock was shifted (libfaketime); no server or client clock was changed | client C05, replication R12 |
+| **PACKAGING / CONTAINER** | RPM build, install, `--version`, `--help`, replay, uninstall and reinstall on Rocky/Alma 8 and 9, AlmaLinux 10, Fedora 43 and 44. Rocky and Alma stand in for RHEL; **RHEL itself was never tested**. pipx paths; wheel and sdist; the full test suite on Python 3.9-3.14 | [docs/compatibility.md](docs/compatibility.md) |
+| **FIXTURE / REPLAY** | Everything else, for example stale RUVs, CA-suffix-only failures, generation-ID mismatch, real clock skew, an expiring DS certificate, the clock-step and SSSD cache procedures, EL8-era ipa-healthcheck | `tests/` |
+| **Not validated** | RHEL; FreeIPA on any EL distribution; FreeIPA 4.9; AD trust; CA-less; other topologies; real logins | - |
 
-Each pack's rules, sourcing, and confidence levels are documented in
-[docs/diagnostic-packs.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/docs/diagnostic-packs.md).
+## Limits
 
-## From diagnosis to fix (resolutions)
+- **Single-host views.** Each command reasons from the host it runs on. Replication reads peers read-only, but it
+  cannot see everything, for example other servers' RUVs.
+- **Not full coverage.** It covers the diagnoses and procedures listed in [docs/diagnostic-packs.md](docs/diagnostic-packs.md),
+  [docs/resolution.md](docs/resolution.md), [docs/client-mode.md](docs/client-mode.md) and
+  [docs/replication-mode.md](docs/replication-mode.md). Anything else is reported as undiagnosed, not explained away.
+- **No logins, no credentials.** Access and client answers never say a login works.
+- **Some benign upstream warnings** (for example a container's missing FIPS file) give `NOT_FULLY_VERIFIED` rather than
+  `HEALTHY`. That is deliberate: a finding nothing explains is never called healthy.
+- **Live validation is narrow**: one OS (Fedora 43), FreeIPA 4.13.3/4.13.4, lab topologies, faults injected on
+  purpose. The environments table above is the whole claim.
 
-For four mature diagnoses ipa-diagnose also shows **how to fix it**, in a fixed order: ROOT CAUSE -> WHY ->
-CHECKED FOR YOU -> IMPACT -> FIX -> PREREQUISITES -> WHAT THIS CHANGES -> RISK -> ROLLBACK -> VERIFY.
+## Documentation
 
-- a required IPA service is not running (start that one unit);
-- ipa-healthcheck reports a wrong owner, group or mode on an IPA file (a permission-removing `chmod`, or `chown -h`/`chgrp -h`);
-- Kerberos clock skew with this host's clock measured out of sync (`chronyc makestep`);
-- the Directory Server certificate is expiring (`getcert resubmit -i <request>`); an already expired one gets **no** invented fix.
+- How it works: [architecture](docs/architecture.md) · [diagnostic packs](docs/diagnostic-packs.md) ·
+  [evidence completeness](docs/evidence-completeness.md) · [exit codes and status words](docs/exit-codes.md)
+- Commands: [resolution (fixes)](docs/resolution.md) · [verification](docs/verification.md) ·
+  [access diagnosis](docs/access-diagnosis.md) · [client mode](docs/client-mode.md) ·
+  [replication mode](docs/replication-mode.md) · [support bundle](docs/support-bundle.md) ·
+  [AI configuration](docs/ai-configuration.md)
+- Trust: [security and privacy](docs/security-privacy.md) · [limitations](docs/limitations.md) ·
+  [compatibility](docs/compatibility.md) · [research (why this exists)](docs/research.md) ·
+  [troubleshooting](docs/troubleshooting.md)
+- Evidence: [freeze audit](docs/truth/freeze-audit.md) · [claim register](docs/truth/claim-register.md) ·
+  truth matrices for [server](docs/truth/truth-matrix.md), [bundle](docs/truth/bundle-truth-matrix.md),
+  [access](docs/truth/access-truth-matrix.md), [client](docs/truth/client-truth-matrix.md) and
+  [replication](docs/truth/replication-truth-matrix.md) · [screenshots](docs/screenshots/1.0-candidate/index.md)
 
-ipa-diagnose runs only **read-only** checks itself (shown under CHECKED FOR YOU) and **never runs a fix**. A fix is
-shown only when its applicability and prerequisites are established on this host and nothing contradicts it;
-otherwise the report says why no fix is shown. The first two procedures have been applied verbatim and verified
-in a live lab (FreeIPA 4.13.3 / Fedora 43 only); the clock and certificate procedures are tested against recorded
-evidence only, and each fix's label says which. Details, guarantees and the JSON format (`v2.resolutions`):
-[docs/resolution.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/docs/resolution.md).
+## Development
 
-## Support bundle
-
-`sudo ipa-diagnose bundle` writes one `.tar.gz` file, mode 0600, that you can review and then share with someone
-helping you. It holds a fresh diagnosis in structured form:
-- status, evidence completeness, diagnoses and undiagnosed findings;
-- normalized ipa-healthcheck results and collection errors;
-- resolutions, listed by procedure and status with their commands omitted;
-- the replication view from this host;
-- a manifest with SHA-256 checksums.
-
-Host names, domains, realms, LDAP suffixes, IP addresses, users and groups are replaced by bundle-local pseudonyms
-(the diagnosed host is `HOST-001`). Values that look like credentials are redacted before anything is
-truncated. No collector records secret material to begin with (keytab keys, ticket contents, private keys,
-passwords).
-
-The file is written only if a final self-test finds none of the real identifiers and no credential pattern in it.
-Nothing is uploaded, and no AI provider is contacted. `--preview` shows what would be included without writing
-anything. `ipa-diagnose bundle validate FILE` checks a received bundle without extracting it. The file is not
-encrypted, and under `sudo` it belongs to root.
-
-Detection is pattern-based and cannot be perfect, and a bundle still contains operational detail such as unit
-names, versions and error text, so review it before sharing. Details:
-[docs/support-bundle.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/docs/support-bundle.md).
-
-## Access diagnosis
-
-`ipa-diagnose access USER HOST SERVICE` answers one question: does FreeIPA policy authorize USER to access HOST
-through SERVICE (a PAM/HBAC service such as `sshd`), and why? It needs no root. It uses your own Kerberos ticket
-(`kinit` first) to ask FreeIPA's own HBAC evaluator (`hbactest`) and reads only the objects involved. The answer
-keeps three things apart:
-
-- **AUTHENTICATION**: can the IPA account authenticate at all (exists, not disabled, principal not expired)?
-  No credential is tested, so this is never "PASS".
-- **AUTHORIZATION**: FreeIPA's HBAC decision, with the matched rule and the membership path (for example
-  `john -> backend -> devs`).
-- **RUNTIME ACCESS**: always "NOT VERIFIED". No login is attempted, and the host's SSSD, PAM, network and keytab
-  are not checked. An HBAC allow does not mean SSH works.
-
-A deny is reported as "FreeIPA HBAC policy does not authorize this request". It is never called broken, and
-ipa-diagnose never suggests adding members or enabling rules to turn it into an allow. That is a decision for the
-policy owner. If the answer cannot be established (no ticket, API unreachable, user or host missing, evaluator
-errors), it is `UNKNOWN`, never a guess. Exit codes: 0 authorized by policy, 1 not authorized or the account cannot
-authenticate, 3 unknown, 4 authorized but the account state is unreadable. Details, researched FreeIPA semantics
-and limits: [docs/access-diagnosis.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/docs/access-diagnosis.md).
-With `--runtime`, run as root on HOST itself, it continues past FreeIPA's decision into the runtime side on that
-host (below); the HBAC decision itself never changes.
-
-## Client mode
-
-`sudo ipa-diagnose client [--user USER --service SERVICE]` answers: is this FreeIPA client correctly enrolled and
-able to resolve and authenticate IPA identities, and if not, why? A bounded, deterministic planner picks the next
-relevant read-only check from what it has already seen (enrollment, DNS, reachability, TLS trust, clock, host keytab,
-the KDC's answer to the host key, SSSD service, configuration and online state, identity lookup, NSS, PAM, and only
-when the evidence points there SSSD's cache), stops when it knows enough, and reports PRIMARY, RELATED, INDEPENDENT,
-UNDIAGNOSED or CONTRADICTING causes with what was ruled out. Fixes follow the same rules as resolutions: `systemctl
-start sssd.service` (withheld when the SSSD configuration is invalid), `sss_cache -u USER` for one inconsistent
-cache entry, and `sssctl cache-remove` only on proven cache-database errors, never `rm /var/lib/sss/db/*`.
-`--verify` re-checks with fresh evidence. No login is attempted: RUNTIME ACCESS is FAIL or NOT VERIFIED, never
-PASS. Details: [docs/client-mode.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/docs/client-mode.md).
-
-## Replication mode
-
-`sudo ipa-diagnose replication [--peer FQDN]` answers, on an IPA server: does replication to and from this server
-work, per suffix (the domain suffix and `o=ipaca` separately) and per direction, and if not, what is the deepest
-cause the evidence proves? It reads this server's own topology, roles and outbound agreements (read-only, over the
-local LDAPI socket), then, per agreement and within a fixed budget: does the peer's name resolve from here, does
-its port answer, does its Directory Server answer an anonymous root-DSE read (and what time is it there), does
-this server's own GSSAPI bind succeed when reproduced with the Directory Server's keytab, and what does the peer's
-agreement back towards this server say (read-only, with your own Kerberos ticket, only if you have one). Causes are
-reported as explicit chains that stop where the evidence stops: a 900 s clock difference is reported as that, never
-as "chronyd is stopped" on the peer; a refused port on a host that is up is "not accepting connections"; a
-timeout is "unreachable from this server at a time", never "dead". When the remaining evidence is on another
-server, it prints a precise handoff (`On ipa02 run: sudo ipa-diagnose replication --peer ipa01`) and changes
-nothing anywhere. A fix is printed only for a cause on THIS server that passes every safety gate (in this version:
-starting this server's stopped Directory Server or KDC); re-initialization, force-sync, RUV clean-up, topology
-changes, keytab or principal changes and clock steps are never printed. `--verify` requires a fresh successful
-session after the saved result, and answers PENDING (exit 3, time-bounded) while the agreement has not had one.
-Details: [docs/replication-mode.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/docs/replication-mode.md).
-
-## The evidence model
-
-Every `Finding` and `EvidenceItem` the engine reasons about carries a
-`Provenance` - the exact command that produced it. `--details` shows this;
-nothing is ever "the tool just knows this." Full model in
-[docs/architecture.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/docs/architecture.md#evidence-model).
-
-## Diagnostic packs, in one sentence each
-
-See [docs/diagnostic-packs.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/docs/diagnostic-packs.md) for the full
-evidence/confidence/action/verification breakdown per rule, with citations.
-
-## Security and privacy
-
-FreeIPA is identity infrastructure; `ipa-diagnose` treats all evidence as
-potentially sensitive. Before anything can reach an external AI provider, it
-passes through: normalization → minimum-evidence-selection (only what a
-diagnosis actually cites) → secret detection (field-name **and**
-pattern-based) → redaction → truncation. Run `ipa-diagnose ai-preview` to see
-the *exact* payload that would be sent, every time, with a redaction summary
-- the preview and the real call share the same code path, so it cannot lie
-to you. Full detail, including the adversarial tests (prompt injection,
-secret leakage, command injection, malformed input) in
-[docs/security-privacy.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/docs/security-privacy.md).
-
-## AI configuration (entirely optional)
-
-```bash
-export OPENAI_API_KEY=...       && sudo ipa-diagnose --ai-provider openai
-export ANTHROPIC_API_KEY=...    && sudo ipa-diagnose --ai-provider anthropic
-# Bedrock uses boto3's normal credential chain (IAM role, env vars, ~/.aws/)
-sudo ipa-diagnose --ai-provider bedrock
-```
-
-AI provider SDKs are optional extras - `pip install ipa-diagnose[openai]`,
-`[anthropic]`, `[bedrock]`, or `[ai]` for all three - so the base install has
-no AI-related dependencies at all, and `--no-ai` (the default) requires
-none of them. If a provider fails, times out, or returns something that
-looks like a fabricated command, `ipa-diagnose` silently falls back to the
-local, deterministic explanation - it never blocks or degrades the core
-diagnosis. Full detail in [docs/ai-configuration.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/docs/ai-configuration.md).
-
-## Verification
-
-```bash
-sudo ipa-diagnose verify
-```
-
-Re-collects evidence and re-runs the full diagnostic engine, then diffs the
-result against the last run - `RESOLVED`, `STILL_PRESENT`,
-`PARTIALLY_RESOLVED`, or `UNABLE_TO_VERIFY`. It never claims success just
-because a remediation command happened to exit `0` (a real, documented
-FreeIPA case - `ipa group-del` reporting "Insufficient access" while still
-deleting the group - is exactly the kind of false signal this avoids). Full
-detail in [docs/verification.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/docs/verification.md).
-
-Something not behaving as expected? See
-[docs/troubleshooting.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/docs/troubleshooting.md) first.
-
-## Development (Docker only)
-
-Nothing is installed on the host - everything runs inside the `ipa-diagnose`
-Docker Compose project:
+Everything builds and tests in Docker; nothing is installed on the host:
 
 ```bash
 docker compose build dev
-docker compose run --rm test          # full test suite
-docker compose run --rm dev bash      # interactive shell
+docker compose run --rm test          # the full test suite
 ```
 
-1000+ tests: unit tests for the engine/correlation/redaction core, per-pack
-fixture tests (one directory per scenario under `tests/fixtures/`, each with
-an expected outcome in `meta.json`), and an adversarial suite covering false
-correlation, prompt injection, secret leakage, command injection, and
-malformed/oversized input. See [docs/limitations.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/docs/limitations.md)
-for what's fixture-validated vs. container-integration-tested vs. genuinely
-real-FreeIPA-validated - this project does not overclaim which is which.
-
-## Exit codes and evidence completeness
-
-`ipa-diagnose` never equates "could not verify" with "healthy". Read the
-`Overall:` line and the `Evidence:` block together.
-
-| Overall | Exit | Meaning | Treat as |
-|---|---|---|---|
-| `HEALTHY` | 0 | All expected evidence was collected, no supported problem was found, and no failed `ipa-healthcheck` finding is left unexplained. | OK |
-| `DEGRADED` | 1 | A supported problem was found (not critical). | Alert |
-| `CRITICAL` | 2 | A supported critical problem was found (for example a required service is not running). | Alert |
-| `UNKNOWN` | 3 | The base health evidence is unavailable (for example `ipa-healthcheck` is missing, timed out, or you are not root), so nothing can be said. | **Not OK - alert** |
-| `NOT_FULLY_VERIFIED` | 4 | No supported root cause was found, but something meaningful is unresolved: an `ipa-healthcheck` finding that no ipa-diagnose rule explains (listed as *undiagnosed*, no cause claimed), or relevant evidence is missing (for example the replication RUV could not be read). | **Not OK - alert or investigate** |
-
-Undiagnosed `ipa-healthcheck` findings are listed by name (8 shown by default; `--details` shows up to 200; `--json` has all of them
-in `undiagnosed_findings`). Some upstream warnings are benign on some platforms (for example DNS-record warnings on IPv4-only setups,
-a missing FIPS file, or `MetaCheck` reporting version fields) and will still give `NOT_FULLY_VERIFIED` - see
-[docs/limitations.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/docs/limitations.md).
-
-**In monitoring, alert on any non-zero exit - including 3 and 4.** A script
-that only tests for `2` will ignore "could not verify". When several things
-apply, the more severe wins (a stopped Directory Server with a partly
-unverified RUV exits `2`). Rare extra codes: `70` internal error (no diagnosis
-was produced), `130` interrupted (Ctrl-C), `141` output pipe closed. Warnings
-(for example "not running as root") go to stderr, so `--json` on stdout is always pure JSON.
-
-`sudo ipa-diagnose verify` re-checks a previous diagnosis: `0` everything
-previously found is resolved **and** evidence is complete; `1`/`2`/`3` a
-problem still exists (same meaning as above); `4` it could not confirm (the
-fresh evidence is incomplete, or a previous problem could not be re-checked -
-`UNABLE_TO_VERIFY`). `verify` always prints whether its fresh evidence was
-complete, so "RESOLVED" is never shown without that context.
-
-`HEALTHY` does **not** cover: SELinux/AVC denials, other servers in the
-topology (this is a single-host view), Trust/AD, or anything `ipa-healthcheck`
-itself does not check. See [docs/evidence-completeness.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/docs/evidence-completeness.md).
-
-**Directory Manager password:** `ipa-diagnose` never asks for, needs, stores or
-sends it. `ipa-replica-manage list-ruv` wants it, so `ipa-diagnose` instead
-reads the same replica update vector read-only over the local LDAPI socket as
-root (needs the OpenLDAP client tools - `ldapsearch`, package
-`openldap-clients` - which are present on any IPA server). If that is not
-possible the RUV is shown as `NOT VERIFIED` with what to do.
-
-## Files written
-
-`ipa-diagnose` is read-only towards FreeIPA (see the certmonger note above for
-what `ipa-healthcheck` itself may start). The only file it writes is the
-saved last report used by `verify` (mode 0600, directory 0700): under
-`/var/lib/ipa-diagnose/` if that directory exists and is writable, otherwise
-`~/.cache/ipa-diagnose/` (for root: `/root/.cache/ipa-diagnose/`). `--replay`
-runs use a separate `last_report.replay.json` so a demo never overwrites the real
-baseline. Removing the RPM does not delete this file (delete it yourself if you
-no longer want it). Set `IPA_DIAGNOSE_STATE_DIR` to change the location.
-`ipa-diagnose bundle` writes only the bundle file you asked for (mode 0600, never overwriting an existing file)
-and never changes the saved report.
-`ipa-diagnose client` saves its last result for `client --verify` next to it (`client_last.json`, replay runs
-`client_last.replay.json`; same modes and directory). `ipa-diagnose replication` saves its last result for
-`replication --verify` there too (`replication_last.json`, replay runs `replication_last.replay.json`).
-`ipa-diagnose access` saves nothing.
-
-## Limitations
-
-- **Single-host by design**, same as `ipa-healthcheck` itself - some
-  questions (is every DNS server in the topology serving correct records?
-  has RUV fully converged across all masters?) genuinely need a multi-host
-  view this tool doesn't have. Where a rule's confidence is capped for this
-  reason, it says so in `--details`.
-- **v1 covers 5 diagnostic packs**, not every FreeIPA subsystem. See
-  [docs/limitations.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/docs/limitations.md) for the full list of what's
-  deliberately out of scope for now.
-- **Diagnosis-first, not auto-remediation.** `ipa-diagnose` never executes a
-  CAUTION or HIGH-RISK action automatically, and v1 has no "fix it for me"
-  mode. That is a deliberate scope decision, not a missing feature.
-- **Trust/AD integration and CA-less deployments are untested.** The
-  diagnostic packs, evidence collectors, and fixtures were all built and
-  validated against a standalone/CA-enabled FreeIPA topology; cross-forest
-  AD trust and CA-less installs may work but have not been exercised at all.
-  See [docs/compatibility.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/docs/compatibility.md).
-- **Older FreeIPA/`ipa-healthcheck` generations (RHEL/Rocky/AlmaLinux 8,
-  `ipa-healthcheck` 0.12-era) are missing some checks entirely** (e.g.
-  `CertmongerStuckCheck`, the FIPS-token check) that newer generations have -
-  the relevant rules see no evidence rather than misdiagnosing (shown on
-  recorded evidence; there is no live EL8 evidence for the current code),
-  but coverage is thinner on EL8 by nature of the upstream tool, not a gap
-  in this project's rules. Full generation-by-generation detail in
-  [docs/compatibility.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/docs/compatibility.md).
-
-## Contributing
-
-See [docs/contributing.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/docs/contributing.md) - in short: everything
-builds and tests in Docker, every new diagnostic rule needs a fixture with
-an expected outcome, and "I'm not sure" (`UNKNOWN_*`) is always an
-acceptable, often correct, answer for a rule to give.
+TEST_COUNT_LINE Contributions: [docs/contributing.md](docs/contributing.md). Every
+new rule needs a fixture with an expected outcome, and "I'm not sure" (`UNKNOWN`) is always an acceptable answer.
 
 ## License
 
 Apache-2.0. See [LICENSE](LICENSE).
-

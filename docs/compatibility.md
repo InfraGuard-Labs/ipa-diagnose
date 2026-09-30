@@ -8,7 +8,10 @@ AlmaLinux test, and is labeled as such rather than as "RHEL tested."
 
 ## Support matrix
 
-| Platform | Default/available Python | Core diagnosis | PyPI/pipx | RPM | Validation |
+"Core diagnosis" below says what the code targets. Diagnosis against a live FreeIPA server has been validated only on
+Fedora 43 (see "Live FreeIPA validation"); the EL rows are packaging and container tests.
+
+| Platform | Default/available Python | Core diagnosis (targeted) | PyPI/pipx | RPM | Validation |
 |---|---|---|---|---|---|
 | RHEL 9 (via UBI9/Rocky9/Alma9) | 3.9 (system) | Supported | Works (EPEL needed for `pipx` itself) | `.el9.` RPM, EPEL+CRB needed for `rich` | CONTAINER TESTED (UBI9 + Rocky9 + Alma9, independently) + RPM INSTALL TESTED |
 | RHEL 10 (via UBI10/Alma10) | 3.12 (system) | Supported | Works (EPEL needed for `pipx` itself) | `.el10.` RPM, EPEL+CRB needed for `rich` | CONTAINER TESTED (UBI10 + Alma10; **Rocky 10: NOT TESTED**, no Docker Hub image exists) + RPM INSTALL TESTED |
@@ -46,17 +49,11 @@ total) and keep their Recommends.
 ## Python interpreter support
 
 The **core deterministic product** (no AI) installs and passes its full
-test suite identically on Python 3.9, 3.10, 3.11, 3.12, 3.13, and 3.14 -
-zero version-sensitive behavior found across that range. This was verified
-directly, ad hoc, in `python:<version>-slim` Docker containers during this
-compatibility round; `requires-python = ">=3.9"` in `pyproject.toml` is
-accurate. **Note on reproducibility:** only 3.9 (EL8/EL9 RPM `%check`),
-3.11 (the project's own dev/CI Docker image), and 3.12/3.14 (EL10/Fedora
-RPM `%check`) are exercised by anything currently checked into this repo -
-3.10 and 3.13 were verified this round but are not yet wired into any
-committed script or CI job, so a future contributor cannot reproduce those
-two without repeating the same manual Docker check. Adding that automation
-is a reasonable follow-up, not done as part of this round.
+test suite on Python 3.9, 3.10, 3.11, 3.12, 3.13 and 3.14:
+`.github/workflows/python-matrix.yml` runs the whole suite on each of them
+and builds the wheel and sdist (the run IDs for the current code are in
+[truth/freeze-audit.md](truth/freeze-audit.md)). `requires-python = ">=3.9"`
+in `pyproject.toml` is accurate.
 
 **Optional AI extras** (`openai`, `anthropic`, `boto3`/bedrock) install
 cleanly on the same 3.9-3.14 range - no extra imposes a stricter floor than
@@ -115,24 +112,28 @@ fallback paths handle it safely.
 
 ## Live FreeIPA validation (REAL LIVE CAPTURE)
 
-Run on free GitHub-hosted Linux runners (real systemd, cgroup v2) using the
-official `freeipa/freeipa-server:fedora-43` image: **FreeIPA 4.13.3, Fedora
-43, ipa-healthcheck 0.19, 389-ds-base 3.1.4, Python 3.14.7**. Validated live:
+Run on free GitHub-hosted Linux runners (real systemd, cgroup v2) with the
+official `freeipa/freeipa-server:fedora-43` image, disposable containers only.
+**Only Fedora 43 has been validated live.** The FreeIPA version is whatever that
+image shipped at the time: 4.13.3 for the Slice 1-3 runs, 4.13.4 for the
+Slice 4-5 runs and the freeze runs. The live labs:
 
-- healthy single server and a genuine two-node topology (server + replica);
-- a stopped Directory Server and a stopped KDC each reported as the CRITICAL
-  primary problem, and `verify` after restore reporting RESOLVED;
-- `ipa-healthcheck` unavailable => UNKNOWN; `ldapsearch` unavailable => the
-  RUV shown as NOT VERIFIED (NOT_FULLY_VERIFIED);
-- the RUV read over the local LDAPI socket as root with no Directory Manager
-  password (VERIFIED on the two-node topology, NONE_CONFIGURED on a single
-  server);
-- no false stale-RUV on a healthy two-node topology.
+- a single server (integrated DNS and CA): server diagnosis, the printed
+  service and file-permission fixes applied and verified, verify's negative
+  cases, dependency failures, non-root, support bundles, HBAC access
+  diagnosis;
+- one server plus one enrolled Fedora 43 client (SSSD 2.12): client mode and
+  `access --runtime`;
+- three servers in a line topology (two with a CA): replication mode, per
+  suffix and direction, and the server diagnosis in the same injected states.
 
-**Not tested live:** EL8-era FreeIPA (4.9 / `ipa-healthcheck` 0.12), Trust/AD,
-CA-less, 3+ replica topologies, stopped DNS/certmonger (the real
-`ipa-healthcheck` itself reported nothing for those two in the lab), and any
-genuine RHEL host (Rocky/Alma/UBI are used as proxies and labelled as such).
+Every row, with its run and commit, is in [truth/](truth/); the freeze runs
+are summarized in [truth/freeze-audit.md](truth/freeze-audit.md).
+
+**Not tested live:** EL8-era FreeIPA (4.9 / `ipa-healthcheck` 0.12), FreeIPA on
+any EL distribution, Trust/AD, CA-less, topologies other than the lab's line of
+three, and any genuine RHEL host (Rocky/Alma/UBI are used as packaging proxies
+and labelled as such).
 
 ## A note on the EL8 `rich` vendoring
 

@@ -1310,6 +1310,13 @@
       "freeipa": "4.13.3",
       "os": "fedora-43",
       "tier": "LIVE"
+     },
+     {
+      "date": "2026-09-30",
+      "evidence": "https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36724948194",
+      "freeipa": "4.13.4",
+      "os": "fedora-43",
+      "tier": "LIVE"
      }
     ]
    },
@@ -1905,6 +1912,13 @@
       "date": "2026-09-26",
       "evidence": "https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36258032392",
       "freeipa": "4.13.3",
+      "os": "fedora-43",
+      "tier": "LIVE"
+     },
+     {
+      "date": "2026-09-30",
+      "evidence": "https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36724948194",
+      "freeipa": "4.13.4",
       "os": "fedora-43",
       "tier": "LIVE"
      }

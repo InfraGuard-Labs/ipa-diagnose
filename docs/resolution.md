@@ -56,14 +56,20 @@ a high-risk procedure that ipa-diagnose has not verified, so it points to the do
 ### Verification status
 
 - **Required service not running**: `BUILT_IN_VERIFIED`, promoted by the maintainer after the Slice 1 truth
-  validation. It rests on the live record below plus independent review, and its "verified" label is definitive
-  **only on the live-verified FreeIPA 4.13.3 / Fedora 43**. On any other FreeIPA version or OS it is still offered
+  validation. It rests on the live records below plus independent review, and its "verified" label is definitive
+  **only on the live-verified FreeIPA 4.13.3 / Fedora 43 and (since the freeze campaign re-ran the lab on the image's
+  newer package) FreeIPA 4.13.4 / Fedora 43**. On any other FreeIPA version or OS it is still offered
   within its normal gates (FreeIPA 4.9 up to 5.0, IPA server, all read-only checks passing), labelled "not yet on
   this FreeIPA version/OS". The tier never changes when a fix is shown.
 - **IPA file permission mismatch**: `LIVE_VERIFIED` (deliberately not promoted yet).
-- For both: in the free GitHub-hosted live lab (FreeIPA 4.13.3 on Fedora 43, a disposable container) the printed
-  commands were run verbatim and `ipa-diagnose verify` reported RESOLVED with the fix's own checks. Live lab details,
-  and exactly which cases were applied, are in [docs/truth/truth-matrix.md](truth/truth-matrix.md).
+- For both: in the free GitHub-hosted live lab (a disposable Fedora 43 container; FreeIPA 4.13.3 in Slice 1, 4.13.4
+  in the freeze runs) the printed commands were run verbatim and `ipa-diagnose verify` reported RESOLVED with the
+  fix's own checks. Live lab details, and exactly which cases were applied, are in
+  [docs/truth/truth-matrix.md](truth/truth-matrix.md) and [docs/truth/freeze-audit.md](truth/freeze-audit.md).
+- **Client: SSSD not running** (`proc.client.start-sssd`): `LIVE_VERIFIED` on freeipa-client 4.13.4 / Fedora 43
+  (client lab C02 and C10). The cache procedures are `FIXTURE_ONLY`.
+- Every printed step shows its **expected result** (and, where the procedure states it, what a failure looks like) in
+  the default view, not only with `--details`.
 - **Clock skew** and **expiring DS certificate**: `FIXTURE_ONLY` - tested against recorded evidence. A
   container shares the runner's wall clock (Linux time namespaces cannot offset it), so stepping a lab clock
   would step the CI host; a near-expiry DS certificate needs a short-lived certificate profile. Neither has a

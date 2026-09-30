@@ -18,7 +18,7 @@ The answer has three separate parts. They are never merged into one "access OK".
 |---|---|---|
 | **AUTHENTICATION** | `FAIL`, `NOT_VERIFIED`, `UNKNOWN` (never `PASS`) | Can this IPA account authenticate at all, according to FreeIPA? `FAIL`: no such IPA user, a preserved (deleted) user, the account is disabled, or its Kerberos principal expired. For an expired principal, the KDC refuses Kerberos logins; whether an SSH-key login is refused depends on the host's SSSD. `NOT_VERIFIED`: nothing in FreeIPA blocks it, but **no credential was tested**, so a user existing is not an authentication pass. `UNKNOWN`: the account state could not be read. |
 | **AUTHORIZATION** | `PASS`, `FAIL`, `UNKNOWN` | FreeIPA's HBAC policy decision, taken **only** from FreeIPA's own evaluator (`hbactest`) for an existing user and host, with a complete rule list and no rule errors. Anything else is `UNKNOWN`. |
-| **RUNTIME ACCESS** | `NOT_VERIFIED` (always, in this version) | Whether a real login works. No login is attempted, and the host's SSSD, PAM stack, network path and keytab are not checked. An HBAC `PASS` never means SSH works. |
+| **RUNTIME ACCESS** | `NOT_VERIFIED`; with `--runtime` also `FAIL` (never `PASS`) | Whether a real login works. No login is ever attempted. Without `--runtime` the host's SSSD, PAM stack, network path and keytab are not checked, so it is always `NOT_VERIFIED`. With `--runtime`, run as root on HOST, client mode's read-only checks run there: `FAIL` when a runtime prerequisite is shown broken, otherwise still `NOT_VERIFIED` (see below). An HBAC `PASS` never means SSH works. |
 
 Then: **ROOT CAUSE**, **WHY**, **CHECKED FOR YOU**, **IMPACT**, **RESOLUTION**, **RISK**, **VERIFY**, **LIMITATIONS**.
 
@@ -169,8 +169,10 @@ applies as for every bundle member (see `docs/support-bundle.md`).
 
 ## Limitations (also printed with `--details`)
 
-- Runtime access is not tested. This includes the host's SSSD (and its offline cache), the PAM stack, the
-  `access_provider` setting, the network path and the keytab. Client-side diagnosis is planned for Slice 4.
+- No login is attempted. Without `--runtime`, the host's SSSD (and its offline cache), the PAM stack, the
+  `access_provider` setting, the network path and the keytab are not checked. With `--runtime` (as root on HOST
+  itself) they are checked read-only by client mode ([client-mode.md](client-mode.md)); a runtime result can make
+  RUNTIME ACCESS `FAIL` or show CONTRADICTING evidence, never `PASS`, and never changes the HBAC decision.
 - No credential is tested. Account lockout after failed logins (per-server counters) is not checked.
 - Only HBAC is evaluated. Sudo rules, SELinux user maps and local `access.conf` are not.
 - Trusted-domain users and ID views are not evaluated.

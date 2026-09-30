@@ -28,6 +28,13 @@ provenance:
       tier: LIVE
       evidence: https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36258032392
       date: "2026-09-26"
+    # freeze campaign: the lab image now ships 4.13.4; F1 (chgrp -h root /etc/ipa/ca.crt after CONFIRM FIRST)
+    # applied verbatim, verify RESOLVED
+    - freeipa: "4.13.4"
+      os: fedora-43
+      tier: LIVE
+      evidence: https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36724948194
+      date: "2026-09-30"
   reviews:
     - by: "fresh reviewer agents that did not implement Slice 1 (independent within a one-maintainer project), rounds 1-10, red teams 1-8"
       date: "2026-09-24"
