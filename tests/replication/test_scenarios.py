@@ -131,7 +131,8 @@ def test_local_kdc_stopped_while_agreements_still_green_is_found_without_blaming
 
 
 def test_no_kdc_error_with_the_local_kdc_running_goes_no_deeper():
-    lab = Lab().set_status(IPA02, S.NO_KDC_TEXT, suffix="domain")
+    lab = Lab().kerberos_failure(IPA02, kinit_ok=False, kinit_class="kdc_unreachable", bind_attempted=False,
+                                 bind_ok=False)
     r = H.run(lab)
     assert H.primary(r) is None
     d = next(d for d in r.diagnoses if d.code == "REPLICATION_FAILING")
@@ -166,7 +167,8 @@ def test_pair_skew_on_a_green_agreement_is_still_reported():
 
 
 def test_peer_clock_falls_back_to_the_https_date_header_when_the_root_dse_has_none():
-    lab = Lab().set_status(IPA02, S.SKEW_TEXT).rootdse_without_clock(IPA02, https_offset=-700.0)
+    lab = Lab().kerberos_failure(IPA02, bind_ok=False, bind_error_class="GSSAPI_CLOCK_SKEW").rootdse_without_clock(
+        IPA02, https_offset=-700.0)
     r = H.run(lab)
     p = H.primary(r)
     assert p.code == "PAIR_CLOCK_SKEW" and "HTTPS Date header" in p.detail and "behind" in p.detail
@@ -174,7 +176,8 @@ def test_peer_clock_falls_back_to_the_https_date_header_when_the_root_dse_has_no
 
 
 def test_no_peer_clock_at_all_stops_the_skew_chain_at_kerberos():
-    lab = Lab().set_status(IPA02, S.SKEW_TEXT).rootdse_without_clock(IPA02)
+    lab = Lab().kerberos_failure(IPA02, bind_ok=False, bind_error_class="GSSAPI_CLOCK_SKEW").rootdse_without_clock(
+        IPA02)
     r = H.run(lab)
     assert "PAIR_CLOCK_SKEW" not in codes(r)
     assert any(c.links[-1].capability == "KERBEROS" and "could not be read" in c.boundary for c in r.chains)
@@ -186,7 +189,7 @@ def test_the_https_clock_is_not_read_when_the_root_dse_gives_it():
 
 
 def test_server_not_found_is_taken_to_the_missing_principal_only_when_the_list_is_complete():
-    lab = Lab().set_status(IPA02, S.NOT_FOUND_TEXT)
+    lab = Lab().kerberos_failure(IPA02, bind_ok=False, bind_error_class="GSSAPI_SERVER_NOT_FOUND")
     lab.data[S.key("repl.principals", {})]["fields"]["ldap_principals"] = [IPA01, IPA03]
     r = H.run(lab)
     assert H.primary(r).code == "PEER_LDAP_PRINCIPAL_MISSING"
@@ -196,11 +199,60 @@ def test_server_not_found_is_taken_to_the_missing_principal_only_when_the_list_i
 
 
 def test_unreadable_ds_keytab_is_the_local_root_even_though_root_can_read_it():
-    lab = Lab().set_status(IPA02, S.CREDS_TEXT).keytab(owner="root", group="root", dirsrv_can_read=False)
+    lab = Lab().set_status(IPA02, S.LOCAL_ERROR_TEXT).keytab(owner="root", group="root", dirsrv_can_read=False)
+    lab.gssapi(IPA02, bind_ok=False, bind_error_class="GSSAPI_CREDENTIALS")  # (root can read it; dirsrv cannot)
     r = H.run(lab)
     p = H.primary(r)
     assert p.code == "DS_KEYTAB_PROBLEM" and "dirsrv" in p.title
     assert r.resolutions[p.key].status == "NONE"  # no keytab/ownership fix printed in Slice 5
+
+
+def test_the_real_389ds_status_shape_still_reaches_the_local_kdc(tmp_path=None):
+    """389-DS records only 'Local error (connection error)': the KDC cause comes from the reproduction."""
+
+    r = H.run(Lab().local_kdc_stopped(), live=True)
+    assert r.trace.get("agreements").facts["subjects"][0]["status_class"] == "GSSAPI_OTHER"
+    assert H.primary(r).code == "LOCAL_KDC_NOT_RUNNING"
+    assert any("shown by reproduction (kinit)" in c.links[1].claim for c in r.chains if len(c.links) > 1)
+    assert H.offered(r)
+
+
+def test_ldap_49_with_a_measured_skew_is_the_clock_not_the_peers_keytab():
+    lab = Lab().kerberos_failure(IPA02, S.INVALID_TEXT, bind_ok=False, bind_error_class="INVALID_CREDENTIALS")
+    lab.data[S.key("repl.peer_rootdse", {"host": IPA02, "port": "389", "transport": "LDAP"})]["fields"][
+        "offset_seconds"] = 900.0
+    r = H.run(lab)
+    assert H.primary(r).code == "PAIR_CLOCK_SKEW"
+    assert "PEER_REJECTS_GSSAPI" not in codes(r)
+    assert any(ln.discriminator == "kerberos-49-with-measured-skew" for c in r.chains for ln in c.links)
+
+
+def test_ldap_49_with_a_kinit_that_cannot_reach_a_kdc_is_not_called_a_credential_problem():
+    lab = Lab().local_kdc_stopped(affect_agreements=False).kerberos_failure(
+        IPA02, S.INVALID_TEXT, kinit_ok=False, kinit_class="kdc_unreachable", bind_attempted=False, bind_ok=False)
+    r = H.run(lab)
+    assert H.primary(r).code == "LOCAL_KDC_NOT_RUNNING"
+    assert not any("obtained its own ticket" in c.boundary for c in r.chains)
+    assert not any("no usable Kerberos credentials" in ln.claim for c in r.chains for ln in c.links)
+
+
+def test_a_tls_failure_is_not_called_a_directory_server_that_does_not_answer():
+    lab = Lab().set_status(IPA02, "Error (-11) Problem connecting to replica - LDAP error: Connect error "
+                                  "(connection error)")
+    rd = lab.data[S.key("repl.peer_rootdse", {"host": IPA02, "port": "389", "transport": "LDAP"})]["fields"]
+    rd.update(answered=False, ok=False, error_class="TLS", offset_seconds=None)
+    r = H.run(lab)
+    assert H.primary(r).code == "PEER_TLS_FAILED"
+    assert "PEER_DS_NOT_ANSWERING" not in codes(r)
+
+
+def test_a_failing_agreement_dropped_by_the_budget_is_still_reported():
+    lab = Lab().many_agreements(9)
+    lab.set_status("extra08.lab.test", S.TRANSPORT_TEXT)
+    r = H.run(lab)
+    d = next(x for x in r.diagnoses if x.subject.endswith(">extra08.lab.test"))
+    assert d.code == "REPLICATION_FAILING" and d.role == "UNDIAGNOSED" and "not investigated" in d.title
+    assert r.status == "PROBLEM_FOUND"
 
 
 def test_ldap_49_is_not_jumped_to_a_keytab_mismatch():
@@ -277,7 +329,7 @@ def test_disabled_agreement_is_reported_and_not_probed():
 
 
 def test_reverse_direction_failure_read_from_the_peer_is_handed_off_to_the_peer():
-    r = H.run(Lab().set_reverse(IPA02, S.NO_KDC_TEXT, suffix="domain"))
+    r = H.run(Lab().set_reverse(IPA02, S.LOCAL_ERROR_TEXT, suffix="domain"))
     d = next(x for x in r.diagnoses if x.code == "REVERSE_REPLICATION_FAILING")
     assert d.subject == f"domain:{IPA02}>{IPA01}" and d.scope == "peer"
     assert d.handoff["host"] == IPA02

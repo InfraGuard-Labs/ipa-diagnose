@@ -243,14 +243,14 @@ def _local(t: _T, b: _Builder, me: str) -> Dict[str, Optional[ReplDiagnosis]]:
 
 
 def _gssapi_chain(t: _T, b: _Builder, me: str, realm: str, item: Dict[str, Any], subj: str, rel_key: str,
-                  eff: str, base_links: List[Link], roots: Dict[str, Optional[ReplDiagnosis]]
+                  eff: str, base_links: List[Link], roots: Dict[str, Optional[ReplDiagnosis]], where: str = ""
                   ) -> Tuple[Optional[ReplDiagnosis], Chain]:
     consumer = item["consumer"]
     here = f"server:{me}"
     gs = t.rec("gssapi", subj)
     ev_gs = ["agreements"] + ([gs.step_id] if gs and gs.outcome != SK else [])
-    L1 = Link(f"the GSSAPI (Kerberos) bind of {me} to {consumer} fails: {S.MEANING.get(eff, eff)}", rel_key,
-              "KERBEROS", ev_gs, "status-gssapi", "local")
+    L1 = Link(f"the GSSAPI (Kerberos) bind of {me} to {consumer} fails: {S.MEANING.get(eff, eff)}"
+              + (f" (shown by {where})" if where else ""), rel_key, "KERBEROS", ev_gs, "status-gssapi", "local")
     links = base_links + [L1]
     if eff == S.GSSAPI_NO_KDC:
         if roots["kdc"] is not None:
@@ -339,9 +339,11 @@ def _gssapi_chain(t: _T, b: _Builder, me: str, realm: str, item: Dict[str, Any],
                 "The Directory Server cannot obtain Kerberos tickets: its GSSAPI agreements fail.", ev_gs, "local",
                 next_steps=c.next_action, resolution_key="replication.ds-keytab-problem", variant=kc))
             return root, c
+        got_ticket = gs is not None and gs.facts.get("kinit_ok") is True
         c = b.chain(rel_key, links, boundary=(
             "this host's reproduction obtained its own ticket: the credentials problem the Directory Server had "
-            "could not be reproduced (it may use a cached ticket or have been fixed since)"),
+            "could not be reproduced (it may use a cached ticket or have been fixed since)" if got_ticket else
+            "the reproduction did not establish which credential fails"),
             next_action=["journalctl -u dirsrv@* -n 50 | grep -i gssapi   (read-only)"])
         return None, c
     c = b.chain(rel_key, links, boundary="the GSSAPI error is not one ipa-diagnose can take further",
@@ -359,6 +361,38 @@ def peer_offset(t: _T, subj: str):
         if isinstance(off, (int, float)):
             return off, r, where
     return None, None, None
+
+
+_KINIT_TO_CLASS = {"kdc_unreachable": S.GSSAPI_NO_KDC, "kdc_unresolvable": S.GSSAPI_NO_KDC,
+                   "clock_skew": S.GSSAPI_CLOCK_SKEW, "key_rejected": S.GSSAPI_CREDENTIALS,
+                   "keytab_no_entry": S.GSSAPI_CREDENTIALS, "principal_unknown": S.GSSAPI_CREDENTIALS,
+                   "principal_revoked": S.GSSAPI_CREDENTIALS}
+_SPECIFIC = (S.GSSAPI_NO_KDC, S.GSSAPI_CLOCK_SKEW, S.GSSAPI_SERVER_NOT_FOUND, S.GSSAPI_CREDENTIALS)
+NOT_REPRODUCED, PEER_REJECTS, SKEW_49, NO_REPRODUCTION = "NOT_REPRODUCED", "PEER_REJECTS", "SKEW_49", "NO_REPRODUCTION"
+
+
+def kerberos_class(cls: str, gs: Any, off: Optional[float]) -> "tuple[str, str]":
+    """What the Kerberos failure of a SASL/GSSAPI agreement is: 389-DS usually records only 'Local error
+    (connection error)' or 'Invalid credentials' in the agreement status, so the specific class comes from the status
+    when it names one, and otherwise from ipa-diagnose's own reproduction of the supplier's bind (kinit with the
+    Directory Server's key, then the GSSAPI bind). Returns (class, where it came from)."""
+
+    if cls in _SPECIFIC:
+        return cls, "the agreement's status"
+    if gs is None or gs.outcome in (SK, U):
+        return NO_REPRODUCTION, ""
+    if gs.outcome == P:
+        return NOT_REPRODUCED, "reproduction"
+    if gs.facts.get("kinit_ok") is False:
+        return _KINIT_TO_CLASS.get(gs.facts.get("kinit_class"), S.GSSAPI_OTHER), "reproduction (kinit)"
+    bce = gs.facts.get("error_class")
+    if bce in _SPECIFIC:
+        return bce, "reproduction (bind)"
+    if bce == S.INVALID_CREDENTIALS:
+        if isinstance(off, (int, float)) and abs(off) >= KRB_TOLERANCE:
+            return SKEW_49, "reproduction (bind)"
+        return PEER_REJECTS, "reproduction (bind)"
+    return S.GSSAPI_OTHER, "reproduction (bind)"
 
 
 def _pair_skew(t: _T, b: _Builder, me: str, consumer: str, subj: str, off: float, via_chain: bool) -> ReplDiagnosis:
@@ -444,8 +478,6 @@ def _agreement(t: _T, b: _Builder, me: str, realm: str, item: Dict[str, Any],
     chain: Optional[Chain] = None
     confidence = "HIGH"
     gs = t.rec("gssapi", subj)
-    gs_cls = gs.facts.get("error_class") if gs is not None and gs.outcome == F else None
-    kinit_bad = gs is not None and gs.outcome == F and gs.facts.get("kinit_ok") is False
     gssapi_agreement = str(item.get("bind_method") or "").upper() == "SASL/GSSAPI"
     if cls == S.TRANSPORT:
         dns, prt, https = t.rec("peer.dns", subj), t.rec("peer.port", subj), t.rec("peer.https", subj)
@@ -465,6 +497,8 @@ def _agreement(t: _T, b: _Builder, me: str, realm: str, item: Dict[str, Any],
                 dns.summary + f" (observed from {me}).",
                 f"{me} cannot reach {consumer} by the name its agreements use: replication {me} -> {consumer} stops.",
                 [dns.step_id], "local", next_steps=chain.next_action))
+        elif rd is not None and rd.outcome == F and rd.facts.get("error_class") == S.TLS:
+            root, chain = _tls_root(b, me, consumer, rel_key, [L0], [rd.step_id], port)
         elif rd is not None and rd.outcome == F:
             if pstate == "refused" and hstate == "open":
                 chain = b.chain(rel_key, [L0, Link(
@@ -530,11 +564,23 @@ def _agreement(t: _T, b: _Builder, me: str, realm: str, item: Dict[str, Any],
                 kind=TRANSIENT, next_steps=[f"sudo ipa-diagnose replication --peer {_q(consumer)} --verify   "
                                             "(after the next session)"]))
             return
-    elif cls in S.GSSAPI or (gssapi_agreement and cls == S.INVALID_CREDENTIALS and kinit_bad):
-        eff = cls if cls in S.GSSAPI else S.GSSAPI_CREDENTIALS
-        root, chain = _gssapi_chain(t, b, me, realm, item, subj, rel_key, eff, [L0], roots)
-    elif cls == S.INVALID_CREDENTIALS and gssapi_agreement and gs is not None and gs.outcome == F \
-            and gs_cls == S.INVALID_CREDENTIALS and gs.facts.get("kinit_ok"):
+    elif gssapi_agreement and (cls in S.GSSAPI or cls == S.INVALID_CREDENTIALS) \
+            and kerberos_class(cls, gs, off)[0] in _SPECIFIC + (S.GSSAPI_OTHER,):
+        eff, where = kerberos_class(cls, gs, off)
+        root, chain = _gssapi_chain(t, b, me, realm, item, subj, rel_key, eff, [L0], roots, where)
+    elif gssapi_agreement and kerberos_class(cls, gs, off)[0] == SKEW_49:
+        pair = f"pair:{me}>{consumer}"
+        root = _pair_skew(t, b, me, consumer, subj, off, via_chain=True)
+        chain = b.chain(rel_key, [
+            L0, Link(f"{me} obtains its Kerberos ticket, but {consumer} rejects the GSSAPI bind (LDAP 49)", rel_key,
+                     "KERBEROS", ev0 + [gs.step_id], "status-invalid-credentials-gssapi", "peer"),
+            Link(f"{me}'s clock is {abs(off):.0f} s {'ahead of' if off >= 0 else 'behind'} {consumer}'s: beyond the "
+                 f"Kerberos tolerance, which explains a refused ticket", pair, "TIME",
+                 [gs.step_id, orec.step_id], "kerberos-49-with-measured-skew", "pair")],
+            boundary=(f"which clock is wrong is not established from here: {consumer}'s time service can only be "
+                      f"checked on {consumer}"), next_action=root.next_steps, handoff=root.handoff)
+        root.chain_ids.append(chain.chain_id)
+    elif cls == S.INVALID_CREDENTIALS and gssapi_agreement and kerberos_class(cls, gs, off)[0] == PEER_REJECTS:
         peer_here = f"server:{consumer}"
         chain = b.chain(rel_key, [L0, Link(f"{me} obtains its Kerberos ticket, but {consumer} rejects the GSSAPI "
                                            "bind (LDAP 49)", peer_here, "KERBEROS", ev0 + [gs.step_id],
@@ -549,10 +595,11 @@ def _agreement(t: _T, b: _Builder, me: str, realm: str, item: Dict[str, Any],
             f"same way ({gs.summary}), although {me} obtained its ticket.",
             f"No replication {me} -> {consumer}.", ev0 + [gs.step_id], "peer", next_steps=chain.next_action,
             handoff=chain.handoff))
-    elif cls == S.INVALID_CREDENTIALS and gssapi_agreement and gs is not None and gs.outcome == P:
+    elif gssapi_agreement and (cls in S.GSSAPI or cls == S.INVALID_CREDENTIALS) \
+            and kerberos_class(cls, gs, off)[0] == NOT_REPRODUCED:
         b.add(ReplDiagnosis(
-            "REPLICATION_NOT_REPRODUCED", rel_key, f"The last {suffix} session {me} -> {consumer} was refused (LDAP "
-            "49), but the same bind succeeds now", "REPLICATION", "WARN", "MEDIUM",
+            "REPLICATION_NOT_REPRODUCED", rel_key, f"The last {suffix} session {me} -> {consumer} failed to bind "
+            f"({cls.replace('_', ' ').lower()}), but the same bind succeeds now", "REPLICATION", "WARN", "MEDIUM",
             f"Status: {status_text}. ipa-diagnose's own GSSAPI bind as this server succeeds now ({gs.summary}).",
             "389-DS retries by itself; the next session shows whether it is resolved.", ev0 + [gs.step_id], "pair",
             kind=TRANSIENT))
@@ -592,12 +639,10 @@ def _agreement(t: _T, b: _Builder, me: str, realm: str, item: Dict[str, Any],
             f"{suffix} changes from {me} do not reach {consumer} until an administrator acts.", ev0, "pair",
             next_steps=chain.next_action, resolution_key="replication.needs-admin-action", variant=cls))
     elif cls == S.TLS:
-        chain = b.chain(rel_key, [L0, Link(f"the TLS layer of {me}'s connection to {consumer} fails", rel_key, "TLS",
-                                           ev0, "status-tls", "pair")],
-                        boundary="which certificate or trust setting fails is not established",
-                        next_action=[f"openssl s_client -connect {_q(consumer)}:{port} -CAfile /etc/ipa/ca.crt "
-                                     "</dev/null   (read-only)"],
-                        handoff=handoff(consumer, me, f"{consumer}'s certificate can be checked on {consumer}."))
+        root, chain = _tls_root(b, me, consumer, rel_key, [L0], ev0, port)
+    if isinstance(off, (int, float)) and abs(off) >= KRB_TOLERANCE and b.get("PAIR_CLOCK_SKEW",
+                                                                               f"pair:{me}>{consumer}") is None:
+        _pair_skew(t, b, me, consumer, subj, off, via_chain=False)  # established, whatever else fails
     if chain is None:
         chain = b.chain(rel_key, [L0], boundary=(
             "the status is not one ipa-diagnose recognizes" if cls == S.UNCLASSIFIED else
@@ -621,6 +666,42 @@ def _agreement(t: _T, b: _Builder, me: str, realm: str, item: Dict[str, Any],
             root.chain_ids.append(chain.chain_id)
         if d.key not in root.explains:
             root.explains.append(d.key)
+
+
+def _tls_root(b: _Builder, me: str, consumer: str, rel_key: str, base: List[Link], ev: List[str], port: str):
+    pair = f"pair:{me}>{consumer}"
+    chain = b.chain(rel_key, base + [Link(f"the TLS layer of {me}'s connection to {consumer}:{port} fails", pair,
+                                          "TLS", ev, "status-tls", "pair")],
+                    boundary="which certificate or trust setting fails is not established",
+                    next_action=[f"openssl s_client -connect {_q(consumer)}:{port} -CAfile /etc/ipa/ca.crt "
+                                 "</dev/null   (read-only)"],
+                    handoff=handoff(consumer, me, f"{consumer}'s certificate can be checked on {consumer}."))
+    root = b.add(ReplDiagnosis(
+        "PEER_TLS_FAILED", pair, f"TLS from {me} to {consumer}:{port} fails", "TLS", "FAIL", "MEDIUM",
+        f"The connection fails at the TLS layer (observed from {me}); the Directory Server itself may be answering.",
+        f"No replication {me} -> {consumer} over this agreement.", ev, "pair", next_steps=chain.next_action,
+        handoff=chain.handoff))
+    return root, chain
+
+
+def _dropped(b: _Builder, me: str, item: Dict[str, Any]) -> None:
+    """An agreement the budget left out is still reported when its own status (already read) is failing."""
+
+    cls = item.get("status_class") or S.UNCLASSIFIED
+    if cls == S.OK or cls in S.TRANSIENT or item.get("enabled") is False:
+        return
+    rel_key = rel(item["suffix_kind"], me, item["consumer"])
+    c = b.chain(rel_key, [Link(f"{me} -> {item['consumer']} ({item['suffix_kind']} suffix) fails: "
+                               f"{S.MEANING.get(cls, cls)}", rel_key, "REPLICATION", ["agreements"],
+                               "agreement-status", "pair")],
+                boundary="not investigated: the per-run agreement budget was used up",
+                next_action=[f"sudo ipa-diagnose replication --peer {_q(item['consumer'])}"])
+    b.add(ReplDiagnosis(
+        "REPLICATION_FAILING", rel_key, f"{item['suffix_kind']} replication {me} -> {item['consumer']} fails (not "
+        "investigated)", "REPLICATION", "FAIL", "LOW", f"{S.MEANING.get(cls, cls)}. Last session status: "
+        f"{item.get('status_text') or '?'}. Not investigated in this run (agreement budget).",
+        "Changes do not reach this consumer.", ["agreements"], "pair", kind=UNDIAGNOSED, chain_ids=[c.chain_id],
+        next_steps=c.next_action))
 
 
 def _reverse(t: _T, b: _Builder, me: str, realm: str, item: Dict[str, Any]) -> str:
@@ -743,6 +824,9 @@ def diagnose(trace: Trace, inputs: Dict[str, Any]) -> Tuple[List[ReplDiagnosis],
     for item in sorted(items, key=lambda i: i["subject"]):
         _agreement(t, b, me, realm, item, roots)
         extra["reverse"][item["subject"]] = _reverse(t, b, me, realm, item)
+    for item in sorted((i for i in (t.f("agreements", "subjects") or []) if isinstance(i, dict)
+                        and i.get("subject") in set(enum.get("dropped") or [])), key=lambda i: i["subject"]):
+        _dropped(b, me, item)
     _topology_checks(t, b, me, items, inputs.get("peer"))
     extra["ruv_notes"] = _ruv_context(t, b, me)
     return _roles(list(b.diags.values())), b.chains, extra

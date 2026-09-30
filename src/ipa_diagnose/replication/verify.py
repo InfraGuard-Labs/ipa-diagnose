@@ -253,6 +253,15 @@ def compare(previous: Dict[str, Any], fresh: ReplicationResult, runner: Any,
                     answered = False
                     why = f"the check it rested on ({sid}) did not answer now"
                     break
+            if answered and code.startswith("PAIR_CLOCK"):
+                # a clock diagnosis is only gone when a clock difference was actually MEASURED again
+                measured = [fresh.trace.get(sid) for sid in d["evidence"]
+                            if sid.split("@", 1)[0] in ("peer.rootdse", "peer.time")]
+                if not any(r is not None and isinstance(r.facts.get("offset"), (int, float)) for r in measured):
+                    subj = next((sid.split("@", 1)[1] for sid in d["evidence"] if "@" in sid), None)
+                    again = [fresh.trace.get(b, subject=subj) for b in ("peer.rootdse", "peer.time")] if subj else []
+                    if not any(r is not None and isinstance(r.facts.get("offset"), (int, float)) for r in again):
+                        answered, why = False, "the clock difference could not be measured now"
             same = [x for x in fresh.diagnoses if x.subject == subject and x.severity == "FAIL" and x.key != key]
             if not answered:
                 it = VerifyItem(key, code, subject, title, "UNABLE_TO_VERIFY", why)

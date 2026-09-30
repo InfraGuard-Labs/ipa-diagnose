@@ -32,6 +32,7 @@ from tests.replication import scenarios as SC
     (SC.GENERATION_TEXT, S.GENERATION_MISMATCH),
     (SC.BUSY_TEXT, S.BUSY),
     (SC.WEIRD_TEXT, S.UNCLASSIFIED),
+    (SC.LOCAL_ERROR_TEXT, S.GSSAPI_OTHER),
     ("Error (18) Replication error acquiring replica: Incremental update transient error.  Backing off, will retry "
      "update later. (transient error)", S.BACKOFF),
     ("Error (-2) Problem connecting to replica - LDAP error: Local error (connection error)", S.GSSAPI_OTHER),
@@ -183,6 +184,19 @@ def test_hostile_keys_are_sanitized():
     assert "\x1b" not in r and "‮" not in r
     g.add_fact(r, "note", "\x1b]52;c;x\x07")
     assert "\x1b" not in json.dumps(g.to_dict())
+
+
+def test_graph_never_claims_complete_when_its_bound_or_scope_cut_the_list(monkeypatch):
+    from ipa_diagnose.environment import graph as GR
+    from tests.replication import helpers as H
+
+    monkeypatch.setattr(GR, "MAX_ENTITIES", 12)
+    g = H.run(SC.Lab().many_agreements(6)).graph
+    assert g.truncated and g.enumeration(f"outbound_agreements:{SC.IPA01}") == Enumeration.PARTIAL
+    assert g.enumeration("servers") == Enumeration.PARTIAL
+    monkeypatch.setattr(GR, "MAX_ENTITIES", 400)
+    scoped = H.run(SC.Lab(), peer=SC.IPA02).graph
+    assert scoped.enumeration(f"outbound_agreements:{SC.IPA01}") == Enumeration.PARTIAL
 
 
 def test_graph_built_from_a_run_marks_observer_relative_facts_and_enumerations():

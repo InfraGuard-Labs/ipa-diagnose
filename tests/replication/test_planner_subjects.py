@@ -268,6 +268,29 @@ def test_cancellation_inside_a_template_stops_the_run_and_is_recorded():
     assert trace.enumerations["per_peer"]["status"] == "PARTIAL"
 
 
+def test_a_slow_subject_uses_only_its_own_time_slice():
+    import dataclasses
+
+    t = [0.0]
+
+    def clock():
+        return t[0]
+
+    def slow(params):
+        t[0] += 50 if params["host"] == "a.lab.test" else 1
+        return CheckResult("net.tcp", params, OK, {"state": "open"}, "x")
+
+    plan = [lister(["a.lab.test", "b.lab.test"]),
+            dataclasses.replace(tpl([tcp_step(), Step("second", "NETWORK", "net.tcp", "t2", "t",
+                                                      params={"host": ("item", "subject"), "port": "636"})]),
+                                subject_seconds=30)]
+    trace, _ = go(plan, Runner({"net.tcp": slow}), clock=clock)
+    assert "time slice" in trace.get("second", subject="a.lab.test").skip_reason
+    assert trace.get("second", subject="b.lab.test").outcome == Outcome.PASS
+    e = trace.enumerations["per_peer"]
+    assert e["status"] == "PARTIAL" and e["unfinished"] == ["a.lab.test"]
+
+
 def test_the_client_plan_summary_has_no_template_keys():
     trace, _ = go([Step("x", "T", "host.privilege", "x", "x")])
     assert "enumerations" not in trace.summary()

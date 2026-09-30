@@ -105,7 +105,12 @@ DISCRIMINATORS: Dict[str, Discriminator] = {d.disc_id: d for d in [
     _d("status-data", "REPLICATION", "REPLICA_DATA",
        "status class says the consumer's data needs administrator action (changelog purged, generation ID "
        "mismatch, replica ID conflict, re-initialization required)"),
-    _d("status-tls", "REPLICATION", "TLS", "status class TLS"),
+    _d("status-tls", "REPLICATION", "TLS",
+       "status class TLS, or the status says the connection failed and this host's own TLS connection to the "
+       "agreement's port fails at the TLS layer"),
+    _d("kerberos-49-with-measured-skew", "KERBEROS", "TIME",
+       "a GSSAPI bind refused with LDAP 49 (this host obtained its ticket) and a clock difference of at least the "
+       "300 s Kerberos tolerance measured between the two servers"),
     _d("storage-under-ds", "LOCAL_DS", "STORAGE",
        "the Directory Server is not active and its file system is read-only or nearly full"),
 ]}

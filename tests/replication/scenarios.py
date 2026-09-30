@@ -18,6 +18,11 @@ REALM, DOMAIN, BASEDN = "LAB.TEST", "lab.test", "dc=lab,dc=test"
 IPA01, IPA02, IPA03 = "ipa01.lab.test", "ipa02.lab.test", "ipa03.lab.test"
 SEGMENTS = [("domain", IPA01, IPA02), ("domain", IPA02, IPA03), ("ca", IPA01, IPA02)]
 OK_TEXT = "Error (0) Replica acquired successfully: Incremental update succeeded"
+# What 389-DS really records for a failed SASL bind (agmt_set_last_update_status): the LDAP error text plus
+# "(connection error)" - the Kerberos detail is only in its errors log. The *_TEXT variants below that carry the
+# Kerberos phrase test the phrase table (some versions/paths may record it); the scenarios use the real shape and
+# let ipa-diagnose's own reproduction name the Kerberos cause.
+LOCAL_ERROR_TEXT = "Error (-2) Problem connecting to replica - LDAP error: Local error (connection error)"
 TRANSPORT_TEXT = ("Error (-1) Problem connecting to replica - LDAP error: Can't contact LDAP server (connection error)")
 NO_KDC_TEXT = ("Error (-2) Problem connecting to replica - LDAP error: Local error (SASL(-1): generic failure: GSSAPI "
                "Error: Unspecified GSS failure.  Minor code may provide more information (Cannot contact any KDC for "
@@ -231,12 +236,12 @@ class Lab:
         self.unit("krb5kdc")
         if affect_agreements:
             for _s, peer in self.neighbours():
-                self.set_status(peer, NO_KDC_TEXT)
+                self.set_status(peer, LOCAL_ERROR_TEXT)
                 self.gssapi(peer, kinit_ok=False, kinit_class="kdc_unreachable", bind_attempted=False, bind_ok=False)
         return self
 
     def clock_skew(self, peer: str, offset: float = 900.0) -> "Lab":
-        self.set_status(peer, SKEW_TEXT)
+        self.set_status(peer, LOCAL_ERROR_TEXT)
         self.data[key("repl.peer_rootdse", {"host": peer, "port": "389", "transport": "LDAP"})]["fields"][
             "offset_seconds"] = offset
         self.gssapi(peer, bind_ok=False, bind_error_class="GSSAPI_CLOCK_SKEW")
@@ -254,6 +259,12 @@ class Lab:
                 "offset_seconds": https_offset, "offset_abs": abs(https_offset), "date_source": "verified TLS",
                 "round_trip": 0.02}, f"HTTPS to {peer}: TLS verified")
         return self
+
+    def kerberos_failure(self, peer: str, text: str = LOCAL_ERROR_TEXT, **gssapi) -> "Lab":
+        """An agreement whose last session failed at the SASL bind, with what the reproduction shows."""
+
+        self.set_status(peer, text)
+        return self.gssapi(peer, **gssapi)
 
     def keytab(self, **fields) -> "Lab":
         self.data[key("repl.ds_keytab", {})]["fields"].update(fields)

@@ -28,6 +28,7 @@ PASSISH = (P, W)
 KRB_TOLERANCE = 300
 CLOCK_WARN = 60
 AGREEMENT_BUDGET = 8
+SUBJECT_SECONDS = 60.0  # one unreachable peer ends its own investigation, not the others' (bounded run time)
 MIN_FREE_BYTES = 100 * 1024 * 1024
 WARN_FREE_PERCENT = 5.0
 GSSAPI = "SASL/GSSAPI"
@@ -328,7 +329,8 @@ def replication_plan() -> list:
                  params={"host": ("item", "consumer"), "port": ("item", "port"), "transport": ("item", "transport"),
                          "self_host": ("fact", "server.host")},
                  requires=(Req("peer.rootdse", PASSISH),), after=("gssapi",), classify=c_reverse),
-        ), AGREEMENT_BUDGET, "per outbound agreement", complete_fact="agreements.complete")
+        ), AGREEMENT_BUDGET, "per outbound agreement", complete_fact="agreements.complete",
+        subject_seconds=SUBJECT_SECONDS)
     return [
         Step("server", "TOPOLOGY", "repl.server", "This host is an IPA server",
              "Replication agreements live on IPA servers; the realm, suffix and this server's name come from here.",

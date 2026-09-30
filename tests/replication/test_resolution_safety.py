@@ -270,7 +270,7 @@ def test_every_procedure_a_replication_diagnosis_can_reach_is_allowlisted_or_no_
 
 def test_peer_side_causes_never_get_a_command():
     for lab in (Lab().peer_ds_stopped(IPA02), Lab().peer_unreachable(IPA02), Lab().clock_skew(IPA02),
-                Lab().set_reverse(IPA02, S.NO_KDC_TEXT)):
+                Lab().set_reverse(IPA02, S.LOCAL_ERROR_TEXT)):
         r = H.run(lab, live=True)
         assert not H.offered(r)
         for d in r.diagnoses:

@@ -129,6 +129,8 @@ class ForEach:
     title: str = ""
     complete_fact: Optional[str] = None
     """"step.field": True when the source step read the WHOLE list (otherwise the enumeration is PARTIAL)."""
+    subject_seconds: Optional[float] = None
+    """a time slice per subject: one slow subject ends only its own remaining steps, not the others'."""
 
 
 @dataclasses.dataclass
@@ -578,6 +580,7 @@ def run_plan(plan: Sequence[PlanItem], runner: Any, inputs: Dict[str, Any], *, i
             for subject, subj_item in subjects:
                 view = SubjectContext(ctx, local, subject, subj_item)
                 subject_stop = ""
+                subject_start = clock()
                 for step in item.steps:
                     spec = registry[step.check]
                     rec = Record(f"{step.step_id}@{subject}", step.capability, step.check, step.title, step.why,
@@ -585,8 +588,16 @@ def run_plan(plan: Sequence[PlanItem], runner: Any, inputs: Dict[str, Any], *, i
                                  subject=subject, template=item.template_id, base_step=step.step_id)
                     records.append(rec)
                     ctx.records[rec.step_id] = rec
+                    if not subject_stop and item.subject_seconds is not None \
+                            and clock() - subject_start > item.subject_seconds:
+                        subject_stop = f"its time slice of {item.subject_seconds:.0f} s is used up"
+                        if subject not in unfinished:
+                            unfinished.append(subject)
+                        rec.skip_reason = f"stopped: {subject_stop} (this subject only)"
+                        continue
                     if subject_stop:
-                        rec.skip_reason = f"not needed: stopped for this subject: {subject_stop}"
+                        rec.skip_reason = (f"stopped: {subject_stop} (this subject only)" if subject in unfinished
+                                           else f"not needed: stopped for this subject: {subject_stop}")
                         continue
                     why = run.visit(step, rec, view)
                     if why:

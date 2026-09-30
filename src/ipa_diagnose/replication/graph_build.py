@@ -54,7 +54,8 @@ def build(trace: Trace, me: Optional[str], freeipa: Optional[str]) -> Environmen
                 e = g.add_entity(Kind.SERVER, end, owner=end, scope="host", evidence=[topo.step_id])
                 g.add_relation(Rel.CONNECTS, sref, e, [topo.step_id])
                 g.add_relation(Rel.PARTICIPATES_IN, e, suf, [topo.step_id])
-        g.set_enumeration("servers", Enumeration.COMPLETE if f.get("complete") else Enumeration.PARTIAL, Kind.SERVER,
+        g.set_enumeration("servers", Enumeration.COMPLETE if f.get("complete") and not g.truncated
+                          else Enumeration.PARTIAL, Kind.SERVER,
                           [ref(Kind.SERVER, h) for h in f.get("masters") or []],
                           "" if f.get("complete") else "the topology read was not confirmed complete")
     else:
@@ -90,8 +91,8 @@ def build(trace: Trace, me: Optional[str], freeipa: Optional[str]) -> Environmen
             s = g.add_entity(Kind.SERVER, h, owner=h, scope="host", evidence=[pr.step_id])
             g.add_relation(Rel.PRINCIPAL_OF, pref, s, [pr.step_id])
             members.append(pref)
-        g.set_enumeration("ldap_principals", Enumeration.COMPLETE if pr.facts.get("complete") else
-                          Enumeration.PARTIAL, Kind.PRINCIPAL, members)
+        g.set_enumeration("ldap_principals", Enumeration.COMPLETE if pr.facts.get("complete") and None not in members
+                          and not g.truncated else Enumeration.PARTIAL, Kind.PRINCIPAL, [m for m in members if m])
     ag = trace.get("agreements")
     enum = trace.enumerations.get("agreement") or {}
     if _ok(ag):
@@ -129,10 +130,12 @@ def build(trace: Trace, me: Optional[str], freeipa: Optional[str]) -> Environmen
                 fact(ra, "status_classes", rv.facts.get("classes"), rv)
         status = {"COMPLETE": Enumeration.COMPLETE, "PARTIAL": Enumeration.PARTIAL, "FAILED": Enumeration.FAILED}.get(
             enum.get("status"), Enumeration.PARTIAL)
-        if ag.facts.get("complete") is not True:
-            status = Enumeration.PARTIAL
-        g.set_enumeration(f"outbound_agreements:{me}", status, Kind.AGREEMENT, members, enum.get("reason", ""),
-                          scope="--peer" if trace.get("agreements").facts.get("peer_found") is not None else None)
+        scoped = ag.facts.get("peer_found") is not None
+        if ag.facts.get("complete") is not True or None in members or g.truncated or scoped:
+            status = Enumeration.PARTIAL  # never COMPLETE when cut by a bound or limited to --peer
+        g.set_enumeration(f"outbound_agreements:{me}", status, Kind.AGREEMENT, [m for m in members if m],
+                          enum.get("reason", "") or ("limited to --peer" if scoped else ""),
+                          scope="--peer" if scoped else None)
     else:
         g.set_enumeration(f"outbound_agreements:{me}", Enumeration.FAILED if ag is not None and ag.outcome == U
                           else Enumeration.NOT_ASKED, Kind.AGREEMENT)

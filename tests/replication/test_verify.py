@@ -137,7 +137,7 @@ def test_the_agreement_disappearing_is_not_resolved():
 
 def test_a_failing_reverse_direction_that_cannot_be_observed_now_is_unable_to_verify():
     key = f"REVERSE_REPLICATION_FAILING@domain:{IPA02}>{IPA01}"
-    _r, prev = baseline(Lab().set_reverse(IPA02, S.NO_KDC_TEXT, suffix="domain"))
+    _r, prev = baseline(Lab().set_reverse(IPA02, S.LOCAL_ERROR_TEXT, suffix="domain"))
     assert key in {d["key"] for d in prev["diagnoses"]}
     cmp, out, code = verify(prev, fixed_later().set_reverse(IPA02, status="NOT_RUN"))
     assert out[key] == "UNABLE_TO_VERIFY" and code != 0
@@ -146,7 +146,7 @@ def test_a_failing_reverse_direction_that_cannot_be_observed_now_is_unable_to_ve
 
 def test_reverse_direction_resolved_only_with_a_fresh_session_read_from_the_peer():
     key = f"REVERSE_REPLICATION_FAILING@domain:{IPA02}>{IPA01}"
-    _r, prev = baseline(Lab().set_reverse(IPA02, S.NO_KDC_TEXT, suffix="domain"))
+    _r, prev = baseline(Lab().set_reverse(IPA02, S.LOCAL_ERROR_TEXT, suffix="domain"))
     _c, out, _ = verify(prev, fixed_later())
     assert out[key] == "RESOLVED"
     _c, out, _ = verify(prev, Lab(now=NOW - datetime.timedelta(minutes=1)))
@@ -160,6 +160,19 @@ def test_cause_is_only_resolved_when_everything_it_explained_is():
     _c, out, code = verify(prev, lab)
     assert out[SYM_D] == "RESOLVED" and out[f"REPLICATION_FAILING@ca:{IPA01}>{IPA02}"] == "PENDING"
     assert out[KDC] == "PENDING" and code == 3
+
+
+def test_clock_skew_is_not_resolved_without_measuring_the_clock_again():
+    key = f"PAIR_CLOCK_SKEW@pair:{IPA01}>{IPA02}"
+    lab = Lab()
+    lab.data[S.key("repl.peer_rootdse", {"host": IPA02, "port": "389", "transport": "LDAP"})]["fields"][
+        "offset_seconds"] = 900.0
+    _r, prev = baseline(lab)
+    assert key in {d["key"] for d in prev["diagnoses"]}
+    _c, out, _ = verify(prev, fixed_later().rootdse_without_clock(IPA02))
+    assert out[key] == "UNABLE_TO_VERIFY"
+    _c, out, _ = verify(prev, fixed_later())
+    assert out[key] == "RESOLVED"
 
 
 def test_exact_ruv_equality_is_not_required():
