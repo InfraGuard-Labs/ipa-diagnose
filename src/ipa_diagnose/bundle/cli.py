@@ -34,6 +34,8 @@ def build_parser() -> argparse.ArgumentParser:
         prog="ipa-diagnose bundle",
         description="Create a sanitized, pseudonymized support bundle from a fresh diagnosis, preview one, or "
         "validate a received one. Nothing is ever uploaded.",
+        epilog="Exit codes: 0 done (the diagnosis inside the bundle may still be CRITICAL); 5 the bundle was not "
+        "created (leak self-test, output path or size limit) or is not valid; 2 usage error.",
     )
     p.add_argument("action", nargs="?", choices=["validate"], help="validate: check a bundle file (no extraction)")
     p.add_argument("bundle", nargs="?", metavar="BUNDLE", help="the bundle file to validate")

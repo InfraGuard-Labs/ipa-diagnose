@@ -198,6 +198,7 @@ def render(r: ClientResult, console: Console, details: bool = False) -> None:
             for i, stp in enumerate(rr["steps"], 1):
                 p(f"    {i}. {stp['text']}")
                 p(f"         {stp['command']}", "bold cyan")
+                p(f"       Expected: {stp['expected']}")
             for w in rr["what_changes"]:
                 p(f"    What changes: {w}")
             if rr["impact_note"]:

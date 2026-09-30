@@ -319,8 +319,9 @@ def _render_resolution(d: Diagnosis, r, console: Console, *, details: bool) -> N
     for i, st in enumerate(r.steps, 1):
         console.print(f"  {i}. {escape(st.text)}")
         console.print(f"       [bold cyan]{escape(st.command)}[/bold cyan]")
-        if details:
-            console.print(f"       [dim]expected: {escape(st.expected)} | risk {st.risk}[/dim]")
+        # the expected result (and, where the procedure states it, what a failure looks like) is part of the fix,
+        # not a detail: without it a printed procedure is not complete enough to follow (freeze No-Google audit)
+        console.print(f"       [dim]expected: {escape(st.expected)}{f' | risk {st.risk}' if details else ''}[/dim]")
     for reason in r.reasons:  # e.g. a reported file that was skipped
         console.print(f"  [dim]note: {escape(reason)}[/dim]")
     console.print()

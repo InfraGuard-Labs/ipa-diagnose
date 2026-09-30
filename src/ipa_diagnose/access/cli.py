@@ -41,7 +41,8 @@ def build_parser() -> argparse.ArgumentParser:
         description="Does FreeIPA policy authorize USER to access HOST through SERVICE, and why? Read-only; asks "
         "FreeIPA's own HBAC evaluator with your Kerberos ticket (kinit first).",
         epilog="Exit codes: 0 authorized by policy (login itself not tested); 1 not authorized or the account cannot "
-        "authenticate; 3 unknown; 4 authorized but account state unreadable; 2 usage error.",
+        "authenticate; 3 unknown; 4 authorized but account state unreadable; 5 (only with --runtime) authorized by "
+        "policy, but a runtime check on this host shows the login would fail; 2 usage error.",
     )
     p.add_argument("user", metavar="USER", help="IPA user name (for example john)")
     p.add_argument("host", metavar="HOST", help="target host name (for example app03.example.com)")

@@ -46,7 +46,12 @@ def build_parser() -> argparse.ArgumentParser:
     # flags' defaults, which silently clobbers a flag given *before* the
     # subcommand name (e.g. `ipa-diagnose --replay DIR diagnose` would reset
     # --replay back to None). One shared namespace avoids that entirely.
-    parser = argparse.ArgumentParser(prog="ipa-diagnose", description="FreeIPA / Red Hat IdM diagnostic tool")
+    parser = argparse.ArgumentParser(
+        prog="ipa-diagnose", description="FreeIPA / Red Hat IdM diagnostic tool",
+        epilog="Exit codes (diagnose, verify, ai-preview): 0 HEALTHY (verify: everything found before is resolved and "
+        "the fresh evidence is complete); 1 DEGRADED; 2 CRITICAL; 3 UNKNOWN; 4 NOT_FULLY_VERIFIED (verify: could "
+        "not confirm); 70 internal error; 130 interrupted. Alert on any non-zero exit. bundle, access, client and "
+        "replication document their own codes in their --help.")
     parser.add_argument("--version", action="version", version=f"ipa-diagnose {__version__}")
     parser.add_argument(
         "command",
