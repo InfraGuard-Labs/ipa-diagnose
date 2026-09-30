@@ -29,6 +29,39 @@ here, via [claim-register.md](claim-register.md) (section "Slice 5").
 | [36652068103](https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36652068103) | b017648 | R00 FAIL (harness) | topology exactly as designed and a change replicated to all three servers, but the harness's "all green" gate waited for CA-suffix sessions it never triggered (a certificate-profile description change touches only the domain suffix). **Environment facts:** FreeIPA 4.13.4, 389-ds-base 3.1.5, krb5 1.22.2; every agreement LDAP/389 + SASL/GSSAPI; `krb5.conf` names no KDC (`dns_lookup_kdc = true`); `ds.keytab` dirsrv:dirsrv 0600 |
 | [36654176983](https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36654176983) | 274b6b6 | 7/20 | HEALTHY on all three servers; local KDC stopped -> printed `systemctl start krb5kdc.service` run verbatim -> `--verify` RESOLVED (first replication-context LIVE record). **Live findings:** (1) after the consumer's Directory Server stopped, or the consumer was disconnected, and a change was made, the supplier's agreement status STILL read "Incremental update succeeded" for the whole 4-minute wait - a diagnosis that starts only from a failing status misses it (it reported nothing); (2) with ipa03's Directory Server unable to read its keytab, ipa02's agreement towards ipa03 failed with LDAP 49 (ipa03 cannot accept Kerberos) and was reported as a second, independent root - a **false root cause**. Both fixed in e36e5e0 with regression tests |
 | [36657552130](https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36657552130) | e36e5e0 | 13/20, 0 false root causes, 0 missed causes, 0 unsafe fixes | both live findings confirmed fixed; local dirsrv stopped -> printed `systemctl start dirsrv@LAB-TEST.service` run verbatim -> `--verify` RESOLVED (second LIVE record); **389-DS's real status for a failed GSSAPI bind is `Error (-2) Problem connecting to replica - LDAP error: Local error (connection error)`** (no Kerberos detail: the cause comes from ipa-diagnose's own reproduction, as the correctness review predicted). Harness: an expectation of R02d was wrong (the peer-side root is the item that resolves); R07 aborted because `kinit` on a server whose own KDC is stopped fails (an IPA server's Kerberos library uses its own KDC) - lab changes now go through LDAPI |
+| [36660487204](https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36660487204) | 175cb7f | 16/20, 0 false root causes, 0 missed, 0 unsafe | peer KDC stopped (reverse direction read from the peer and handed off; this server's own direction stays OK - no "peer KDC required" assumption) and two independent causes on the middle server pass. **Live findings:** a NATURAL backoff (`Error (18) Can't acquire replica (Incremental update transient warning. Backing off, will retry update later.)`) was reported NOT_FULLY_VERIFIED, never green; after a restarted Directory Server came back, the PEER still recorded that it could not reach it - now TRANSIENT, not a new failure (e58c12f); `Error (-1) Unable to receive the response for a startReplication extended operation to consumer. Will retry later.` is classified TRANSPORT. Harness: a non-root user could not execute the tool under /root; libfaketime path |
+| [36663200048](https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36663200048) | e58c12f | **20/20 PASS**, 0 false root causes, 0 missed causes, 0 unsafe fixes | every scenario below |
+
+## Live scenarios (run 36663200048 on e58c12f: 20/20 PASS)
+
+FreeIPA 4.13.4-2.fc43, 389-ds-base 3.1.5-4.fc43, krb5 1.22.2-4.fc43, Fedora 43 containers; every agreement LDAP/389
+with SASL/GSSAPI. "Blind" = ipa-diagnose was not told the fault. A fix was run only as the exact printed argv.
+
+| # | Fault (injected, independently confirmed) | Run on | Expected = observed | Fix | Verify |
+|---|---|---|---|---|---|
+| R00 | none: 2 domain + 1 CA segment, CA on ipa01+ipa02, a change reached all three | lab | - | - | - |
+| R01 x3 | none (operator ticket) | ipa01, ipa02, ipa03 | HEALTHY (exit 0), both directions of every agreement read (the reverse one from the peer) | none | - |
+| R01b | none, no Kerberos ticket | ipa01 | NOT_FULLY_VERIFIED (exit 4): reverse direction NOT OBSERVED, handoff to ipa02; outbound OK | none | - |
+| R02 | dirsrv stopped on ipa02 (systemctl inactive; TCP 389 refused from ipa01) | ipa01 | PEER_DS_NOT_ACCEPTING@ipa02 (peer), handoff to ipa02, no local cause | none (peer side) | R02d: RESOLVED after the fix on ipa02 |
+| R02b | same | ipa02 | LOCAL_DS_NOT_RUNNING@ipa02 | `systemctl start dirsrv@LAB-TEST.service`, No-Google | R02c: RESOLVED |
+| R03 | ipa02 disconnected from the network | ipa01 | PEER_UNREACHABLE ipa01>ipa02 "unreachable from ipa01 at <time>", never "dead"; the agreement status still said "succeeded" | none | - |
+| R04 | ipa01's resolver broken for ipa02 (getent rc=2) | ipa01 | PEER_NAME_UNRESOLVED observed from ipa01; the agreement status still said "succeeded" | none | - |
+| R05 | krb5kdc stopped on ipa01 | ipa01 | LOCAL_KDC_NOT_RUNNING@ipa01 (agreements stayed OK on cached tickets) | `systemctl start krb5kdc.service`, No-Google | R05b: RESOLVED (exit 0) |
+| R06 | ipa03's ds.keytab chowned root:root, dirsrv restarted (disposable replica, restored after) | ipa03 | DS_KEYTAB_PROBLEM@ipa03 ONLY; ipa02's LDAP 49 towards ipa03 RELATED to it; status `Local error (connection error)` | none (keytab changes are never printed) | - |
+| R07 | krb5kdc stopped on ipa02 and its dirsrv restarted | ipa01 | REVERSE_REPLICATION_FAILING ipa02>ipa01 read from ipa02, handoff to ipa02; ipa01>ipa02 stays OK; no local cause | none | - |
+| R08 | krb5kdc stopped on ipa02 AND dirsrv stopped on ipa03 | ipa02 | PRIMARY LOCAL_KDC_NOT_RUNNING@ipa02 + INDEPENDENT PEER_DS_NOT_ACCEPTING@ipa03, handoff to ipa03 | `systemctl start krb5kdc.service` (local only) | - |
+| R09 | none, `--peer ipa03` on ipa02 | ipa02 | only the ipa02<->ipa03 relationships (a natural backoff is NOT_FULLY_VERIFIED) | none | - |
+| R10 | none, non-root user | ipa01 | NOT_FULLY_VERIFIED (exit 4), nothing claimed | none | - |
+| R11 | `bundle --replication` | ipa01 | replication.json present, the bundle validates, no lab host, domain, realm or IP inside | - | - |
+| R12 | SIMULATED: only ipa-diagnose's own process 15 min ahead (libfaketime); servers untouched | ipa01 | PAIR_CLOCK_SKEW ipa01>ipa02, never "chronyd stopped"; no clock step printed | none | - |
+
+Counts over the 20 rows: **0 false root causes, 0 missed expected causes, 0 unsafe resolutions** (a fix offered for
+another server, or containing a forbidden operation). Not attempted live, on purpose: a CA-suffix-only failure (every
+safe way needs LDAP or topology damage), stale RUV, changelog purge, generation-ID mismatch (see the fixture table).
+
+Performance (live, the same rows): a healthy server 2.4-3.4 s; a stopped peer 3.4 s; an unreachable peer 11.8 s (TCP
+and LDAP timeouts); a broken resolver 3.2 s; `--peer` 1.9 s; non-root 0.3 s.
+
 
 ## Fixture and synthetic evidence (not live)
 
