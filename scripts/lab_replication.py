@@ -400,7 +400,8 @@ def verify_until(c: str, args: str = "", ticket: bool = True, rounds: int = 20, 
     for _ in range(rounds):
         rc, doc, secs = tool(c, f"--verify {args}".strip(), ticket=ticket)
         items = {i["key"]: i["outcome"] for i in (doc or {}).get("items", [])}
-        hist.append({"exit": rc, "items": items})
+        hist.append({"exit": rc, "items": items,
+                     "new": [n.get("key") for n in (doc or {}).get("new_conditions", [])]})
         if rc != 3:
             break
         for n in SERVERS:  # give the suppliers something to replicate
@@ -505,7 +506,8 @@ def r02() -> None:
     items = {i["key"]: i["outcome"] for i in (doc3 or {}).get("items", [])}
     ok = applied["all_ok"] and items.get(key) == "RESOLVED" and rc3 in (0, 4)
     _write({"scenario": "R02c-verify-after-fix-local", "result": "PASS" if ok else "FAIL",
-            "problems": [] if ok else [f"verify on ipa02: exit {rc3}, items {items}, applied {applied}"],
+            "problems": [] if ok else [f"verify on ipa02: exit {rc3}, items {items}, applied {applied}, "
+                                       f"history {hist}"],
             "exit": rc3, "verify_items": items, "applied": applied, "history": hist, "seconds": secs3})
     rc4, doc4, secs4, hist4 = verify_until("ipa01")
     items4 = {i["key"]: i["outcome"] for i in (doc4 or {}).get("items", [])}
@@ -665,12 +667,16 @@ def r09() -> None:
     rc, doc, secs = tool("ipa02", f"--peer {FQ['ipa03']}")
     subjects = {x["subject"] for x in (doc or {}).get("relationships", [])}
     ok_scope = subjects == {f"domain:{FQ['ipa02']}>{FQ['ipa03']}", f"domain:{FQ['ipa03']}>{FQ['ipa02']}"}
-    row("R09-budget-scope-peer", {"status": ["HEALTHY"], "roots": [], "offered": {}}, rc, doc, secs,
-        {"scope_only_ipa03": {"confirmed": ok_scope, "observed": sorted(subjects)}})
+    # a natural backoff of an agreement in scope is NOT_FULLY_VERIFIED (never green); anything else must be HEALTHY
+    transient = [d["key"] for d in (doc or {}).get("diagnoses", []) if d.get("kind") == "TRANSIENT"]
+    row("R09-budget-scope-peer", {"status": ["HEALTHY"] + (["NOT_FULLY_VERIFIED"] if transient else []), "roots": [],
+                                  "offered": {}}, rc, doc, secs,
+        {"scope_only_ipa03": {"confirmed": ok_scope, "observed": sorted(subjects)}},
+        {"transient_seen": transient})
 
 
 def r10() -> None:
-    sh("ipa01", "id labuser >/dev/null 2>&1 || useradd -m labuser")
+    sh("ipa01", "id labuser >/dev/null 2>&1 || useradd -m labuser; chmod o+x /root; chmod -R o+rX /root/.local")
     rc, doc, secs = tool("ipa01", ticket=False, user="labuser")
     row("R10-non-root", {"status": ["NOT_FULLY_VERIFIED"], "roots": [], "offered": {}}, rc, doc, secs, {})
 
@@ -699,7 +705,7 @@ def r12() -> None:
     """SIMULATED: only ipa-diagnose's own process tree runs 15 minutes ahead (libfaketime); the servers' clocks
     are untouched (containers share the host's kernel clock, so a real skew cannot be made here)."""
 
-    lib = sh("ipa01", "ls /usr/lib64/faketime/libfaketime.so.1 2>/dev/null").strip()
+    lib = sh("ipa01", "rpm -ql libfaketime 2>/dev/null | grep -E '/libfaketime\\.so\\.1$' | head -1").strip()
     if not lib:
         _write({"scenario": "R12-simulated-clock-offset", "result": "FAIL", "problems": ["libfaketime missing"]})
         return
@@ -750,7 +756,7 @@ def summary() -> int:
     compact = [f"{r['scenario']}={r['result']} exit={r.get('exit')} primary={r.get('primary')} "
                f"offered={list((r.get('offered') or {}).keys())} ng={r.get('no_google')} t={r.get('seconds')}s "
                f"v={r.get('verify_items')} ipa={r.get('freeipa')}"
-               + (f" PROBLEMS={r.get('problems')}" if r.get("problems") else "")
+               + (f" PROBLEMS={r.get('problems')} DEBUG={r.get('debug')}" if r.get("problems") else "")
                + (f" OBS={ {k: v.get('observed', '')[:120] for k, v in (r.get('independent') or {}).items() if isinstance(v, dict)} }"
                   if r.get("result") != "PASS" or "agreement_status_observed" in (r.get("independent") or {}) else "")
                for r in rows]

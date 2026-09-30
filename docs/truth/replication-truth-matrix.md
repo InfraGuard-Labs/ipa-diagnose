@@ -24,13 +24,11 @@ here, via [claim-register.md](claim-register.md) (section "Slice 5").
 
 ## Run history
 
-| Run | Product commit | Result | Notes |
+| Run | Code commit | Result | What it showed |
 |---|---|---|---|
-| [36652068103](https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36652068103) | b017648 | (running) | first run |
-
-## Live scenarios
-
-(filled from the run annotations)
+| [36652068103](https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36652068103) | b017648 | R00 FAIL (harness) | topology exactly as designed and a change replicated to all three servers, but the harness's "all green" gate waited for CA-suffix sessions it never triggered (a certificate-profile description change touches only the domain suffix). **Environment facts:** FreeIPA 4.13.4, 389-ds-base 3.1.5, krb5 1.22.2; every agreement LDAP/389 + SASL/GSSAPI; `krb5.conf` names no KDC (`dns_lookup_kdc = true`); `ds.keytab` dirsrv:dirsrv 0600 |
+| [36654176983](https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36654176983) | 274b6b6 | 7/20 | HEALTHY on all three servers; local KDC stopped -> printed `systemctl start krb5kdc.service` run verbatim -> `--verify` RESOLVED (first replication-context LIVE record). **Live findings:** (1) after the consumer's Directory Server stopped, or the consumer was disconnected, and a change was made, the supplier's agreement status STILL read "Incremental update succeeded" for the whole 4-minute wait - a diagnosis that starts only from a failing status misses it (it reported nothing); (2) with ipa03's Directory Server unable to read its keytab, ipa02's agreement towards ipa03 failed with LDAP 49 (ipa03 cannot accept Kerberos) and was reported as a second, independent root - a **false root cause**. Both fixed in e36e5e0 with regression tests |
+| [36657552130](https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36657552130) | e36e5e0 | 13/20, 0 false root causes, 0 missed causes, 0 unsafe fixes | both live findings confirmed fixed; local dirsrv stopped -> printed `systemctl start dirsrv@LAB-TEST.service` run verbatim -> `--verify` RESOLVED (second LIVE record); **389-DS's real status for a failed GSSAPI bind is `Error (-2) Problem connecting to replica - LDAP error: Local error (connection error)`** (no Kerberos detail: the cause comes from ipa-diagnose's own reproduction, as the correctness review predicted). Harness: an expectation of R02d was wrong (the peer-side root is the item that resolves); R07 aborted because `kinit` on a server whose own KDC is stopped fails (an IPA server's Kerberos library uses its own KDC) - lab changes now go through LDAPI |
 
 ## Fixture and synthetic evidence (not live)
 

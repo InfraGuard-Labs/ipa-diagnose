@@ -385,6 +385,13 @@ def test_reverse_direction_failure_read_from_the_peer_is_handed_off_to_the_peer(
     assert H.rel(r, f"ca:{IPA02}>{IPA01}")["state"] == "OK"
 
 
+def test_a_reverse_transport_failure_while_this_ds_runs_is_transient_not_a_failure():
+    r = H.run(Lab().set_reverse(IPA02, S.TRANSPORT_TEXT, suffix="domain"))
+    d = next(x for x in r.diagnoses if x.subject == f"domain:{IPA02}>{IPA01}")
+    assert d.kind == "TRANSIENT" and d.severity == "WARN" and r.status == "NOT_FULLY_VERIFIED"
+    assert H.rel(r, f"domain:{IPA02}>{IPA01}")["state"] == "TRANSIENT"
+
+
 def test_reverse_direction_without_a_ticket_is_unknown_and_never_inferred():
     r = H.run(Lab().set_reverse(IPA02, status="NOT_RUN"))
     assert r.status == "NOT_FULLY_VERIFIED"

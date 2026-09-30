@@ -778,6 +778,21 @@ def _reverse(t: _T, b: _Builder, me: str, realm: str, item: Dict[str, Any],
                             f"Read from {consumer}: {r.facts.get('status_text') or '?'}.",
                             "389-DS retries by itself.", [r.step_id], "peer", kind=TRANSIENT))
         return "TRANSIENT"
+    if cls == S.TRANSPORT and t.o("local.ds") == P:
+        # the peer recorded that it could not reach this server's Directory Server, which runs NOW: the record may be
+        # from before it started (live lab, run 36660487204) or the path from the peer may be broken - not
+        # established from here; never green, never a root: the peer's next session (read again) decides
+        b.add(ReplDiagnosis(
+            "REPLICATION_TRANSIENT", rel_key, f"{consumer} last could not reach {me} ({suffix}); {me}'s Directory "
+            "Server is running now", "REPLICATION", "WARN", "MEDIUM",
+            f"Read from {consumer}: {r.facts.get('status_text') or '?'} (session ended "
+            f"{r.facts.get('last_update_end') or 'at an unknown time'}). Whether {consumer} can reach {me} now is "
+            f"shown by its next session.", "Changes from the peer wait until it reaches this server.", [r.step_id,
+                                                                                                       "local.ds"],
+            "peer", kind=TRANSIENT, handoff=handoff(consumer, me, f"The path from {consumer} can only be tested on "
+                                                                  f"{consumer}."),
+            next_steps=[f"sudo ipa-diagnose replication --verify   (after {consumer}'s next session)"]))
+        return "TRANSIENT"
     L0 = Link(f"{consumer} -> {me} ({suffix} suffix) fails: {S.MEANING.get(cls, cls)} (read from {consumer})",
               rel_key, "REPLICATION", [r.step_id], "agreement-status", "peer")
     kt = (roots or {}).get("keytab")

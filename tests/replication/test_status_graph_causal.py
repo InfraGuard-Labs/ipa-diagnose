@@ -33,6 +33,11 @@ from tests.replication import scenarios as SC
     (SC.BUSY_TEXT, S.BUSY),
     (SC.WEIRD_TEXT, S.UNCLASSIFIED),
     (SC.LOCAL_ERROR_TEXT, S.GSSAPI_OTHER),
+    # recorded live (389-ds-base 3.1.5, runs 36660487204 and 36657552130)
+    ("Error (18) Can't acquire replica (Incremental update transient warning. Backing off, will retry update "
+     "later.)", S.BACKOFF),
+    ("Error (-1) Unable to receive the response for a startReplication extended operation to consumer. Will retry "
+     "later. - LDAP error: Can't contact LDAP server (connection error)", S.TRANSPORT),
     ("Error (18) Replication error acquiring replica: Incremental update transient error.  Backing off, will retry "
      "update later. (transient error)", S.BACKOFF),
     ("Error (-2) Problem connecting to replica - LDAP error: Local error (connection error)", S.GSSAPI_OTHER),
