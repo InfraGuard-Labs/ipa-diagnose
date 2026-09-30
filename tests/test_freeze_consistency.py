@@ -125,6 +125,74 @@ def test_a_replayed_fix_is_never_definitive_and_says_it_is_recorded(capsys):
     assert r["verification_label"].startswith("Recorded evidence (--replay)")
 
 
+def test_services_that_need_the_directory_server_are_its_symptoms_while_it_is_down(capsys, tmp_path):
+    """Freeze SME review: dirsrv, krb5kdc and httpd stopped (the state after 'ipactl stop' or a failed boot) gave a
+    PRIMARY dirsrv plus two INDEPENDENT problems, each with its own start command. Now only dirsrv gets a fix."""
+
+    import json
+    import shutil
+
+    fx = tmp_path / "all-down"
+    shutil.copytree(FIXTURES / "resolution" / "service-not-running", fx)
+    hc = json.loads((fx / "healthcheck.json").read_text(encoding="utf-8"))
+    base = next(x for x in hc if x["check"] == "dirsrv")
+    for svc in ("krb5kdc", "httpd"):
+        hc.append(dict(base, check=svc, uuid=f"res-svc-{svc}", kw={"status": False, "msg": f"{svc}: not running"}))
+    (fx / "healthcheck.json").write_text(json.dumps(hc), encoding="utf-8")
+    rc = json.loads((fx / "resolution_checks.json").read_text(encoding="utf-8"))
+    unit = rc["systemd.unit|service=dirsrv"]
+    for svc in ("krb5kdc", "httpd"):
+        rc[f"systemd.unit|service={svc}"] = dict(unit, fields=dict(unit["fields"], unit=f"{svc}.service"))
+    (fx / "resolution_checks.json").write_text(json.dumps(rc), encoding="utf-8")
+    main(["--replay", str(fx), "--json", "--no-ai"])
+    doc = json.loads(capsys.readouterr().out)
+    pri = {d["diagnosis_id"]: d["priority"] for d in doc["diagnoses"]}
+    assert pri["healthcheck.service-not-running-dirsrv"] == "PRIMARY_PROBLEM"
+    assert pri["healthcheck.service-not-running-krb5kdc"] == "RELATED_SYMPTOM"
+    assert pri["healthcheck.service-not-running-httpd"] == "RELATED_SYMPTOM"
+    offered = [r["diagnosis_id"] for r in doc["v2"]["resolutions"] if r["status"] == "OFFERED"]
+    assert offered == ["healthcheck.service-not-running-dirsrv"]
+
+
+def test_a_stopped_kdc_alone_still_gets_its_own_fix(capsys, tmp_path):
+    import json
+    import shutil
+
+    fx = tmp_path / "kdc"
+    shutil.copytree(FIXTURES / "resolution" / "service-not-running", fx)
+    hc = json.loads((fx / "healthcheck.json").read_text(encoding="utf-8"))
+    for x in hc:
+        if x["check"] == "dirsrv":
+            x.update(check="krb5kdc", kw={"status": False, "msg": "krb5kdc: not running"})
+    (fx / "healthcheck.json").write_text(json.dumps(hc), encoding="utf-8")
+    rc = json.loads((fx / "resolution_checks.json").read_text(encoding="utf-8"))
+    u = rc.pop("systemd.unit|service=dirsrv")
+    rc["systemd.unit|service=krb5kdc"] = dict(u, fields=dict(u["fields"], unit="krb5kdc.service"))
+    (fx / "resolution_checks.json").write_text(json.dumps(rc), encoding="utf-8")
+    main(["--replay", str(fx), "--json", "--no-ai"])
+    doc = json.loads(capsys.readouterr().out)
+    assert [r["diagnosis_id"] for r in doc["v2"]["resolutions"] if r["status"] == "OFFERED"] == \
+        ["healthcheck.service-not-running-krb5kdc"]
+
+
+@pytest.mark.parametrize("module", ["pam_faillock.so", "pam_tally2.so"])
+def test_the_pam_account_phase_is_never_run_when_it_would_reset_failed_login_counters(module):
+    """Freeze SME review: 'sssctl user-checks -a acct' runs the service's PAM account phase; pam_faillock's account
+    phase resets the user's failed-login records, so running it could unlock a locked account."""
+
+    from tests.client import scenarios as CS
+
+    def with_counter_module(d):
+        d[CS.key("pam.stack", service=CS.SERVICE)]["fields"]["account_modules"] = ["pam_unix.so", module, "pam_sss.so"]
+
+    r = CH.run("healthy", mutate=with_counter_module)
+    rec = r.trace.get("pam.acct")
+    assert rec is not None and rec.outcome.value == "SKIPPED" and "failed-login counter" in rec.skip_reason
+    assert r.runtime.state != "PASS"
+    r2 = CH.run("healthy")
+    assert r2.trace.get("pam.acct").outcome.value == "PASS"
+
+
 def _help(capsys, argv):
     with pytest.raises(SystemExit) as e:
         main(argv)

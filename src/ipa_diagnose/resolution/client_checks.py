@@ -878,7 +878,8 @@ def specs() -> List[CheckSpec]:
                   timeout=50, evidence=("pam_result", "result_class"), applies="SSSD 2.0 or later",
                   side_effects=("runs the service's PAM ACCOUNT phase only (pam_acct_mgmt, no password, no "
                                 "session): SSSD evaluates access as for a login and may refresh its cache and HBAC "
-                                "rules; pam_faillock does not reset counters without an auth phase")),
+                                "rules. Never run when the service's account stack contains pam_faillock or "
+                                "pam_tally2: their account phase resets the user's failed-login counters")),
         CheckSpec("sssd.cache_user", {"user": "ipa_user"}, "SSSD's cache entry for a user (timestamps)", _cache_user,
                   ROOT, timeout=20, evidence=("present",), applies="SSSD 2.0 or later"),
         CheckSpec("sssd.log_signals", {"domain": "sssd_domain"}, "known problem signals in recent SSSD logs",

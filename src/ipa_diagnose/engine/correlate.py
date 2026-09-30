@@ -119,6 +119,13 @@ _IMPLICIT_RULE_UPSTREAMS = {
     # the file system holding Directory Server's database is full: dirsrv stopping is its symptom
     # (only a disk diagnosis that can break DS - explains_downstream - counts; red-team round 4)
     "healthcheck.service-not-running-dirsrv*": ("directory-server.disk-space-exhaustion",),
+    # IPA services that need this server's Directory Server (ipa-kdb over LDAPI for the KDC and kadmin, the IPA API
+    # in httpd, custodia, Dogtag's database, bind-dyndb-ldap, the DNSSEC key sync): while dirsrv is down, their being
+    # stopped is its symptom and gets no fix of its own - start dirsrv first, then verify (freeze SME review; the same
+    # rule replication mode applies to 'KDC stopped because the Directory Server is stopped')
+    **{f"healthcheck.service-not-running-{svc}": ("healthcheck.service-not-running-dirsrv*",)
+       for svc in ("krb5kdc", "kadmin", "httpd", "ipa-custodia", "pki-tomcatd", "pki_tomcatd", "ipa-dnskeysyncd",
+                   "named", "named-pkcs11")},
 }
 
 

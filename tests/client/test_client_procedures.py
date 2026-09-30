@@ -135,7 +135,7 @@ def test_cache_removal_needs_strong_evidence_and_admin_confirmation():
     r = H.run("cache-db-error")
     res = r.resolutions["SSSD_CACHE_DB_ERROR"]
     assert res.status == "OFFERED" and res.risk == "HIGH"
-    assert [s.argv for s in res.steps] == [["sssctl", "cache-remove", "--stop", "--start"]]
+    assert [s.argv for s in res.steps] == [["sssctl", "cache-remove", "--stop", "--restore", "--start"]]
     assert any(p.state == "confirm" and "cached passwords" in p.text for p in res.prerequisites)
     assert "cached password" in res.impact_note.lower() or "cached password" in " ".join(res.what_changes).lower()
 
