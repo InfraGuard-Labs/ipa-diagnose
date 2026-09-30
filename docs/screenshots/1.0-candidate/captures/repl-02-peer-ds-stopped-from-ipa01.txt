@@ -1,0 +1,44 @@
+ipa-diagnose replication: ipa01.lab.test (realm LAB.TEST)
+  LIVE; FreeIPA 4.13.4, 389-ds 3.1.5
+
+ipa01.lab.test: ipa02.lab.test's Directory Server does not accept connections.
+
+REPLICATION (per suffix and direction; observed from ipa01.lab.test)
+  ca      ipa01.lab.test -> ipa02.lab.test  OK  [LDAP/SASL/GSSAPI, port 389] last session ended 2026-09-30T16:29:47Z
+  ca      ipa02.lab.test -> ipa01.lab.test  NOT OBSERVED  (not readable from here; see HANDOFF)
+  domain  ipa01.lab.test -> ipa02.lab.test  FAILING (TRANSPORT)  [LDAP/SASL/GSSAPI, port 389] last session ended 2026-09-30T16:30:09Z
+  domain  ipa02.lab.test -> ipa01.lab.test  NOT OBSERVED  (not readable from here; see HANDOFF)
+
+ROOT CAUSE
+  [PRIMARY] ipa02.lab.test's Directory Server does not accept connections - confidence HIGH
+      From ipa01.lab.test: TCP 389 on ipa02.lab.test is refused while 443 answers (TCP ipa02.lab.test:389: refused; TCP ipa02.lab.test:443: open); an anonymous LDAP read gets no answer. The ca agreement ipa01.lab.test -> ipa02.lab.test still shows its last session as successful (ended 2026-09-30T16:29:47Z); it has not recorded this yet.
+      Impact: No replication to ipa02.lab.test (from any supplier that sees the same); LDAP clients of ipa02.lab.test fail over or fail.
+      Chain: ipa02.lab.test is up (443 answers) but refuses connections on port 389: its Directory Server is not accepting connections
+      Stops here: whether the Directory Server on ipa02.lab.test is stopped, has failed or listens elsewhere can only be seen on ipa02.lab.test
+      Chain: ipa01.lab.test -> ipa02.lab.test (domain suffix) fails: the supplier could not connect to the consumer's Directory Server  ->  ipa02.lab.test is up (443 answers) but refuses connections on port 389: its Directory Server is not accepting connections
+      Stops here: whether the Directory Server on ipa02.lab.test is stopped, has failed or listens elsewhere can only be seen on ipa02.lab.test
+  [RELATED] domain replication ipa01.lab.test -> ipa02.lab.test fails (caused by: ipa02.lab.test's Directory Server does not accept connections) - confidence HIGH
+      the supplier could not connect to the consumer's Directory Server. Last session status: Error (-1) Problem connecting to replica - LDAP error: Can't contact LDAP server (connection error) (ended 2026-09-30T16:30:09Z).
+
+HANDOFF (the remaining evidence is on another server; nothing was changed)
+  On ipa02.lab.test run:
+    sudo ipa-diagnose replication --peer ipa01.lab.test
+  Why: ipa02.lab.test's Directory Server does not accept connections. The remaining evidence is local to ipa02.lab.test. Nothing was changed on ipa01.lab.test or ipa02.lab.test; ipa-diagnose never changes another server.
+
+RESOLUTION (only for causes on this server)
+  No fix is printed: the causes found are not on this server, or no fix is established for them (see HANDOFF and the next read-only steps).
+NEXT READ-ONLY STEPS
+  on ipa02.lab.test: systemctl status dirsrv@LAB-TEST; ipactl status (read-only)
+NOT VERIFIED
+  - reverse direction [ca:ipa02.lab.test]: not observed from this server (blocked: needs 'Peer Directory Server answers (root DSE)' to pass first (it was FAIL)); to read it from here, run 'kinit admin' in the same (root) session and run again (sudo does not pass your own ticket on), or run ipa-diagnose replication on the peer
+  - reverse direction [domain:ipa02.lab.test]: not observed from this server (blocked: needs 'Peer Directory Server answers (root DSE)' to pass first (it was FAIL)); to read it from here, run 'kinit admin' in the same (root) session and run again (sudo does not pass your own ticket on), or run ipa-diagnose replication on the peer
+TOPOLOGY (context)
+  servers: ipa01.lab.test, ipa02.lab.test, ipa03.lab.test
+  ca: 1 segment(s)
+  domain: 2 segment(s); articulation point(s): ipa02.lab.test
+  only one server holds: DNS (ipa01.lab.test)
+  CA renewal master: ipa01.lab.test
+LIMITATIONS
+  Replication is directional and per suffix: this server sees its OWN outbound agreements. The reverse direction is only reported when it could be read from the peer (read-only, with your own Kerberos ticket); otherwise it is NOT VERIFIED and a handoff to the peer is printed.
+  Nothing is changed on this server or any other; no command runs on another server; fixes are printed only for causes on this server, and only when every safety gate passes.
+  planner: 18 of 23 checks run, 3.117 s; stop: every relevant check in the plan was visited

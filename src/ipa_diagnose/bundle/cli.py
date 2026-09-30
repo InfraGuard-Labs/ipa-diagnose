@@ -34,6 +34,8 @@ def build_parser() -> argparse.ArgumentParser:
         prog="ipa-diagnose bundle",
         description="Create a sanitized, pseudonymized support bundle from a fresh diagnosis, preview one, or "
         "validate a received one. Nothing is ever uploaded.",
+        epilog="Exit codes: 0 done (the diagnosis inside the bundle may still be CRITICAL); 5 the bundle was not "
+        "created (leak self-test, output path or size limit) or is not valid; 2 usage error.",
     )
     p.add_argument("action", nargs="?", choices=["validate"], help="validate: check a bundle file (no extraction)")
     p.add_argument("bundle", nargs="?", metavar="BUNDLE", help="the bundle file to validate")
@@ -316,6 +318,10 @@ def _show_preview(args, console: Console, built, info: Dict[str, Any], size: int
     for m in members:
         console.print(f"    {m['name']:<24} {m['bytes'] / 1024:8.1f} KiB", markup=False, soft_wrap=True)
     console.print("  Never included: " + "; ".join(excluded), markup=False, soft_wrap=True)
+    # freeze security review: the list names what is never collected; free text that is included is only
+    # pattern-redacted, so say so where the list is shown
+    console.print("  Free text that is included (selected log lines, error messages) is pattern-redacted only; "
+                  "a secret in an unknown format could remain.", markup=False, soft_wrap=True)
     console.print(_REVIEW, markup=False, soft_wrap=True)
     console.print("Create it with: ipa-diagnose bundle" + (f" --replay {args.replay}" if args.replay else "")
                   + " [--output PATH]", markup=False, soft_wrap=True)

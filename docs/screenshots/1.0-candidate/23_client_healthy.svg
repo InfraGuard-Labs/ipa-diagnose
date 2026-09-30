@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1044" height="1045" viewBox="0 0 1044 1045" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" font-size="13.5">
+<rect width="1044" height="1045" rx="8" fill="#0d1117"/>
+<rect width="1044" height="34" rx="8" fill="#161b22"/>
+<circle cx="18" cy="17" r="5" fill="#ff5f56"/><circle cx="36" cy="17" r="5" fill="#ffbd2e"/><circle cx="54" cy="17" r="5" fill="#27c93f"/>
+<text x="76" y="22" fill="#8b949e">$ ipa-diagnose client --user alice --service sshd   (exit 0)</text>
+<rect x="18" y="44" width="1008" height="22" rx="4" fill="#12261e"/>
+<text x="26" y="60" fill="#3fb950" font-weight="bold">REAL LIVE CAPTURE - FreeIPA 4.13.4 / Fedora 43 lab - commit b58f3d6, run 36742908065</text>
+<text x="18" y="89" fill="#c9d1d9" xml:space="preserve">ipa-diagnose client: client1.lab.test (IPA domain lab.test, server ipa01.lab.test)</text>
+<text x="18" y="106" fill="#c9d1d9" xml:space="preserve">  LIVE; asked about user alice, service sshd; SSSD 2.12.0, IPA client 4.13.4</text>
+<text x="18" y="123" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="140" fill="#c9d1d9" xml:space="preserve">client1.lab.test: enrolled, and every client check that applies passed.</text>
+<text x="18" y="157" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="174" fill="#d29922" xml:space="preserve">  AUTHENTICATION  NOT VERIFIED nothing on this host&#x27;s authentication path was found broken; no credential was tested</text>
+<text x="18" y="191" fill="#d29922" xml:space="preserve">  AUTHORIZATION   NOT VERIFIED not evaluated by client mode: FreeIPA&#x27;s own decision comes from ipa-diagnose access USER </text>
+<text x="18" y="208" fill="#c9d1d9" xml:space="preserve">HOST SERVICE</text>
+<text x="18" y="225" fill="#d29922" xml:space="preserve">  RUNTIME ACCESS  NOT VERIFIED not tested: no login was attempted; checked on this host: the user resolves through SSSD;</text>
+<text x="18" y="242" fill="#c9d1d9" xml:space="preserve"> the system NSS stack resolves the user; the PAM service uses SSSD; SSSD&#x27;s account check (PAM account phase) accepts the</text>
+<text x="18" y="259" fill="#c9d1d9" xml:space="preserve"> user</text>
+<text x="18" y="276" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="293" fill="#c9d1d9" xml:space="preserve">ROOT CAUSE</text>
+<text x="18" y="310" fill="#c9d1d9" xml:space="preserve">  none found in what was checked</text>
+<text x="18" y="327" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="344" fill="#c9d1d9" xml:space="preserve">CHECKED FOR YOU</text>
+<text x="18" y="361" fill="#c9d1d9" xml:space="preserve">  ✓ IPA client configuration present: enrolled in lab.test (LAB.TEST) as client1.lab.test; server ipa01.lab.test</text>
+<text x="18" y="378" fill="#c9d1d9" xml:space="preserve">  ✓ SSSD and IPA client versions: SSSD 2.12.0, IPA client 4.13.4, fedora 43</text>
+<text x="18" y="395" fill="#c9d1d9" xml:space="preserve">  ✓ SSSD configured for the IPA domain: sssd.conf: IPA domain lab.test, servers _srv_, ipa01.lab.test, access_provider i</text>
+<text x="18" y="412" fill="#c9d1d9" xml:space="preserve">pa</text>
+<text x="18" y="429" fill="#c9d1d9" xml:space="preserve">  ✓ Resolvers configured: 1 resolver(s) in /etc/resolv.conf; search lab.test</text>
+<text x="18" y="446" fill="#c9d1d9" xml:space="preserve">  ✓ IPA server name resolves: ipa01.lab.test resolves to 172.30.0.10</text>
+<text x="18" y="463" fill="#c9d1d9" xml:space="preserve">  ✓ LDAP SRV records (_ldap._tcp): _ldap._tcp.lab.test: 1 record(s) (ipa01.lab.test)</text>
+<text x="18" y="480" fill="#c9d1d9" xml:space="preserve">  ✓ Kerberos SRV records (_kerberos._tcp): _kerberos._tcp.lab.test: 1 record(s) (ipa01.lab.test)</text>
+<text x="18" y="497" fill="#c9d1d9" xml:space="preserve">  ✓ IPA server answers on 443 (HTTPS): TCP ipa01.lab.test:443: open</text>
+<text x="18" y="514" fill="#c9d1d9" xml:space="preserve">  ✓ IPA server answers on 389 (LDAP): TCP ipa01.lab.test:389: open</text>
+<text x="18" y="531" fill="#c9d1d9" xml:space="preserve">  ✓ IPA server answers on 88 (Kerberos, TCP): TCP ipa01.lab.test:88: open</text>
+<text x="18" y="548" fill="#c9d1d9" xml:space="preserve">  ✓ IPA server certificate trusted: the IPA server&#x27;s certificate verifies with this host&#x27;s IPA CA (/etc/ipa/ca.crt)</text>
+<text x="18" y="565" fill="#c9d1d9" xml:space="preserve">  ✓ Clock agrees with the IPA server: this host&#x27;s clock is 0 s ahead of the IPA server&#x27;s (verified TLS)</text>
+<text x="18" y="582" fill="#c9d1d9" xml:space="preserve">  ✓ Host keytab present with this host&#x27;s key: /etc/krb5.keytab has keys for host/client1.lab.test@LAB.TEST (kvno 1)</text>
+<text x="18" y="599" fill="#c9d1d9" xml:space="preserve">  ✓ KDC accepts this host&#x27;s key: the KDC accepted this host&#x27;s key: the host principal exists and the keytab matches</text>
+<text x="18" y="616" fill="#c9d1d9" xml:space="preserve">  ✓ SSSD service running: sssd.service is running</text>
+<text x="18" y="633" fill="#c9d1d9" xml:space="preserve">  ✓ SSSD configuration valid (sssctl config-check): sssctl config-check found no issue</text>
+<text x="18" y="650" fill="#c9d1d9" xml:space="preserve">  ✓ SSSD online with the IPA server: SSSD domain lab.test is online; active IPA ipa01.lab.test</text>
+<text x="18" y="667" fill="#c9d1d9" xml:space="preserve">  ✓ User resolves through SSSD: SSSD (getent -s sss) resolves alice (UID 371000003)</text>
+<text x="18" y="684" fill="#c9d1d9" xml:space="preserve">  ✓ User resolves through the system NSS stack: the system&#x27;s NSS stack (getent) resolves alice (UID 371000003)</text>
+<text x="18" y="701" fill="#c9d1d9" xml:space="preserve">  ✓ PAM service reaches SSSD: PAM service sshd: pam_sss in account yes, in auth yes</text>
+<text x="18" y="718" fill="#c9d1d9" xml:space="preserve">  ✓ PAM account phase for the user (sssctl user-checks): PAM account check for alice via sshd on this host: Success</text>
+<text x="18" y="735" fill="#c9d1d9" xml:space="preserve">  (7 not needed check(s) not run; --details says why)</text>
+<text x="18" y="752" fill="#c9d1d9" xml:space="preserve">RULED OUT</text>
+<text x="18" y="769" fill="#c9d1d9" xml:space="preserve">  enrollment configuration is present; SSSD is configured for the IPA domain; the IPA server name resolves; LDAP SRV rec</text>
+<text x="18" y="786" fill="#c9d1d9" xml:space="preserve">ords exist; Kerberos SRV records exist; the server answers on HTTPS; the server answers on LDAP; the server answers on K</text>
+<text x="18" y="803" fill="#c9d1d9" xml:space="preserve">erberos (TCP); the server&#x27;s certificate is trusted; the clocks agree; the host keytab holds this host&#x27;s key; the KDC acc</text>
+<text x="18" y="820" fill="#c9d1d9" xml:space="preserve">epts this host&#x27;s key; SSSD is running; the SSSD configuration is valid; SSSD is online; SSSD resolves the user; the syst</text>
+<text x="18" y="837" fill="#c9d1d9" xml:space="preserve">em NSS stack resolves the user; the PAM service uses SSSD; SSSD&#x27;s account check accepts the user</text>
+<text x="18" y="854" fill="#c9d1d9" xml:space="preserve">RESOLUTION</text>
+<text x="18" y="871" fill="#c9d1d9" xml:space="preserve">  No fix is suggested: nothing to fix.</text>
+<text x="18" y="888" fill="#c9d1d9" xml:space="preserve">VERIFY</text>
+<text x="18" y="905" fill="#c9d1d9" xml:space="preserve">  Run ipa-diagnose client --user alice --service sshd again after any change: every check is re-run with fresh evidence.</text>
+<text x="18" y="922" fill="#c9d1d9" xml:space="preserve">LIMITATIONS</text>
+<text x="18" y="939" fill="#c9d1d9" xml:space="preserve">  No login is attempted and no credential is tested: RUNTIME ACCESS and AUTHENTICATION are never reported as PASS.</text>
+<text x="18" y="956" fill="#c9d1d9" xml:space="preserve">  planner: 21 of 28 checks run, 1 result(s) reused, 0.095 s; stop: every relevant check in the plan was visited</text>
+<text x="18" y="1035" fill="#6e7681" font-size="11">44 lines, complete; long lines folded at 120 columns, as a 120-column terminal shows them</text>
+</svg>

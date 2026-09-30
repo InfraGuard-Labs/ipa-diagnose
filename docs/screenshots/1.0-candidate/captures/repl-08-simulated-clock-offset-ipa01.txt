@@ -1,0 +1,38 @@
+ipa-diagnose replication: ipa01.lab.test (realm LAB.TEST)
+  LIVE; FreeIPA 4.13.4, 389-ds 3.1.5
+
+ipa01.lab.test: The clocks of ipa01.lab.test and ipa02.lab.test are 900 s apart.
+
+REPLICATION (per suffix and direction; observed from ipa01.lab.test)
+  ca      ipa01.lab.test -> ipa02.lab.test  OK  [LDAP/SASL/GSSAPI, port 389] last session ended 2026-09-30T16:47:14Z
+  ca      ipa02.lab.test -> ipa01.lab.test  OK  (read from ipa02.lab.test; its last session ended 2026-09-30T16:47:14Z)
+  domain  ipa01.lab.test -> ipa02.lab.test  OK  [LDAP/SASL/GSSAPI, port 389] last session ended 2026-09-30T16:47:39Z
+  domain  ipa02.lab.test -> ipa01.lab.test  OK  (read from ipa02.lab.test; its last session ended 2026-09-30T16:47:37Z)
+
+ROOT CAUSE
+  [PRIMARY] The clocks of ipa01.lab.test and ipa02.lab.test are 900 s apart - confidence HIGH
+      ipa01.lab.test's clock is 900 s ahead of ipa02.lab.test's, measured from ipa02.lab.test's HTTPS Date header; Kerberos refuses more than 300 s. Which clock is wrong is not established from here: ipa02.lab.test's time service can only be checked on ipa02.lab.test.
+      Impact: Kerberos (GSSAPI) replication between them fails whenever a new ticket is needed; logins that cross them fail too.
+      Chain: ipa01.lab.test's clock differs from ipa02.lab.test's by 900 s
+      Stops here: which clock is wrong is not established from here
+
+HANDOFF (the remaining evidence is on another server; nothing was changed)
+  On ipa02.lab.test run:
+    sudo ipa-diagnose replication --peer ipa01.lab.test
+  Why: The clocks of ipa01.lab.test and ipa02.lab.test are 900 s apart. ipa02.lab.test's time service can only be checked on ipa02.lab.test. Nothing was changed on ipa01.lab.test or ipa02.lab.test; ipa-diagnose never changes another server.
+
+RESOLUTION (only for causes on this server)
+  For 'The clocks of ipa01.lab.test and ipa02.lab.test are 900 s apart': no fix is printed. No clock change is printed: which clock is wrong is not established from one server, and stepping an IPA server's clock (in particular backwards) can break Kerberos tickets and replication in other ways. Check the time service on both servers (chronyc tracking, chronyc sources, timedatectl; read-only) and correct the one that is wrong.
+NEXT READ-ONLY STEPS
+  chronyc tracking; chronyc sources (read-only, here)
+  on ipa02.lab.test: chronyc tracking; timedatectl (read-only)
+TOPOLOGY (context)
+  servers: ipa01.lab.test, ipa02.lab.test, ipa03.lab.test
+  ca: 1 segment(s)
+  domain: 2 segment(s); articulation point(s): ipa02.lab.test
+  only one server holds: DNS (ipa01.lab.test)
+  CA renewal master: ipa01.lab.test
+LIMITATIONS
+  Replication is directional and per suffix: this server sees its OWN outbound agreements. The reverse direction is only reported when it could be read from the peer (read-only, with your own Kerberos ticket); otherwise it is NOT VERIFIED and a handoff to the peer is printed.
+  Nothing is changed on this server or any other; no command runs on another server; fixes are printed only for causes on this server, and only when every safety gate passes.
+  planner: 18 of 23 checks run, 2.621 s; stop: every relevant check in the plan was visited

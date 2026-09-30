@@ -587,6 +587,10 @@ def _peer_rootdse(params):
     cmd = f"ldapsearch -x -H {uri}{' -ZZ' if extra else ''} -s base -b '' currentTime   (anonymous root DSE read)"
     if rc is None and "not installed" in err:
         return _res("repl.peer_rootdse", params, NOT_RUN, {}, err, cmd)
+    if rc is None and not err.startswith("timed out"):
+        # ldapsearch could not even be started here (OSError: fork, permission, memory...): a failure of THIS host's
+        # collector, never evidence about the peer (freeze review: it became a HIGH peer-DS diagnosis)
+        return _res("repl.peer_rootdse", params, NOT_RUN, {}, f"ldapsearch could not be run on this host ({err})", cmd)
     fields: Dict[str, Any] = {"answered": False, "ok": False, "error_class": None, "exit": rc,
                               "seconds": round(time.monotonic() - t0, 3), "offset_seconds": None,
                               "peer_time": None, "naming_contexts": [], "sasl_gssapi": None, "vendor": None}

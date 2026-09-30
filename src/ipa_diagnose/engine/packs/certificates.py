@@ -629,14 +629,19 @@ class RaAgentDesyncRule(DiagnosticRule):
                     Action(
                         description="Inspect the RA agent certmonger tracking entry together with recent CA/certmonger journal errors.",
                         risk=RiskLevel.SAFE,
-                        command="getcert list -c ipaCert; journalctl -u pki-tomcatd -u certmonger --since -30min",
+                        command=("getcert list -f /var/lib/ipa/ra-agent.pem; "
+                                 "journalctl -u pki-tomcatd@pki-tomcat -u certmonger --since -30min"),
                         rationale="Read-only - narrows down whether this is a certificate mismatch vs. a transient connectivity blip.",
                     ),
                     Action(
-                        description="Follow the documented RA agent certificate recovery procedure.",
-                        risk=RiskLevel.CAUTION,
-                        command="ipa-certupdate",
-                        rationale="Reversible, standard recovery step documented at freeipa.org/page/Troubleshooting/PKI; run only after confirming the mismatch.",
+                        description=("Follow the documented RA agent certificate recovery procedure: the "
+                                     "uid=ipara,ou=people,o=ipaca entry (usercertificate, description) must match "
+                                     "/var/lib/ipa/ra-agent.pem. ipa-diagnose has no reviewed command for it."),
+                        risk=RiskLevel.HIGH_RISK,
+                        command=None,
+                        rationale=("A write to the CA's own database that ipa-diagnose cannot undo; confirm the "
+                                   "mismatch first (freeze review: ipa-certupdate, previously suggested here, "
+                                   "refreshes CA certificates and does not fix this)."),
                         reference="https://www.freeipa.org/page/Troubleshooting/PKI",
                     ),
                 ],
@@ -673,9 +678,9 @@ class RaAgentDesyncRule(DiagnosticRule):
             severity=Severity.WARNING,
             evidence_for=evidence_for,
             next_diagnostic_step=(
-                "Compare the RA agent certificate serial (`getcert list -c ipaCert`) against the "
+                "Compare the RA agent certificate serial (`getcert list -f /var/lib/ipa/ra-agent.pem`) against the "
                 "uid=ipara,ou=People,o=ipaca LDAP entry with a read-only ldapsearch, and re-check "
-                "`journalctl -u pki-tomcatd -u certmonger` for a repeat of the connectivity/auth error before "
+                "`journalctl -u pki-tomcatd@pki-tomcat -u certmonger` for a repeat of the connectivity/auth error before "
                 "concluding this is a real desync rather than a transient blip."
             ),
             limitations=(

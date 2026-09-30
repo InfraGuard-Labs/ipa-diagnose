@@ -218,6 +218,16 @@ def _render_primary_block(
         safe_style, safe_label = _RISK_STYLE[RiskLevel.SAFE]
         console.print(f"Safety: [{safe_style}]{safe_label}[/{safe_style}]")
         console.print()
+    elif d.actions and any(a.risk != RiskLevel.SAFE for a in d.actions):
+        # No reviewed procedure covers this diagnosis: its state-changing pack actions (v0.1.3 guidance, for example
+        # a keytab rotation, ipa-cert-fix or a RUV clean-up) are NOT printed - they were never gated for this host
+        # (freeze SME review). Only read-only steps are shown; the full list stays in the v1 JSON 'actions'.
+        _render_safe_legacy_actions(d, console, details=details)
+        hidden = sum(1 for a in d.actions if a.risk != RiskLevel.SAFE)
+        console.print(f"[dim]{hidden} state-changing step(s) from the diagnostic pack are not shown: no reviewed "
+                      "procedure establishes that they apply here and are safe. Decide on recovery with the "
+                      "documentation for this problem.[/dim]")
+        console.print()
     elif d.actions:
         first = d.actions[0]
         console.print(Text("DO THIS FIRST", style="bold underline"))
@@ -230,7 +240,7 @@ def _render_primary_block(
             console.print(f"\n[dim]{len(d.actions) - 1} additional step(s) - see --details.[/dim]")
         console.print()
 
-    if details and len(d.actions) > 1:
+    if details and len(d.actions) > 1 and all(a.risk == RiskLevel.SAFE for a in d.actions):
         console.print(Text("ADDITIONAL ACTIONS", style="bold underline"))
         for a in d.actions[1:]:
             style, label = _RISK_STYLE[a.risk]
@@ -311,6 +321,9 @@ def _render_resolution(d: Diagnosis, r, console: Console, *, details: bool) -> N
                   "run by you (ipa-diagnose never runs a fix itself).")
     if not r.definitive:
         console.print(f"[yellow]{escape(r.verification_label)}[/yellow]")
+    if r.replay:
+        console.print("[bold yellow]Recorded evidence (--replay): these commands describe the recorded system, not "
+                      "this host. Do not run them here.[/bold yellow]")
     if r.confirm_first:
         console.print("  [bold]First confirm[/bold] (read-only) that nothing changed since the checks above; "
                       "if the output differs, do not run the fix - run ipa-diagnose again:")
@@ -319,8 +332,9 @@ def _render_resolution(d: Diagnosis, r, console: Console, *, details: bool) -> N
     for i, st in enumerate(r.steps, 1):
         console.print(f"  {i}. {escape(st.text)}")
         console.print(f"       [bold cyan]{escape(st.command)}[/bold cyan]")
-        if details:
-            console.print(f"       [dim]expected: {escape(st.expected)} | risk {st.risk}[/dim]")
+        # the expected result (and, where the procedure states it, what a failure looks like) is part of the fix,
+        # not a detail: without it a printed procedure is not complete enough to follow (freeze No-Google audit)
+        console.print(f"       [dim]expected: {escape(st.expected)}{f' | risk {st.risk}' if details else ''}[/dim]")
     for reason in r.reasons:  # e.g. a reported file that was skipped
         console.print(f"  [dim]note: {escape(reason)}[/dim]")
     console.print()

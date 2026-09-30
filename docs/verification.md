@@ -9,7 +9,7 @@ That distinction is not theoretical: Red Hat Bugzilla 1441262 documents
 `ipa group-del` returning "Insufficient access" while *still deleting the
 group* - an error message (or, symmetrically, a clean exit code) is not
 reliable proof of what actually happened. Several remediation paths this
-tool recommends (a cert renewal, an NSS DB fix, a service restart) also
+tool recommends (a certificate renewal, a service start) also
 require a follow-up step - like a service restart to resync in-memory
 state - that's easy to skip and would otherwise look like "the fix didn't
 work" or, worse, silently look fine.
@@ -31,15 +31,24 @@ work" or, worse, silently look fine.
 | `RESOLVED` | The condition that triggered this diagnosis is no longer present in fresh evidence. |
 | `STILL_PRESENT` | Fresh evidence still shows the same condition. |
 | `PARTIALLY_RESOLVED` | Still detected, but no longer a primary problem, or no longer confidently diagnosed - related symptoms may remain. |
-| `UNABLE_TO_VERIFY` | Fresh evidence for the relevant pack couldn't be collected this run (e.g. a collector failed) - reported honestly rather than guessed. |
+| `UNABLE_TO_VERIFY` | Fresh evidence for the relevant pack couldn't be collected this run (e.g. a collector failed), or the saved result cannot be trusted - reported honestly rather than guessed. |
+| `CHANGED` | The fix shown last time now points at something else (another file, another instance), or its saved record was altered - never `RESOLVED` (exit 4). |
 
 A genuinely new condition that wasn't present in the previous run is
-reported separately, not folded into the old diagnosis's outcome.
+reported separately, not folded into the old diagnosis's outcome. For a
+diagnosis a fix was shown for, `RESOLVED` also needs the fix's own read-only
+checks to pass with fresh evidence ([resolution.md](resolution.md#verify)).
 
-See `09_verify_resolved.png` and `10_verify_still_present.png` for captured
-examples - note that `STILL_PRESENT` here comes from a second, independent
-evidence-collection pass against the *same* fixture, not a cached copy of
-the first report.
+Real captures from the live lab, `verify` after the printed fix (RESOLVED) and
+`verify` with the problem left in place (STILL_PRESENT), are in
+[screenshots/1.0-candidate/](screenshots/1.0-candidate/index.md).
+
+## Client `--verify`
+
+`ipa-diagnose client --verify` re-runs every client check now (same user and service as last time unless given) and
+reports, per earlier diagnosis, RESOLVED (its symptom check passes again and any fix criteria pass), STILL_PRESENT,
+PARTIALLY_RESOLVED, CHANGED or UNABLE_TO_VERIFY; a check that cannot run is never counted as resolved, and an edited
+state file or other inputs give UNABLE_TO_VERIFY. Details: [client-mode.md](client-mode.md#verify-l6).
 
 ## Replication `--verify`
 

@@ -565,7 +565,25 @@ class ReplayRunner(Runner):
         if "not_after_in_days" in fields and isinstance(fields["not_after_in_days"], int):
             fields["days_left"] = fields.pop("not_after_in_days")
         status = entry.get("status") if entry.get("status") in (OK, FAILED, NOT_RUN, DENIED) else FAILED
+        if spec.check_id == "systemd.unit" and status == OK and not _recorded_unit_matches(params, fields.get("unit")):
+            # a recorded value may never choose a command target: the unit must be the one this service maps to
+            # (freeze resolution-safety review: a tampered fixture turned 'dirsrv not running' into
+            # 'systemctl start emergency.service')
+            return _res(spec.check_id, params, NOT_RUN, {}, "the recorded unit does not belong to this service")
         return _res(spec.check_id, params, status, fields, str(entry.get("display", "")), str(entry.get("command", "")))
+
+
+def _recorded_unit_matches(params: Dict[str, str], unit: Any) -> bool:
+    import re as _re
+
+    entry = T.IPA_SERVICES.get(params.get("service", ""))
+    if entry is None or not isinstance(unit, str) or T.validate("systemd_unit", unit) is None:
+        return False
+    template = entry[0]
+    if "{instance}" not in template:
+        return unit == template
+    pre, post = template.split("{instance}", 1)
+    return bool(_re.fullmatch(_re.escape(pre) + r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}" + _re.escape(post), unit))
 
 
 # Client-mode checks (Slice 4) belong to the same closed registry.

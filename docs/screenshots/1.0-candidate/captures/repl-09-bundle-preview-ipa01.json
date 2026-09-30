@@ -1,0 +1,15 @@
+{
+ "captured_at": "2026-09-30T16:47:54Z",
+ "columns": 120,
+ "command": "ipa-diagnose bundle --replication --preview",
+ "commit": "b58f3d62c5992c352f2385139e08d50767a73473",
+ "container": "ipa01",
+ "env": [
+  "KRB5CCNAME=FILE:/root/admin.ccache"
+ ],
+ "exit": 0,
+ "name": "repl-09-bundle-preview-ipa01",
+ "run_id": "36742907976",
+ "scenario": "R11 bundle --replication --preview (writes nothing)",
+ "user": "root"
+}

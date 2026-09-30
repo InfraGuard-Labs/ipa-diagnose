@@ -47,23 +47,28 @@ a high-risk procedure that ipa-diagnose has not verified, so it points to the do
 | Kerberos reports skew but this host's clock is fine | none - the wrong clock may be elsewhere | - | - |
 | **Client** (`ipa-diagnose client`): SSSD is not running | `systemctl start sssd.service`, rollback `systemctl stop` | MEDIUM | the host runs systemd; `sssctl config-check` reports no issue; the unit is loaded, not masked, not disabled, still stopped; the stop is not a symptom of another cause (an invalid configuration, cache-database errors at start) |
 | **Client**: one user's SSSD cache entry is inconsistent | `sss_cache -u USER` (expire; nothing deleted) | LOW | IPA has the user (asked with the host's identity), SSSD runs and is online, SSSD holds an entry for the user, yet a lookup through SSSD fails |
-| **Client**: SSSD's cache database is failing | `sssctl cache-remove --stop --start` (backs up local overrides; removes cached passwords) | HIGH | all of the above plus SSSD's own log reporting cache-database errors and the cache entry unreadable; you accept the loss of offline logins first. Never `rm /var/lib/sss/db/*` |
+| **Client**: SSSD's cache database is failing | `sssctl cache-remove --stop --restore --start` (backs up local overrides; removes cached passwords) | HIGH | all of the above plus SSSD's own log reporting cache-database errors and the cache entry unreadable; you accept the loss of offline logins first. Never `rm /var/lib/sss/db/*` |
 | **Client**: clock skew, stale/missing/wrong host keytab, host principal unknown, not enrolled | none - reasons shown (no clock step on clients, no keytab replacement, no re-enrollment) | - | - |
-
 | **Replication** (`ipa-diagnose replication`): this server's own Directory Server or KDC is stopped | `systemctl start dirsrv@<INSTANCE>.service` / `systemctl start krb5kdc.service` (the same procedure as a stopped IPA service), rollback `systemctl stop` | MEDIUM | in addition to that procedure's gates, the replication Resolution Safety gate: the cause is on THIS server and is the deepest proven link of its chain, PRIMARY or INDEPENDENT, HIGH confidence, no contradiction, LIVE evidence younger than 300 s, the unit re-checked stopped just now; a KDC stopped because the Directory Server is stopped gets no fix of its own ([replication-mode.md](replication-mode.md)) |
 | **Replication**: peer-side causes, keytab/principal problems, clock skew, replica data needing re-initialization, RUV candidates, missing replication manager | none - a handoff or the reason is shown; re-initialization, force-sync, RUV clean-up, topology changes, keytab replacement and clock steps are never printed | - | - |
 
 ### Verification status
 
 - **Required service not running**: `BUILT_IN_VERIFIED`, promoted by the maintainer after the Slice 1 truth
-  validation. It rests on the live record below plus independent review, and its "verified" label is definitive
-  **only on the live-verified FreeIPA 4.13.3 / Fedora 43**. On any other FreeIPA version or OS it is still offered
+  validation. It rests on the live records below plus independent review, and its "verified" label is definitive
+  **only on the live-verified FreeIPA 4.13.3 / Fedora 43 and (since the freeze campaign re-ran the lab on the image's
+  newer package) FreeIPA 4.13.4 / Fedora 43**. On any other FreeIPA version or OS it is still offered
   within its normal gates (FreeIPA 4.9 up to 5.0, IPA server, all read-only checks passing), labelled "not yet on
   this FreeIPA version/OS". The tier never changes when a fix is shown.
 - **IPA file permission mismatch**: `LIVE_VERIFIED` (deliberately not promoted yet).
-- For both: in the free GitHub-hosted live lab (FreeIPA 4.13.3 on Fedora 43, a disposable container) the printed
-  commands were run verbatim and `ipa-diagnose verify` reported RESOLVED with the fix's own checks. Live lab details,
-  and exactly which cases were applied, are in [docs/truth/truth-matrix.md](truth/truth-matrix.md).
+- For both: in the free GitHub-hosted live lab (a disposable Fedora 43 container; FreeIPA 4.13.3 in Slice 1, 4.13.4
+  in the freeze runs) the printed commands were run verbatim and `ipa-diagnose verify` reported RESOLVED with the
+  fix's own checks. Live lab details, and exactly which cases were applied, are in
+  [docs/truth/truth-matrix.md](truth/truth-matrix.md) and [docs/truth/freeze-audit.md](truth/freeze-audit.md).
+- **Client: SSSD not running** (`proc.client.start-sssd`): `LIVE_VERIFIED` on freeipa-client 4.13.4 / Fedora 43
+  (client lab C02 and C10). The cache procedures are `FIXTURE_ONLY`.
+- Every printed step shows its **expected result** (and, where the procedure states it, what a failure looks like) in
+  the default view, not only with `--details`.
 - **Clock skew** and **expiring DS certificate**: `FIXTURE_ONLY` - tested against recorded evidence. A
   container shares the runner's wall clock (Linux time namespaces cannot offset it), so stepping a lab clock
   would step the CI host; a near-expiry DS certificate needs a short-lived certificate profile. Neither has a
@@ -181,7 +186,7 @@ shell-quoted. `checked[].source` is `live` (run on this host now) or `recorded` 
 Procedures are data (`knowledge/procedures/*.yaml`), compiled and validated into
 `src/ipa_diagnose/resolution/procedures.json` by `scripts/compile_knowledge.py`. The loader rejects unknown
 fields, expressions in place of structured conditions, shell metacharacters or untyped values in commands, fix
-and rollback programs outside a fixed allowlist (systemctl, chmod, chown, chgrp, chronyc, getcert), CONFIRM
+and rollback programs outside a fixed allowlist (systemctl, chmod, chown, chgrp, chronyc, getcert, sss_cache, and sssctl for `cache-remove` only), CONFIRM
 FIRST programs other than `stat`/`readlink -f`, and steps labelled with less risk than what they change. A
 procedure can only claim `BUILT_IN_VERIFIED` with an authoritative source, a version constraint, regression
 tests, an independent review record and - for any step that changes state - a live-lab verification record. An

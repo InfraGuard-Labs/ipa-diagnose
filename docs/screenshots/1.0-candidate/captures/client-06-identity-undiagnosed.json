@@ -1,0 +1,13 @@
+{
+ "captured_at": "2026-09-30T16:21:35Z",
+ "columns": 120,
+ "command": "ipa-diagnose client --user ghost --service sshd",
+ "commit": "b58f3d62c5992c352f2385139e08d50767a73473",
+ "container": "ipa-c",
+ "env": [],
+ "exit": 1,
+ "name": "client-06-identity-undiagnosed",
+ "run_id": "36742908065",
+ "scenario": "C07 IPA has the user, SSSD filters it (not a cause the tool knows)",
+ "user": "root"
+}

@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1044" height="1623" viewBox="0 0 1044 1623" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" font-size="13.5">
+<rect width="1044" height="1623" rx="8" fill="#0d1117"/>
+<rect width="1044" height="34" rx="8" fill="#161b22"/>
+<circle cx="18" cy="17" r="5" fill="#ff5f56"/><circle cx="36" cy="17" r="5" fill="#ffbd2e"/><circle cx="54" cy="17" r="5" fill="#27c93f"/>
+<text x="76" y="22" fill="#8b949e">$ ipa-diagnose replication   (exit 1)</text>
+<rect x="18" y="44" width="1008" height="22" rx="4" fill="#12261e"/>
+<text x="26" y="60" fill="#3fb950" font-weight="bold">REAL LIVE CAPTURE - FreeIPA 4.13.4 / Fedora 43 lab - commit b58f3d6, run 36742907976</text>
+<text x="18" y="89" fill="#c9d1d9" xml:space="preserve">ipa-diagnose replication: ipa02.lab.test (realm LAB.TEST)</text>
+<text x="18" y="106" fill="#c9d1d9" xml:space="preserve">  LIVE; FreeIPA 4.13.4, 389-ds 3.1.5</text>
+<text x="18" y="123" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="140" fill="#ff7b72" xml:space="preserve">ipa02.lab.test: 2 independent problems: This server&#x27;s KDC (krb5kdc) is not running; ipa03.lab.test&#x27;s Directory Server do</text>
+<text x="18" y="157" fill="#c9d1d9" xml:space="preserve">es not accept connections.</text>
+<text x="18" y="174" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="191" fill="#c9d1d9" xml:space="preserve">REPLICATION (per suffix and direction; observed from ipa02.lab.test)</text>
+<text x="18" y="208" fill="#c9d1d9" xml:space="preserve">  ca      ipa02.lab.test -&gt; ipa01.lab.test  OK  [LDAP/SASL/GSSAPI, port 389] last session ended 2026-09-30T16:46:48Z</text>
+<text x="18" y="225" fill="#c9d1d9" xml:space="preserve">  ca      ipa01.lab.test -&gt; ipa02.lab.test  OK  (read from ipa01.lab.test; its last session ended 2026-09-30T16:45:57Z)</text>
+<text x="18" y="242" fill="#c9d1d9" xml:space="preserve">  domain  ipa02.lab.test -&gt; ipa01.lab.test  OK  [LDAP/SASL/GSSAPI, port 389] last session ended 2026-09-30T16:46:56Z</text>
+<text x="18" y="259" fill="#c9d1d9" xml:space="preserve">  domain  ipa01.lab.test -&gt; ipa02.lab.test  OK  (read from ipa01.lab.test; its last session ended 2026-09-30T16:46:56Z)</text>
+<text x="18" y="276" fill="#c9d1d9" xml:space="preserve">  domain  ipa02.lab.test -&gt; ipa03.lab.test  FAILING (TRANSPORT)  [LDAP/SASL/GSSAPI, port 389] last session ended 2026-09</text>
+<text x="18" y="293" fill="#c9d1d9" xml:space="preserve">-30T16:46:48Z</text>
+<text x="18" y="310" fill="#c9d1d9" xml:space="preserve">  domain  ipa03.lab.test -&gt; ipa02.lab.test  NOT OBSERVED  (not readable from here; see HANDOFF)</text>
+<text x="18" y="327" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="344" fill="#c9d1d9" xml:space="preserve">ROOT CAUSE</text>
+<text x="18" y="361" fill="#ff7b72" xml:space="preserve">  [PRIMARY] This server&#x27;s KDC (krb5kdc) is not running - confidence HIGH</text>
+<text x="18" y="378" fill="#c9d1d9" xml:space="preserve">      krb5kdc.service is inactive.</text>
+<text x="18" y="395" fill="#c9d1d9" xml:space="preserve">      Impact: No Kerberos ticket is issued by this server. Its GSSAPI replication agreements fail once the Directory Ser</text>
+<text x="18" y="412" fill="#c9d1d9" xml:space="preserve">ver&#x27;s current tickets expire (if this server&#x27;s Kerberos configuration names only itself); clients and other servers that</text>
+<text x="18" y="429" fill="#c9d1d9" xml:space="preserve"> use this KDC fail over to others or fail.</text>
+<text x="18" y="446" fill="#ff7b72" xml:space="preserve">      Chain: this server&#x27;s KDC (krb5kdc) is not running</text>
+<text x="18" y="463" fill="#c9d1d9" xml:space="preserve">  [INDEPENDENT] ipa03.lab.test&#x27;s Directory Server does not accept connections - confidence HIGH</text>
+<text x="18" y="480" fill="#c9d1d9" xml:space="preserve">      From ipa02.lab.test: TCP 389 on ipa03.lab.test is refused while 443 answers (TCP ipa03.lab.test:389: refused; TCP </text>
+<text x="18" y="497" fill="#c9d1d9" xml:space="preserve">ipa03.lab.test:443: open); an anonymous LDAP read gets no answer.</text>
+<text x="18" y="514" fill="#c9d1d9" xml:space="preserve">      Impact: No replication to ipa03.lab.test (from any supplier that sees the same); LDAP clients of ipa03.lab.test fa</text>
+<text x="18" y="531" fill="#c9d1d9" xml:space="preserve">il over or fail.</text>
+<text x="18" y="548" fill="#c9d1d9" xml:space="preserve">      Chain: ipa02.lab.test -&gt; ipa03.lab.test (domain suffix) fails: the supplier could not connect to the consumer&#x27;s Di</text>
+<text x="18" y="565" fill="#c9d1d9" xml:space="preserve">rectory Server  -&gt;  ipa03.lab.test is up (443 answers) but refuses connections on port 389: its Directory Server is not </text>
+<text x="18" y="582" fill="#c9d1d9" xml:space="preserve">accepting connections</text>
+<text x="18" y="599" fill="#c9d1d9" xml:space="preserve">      Stops here: whether the Directory Server on ipa03.lab.test is stopped, has failed or listens elsewhere can only be</text>
+<text x="18" y="616" fill="#c9d1d9" xml:space="preserve"> seen on ipa03.lab.test</text>
+<text x="18" y="633" fill="#c9d1d9" xml:space="preserve">  [RELATED] domain replication ipa02.lab.test -&gt; ipa03.lab.test fails (caused by: ipa03.lab.test&#x27;s Directory Server does</text>
+<text x="18" y="650" fill="#c9d1d9" xml:space="preserve"> not accept connections) - confidence HIGH</text>
+<text x="18" y="667" fill="#c9d1d9" xml:space="preserve">      the supplier could not connect to the consumer&#x27;s Directory Server. Last session status: Error (-1) Problem connect</text>
+<text x="18" y="684" fill="#c9d1d9" xml:space="preserve">ing to replica - LDAP error: Can&#x27;t contact LDAP server (connection error) (ended 2026-09-30T16:46:48Z).</text>
+<text x="18" y="701" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="718" fill="#c9d1d9" xml:space="preserve">HANDOFF (the remaining evidence is on another server; nothing was changed)</text>
+<text x="18" y="735" fill="#c9d1d9" xml:space="preserve">  On ipa03.lab.test run:</text>
+<text x="18" y="752" fill="#c9d1d9" xml:space="preserve">    sudo ipa-diagnose replication --peer ipa02.lab.test</text>
+<text x="18" y="769" fill="#c9d1d9" xml:space="preserve">  Why: ipa03.lab.test&#x27;s Directory Server does not accept connections. The remaining evidence is local to ipa03.lab.test.</text>
+<text x="18" y="786" fill="#c9d1d9" xml:space="preserve"> Nothing was changed on ipa02.lab.test or ipa03.lab.test; ipa-diagnose never changes another server.</text>
+<text x="18" y="803" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="820" fill="#c9d1d9" xml:space="preserve">RESOLUTION (only for causes on this server)</text>
+<text x="18" y="837" fill="#ff7b72" xml:space="preserve">  For &#x27;This server&#x27;s KDC (krb5kdc) is not running&#x27;: Start the stopped service (risk MEDIUM; ipa-diagnose never runs it)</text>
+<text x="18" y="854" fill="#c9d1d9" xml:space="preserve">    NO-GOOGLE: every step, its host, its expected result, what to do if it fails, backup, rollback and verification are </text>
+<text x="18" y="871" fill="#c9d1d9" xml:space="preserve">below, and this procedure was verified live on this FreeIPA version and OS.</text>
+<text x="18" y="888" fill="#c9d1d9" xml:space="preserve">    ✓ ipa-diagnose is running as root (starting a system service needs root)</text>
+<text x="18" y="905" fill="#c9d1d9" xml:space="preserve">    1. On ipa02.lab.test: Start only krb5kdc.service; no other service is started or stopped</text>
+<text x="18" y="922" fill="#c9d1d9" xml:space="preserve">         systemctl start krb5kdc.service</text>
+<text x="18" y="939" fill="#c9d1d9" xml:space="preserve">       Expected: the command returns without an error and krb5kdc.service is active. If it fails, it stays stopped and s</text>
+<text x="18" y="956" fill="#c9d1d9" xml:space="preserve">ystemctl status shows why</text>
+<text x="18" y="973" fill="#c9d1d9" xml:space="preserve">    If a step fails: If &#x27;systemctl start&#x27; fails, the unit stays stopped and nothing else changed: read &#x27;systemctl status</text>
+<text x="18" y="990" fill="#c9d1d9" xml:space="preserve"> krb5kdc.service&#x27; and &#x27;journalctl -u krb5kdc.service -n 50&#x27; (read-only) for the reason, fix that cause, and run ipa-diag</text>
+<text x="18" y="1007" fill="#c9d1d9" xml:space="preserve">nose replication again. Do not use &#x27;ipactl start&#x27; instead: it stops every IPA service when one of them fails to start.</text>
+<text x="18" y="1024" fill="#c9d1d9" xml:space="preserve">    What changes: krb5kdc.service goes from inactive to running. No configuration, data or other service is changed.</text>
+<text x="18" y="1041" fill="#c9d1d9" xml:space="preserve">    Backup: no backup is needed: the procedure starts a service; no file, configuration or directory data is changed</text>
+<text x="18" y="1058" fill="#c9d1d9" xml:space="preserve">    Rollback: Stop it again (back to the state it was in)  -&gt;  systemctl stop krb5kdc.service</text>
+<text x="18" y="1075" fill="#c9d1d9" xml:space="preserve">    Note: This starts the one stopped service; it does not establish why it stopped. If it stopped because of a failure </text>
+<text x="18" y="1092" fill="#c9d1d9" xml:space="preserve">(see the last result and log line above), the same cause can stop it again. ipactl start is deliberately not used: if an</text>
+<text x="18" y="1109" fill="#c9d1d9" xml:space="preserve">y IPA service fails to start, ipactl stops all IPA services.</text>
+<text x="18" y="1126" fill="#c9d1d9" xml:space="preserve">    Verify (tied to this incident):</text>
+<text x="18" y="1143" fill="#c9d1d9" xml:space="preserve">      - krb5kdc.service is active</text>
+<text x="18" y="1160" fill="#ff7b72" xml:space="preserve">      - This server&#x27;s KDC (krb5kdc) is not running: no longer found by a fresh ipa-diagnose replication run</text>
+<text x="18" y="1177" fill="#c9d1d9" xml:space="preserve">      run: sudo ipa-diagnose replication --verify</text>
+<text x="18" y="1194" fill="#c9d1d9" xml:space="preserve">NEXT READ-ONLY STEPS</text>
+<text x="18" y="1211" fill="#c9d1d9" xml:space="preserve">  systemctl status krb5kdc (read-only)</text>
+<text x="18" y="1228" fill="#c9d1d9" xml:space="preserve">  journalctl -u krb5kdc -n 50 (read-only)</text>
+<text x="18" y="1245" fill="#c9d1d9" xml:space="preserve">  on ipa03.lab.test: systemctl status dirsrv@LAB-TEST; ipactl status (read-only)</text>
+<text x="18" y="1262" fill="#d29922" xml:space="preserve">NOT VERIFIED</text>
+<text x="18" y="1279" fill="#c9d1d9" xml:space="preserve">  - reverse direction [domain:ipa03.lab.test]: not observed from this server (blocked: needs &#x27;Peer Directory Server answ</text>
+<text x="18" y="1296" fill="#c9d1d9" xml:space="preserve">ers (root DSE)&#x27; to pass first (it was FAIL)); to read it from here, run &#x27;kinit admin&#x27; in the same (root) session and run</text>
+<text x="18" y="1313" fill="#c9d1d9" xml:space="preserve"> again (sudo does not pass your own ticket on), or run ipa-diagnose replication on the peer</text>
+<text x="18" y="1330" fill="#c9d1d9" xml:space="preserve">TOPOLOGY (context)</text>
+<text x="18" y="1347" fill="#c9d1d9" xml:space="preserve">  servers: ipa01.lab.test, ipa02.lab.test, ipa03.lab.test</text>
+<text x="18" y="1364" fill="#c9d1d9" xml:space="preserve">  ca: 1 segment(s)</text>
+<text x="18" y="1381" fill="#c9d1d9" xml:space="preserve">  domain: 2 segment(s); articulation point(s): ipa02.lab.test</text>
+<text x="18" y="1398" fill="#c9d1d9" xml:space="preserve">  only one server holds: DNS (ipa01.lab.test)</text>
+<text x="18" y="1415" fill="#c9d1d9" xml:space="preserve">  CA renewal master: ipa01.lab.test</text>
+<text x="18" y="1432" fill="#c9d1d9" xml:space="preserve">LIMITATIONS</text>
+<text x="18" y="1449" fill="#c9d1d9" xml:space="preserve">  Replication is directional and per suffix: this server sees its OWN outbound agreements. The reverse direction is only</text>
+<text x="18" y="1466" fill="#d29922" xml:space="preserve"> reported when it could be read from the peer (read-only, with your own Kerberos ticket); otherwise it is NOT VERIFIED a</text>
+<text x="18" y="1483" fill="#c9d1d9" xml:space="preserve">nd a handoff to the peer is printed.</text>
+<text x="18" y="1500" fill="#c9d1d9" xml:space="preserve">  Nothing is changed on this server or any other; no command runs on another server; fixes are printed only for causes o</text>
+<text x="18" y="1517" fill="#c9d1d9" xml:space="preserve">n this server, and only when every safety gate passes.</text>
+<text x="18" y="1534" fill="#c9d1d9" xml:space="preserve">  planner: 25 of 30 checks run, 3.651 s; stop: every relevant check in the plan was visited</text>
+<text x="18" y="1613" fill="#6e7681" font-size="11">63 lines, complete; long lines folded at 120 columns, as a 120-column terminal shows them</text>
+</svg>

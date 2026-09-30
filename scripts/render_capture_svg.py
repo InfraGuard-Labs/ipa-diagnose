@@ -21,11 +21,17 @@ _ANSI = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]")
 _TS = re.compile(r"^\d{4}-\d\d-\d\dT[\d:.]+Z ")  # GitHub Actions log timestamps
 
 
-def render(text: str, title: str, provenance: str, max_lines: int = 60, start: int = 0) -> str:
+def render(text: str, title: str, provenance: str, max_lines: int = 60, start: int = 0, wrap: int = 0) -> str:
+    """wrap > 0 folds lines longer than `wrap` columns the way a terminal of that width displays them (the
+    characters are unchanged; the footer says so). max_lines and start count captured lines, not folded ones."""
+
     lines = [_TS.sub("", _ANSI.sub("", ln)).rstrip("\r") for ln in text.splitlines()]
     total = len(lines)
     shown = lines[start : start + max_lines]
     footer = f"lines {start + 1}-{start + len(shown)} of {total} of the captured output" if total > len(shown) else f"{total} lines, complete"
+    if wrap and any(len(x) > wrap for x in shown):
+        shown = [ln[i:i + wrap] for ln in shown for i in range(0, max(len(ln), 1), wrap)]
+        footer += f"; long lines folded at {wrap} columns, as a {wrap}-column terminal shows them"
     char_w, line_h, pad = 8.4, 17, 18
     width = int(max([len(x) for x in shown] + [len(provenance) + 4, len(title) + 4, 60]) * char_w + pad * 2)
     width = min(max(width, 720), 1400)
@@ -43,7 +49,9 @@ def render(text: str, title: str, provenance: str, max_lines: int = 60, start: i
     for ln in shown:
         colour = "#c9d1d9"
         low = ln.lower()
-        if "critical" in low or "not running" in low or "overall: unknown" in low:
+        if "✓ resolved" in low or low.lstrip().startswith("resolved"):
+            colour = "#3fb950"  # a RESOLVED line naming what was 'not running' is good news, not red
+        elif "critical" in low or "not running" in low or "overall: unknown" in low:
             colour = "#ff7b72"
         elif "degraded" in low or "not verified" in low or "not_fully_verified" in low or "partial" in low:
             colour = "#d29922"

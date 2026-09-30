@@ -8,7 +8,7 @@ on:
   # On a slice branch, also when .github/ci-trigger changes (so the FINAL commit of a slice is tested on free
   # runners without a token).
   push:
-    branches: ["slice[0-9]*/**"]
+    branches: ["slice[0-9]*/**", "freeze/**"]
     paths: [".github/ci-trigger"]
 
 permissions:

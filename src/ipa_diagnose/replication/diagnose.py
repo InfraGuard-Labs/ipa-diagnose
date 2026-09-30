@@ -351,6 +351,28 @@ def _gssapi_chain(t: _T, b: _Builder, me: str, realm: str, item: Dict[str, Any],
     return None, c
 
 
+def _ds_key_root(b: _Builder, me: str, realm: str, gs: Any, kc: str) -> ReplDiagnosis:
+    """This server's own LDAP service key is refused by the KDC (shown by the reproduction's kinit), as a local
+    diagnosis of its own - used when the agreement's recorded status is one this fault cannot explain (LDAP 49)."""
+
+    here = f"server:{me}"
+    existing = b.get("DS_KEY_REJECTED", here)
+    if existing is not None:
+        return existing
+    what = {"key_rejected": "the KDC rejects the key in /etc/dirsrv/ds.keytab",
+            "keytab_no_entry": "/etc/dirsrv/ds.keytab has no usable key for it",
+            "principal_unknown": "the KDC does not know the principal"}[kc]
+    principal = f"ldap/{me}@{realm}"
+    return b.add(ReplDiagnosis(
+        "DS_KEY_REJECTED", here, "The KDC does not accept this server's LDAP service key", "KEYTAB", "FAIL", "HIGH",
+        f"kinit with {principal} from /etc/dirsrv/ds.keytab fails ({kc.replace('_', ' ')}): {what}.",
+        "The Directory Server cannot obtain new Kerberos tickets: its GSSAPI agreements fail once its current "
+        "tickets expire.", ["agreements", gs.step_id], "local",
+        next_steps=["klist -k /etc/dirsrv/ds.keytab   (read-only; key versions)",
+                    f"kvno {_q(principal)}   (read-only; with an admin ticket: the KDC's key version)"],
+        resolution_key="replication.ds-keytab-problem", variant=kc))
+
+
 def peer_offset(t: _T, subj: str):
     """The peer's clock offset as measured from this host (root DSE currentTime, else its HTTPS Date header):
     (offset or None, the step that measured it, where it came from)."""
@@ -457,13 +479,17 @@ def _peer_path(t: _T, b: _Builder, me: str, item: Dict[str, Any], subj: str, rel
     hstate = https.facts.get("state") if https and https.outcome in (P, F) else None
     peer_here = f"server:{consumer}"
     recorded_ok = (item.get("status_class") or S.UNCLASSIFIED) == S.OK
+    # name the agreement: one peer finding can explain several agreements (suffixes) whose recorded statuses differ
+    # (freeze live run: the CA agreement still said "succeeded" while the domain agreement had recorded the failure)
+    suffix, _sep, pair = rel_key.partition(":")
+    which = f"the {suffix} agreement {pair.replace('>', ' -> ')}" if pair else "the agreement"
     if not now:
         stale = ""
     elif recorded_ok:
-        stale = (f" The agreement's own status still shows its last session as successful (ended "
+        stale = (f" {which[0].upper() + which[1:]} still shows its last session as successful (ended "
                  f"{item.get('last_update_end') or 'at an unknown time'}); it has not recorded this yet.")
     else:
-        stale = (f" The agreement's last recorded status is: {status_text} (ended "
+        stale = (f" The last recorded status of {which} is: {status_text} (ended "
                  f"{item.get('last_update_end') or 'at an unknown time'}); this host's own checks now show the "
                  "above.")
     if dns is not None and dns.outcome == F:
@@ -505,7 +531,7 @@ def _peer_path(t: _T, b: _Builder, me: str, item: Dict[str, Any], subj: str, rel
             "fail over or fail.", [prt.step_id, https.step_id, rd.step_id], "peer",
             next_steps=chain.next_action, handoff=chain.handoff))
         return root, chain
-    if pstate in ("timeout", "unreachable", "error") and hstate in ("timeout", "unreachable", "error"):
+    if pstate in ("timeout", "unreachable") and hstate in ("timeout", "unreachable"):
         pair = f"pair:{me}>{consumer}"
         when = ("an unrecorded time (recorded evidence)" if rd.source == "REPLAY"
                 else rd.collected_at or _now())
@@ -628,6 +654,20 @@ def _agreement(t: _T, b: _Builder, me: str, realm: str, item: Dict[str, Any],
             return
         if got is not None:
             root, chain = got
+    elif cls == S.INVALID_CREDENTIALS and gssapi_agreement and kerberos_class(cls, gs, off)[1].startswith(
+            "reproduction (kinit"):
+        # LDAP 49 on a GSSAPI bind means the supplier HAD a ticket and the accepting side refused it; a kinit that
+        # fails NOW (local KDC down, local key rejected) cannot explain that recorded refusal (freeze review). The
+        # local fault is its own diagnosis; the 49 is not linked to it and stays undiagnosed, pointing to the peer.
+        kc = gs.facts.get("kinit_class")
+        if kc in ("key_rejected", "keytab_no_entry", "principal_unknown") and roots["keytab"] is None:
+            _ds_key_root(b, me, realm, gs, kc)
+        chain = b.chain(rel_key, [L0], boundary=(
+            f"LDAP 49 means {me} obtained a ticket that {consumer} refused; this server cannot obtain a ticket now "
+            f"(reproduction: kinit {str(kc or 'failed').replace('_', ' ')}), so the refused bind cannot be reproduced "
+            "and the local Kerberos fault does not explain it"),
+            next_action=[f"on {consumer}: sudo ipa-diagnose replication --peer {_q(me)}   (read-only)",
+                         f"on {consumer}: klist -k /etc/dirsrv/ds.keytab   (read-only)"])
     elif gssapi_agreement and (cls in S.GSSAPI or cls == S.INVALID_CREDENTIALS) \
             and kerberos_class(cls, gs, off)[0] in _SPECIFIC + (S.GSSAPI_OTHER,):
         eff, where = kerberos_class(cls, gs, off)

@@ -10,9 +10,9 @@ validated, at what tier, and don't claim more.
 | **Unit tested** | Core engine, correlation, redaction, healthcheck parsing | Done - `tests/unit/` |
 | **Fixture validated** | Full evidence-collection → diagnosis pipeline, one scenario per fixture directory, with an expected outcome in `meta.json` | Done - `tests/packs/` (one file per pack) + `tests/adversarial/` (cross-pack, hostile-input, redaction scenarios) |
 | **Container integration tested** | The *packaging* (RPM build, install, dependency resolution, upgrade, uninstall) end to end in a clean container | Done across four target platforms (Fedora, EL9, EL10, EL8) - see [docs/compatibility.md](compatibility.md) for the full per-platform matrix and [packaging/rpm/README.md](../packaging/rpm/README.md) for how each is built |
-| **Real FreeIPA behavior validated** | The pipeline runs against an actual live FreeIPA server's real `ipa-healthcheck` output, not fixtures | **Partially performed.** A real `freeipa/freeipa-server` container was provisioned, installed, and used to capture genuine `ipa-healthcheck --output-type json` output for both a healthy server and a real induced failure (`systemctl stop dirsrv`) - see [tests/fixtures/real-freeipa-capture/README.md](../tests/fixtures/real-freeipa-capture/README.md) for exactly what was captured and how. Both captures were run through the real pipeline successfully (`tests/unit/test_real_freeipa_capture.py`). |
+| **Real FreeIPA behavior validated** | The pipeline runs against an actual live FreeIPA server, not fixtures | **Performed for the scenarios in [truth/](truth/)**: disposable Fedora 43 FreeIPA containers on free GitHub runners (a single server; a server plus an enrolled client; a line of three servers), each fault injected, confirmed independently and diagnosed blind. Only Fedora 43 and FreeIPA 4.13.3/4.13.4 have been live-validated. The first capture pass (v0.1.x, historical) is described below for context. |
 
-**What this one validation pass covered, honestly, and what it didn't:**
+**What the first (historical) validation pass covered, honestly, and what it didn't:**
 
 - ✅ Confirmed the evidence normalizer parses real `ipa-healthcheck` output
   (not just hand-authored fixtures) without crashing, on both a healthy
@@ -57,10 +57,11 @@ contributor without redesigning anything.
   they're unimportant, but because the packs chosen are where the research
   showed the clearest, best-documented, highest-value gap in
   `ipa-healthcheck`'s own coverage.
-- **Diagnosis-first, not auto-remediation**, by design (see the master
-  design brief this project was built against): `ipa-diagnose` never
-  executes a CAUTION or HIGH_RISK action automatically, and has no "fix it
-  for me" mode in v1.
+- **Diagnosis-first, never remediation**, by design: `ipa-diagnose` never
+  executes any fix. Gated procedures are printed for the administrator to
+  run; state-changing pack guidance that no procedure covers is not printed
+  in the console at all (it stays in the v1 JSON `actions` list for
+  compatibility).
 - **The correlation model is a fixed 4-pack causality chain** (DNS →
   Kerberos → Replication → Certificates, Directory Server foundational under
   all) plus per-rule `upstream_candidates` - it's deterministic and testable
@@ -96,13 +97,20 @@ contributor without redesigning anything.
   topology produces no false stale-RUV, and an unreadable RUV is shown as
   `NOT_VERIFIED`, never as healthy. See
   [evidence-completeness.md](evidence-completeness.md).
-- **A dead-but-still-registered replica** was not flagged within ~90 seconds
-  of being killed: the real `ipa-healthcheck` itself reported nothing for it
-  yet, so there was no evidence for `ipa-diagnose` to act on.
-- **Replay mode** (`--replay`) with no `healthcheck.json` still reports
-  `HEALTHY`; replay is a fixture mode, not a live claim.
-- **Older (EL8-era) FreeIPA, Trust/AD, CA-less and multi-replica (3+)
-  topologies were not exercised live.**
+- **The server diagnosis (`ipa-diagnose`) does not flag a dead-but-still-
+  registered replica**: in the two-node lab it was not flagged within ~90
+  seconds of being killed, because the real `ipa-healthcheck` itself reported
+  nothing for it yet. **Replication mode (`ipa-diagnose replication`) is the
+  command for this**: it checks each peer itself and, in the live three-server
+  lab, reported a stopped peer Directory Server and a peer disconnected from
+  the network (as "unreachable from this server at a time", never "dead") while
+  389-DS still recorded the last session as successful. See
+  [truth/replication-truth-matrix.md](truth/replication-truth-matrix.md).
+- **Replay mode** (`--replay`) with no `healthcheck.json` reports UNKNOWN (exit 3), never HEALTHY;
+  replay is a fixture mode, not a live claim.
+- **Older (EL8-era) FreeIPA, Trust/AD and CA-less deployments were not
+  exercised live; the only multi-server topology exercised live is the
+  replication lab's line of three servers** (FreeIPA 4.13.4 / Fedora 43).
 
 ## What was not fabricated
 

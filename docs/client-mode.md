@@ -111,7 +111,7 @@ command argument validates. ipa-diagnose never runs a fix.
 |---|---|
 | SSSD stopped | `systemctl start sssd.service` (MEDIUM). Withheld when `sssctl config-check` reports errors, the unit is masked/disabled/transitioning, the host has no systemd, or the cause is a symptom (for example of an invalid configuration). |
 | One user's cache entry inconsistent (IPA has the user, SSSD online, entry cached, lookup fails) | `sss_cache -u USER` (LOW): marks the entry expired; nothing is deleted; cached passwords are kept. |
-| Cache database errors proven (IPA has the user, SSSD online, DNS/time/host key fine, SSSD's log reports cache database errors, the entry cannot be read) | `sssctl cache-remove --stop --start` (HIGH), with an explicit admin confirmation: cached passwords are removed (no offline logins until users log in online again); sssctl first exports local overrides to `/var/lib/sss/backup` and removes nothing if that fails. |
+| Cache database errors proven (IPA has the user, SSSD online, DNS/time/host key fine, SSSD's log reports cache database errors, the entry cannot be read) | `sssctl cache-remove --stop --restore --start` (HIGH), with an explicit admin confirmation: cached passwords are removed (no offline logins until users log in online again); sssctl first exports local overrides to `/var/lib/sss/backup` and removes nothing if that fails. |
 | Clock skew, stale/missing/wrong keytab, host principal unknown, not enrolled | No fix: reasons shown (no clock step on clients, no keytab replacement, no re-enrollment). |
 | Everything else | No fix; the next read-only steps. |
 
@@ -180,7 +180,7 @@ command, privilege, side effects, provenance), `diagnoses` (code, role, confiden
 | IPA API `user_show` asked as this host (host ticket in a private cache) | root | one AS request, one read-only API call |
 | `systemctl show sssd`, `sssctl config-check`, `sssctl domain-status` (never `--start`), `sssctl user-show` | root, SSSD ≥ 2.0 | nothing (domain-status asks the running SSSD over InfoPipe) |
 | `getent -s sss`, `getent` | - | SSSD may refresh its cache for that name (as any lookup) |
-| `sssctl user-checks USER -a acct -s SERVICE` | root, SSSD ≥ 2.0 | the PAM **account** phase only (no password, no session); SSSD may refresh its cache and HBAC rules; `pam_faillock` does not reset counters without an auth phase |
+| `sssctl user-checks USER -a acct -s SERVICE` | root, SSSD ≥ 2.0 | the PAM **account** phase only (no password, no session); SSSD may refresh its cache and HBAC rules; never run when the service's account stack contains `pam_faillock` or `pam_tally2`, whose account phase resets the user's failed-login counters (it could unlock a locked account); RUNTIME ACCESS then stays NOT VERIFIED |
 | SSSD logs: recent journal + domain log tail, known signals only (counts and one redacted example) | root | nothing |
 
 Unknown or older SSSD versions: every `sssctl` check is skipped (*not applicable*), never run on a version it is not

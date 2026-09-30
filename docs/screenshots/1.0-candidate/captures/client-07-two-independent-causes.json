@@ -1,0 +1,13 @@
+{
+ "captured_at": "2026-09-30T16:23:29Z",
+ "columns": 120,
+ "command": "ipa-diagnose client --user alice --service sshd",
+ "commit": "b58f3d62c5992c352f2385139e08d50767a73473",
+ "container": "ipa-c",
+ "env": [],
+ "exit": 1,
+ "name": "client-07-two-independent-causes",
+ "run_id": "36742908065",
+ "scenario": "C13 dead DNS resolver AND an sssd.conf typo at the same time",
+ "user": "root"
+}

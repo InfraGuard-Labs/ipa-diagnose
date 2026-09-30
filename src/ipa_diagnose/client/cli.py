@@ -35,7 +35,8 @@ def build_parser() -> argparse.ArgumentParser:
     p = _Parser(prog="ipa-diagnose client",
                 description="Is this FreeIPA client enrolled and able to resolve and authenticate IPA identities, "
                 "and if not, why? Read-only; run as root on the client.",
-                epilog="Exit codes: 0 healthy; 1 problem found; 4 not everything could be checked; 2 usage error.")
+                epilog="Exit codes: 0 healthy; 1 problem found (with --verify: still present, partial or new); 4 not "
+                       "everything could be checked (with --verify: could not be verified); 2 usage error.")
     p.add_argument("--user", metavar="USER", default=None, help="an IPA user whose lookup (and login path) to check")
     p.add_argument("--service", metavar="SERVICE", default=None,
                    help="PAM service to check for that user (for example sshd); runs the PAM account phase only")

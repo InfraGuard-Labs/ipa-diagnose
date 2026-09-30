@@ -1,0 +1,111 @@
+────────────────────────────────────────────────── FreeIPA Diagnosis ───────────────────────────────────────────────────
+Host: ipa01.lab.test    Generated: 2026-09-30T16:42:45Z
+Overall: CRITICAL
+
+─────────────────────────────────────────────────── PRIMARY PROBLEM ────────────────────────────────────────────────────
+ROOT CAUSE
+Required service 'krb5kdc' is not running
+
+WHY
+ipa-healthcheck (ipahealthcheck.meta.services.krb5kdc) directly reports: krb5kdc: not running. This is the check's own 
+statement, not an inference. Why the service is not running is NOT determined by this finding.
+
+EVIDENCE
+  ✓ ipa-healthcheck states this service is not running.
+
+CHECKED FOR YOU
+Read-only checks ipa-diagnose ran on this host just now (results, not problems):
+  - Privileges: running as root
+  - State of krb5kdc: krb5kdc.service: inactive (dead)
+  - Recent log of krb5kdc.service: last log line: krb5kdc.service: Consumed 1.118s CPU time, 10.4M memory peak.
+
+IMPACT
+Functions that depend on this service are unavailable or degraded. Other failures in this report (for example 
+ipa-healthcheck checks that could not connect) may be consequences.
+
+FIX
+Start the stopped service - 1 step on this server, run by you (ipa-diagnose never runs a fix itself).
+  1. Start only krb5kdc.service; no other service is started or stopped
+       systemctl start krb5kdc.service
+       expected: the command returns without an error and krb5kdc.service is active. If it fails, it stays stopped and 
+systemctl status shows why
+
+PREREQUISITES
+  ✓ ipa-diagnose is running as root (starting a system service needs root) (checked)
+
+WHAT THIS CHANGES
+  - krb5kdc.service goes from inactive to running. No configuration, data or other service is changed.
+
+RISK
+MEDIUM - changes a running system; read each step before running it
+
+ROLLBACK
+  - Stop it again (back to the state it was in)
+       systemctl stop krb5kdc.service
+
+VERIFY
+After the fix, run (on the server):
+
+    sudo ipa-diagnose verify
+
+It re-runs the diagnosis and checks, with fresh evidence:
+  - krb5kdc.service is active
+
+LIMITATIONS
+This starts the one stopped service; it does not establish why it stopped. If it stopped because of a failure (see the 
+last result and log line above), the same cause can stop it again. ipactl start is deliberately not used: if any IPA 
+service fails to start, ipactl stops all IPA services.
+
+────────────────────────────────────────────── OTHER INDEPENDENT PROBLEMS ──────────────────────────────────────────────
+May or may not be related to the problem above - each needs its own investigation.
+
+───────────────────────────────────────────────── INDEPENDENT PROBLEM ──────────────────────────────────────────────────
+One or more ipa-healthcheck checks failed to run
+
+ROOT CAUSE
+Unable to determine safely.
+
+WHY
+1 ipa-healthcheck check(s) raised an exception instead of returning a result, so they say nothing about the state of the
+system: IPADNARangeCheck: cannot access local variable 'agmt' where it is not associated with a value. This is most 
+often a consequence of another problem in this report (for example a stopped service the check needs).
+
+EVIDENCE
+  ✓ ipa-healthcheck check raised an exception.
+
+IMPACT
+Health of whatever these checks cover is not established.
+
+DO THIS NEXT
+ipa-healthcheck --source ipahealthcheck.ipa.dna --check IPADNARangeCheck --failures-only
+Safety: SAFE — read-only, no state change.
+
+───────────────────────────────────────────────── INDEPENDENT PROBLEM ──────────────────────────────────────────────────
+ipa-healthcheck reports ERROR/CRITICAL findings that no diagnostic rule explains
+
+ROOT CAUSE
+Unable to determine safely.
+
+WHY
+1 finding(s) from ipa-healthcheck are at ERROR or CRITICAL and are not covered by any ipa-diagnose rule, so their cause 
+is not determined: ipahealthcheck.ipa.dna.IPADNARangeCheck (ERROR): Connection to replica failed {error}. They may be 
+consequences of another problem in this report (for example a stopped service) or independent problems.
+
+EVIDENCE
+  ✓ Unexplained ipa-healthcheck finding.
+
+IMPACT
+Unknown - depends on what the underlying checks were verifying.
+
+DO THIS NEXT
+ipa-healthcheck --source ipahealthcheck.ipa.dna --check IPADNARangeCheck --failures-only
+Safety: SAFE — read-only, no state change.
+
+───────────────────────────────────────── UNDIAGNOSED ipa-healthcheck FINDINGS ─────────────────────────────────────────
+1 finding(s) not explained by any ipa-diagnose rule. That does not mean they are harmless - review them with 
+ipa-healthcheck. No cause is claimed.
+  • [WARNING] ipahealthcheck.meta.core.MetaCheck: (no message; fields: key, fqdn, fips, acme, ipa_version, 
+ipa_api_version) - meta
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+Diagnostic packs evaluated: directory-server, dns, kerberos, replication, certificates

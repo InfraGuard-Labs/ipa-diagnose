@@ -756,13 +756,14 @@
       "sssctl",
       "cache-remove",
       "--stop",
+      "--restore",
       "--start"
      ],
-     "expected": "sssctl prints 'Creating backup of local data...' and 'Removing cache files...' and starts SSSD again. If it says it cannot create the backup, nothing was removed, but SSSD may be left stopped: start it with systemctl start sssd.",
+     "expected": "sssctl prints 'Creating backup of local data...' and 'Removing cache files...', imports the local data again and starts SSSD. If an older backup exists it asks whether to overwrite it (answering no stops without removing anything). If it says it cannot create the backup, nothing was removed; if SSSD is left stopped, start it with systemctl start sssd.",
      "id": "remove",
      "risk": "HIGH",
      "run_on": "local",
-     "text": "Stop SSSD, back up local overrides, remove the cache, start SSSD (sssctl does all four, in this order)"
+     "text": "Remove SSSD's cache for every domain on this host with sssctl, which backs up local data (sss_override) first, stops and starts SSSD itself, and re-imports the local data afterwards (--restore)"
     }
    ],
    "title": "Remove SSSD's cache with sssctl (keeps a backup of local overrides)",
@@ -801,7 +802,7 @@
    ],
    "what_changes": [
     {
-     "text": "The SSSD cache databases under /var/lib/sss/db are removed and rebuilt from IPA on the next lookups, including cached passwords (offline logins). SSSD restarts once. Local overrides are exported to /var/lib/sss/backup first. Nothing in IPA changes."
+     "text": "The SSSD cache databases of every domain under /var/lib/sss/db are removed and rebuilt from IPA on the next lookups, including cached passwords (offline logins). SSSD restarts once. Local overrides are exported to /var/lib/sss/backup first and imported again (--restore). Nothing in IPA changes."
     }
    ],
    "withhold_if": [
@@ -1308,6 +1309,13 @@
       "date": "2026-09-26",
       "evidence": "https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36258032392",
       "freeipa": "4.13.3",
+      "os": "fedora-43",
+      "tier": "LIVE"
+     },
+     {
+      "date": "2026-09-30",
+      "evidence": "https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36724948194",
+      "freeipa": "4.13.4",
       "os": "fedora-43",
       "tier": "LIVE"
      }
@@ -1905,6 +1913,13 @@
       "date": "2026-09-26",
       "evidence": "https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36258032392",
       "freeipa": "4.13.3",
+      "os": "fedora-43",
+      "tier": "LIVE"
+     },
+     {
+      "date": "2026-09-30",
+      "evidence": "https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36724948194",
+      "freeipa": "4.13.4",
       "os": "fedora-43",
       "tier": "LIVE"
      }

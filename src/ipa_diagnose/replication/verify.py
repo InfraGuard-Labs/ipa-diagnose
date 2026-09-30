@@ -164,6 +164,19 @@ def _is_agreement(subject: str) -> bool:
     return bool(re.fullmatch(r"(domain|ca):[a-z0-9.-]+>[a-z0-9.-]+", subject))
 
 
+def _peer_of(subject: Optional[str]) -> Optional[str]:
+    """The peer a subject is about: server:<peer>, pair:<me>><peer>, <suffix>:<supplier>><consumer> (the consumer)."""
+
+    if not subject or ":" not in subject:
+        return None
+    kind, _sep, rest = subject.partition(":")
+    if kind == "server":
+        return rest or None
+    if ">" in rest:
+        return rest.split(">", 1)[1] or None
+    return None
+
+
 def compare(previous: Dict[str, Any], fresh: ReplicationResult, runner: Any,
             now: Optional[datetime.datetime] = None) -> Dict[str, Any]:
     from ipa_diagnose.resolution.engine import evaluate_verify, rebuild_verify
@@ -203,6 +216,13 @@ def compare(previous: Dict[str, Any], fresh: ReplicationResult, runner: Any,
         if st in S.TRANSIENT or st == "TRANSIENT":
             return "TRANSIENT", f"it is not green yet ({st})"
         if st != S.OK:
+            here = [d for d in fresh.diagnoses if d.subject == subject]
+            if here and all(d.kind == "TRANSIENT" and d.severity != "FAIL" for d in here):
+                # the agreement still RECORDS the old failure, but this run's own checks no longer reproduce it
+                # (for example the peer answers LDAP again and 389-DS has not retried yet): the next session decides.
+                # Freeze live run 36729641548, R02d: this was STILL_PRESENT seconds after the fix on the peer.
+                return "TRANSIENT", (f"it still records {st} from its last session, but the failure is not "
+                                     "reproduced now; waiting for the next session")
             return "FAILING", f"it reports {st} now"
         end = _parse(x.get("last_update_end"))
         if end is None or base_time is None or end <= base_time:
@@ -263,6 +283,14 @@ def compare(previous: Dict[str, Any], fresh: ReplicationResult, runner: Any,
                     if not any(r is not None and isinstance(r.facts.get("offset"), (int, float)) for r in again):
                         answered, why = False, "the clock difference could not be measured now"
             same = [x for x in fresh.diagnoses if x.subject == subject and x.severity == "FAIL" and x.key != key]
+            peer = _peer_of(subject) if code.startswith(("PEER_", "PAIR_")) else None
+            if peer and not same:
+                # a peer-side cause moves subject as the evidence changes shape (server:<peer> -> pair:<me>><peer>,
+                # refused -> no answer): any FAIL still about that peer means it changed, never RESOLVED (freeze
+                # review: PEER_DS_NOT_ACCEPTING was RESOLVED while PEER_DS_NOT_ANSWERING appeared for the same peer)
+                old = {o["key"] for o in previous["diagnoses"]}
+                same = [x for x in fresh.diagnoses if x.severity == "FAIL" and x.key != key and x.key not in old
+                        and _peer_of(x.subject) == peer and x.code.startswith(("PEER_", "PAIR_"))]
             if not answered:
                 it = VerifyItem(key, code, subject, title, "UNABLE_TO_VERIFY", why)
             elif same:

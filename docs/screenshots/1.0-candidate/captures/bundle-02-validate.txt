@@ -1,0 +1,3 @@
+b7-1.tar.gz: VALID
+  created 2026-09-30T16:29:04Z by ipa-diagnose 0.1.3, source LIVE, overall status NOT_FULLY_VERIFIED, evidence complete
+This checks structure, checksums and credential patterns only. Checksums are not a signature. The content is recorded evidence of the system and time it was created on - never a live diagnosis of this machine, and never something to run.

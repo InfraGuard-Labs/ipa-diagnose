@@ -269,7 +269,12 @@ def _tcp(params):
     except socket.gaierror:
         state = "unresolvable"
     except OSError as e:
-        state = "unreachable" if getattr(e, "errno", None) in (101, 113) else "error"
+        if getattr(e, "errno", None) not in (101, 103, 104, 112, 113):  # network/host unreachable, reset, down
+            # a local socket error (EMFILE, EADDRNOTAVAIL, ...) says nothing about the peer: the check did not run
+            # (freeze review: two such errors became a HIGH 'peer unreachable')
+            return _res("net.tcp", params, NOT_RUN, {}, f"TCP {host}:{port}: could not test from this host "
+                        f"({type(e).__name__})", f"TCP connect {host}:{port} (5 s)")
+        state = "unreachable"
     fields = {"state": state, "open": state == "open", "seconds": round(time.monotonic() - start, 3)}
     return _res("net.tcp", params, OK, fields, f"TCP {host}:{port}: {state}", f"TCP connect {host}:{port} (5 s)")
 
@@ -635,9 +640,13 @@ def _pam_stack(params):
     mods: Dict[str, List[str]] = {"auth": [], "account": []}
 
     nested: List[tuple] = []
+    truncated = [False]
 
     def walk(name: str, depth: int) -> Optional[str]:
-        if depth > 5 or len(seen) >= 12 or name in seen or not _PAM_NAME.fullmatch(name):
+        if depth > 5 or len(seen) >= 12:
+            truncated[0] = True  # the stack was not read completely (freeze re-review)
+            return None
+        if name in seen or not _PAM_NAME.fullmatch(name):
             return None
         path = os.path.join(PAM_D, name)
         try:
@@ -679,7 +688,10 @@ def _pam_stack(params):
         status = DENIED if why == "unreadable" else FAILED
         return _res("pam.stack", params, status, {}, f"{PAM_D}/{_c(target, 64)} (included by "
                     f"{svc if present else 'other'}) is {why}: the stack cannot be evaluated")
-    fields = {"service_file": present, "files": seen, "account_modules": mods["account"][:24],
+    # a module list that was cut short (too many files, too deep, or over 24 modules) is unknown: None, never a
+    # partial list a gate could read as complete (the pam_faillock gate needs every account module)
+    complete = not truncated[0] and len(mods["account"]) <= 24
+    fields = {"service_file": present, "files": seen, "account_modules": mods["account"][:24] if complete else None,
               "auth_modules": mods["auth"][:24], "account_has_sss": "pam_sss.so" in mods["account"],
               "auth_has_sss": "pam_sss.so" in mods["auth"]}
     disp = (f"PAM service {svc}" + ("" if present else " (no file: PAM uses 'other')")
@@ -873,7 +885,8 @@ def specs() -> List[CheckSpec]:
                   timeout=50, evidence=("pam_result", "result_class"), applies="SSSD 2.0 or later",
                   side_effects=("runs the service's PAM ACCOUNT phase only (pam_acct_mgmt, no password, no "
                                 "session): SSSD evaluates access as for a login and may refresh its cache and HBAC "
-                                "rules; pam_faillock does not reset counters without an auth phase")),
+                                "rules. Never run when the service's account stack contains pam_faillock or "
+                                "pam_tally2: their account phase resets the user's failed-login counters")),
         CheckSpec("sssd.cache_user", {"user": "ipa_user"}, "SSSD's cache entry for a user (timestamps)", _cache_user,
                   ROOT, timeout=20, evidence=("present",), applies="SSSD 2.0 or later"),
         CheckSpec("sssd.log_signals", {"domain": "sssd_domain"}, "known problem signals in recent SSSD logs",

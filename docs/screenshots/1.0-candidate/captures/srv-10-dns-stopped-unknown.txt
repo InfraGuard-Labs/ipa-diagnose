@@ -1,0 +1,18 @@
+────────────────────────────────────────────────── FreeIPA Diagnosis ───────────────────────────────────────────────────
+Host: ipa01.lab.test    Generated: 2026-09-30T16:41:14Z
+Overall: UNKNOWN
+Evidence: INSUFFICIENT
+  ipa-healthcheck evidence could not be collected - nothing can be reported healthy.
+  NOT VERIFIED: ipa-healthcheck (base health evidence) - Command '['ipa-healthcheck', '--output-type', 'json']' timed 
+out after 120 seconds
+    What to do: ipa-healthcheck did not finish in time. A stopped or unreachable DNS, LDAP or Kerberos service is a 
+common cause - check those services, then re-run.
+Service state, read by ipa-diagnose itself (ipa-healthcheck gave no results):
+  named.service: inactive
+  A stopped DNS, LDAP or Kerberos service can itself keep ipa-healthcheck from finishing.
+
+ipa-healthcheck produced no results, so its checks tell nothing about this server. This is NOT a healthy result.
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+Diagnostic packs: not evaluated (no ipa-healthcheck evidence to evaluate)
+Evidence collection issues (1):
+  - ipa-healthcheck: Command '['ipa-healthcheck', '--output-type', 'json']' timed out after 120 seconds

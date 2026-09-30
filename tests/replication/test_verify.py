@@ -18,6 +18,18 @@ KDC = f"LOCAL_KDC_NOT_RUNNING@server:{IPA01}"
 SYM_D = f"REPLICATION_FAILING@domain:{IPA01}>{IPA02}"
 
 
+@pytest.fixture(autouse=True)
+def _fresh_clock():
+    """NOW/LATER per test, not per import: a baseline is stamped with the real time when a test runs, so on a slow
+    full-suite run (this module reached more than 5 minutes after collection) an import-time LATER fell before the
+    baseline and a RESOLVED case read as PENDING (freeze campaign: failed locally at 8m53s)."""
+
+    global NOW, LATER
+    NOW = datetime.datetime.now(datetime.timezone.utc)
+    LATER = NOW + datetime.timedelta(minutes=5)
+    yield
+
+
 def baseline(lab, **kw):
     r = H.run(lab, **kw)
     doc = V.to_state(r)
@@ -86,6 +98,59 @@ def test_a_transient_state_after_the_fix_is_never_green(text):
     _r, prev = baseline(Lab().local_kdc_stopped())
     _c, out, code = verify(prev, fixed_later().set_status(IPA02, text, suffix="domain"))
     assert out[SYM_D] == "PENDING" and code == 3
+
+
+def test_a_recorded_failure_that_is_not_reproduced_now_is_pending_not_still_present():
+    """Freeze live run 36729641548 (R02d): the peer's Directory Server was started again and answered from ipa01, but
+    389-DS on ipa01 had not retried yet, so the agreement still recorded 'Can't contact LDAP server'. The fresh run
+    itself classifies that as not reproduced (transient); verify must answer PENDING (exit 3), not STILL_PRESENT."""
+
+    peer_down = Lab().peer_ds_stopped(IPA02)
+    _r, prev = baseline(peer_down)
+    peer = f"PEER_DS_NOT_ACCEPTING@server:{IPA02}"
+    stale = fixed_later().set_status(IPA02, S.TRANSPORT_TEXT, suffix="domain")  # peer answers; old status kept
+    cmp, out, code = verify(prev, stale)
+    assert out[SYM_D] == "PENDING" and code == 3, out
+    assert out.get(peer) in (None, "PENDING"), out
+    # a failure the fresh checks DO reproduce stays STILL_PRESENT
+    _c, out2, code2 = verify(prev, Lab(now=LATER).peer_ds_stopped(IPA02))
+    assert out2[SYM_D] == "STILL_PRESENT" and code2 == 1
+    # and PENDING is bounded as before: after the window it becomes STILL_PRESENT, never RESOLVED
+    since = LATER - datetime.timedelta(seconds=V.CONVERGENCE_WINDOW + 1)
+    prev["pending"] = {SYM_D: since.strftime("%Y-%m-%dT%H:%M:%SZ")}
+    _c, out3, _code3 = verify(prev, stale)
+    assert out3[SYM_D] == "STILL_PRESENT"
+
+
+def test_a_peer_cause_that_only_changed_shape_is_changed_not_resolved():
+    """Freeze review probe: the peer's port went from refused to timing out. PEER_DS_NOT_ACCEPTING@server:peer is gone
+    but PEER_DS_NOT_ANSWERING/PEER_UNREACHABLE for the same peer appears: CHANGED, never RESOLVED."""
+
+    peer = f"PEER_DS_NOT_ACCEPTING@server:{IPA02}"
+    _r, prev = baseline(Lab().peer_ds_stopped(IPA02, recorded=False))
+    later = Lab(now=LATER).peer_ds_stopped(IPA02, recorded=False)
+    later.data[S.key("net.tcp", {"host": IPA02, "port": "389"})] = S.ok(
+        {"state": "timeout", "open": False, "seconds": 5.0}, f"TCP {IPA02}:389: timeout")
+    _c, out, code = verify(prev, later)
+    assert out[peer] == "CHANGED", out
+    assert code != 0
+    # and from unreachable to refused
+    unreach = next(k for k in baseline(Lab().peer_unreachable(IPA02, recorded=False))[0].diagnoses
+                   if k.code == "PEER_UNREACHABLE").key
+    _r2, prev2 = baseline(Lab().peer_unreachable(IPA02, recorded=False))
+    _c, out2, _code2 = verify(prev2, Lab(now=LATER).peer_ds_stopped(IPA02, recorded=False))
+    assert out2[unreach] == "CHANGED", out2
+
+
+def test_an_unrelated_problem_already_there_does_not_make_a_fixed_peer_cause_changed():
+    """Freeze re-review probe: the peer DS was fixed, a CA-data problem with the same peer was already there before
+    and stays - the peer-DS item is not CHANGED because of it."""
+
+    peer = f"PEER_DS_NOT_ACCEPTING@server:{IPA02}"
+    _r, prev = baseline(Lab().peer_ds_stopped(IPA02, recorded=False).set_status(IPA02, S.GENERATION_TEXT, suffix="ca"))
+    _c, out, code = verify(prev, fixed_later().set_status(IPA02, S.GENERATION_TEXT, suffix="ca"))
+    assert out[peer] != "CHANGED", out
+    assert code != 0  # the CA problem is still there
 
 
 def test_still_failing_is_still_present():

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from ipa_diagnose.replication.causal import check_chain
@@ -90,6 +92,8 @@ def test_a_peer_that_does_not_answer_now_is_found_even_while_the_status_is_still
     r = H.run(getattr(Lab(), fault)(IPA02, recorded=False))
     p = H.primary(r)
     assert p.code == code and "has not recorded this yet" in p.detail
+    # the sentence names the agreement it is about (freeze: CA and domain statuses can differ for one peer finding)
+    assert re.search(r"The (domain|ca) agreement \S+ -> \S+ still shows its last session", p.detail)
     assert H.rel(r, f"domain:{IPA01}>{IPA02}")["state"] == "OK"  # the recorded state is shown as it is
     assert r.status == "PROBLEM_FOUND" and r.handoffs and not H.offered(r)
     assert all(c.links[0].discriminator.endswith("-now") for c in r.chains)
@@ -140,7 +144,7 @@ def test_the_peer_finding_never_calls_a_failing_status_successful(fault):
     r = H.run(getattr(Lab(), fault)(IPA02, recorded=False).set_status(IPA02, S.LOCAL_ERROR_TEXT))
     root = next(d for d in r.diagnoses if d.code in ("PEER_DS_NOT_ACCEPTING", "PEER_UNREACHABLE"))
     assert "still shows its last session as successful" not in root.detail
-    assert "last recorded status is" in root.detail
+    assert re.search(r"last recorded status of the (domain|ca) agreement \S+ -> \S+ is:", root.detail)
     assert root.role == "PRIMARY"  # a real root outranks the unlinked symptoms
     sym = next(d for d in r.diagnoses if d.code == "REPLICATION_FAILING")
     assert any("reported separately" in c.boundary for c in r.chains if c.chain_id in sym.chain_ids)
@@ -353,6 +357,10 @@ def test_ldap_49_with_a_kinit_that_cannot_reach_a_kdc_is_not_called_a_credential
     assert H.primary(r).code == "LOCAL_KDC_NOT_RUNNING"
     assert not any("obtained its own ticket" in c.boundary for c in r.chains)
     assert not any("no usable Kerberos credentials" in ln.claim for c in r.chains for ln in c.links)
+    # freeze review: a recorded LDAP 49 (ticket obtained, then refused) is NOT explained by a KDC that is down now
+    sym = next(d for d in r.diagnoses if d.key == f"REPLICATION_FAILING@domain:{IPA01}>{IPA02}")
+    assert sym.related_to is None and sym.key not in H.primary(r).explains
+    assert sym.role == "UNDIAGNOSED" and any(f"on {IPA02}:" in s for s in sym.next_steps)
 
 
 def test_a_tls_failure_is_not_called_a_directory_server_that_does_not_answer():
@@ -395,6 +403,27 @@ def test_ldap_49_with_a_rejected_local_key_is_the_local_key():
     r = H.run(lab)
     assert H.primary(r).code == "DS_KEY_REJECTED"
     assert r.resolutions[H.primary(r).key].status == "NONE"
+    # the recorded 49 is not claimed as explained by the local key (freeze review): undiagnosed, pointing to the peer
+    sym = next(d for d in r.diagnoses if d.key == f"REPLICATION_FAILING@domain:{IPA01}>{IPA02}")
+    assert sym.related_to is None and sym.role == "UNDIAGNOSED"
+
+
+def test_a_local_kdc_fix_is_not_claimed_to_resolve_a_recorded_49():
+    """Freeze review probe: KDC stopped + a recorded LDAP 49. After the KDC is started while the 49 remains, verify
+    must not say the KDC diagnosis is STILL_PRESENT (it is running) - and the 49 is not RESOLVED either."""
+
+    from tests.replication import test_verify as TV
+
+    lab = Lab().unit("krb5kdc").kerberos_failure(IPA02, S.INVALID_TEXT, kinit_ok=False, kinit_class="kdc_unreachable",
+                                                 bind_attempted=False, bind_ok=False)
+    r = H.run(lab, live=True)
+    assert not H.offered(r) or all(k.startswith("LOCAL_KDC") for k in H.offered(r))
+    _r, prev = TV.baseline(lab)
+    later = TV.fixed_later().kerberos_failure(IPA02, S.INVALID_TEXT, kinit_ok=True,
+                                              bind_error_class="INVALID_CREDENTIALS")
+    _c, out, _code = TV.verify(prev, later)
+    assert out[f"LOCAL_KDC_NOT_RUNNING@server:{IPA01}"] == "RESOLVED", out
+    assert out[f"REPLICATION_FAILING@domain:{IPA01}>{IPA02}"] != "RESOLVED", out
 
 
 # ---------------------------------------------------------------- authorization, data, CA suffix

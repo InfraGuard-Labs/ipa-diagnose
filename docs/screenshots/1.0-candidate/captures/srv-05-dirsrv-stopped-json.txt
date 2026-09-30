@@ -1,0 +1,275 @@
+{
+  "generated_at": "2026-09-30T16:27:43Z",
+  "hostname": "ipa01.lab.test",
+  "overall_status": "CRITICAL",
+  "packs_evaluated": [
+    "directory-server",
+    "dns",
+    "kerberos",
+    "replication",
+    "certificates"
+  ],
+  "collection_errors": [
+    "ipa-healthcheck-coverage: ipa-healthcheck reported no ipahealthcheck.ds.* checks; a full run always does, so health cannot be verified from this output",
+    "replication_agreements: ipa-replica-manage list -v ipa01.lab.test exited 1: ; ipa-replica-manage list-ruv exited 1: ; read-only LDAPI fallback unavailable: ldapsearch exited 255: ldap_sasl_interactive_bind: Can't contact LDAP server (-1); ldapsearch exited 255 (CA suffix): ldap_sasl_interactive_bind: Can't contact LDAP..."
+  ],
+  "unclaimed_warnings": 1,
+  "has_undiagnosed_findings": true,
+  "undiagnosed_count": 1,
+  "undiagnosed_findings": [
+    {
+      "source": "ipahealthcheck.meta.core",
+      "check": "MetaCheck",
+      "severity": "WARNING",
+      "message": "(no message; fields: key, fqdn, fips, acme, ipa_version, ipa_api_version)",
+      "key": "meta",
+      "reason": "ipa-diagnose has no rule that explains this finding; it may or may not matter.",
+      "check_crashed": false,
+      "check_known_since_ipa_healthcheck": "0.2",
+      "ipa_healthcheck_version": "0.19-2.fc43"
+    }
+  ],
+  "fully_verified": false,
+  "evidence_completeness": {
+    "level": "partial",
+    "healthcheck_collected": true,
+    "ruv_state": "NOT_VERIFIED",
+    "ruv_reason": "ipa-replica-manage list -v ipa01.lab.test exited 1: ; ipa-replica-manage list-ruv exited 1: ; read-only LDAPI fallback unavailable: ldapsearch exited 255: ldap_sasl_interactive_bind: Can't contact LDAP server (-1); ldapsearch exited 255 (CA suffix): ldap_sasl_interactive_bind: Can't contact LDAP...",
+    "unverified": [
+      {
+        "capability": "ipa-healthcheck coverage (Directory Server and IPA checks)",
+        "collector": "ipa-healthcheck-coverage",
+        "reason": "ipa-healthcheck reported no ipahealthcheck.ds.* checks; a full run always does, so health cannot be verified from this output",
+        "permission_related": false,
+        "hint": ""
+      },
+      {
+        "capability": "Replication agreements / RUV",
+        "collector": "replication_agreements",
+        "reason": "ipa-replica-manage list -v ipa01.lab.test exited 1: ; ipa-replica-manage list-ruv exited 1: ; read-only LDAPI fallback unavailable: ldapsearch exited 255: ldap_sasl_interactive_bind: Can't contact LDAP server (-1); ldapsearch exited 255 (CA suffix): ldap_sasl_interactive_bind: Can't contact LDAP...",
+        "permission_related": false,
+        "hint": ""
+      }
+    ]
+  },
+  "replay_source": null,
+  "environment": {
+    "distro": "fedora",
+    "distro_version": "43",
+    "python_version": "3.14.7",
+    "freeipa_version": "4.13.4-2.fc43",
+    "ipa_healthcheck_version": "0.19-2.fc43",
+    "directory_server_version": "3.1.5-4.fc43",
+    "detected_live": true
+  },
+  "unknown_severity_findings": [],
+  "diagnoses": [
+    {
+      "diagnosis_id": "healthcheck.service-not-running-dirsrv",
+      "pack_id": "healthcheck",
+      "rule_id": "service-not-running-dirsrv",
+      "status": "DIAGNOSED",
+      "priority": "PRIMARY_PROBLEM",
+      "severity": "CRITICAL",
+      "title": "Required service 'dirsrv' is not running",
+      "why": "ipa-healthcheck (ipahealthcheck.meta.services.dirsrv) directly reports: dirsrv: not running. This is the check's own statement, not an inference. Why the service is not running is NOT determined by this finding.",
+      "ai_explanation": null,
+      "confidence": {
+        "level": "HIGH",
+        "rationale": "Direct report from ipa-healthcheck's service status check.",
+        "corroborating_evidence_count": 1,
+        "contradicting_evidence_count": 0
+      },
+      "evidence_for": [
+        {
+          "evidence_id": "e84b9420-3387-45b3-929c-302a94413ad5",
+          "kind": "finding",
+          "why_relevant": "ipa-healthcheck states this service is not running."
+        }
+      ],
+      "evidence_against": [],
+      "impact": "Functions that depend on this service are unavailable or degraded. Other failures in this report (for example ipa-healthcheck checks that could not connect) may be consequences.",
+      "actions": [
+        {
+          "description": "Check why the service is not running before starting it.",
+          "risk": "SAFE",
+          "command": "ipactl status",
+          "rationale": "Read-only: lists the state of every FreeIPA-managed service.",
+          "reference": null
+        }
+      ],
+      "verification": [],
+      "limitations": "Root cause of the outage is not established by this finding alone.",
+      "next_diagnostic_step": null,
+      "upstream_candidates": [],
+      "related_to_titles": []
+    },
+    {
+      "diagnosis_id": "healthcheck.healthcheck-check-failed",
+      "pack_id": "healthcheck",
+      "rule_id": "healthcheck-check-failed",
+      "status": "UNKNOWN_INSUFFICIENT_EVIDENCE",
+      "priority": "RELATED_SYMPTOM",
+      "severity": "CRITICAL",
+      "title": "One or more ipa-healthcheck checks failed to run",
+      "why": "1 ipa-healthcheck check(s) raised an exception instead of returning a result, so they say nothing about the state of the system: IPAauthzdatapacCheck: ldap2 is not connected (ldap2_140296750313360 in MainThread). This is most often a consequence of another problem in this report (for example a stopped service the check needs).\n\nMay be a downstream symptom of the directory-server problem reported above (not established).",
+      "ai_explanation": null,
+      "confidence": {
+        "level": "INSUFFICIENT",
+        "rationale": "A check that crashed produced no result; it is reported so it is never silently dropped.",
+        "corroborating_evidence_count": 0,
+        "contradicting_evidence_count": 0
+      },
+      "evidence_for": [
+        {
+          "evidence_id": "a48d0109-df5c-4b0c-a4b7-141d908c2413",
+          "kind": "finding",
+          "why_relevant": "ipa-healthcheck check raised an exception."
+        }
+      ],
+      "evidence_against": [],
+      "impact": "Health of whatever these checks cover is not established.",
+      "actions": [
+        {
+          "description": "Re-run the failing check after resolving any other problem in this report.",
+          "risk": "SAFE",
+          "command": "ipa-healthcheck --source ipahealthcheck.ipa.trust --check IPAauthzdatapacCheck --failures-only",
+          "rationale": "Read-only.",
+          "reference": null
+        }
+      ],
+      "verification": [],
+      "limitations": "No conclusion about the affected subsystem can be drawn from a crashed check.",
+      "next_diagnostic_step": "ipa-healthcheck --source ipahealthcheck.ipa.trust --check IPAauthzdatapacCheck --failures-only",
+      "upstream_candidates": [
+        "directory-server",
+        "kerberos",
+        "dns",
+        "certificates"
+      ],
+      "related_to_titles": [
+        "Required service 'dirsrv' is not running"
+      ]
+    }
+  ],
+  "report_schema_version": 2,
+  "v2": {
+    "service_states": {},
+    "side_effects": [],
+    "resolutions": [
+      {
+        "diagnosis_id": "healthcheck.service-not-running-dirsrv",
+        "status": "OFFERED",
+        "procedure_id": "proc.service.start-stopped-service",
+        "title": "Start the stopped service",
+        "reasons": [],
+        "checked": [
+          {
+            "label": "Privileges",
+            "check": "host.privilege",
+            "status": "OK",
+            "result": "running as root",
+            "command": "(effective uid of this process)",
+            "source": "live"
+          },
+          {
+            "label": "State of dirsrv",
+            "check": "systemd.unit",
+            "status": "OK",
+            "result": "dirsrv@LAB-TEST.service: inactive (dead)",
+            "command": "systemctl show --no-pager -p LoadState,ActiveState,SubState,UnitFileState,Result dirsrv@LAB-TEST.service",
+            "source": "live"
+          },
+          {
+            "label": "Recent log of dirsrv@LAB-TEST.service",
+            "check": "systemd.journal_tail",
+            "status": "OK",
+            "result": "last log line: dirsrv@LAB-TEST.service: Consumed 10.523s CPU time, 99.8M memory peak.",
+            "command": "journalctl --no-pager -o cat -n 20 -u dirsrv@LAB-TEST.service",
+            "source": "live"
+          }
+        ],
+        "prerequisites": [
+          {
+            "text": "ipa-diagnose is running as root (starting a system service needs root)",
+            "state": "met"
+          }
+        ],
+        "steps": [
+          {
+            "id": "start-unit",
+            "text": "Start only dirsrv@LAB-TEST.service; no other service is started or stopped",
+            "argv": [
+              "systemctl",
+              "start",
+              "dirsrv@LAB-TEST.service"
+            ],
+            "command": "systemctl start dirsrv@LAB-TEST.service",
+            "risk": "MEDIUM",
+            "changes": [
+              "service-start"
+            ],
+            "expected": "the command returns without an error and dirsrv@LAB-TEST.service is active. If it fails, it stays stopped and systemctl status shows why",
+            "run_on": "local"
+          }
+        ],
+        "what_changes": [
+          "dirsrv@LAB-TEST.service goes from inactive to running. No configuration, data or other service is changed."
+        ],
+        "risk": "MEDIUM",
+        "rollback": [
+          {
+            "text": "Stop it again (back to the state it was in)",
+            "argv": [
+              "systemctl",
+              "stop",
+              "dirsrv@LAB-TEST.service"
+            ],
+            "command": "systemctl stop dirsrv@LAB-TEST.service"
+          }
+        ],
+        "confirm_first": [],
+        "verify": [
+          {
+            "text": "dirsrv@LAB-TEST.service is active",
+            "check": "systemd.unit",
+            "params": {
+              "service": "dirsrv"
+            },
+            "when": {
+              "left": {
+                "field": "active_state",
+                "ref": "this"
+              },
+              "op": "eq",
+              "right": "active"
+            }
+          }
+        ],
+        "applies_to": "FreeIPA server 4.9 or later, below 5.0",
+        "tier": "BUILT_IN_VERIFIED",
+        "definitive": true,
+        "source": "live",
+        "verification_label": "Verified in a live lab on FreeIPA 4.13.3 / fedora-43, FreeIPA 4.13.4 / fedora-43; independently reviewed.",
+        "limitations": "This starts the one stopped service; it does not establish why it stopped. If it stopped because of a failure (see the last result and log line above), the same cause can stop it again. ipactl start is deliberately not used: if any IPA service fails to start, ipactl stops all IPA services.",
+        "reference": null,
+        "impact_note": ""
+      }
+    ],
+    "verify_baseline": {
+      "schema": 1,
+      "fixes": [
+        {
+          "procedure_id": "proc.service.start-stopped-service",
+          "procedure_digest": "c2ab674a4b231c822735c1ecb4013b2cb8691c2c86ace9f00e38e48ccd62a256",
+          "bindings": {
+            "service": "dirsrv"
+          },
+          "criteria_digest": "9cf22f427206d7fed93e9a6271522ac7e2392fb1ebab734f14c1d61ccccdcb70",
+          "diagnosis_id": "healthcheck.service-not-running-dirsrv"
+        }
+      ]
+    },
+    "carried_diagnoses": []
+  }
+}

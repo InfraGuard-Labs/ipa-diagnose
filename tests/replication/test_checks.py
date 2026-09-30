@@ -226,6 +226,52 @@ def test_peer_rootdse_failures(monkeypatch, rc, err, answered, cls):
     assert f["answered"] is answered and f["ok"] is False and f["error_class"] == cls
 
 
+@pytest.mark.parametrize("err", ["BlockingIOError", "PermissionError", "OSError"])
+def test_peer_rootdse_that_cannot_start_here_is_not_run_not_a_peer_failure(monkeypatch, err):
+    """Freeze review: an OSError starting ldapsearch on THIS host became TRANSPORT and a HIGH peer diagnosis."""
+
+    monkeypatch.setattr(C, "_exec", FakeExec([("ldapsearch", (None, "", err))]))
+    r = C._peer_rootdse({"host": "ipa02.lab.test", "port": "389", "transport": "LDAP"})
+    assert r.status == "NOT_RUN" and "could not be run on this host" in r.display
+
+
+@pytest.mark.parametrize("errno_", [24, 99, 12])  # EMFILE, EADDRNOTAVAIL, ENOMEM
+def test_tcp_local_socket_error_is_not_run_not_unreachable(monkeypatch, errno_):
+    from ipa_diagnose.resolution import client_checks as CC
+
+    def boom(*a, **k):
+        raise OSError(errno_, "local failure")
+
+    monkeypatch.setattr(CC.socket, "create_connection", boom)
+    r = CC._tcp({"host": "ipa02.lab.test", "port": "389"})
+    assert r.status == "NOT_RUN" and "could not test from this host" in r.display
+
+
+def test_tcp_network_unreachable_stays_unreachable(monkeypatch):
+    from ipa_diagnose.resolution import client_checks as CC
+
+    def boom(*a, **k):
+        raise OSError(113, "No route to host")
+
+    monkeypatch.setattr(CC.socket, "create_connection", boom)
+    assert CC._tcp({"host": "ipa02.lab.test", "port": "389"}).fields["state"] == "unreachable"
+
+
+def test_a_peer_probe_that_did_not_run_is_never_a_peer_cause():
+    """Diagnosis level: the root DSE read and TCP checks did not run on this host (NOT_RUN): no PEER_* cause."""
+
+    from tests.replication import helpers as H
+    from tests.replication.scenarios import IPA02, Lab, key
+
+    lab = Lab()
+    lab.data[key("repl.peer_rootdse", {"host": IPA02, "port": "389", "transport": "LDAP"})] = {
+        "status": "NOT_RUN", "fields": {}, "display": "ldapsearch could not be run on this host (BlockingIOError)",
+        "command": "ldapsearch"}
+    r = H.run(lab)
+    assert not [d for d in r.diagnoses if d.code.startswith("PEER_") and d.role in ("PRIMARY", "INDEPENDENT")]
+    assert r.status != "HEALTHY"
+
+
 def test_tls_transports_use_the_ipa_ca_and_demand_verification(monkeypatch):
     fake = FakeExec([("ldapsearch", (255, "", "Can't contact LDAP server"))])
     monkeypatch.setattr(C, "_exec", fake)

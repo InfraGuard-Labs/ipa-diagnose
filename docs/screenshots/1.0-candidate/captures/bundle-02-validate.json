@@ -1,0 +1,13 @@
+{
+ "captured_at": "2026-09-30T16:30:26Z",
+ "columns": 120,
+ "command": "ipa-diagnose bundle validate /root/b7-1.tar.gz",
+ "commit": "b58f3d62c5992c352f2385139e08d50767a73473",
+ "container": "ipa-s",
+ "env": [],
+ "exit": 0,
+ "name": "bundle-02-validate",
+ "run_id": "36742907611",
+ "scenario": "B7 bundle validate on a bundle just written (no extraction)",
+ "user": "root"
+}

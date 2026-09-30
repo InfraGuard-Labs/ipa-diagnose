@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1044" height="671" viewBox="0 0 1044 671" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" font-size="13.5">
+<rect width="1044" height="671" rx="8" fill="#0d1117"/>
+<rect width="1044" height="34" rx="8" fill="#161b22"/>
+<circle cx="18" cy="17" r="5" fill="#ff5f56"/><circle cx="36" cy="17" r="5" fill="#ffbd2e"/><circle cx="54" cy="17" r="5" fill="#27c93f"/>
+<text x="76" y="22" fill="#8b949e">$ ipa-diagnose bundle --preview   (exit 0)</text>
+<rect x="18" y="44" width="1008" height="22" rx="4" fill="#12261e"/>
+<text x="26" y="60" fill="#3fb950" font-weight="bold">REAL LIVE CAPTURE - FreeIPA 4.13.4 / Fedora 43 lab - commit b58f3d6, run 36742907611</text>
+<text x="18" y="89" fill="#c9d1d9" xml:space="preserve">Support bundle preview - nothing was written</text>
+<text x="18" y="106" fill="#ff7b72" xml:space="preserve">  Source: LIVE diagnosis of this host, shown as HOST-001; overall status CRITICAL, evidence partial</text>
+<text x="18" y="123" fill="#c9d1d9" xml:space="preserve">  Contents: 2 diagnoses, 1 resolutions, 1 undiagnosed findings, 3 ipa-healthcheck problems (186 results), 3 evidence ite</text>
+<text x="18" y="140" fill="#c9d1d9" xml:space="preserve">ms, 2 collection errors</text>
+<text x="18" y="157" fill="#c9d1d9" xml:space="preserve">  Pseudonymized: host 1, domain 1, realm 1, suffix 1, instance 1, user 1</text>
+<text x="18" y="174" fill="#c9d1d9" xml:space="preserve">  Redacted: 0 value(s); secret-named fields removed: 0; raw output fields dropped: 0</text>
+<text x="18" y="191" fill="#c9d1d9" xml:space="preserve">  Shortened to stay within limits: 1 text(s) truncated, 0 omitted as too large, entries dropped none</text>
+<text x="18" y="208" fill="#c9d1d9" xml:space="preserve">  Leak self-test: passed</text>
+<text x="18" y="225" fill="#c9d1d9" xml:space="preserve">  Estimated size: 15.5 KiB compressed</text>
+<text x="18" y="242" fill="#c9d1d9" xml:space="preserve">  Files:</text>
+<text x="18" y="259" fill="#c9d1d9" xml:space="preserve">    README.txt                    3.1 KiB</text>
+<text x="18" y="276" fill="#c9d1d9" xml:space="preserve">    manifest.json                 4.2 KiB</text>
+<text x="18" y="293" fill="#c9d1d9" xml:space="preserve">    environment.json              0.5 KiB</text>
+<text x="18" y="310" fill="#c9d1d9" xml:space="preserve">    report.json                   8.5 KiB</text>
+<text x="18" y="327" fill="#c9d1d9" xml:space="preserve">    healthcheck.json             42.7 KiB</text>
+<text x="18" y="344" fill="#c9d1d9" xml:space="preserve">    evidence.json                 1.7 KiB</text>
+<text x="18" y="361" fill="#c9d1d9" xml:space="preserve">    collection-errors.json        1.8 KiB</text>
+<text x="18" y="378" fill="#c9d1d9" xml:space="preserve">    topology.json                 0.3 KiB</text>
+<text x="18" y="395" fill="#c9d1d9" xml:space="preserve">    verification.json             0.9 KiB</text>
+<text x="18" y="412" fill="#c9d1d9" xml:space="preserve">    redaction-report.json         1.4 KiB</text>
+<text x="18" y="429" fill="#c9d1d9" xml:space="preserve">    SHA256SUMS                    0.8 KiB</text>
+<text x="18" y="446" fill="#c9d1d9" xml:space="preserve">  Never included: passwords and Directory Manager credentials; private keys (TLS, SSH, CA); keytab contents; Kerberos ti</text>
+<text x="18" y="463" fill="#c9d1d9" xml:space="preserve">ckets and credential caches; API, bearer and cloud tokens; cookies and authorization headers; AI provider credentials; e</text>
+<text x="18" y="480" fill="#c9d1d9" xml:space="preserve">nvironment variables and shell history; raw journals and raw tool output; full LDAP entries and configuration files; com</text>
+<text x="18" y="497" fill="#c9d1d9" xml:space="preserve">mands of offered fixes and rollbacks; the local replay fixture path; the pseudonym mapping itself</text>
+<text x="18" y="514" fill="#c9d1d9" xml:space="preserve">  Free text that is included (selected log lines, error messages) is pattern-redacted only; a secret in an unknown forma</text>
+<text x="18" y="531" fill="#c9d1d9" xml:space="preserve">t could remain.</text>
+<text x="18" y="548" fill="#c9d1d9" xml:space="preserve">Before sharing, review it. It is pseudonymized and credential-scanned, but it still contains operational detail (service</text>
+<text x="18" y="565" fill="#c9d1d9" xml:space="preserve"> names, versions, error text, timestamps, topology shape).</text>
+<text x="18" y="582" fill="#c9d1d9" xml:space="preserve">Create it with: ipa-diagnose bundle [--output PATH]</text>
+<text x="18" y="661" fill="#6e7681" font-size="11">24 lines, complete; long lines folded at 120 columns, as a 120-column terminal shows them</text>
+</svg>

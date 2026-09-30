@@ -1,0 +1,13 @@
+{
+ "captured_at": "2026-09-30T16:21:53Z",
+ "columns": 120,
+ "command": "ipa-diagnose client --user alice --service sshd",
+ "commit": "b58f3d62c5992c352f2385139e08d50767a73473",
+ "container": "ipa-c",
+ "env": [],
+ "exit": 1,
+ "name": "client-03-server-unreachable-sssd-offline",
+ "run_id": "36742908065",
+ "scenario": "C08 IPA server ports blocked from the client; SSSD offline",
+ "user": "root"
+}

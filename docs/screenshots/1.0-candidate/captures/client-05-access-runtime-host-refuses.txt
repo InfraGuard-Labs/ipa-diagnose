@@ -1,0 +1,41 @@
+ipa-diagnose access: alice -> client1.lab.test via sshd
+  LIVE; asked FreeIPA as admin@LAB.TEST on ipa01.lab.test (API 4.13.4)
+
+FreeIPA HBAC policy authorizes alice to access client1.lab.test through sshd, but the login is expected to fail on this host: This host refuses alice although FreeIPA HBAC allows it.
+
+  AUTHENTICATION  NOT VERIFIED the IPA account exists and is enabled; no credential was tested
+                               the password expired at 2026-09-30T16:20:44Z: a password login must change it first
+  AUTHORIZATION   PASS         FreeIPA HBAC policy allows this request (rule: r_client)
+  RUNTIME ACCESS  FAIL         checked on client1.lab.test: a login by alice through sshd is expected to fail on this host: This host refuses alice although FreeIPA HBAC allows it
+
+ROOT CAUSE
+  on this host: This host refuses alice although FreeIPA HBAC allows it
+WHY
+  Matched rule r_client (enabled) - user: alice listed directly | host: client1.lab.test listed directly | service: sshd listed directly
+ALSO NOTED
+  The password of alice expired at 2026-09-30T16:20:44Z: A password login must change the password first; logins that do not use the password (for example SSH keys) are not affected by this.
+RUNTIME (--runtime)
+  investigated on this host with client mode's planner
+  [CONTRADICTING] This host refuses alice although FreeIPA HBAC allows it - confidence MEDIUM
+      FreeIPA's own hbactest authorizes alice through sshd for this host, but SSSD's account check here answers 'Permission denied' (access_provider = simple). The refusal comes from this host: another access_provider or simple_allow list, SSSD's cached HBAC rules not yet refreshed, a different host name (ipa_hostname), or another PAM module in the account phase.
+  [!!  ] PAM account phase for the user (sssctl user-checks): PAM account check for alice via sshd on this host: Permission denied
+  [!   ] SSSD log signals: 1253 recent SSSD log line(s): offline x5, server_unreachable x4
+  (20 runtime check(s) on this host passed; --details lists them)
+CHECKED FOR YOU
+  [ok  ] user alice exists, enabled, no principal expiration set or readable; 1 direct and 0 nested groups
+  [ok  ] host client1.lab.test exists; 0 direct and 0 nested hostgroups
+  [ok  ] HBAC service sshd is defined; in 0 service group(s)
+  [ok  ] FreeIPA evaluated 2 enabled HBAC rule(s): access granted; matched: r_client
+  [ok  ] rule r_client: enabled
+IMPACT
+  FreeIPA HBAC policy is not what stops this login: the runtime side on this host is (This host refuses alice although FreeIPA HBAC allows it). Fixing the policy would not help.
+RESOLUTION
+  Nothing to fix in FreeIPA HBAC policy for this request.
+RISK
+  None from this command: it only reads.
+VERIFY
+  ipa hbactest --user=alice --host=client1.lab.test --service=sshd (FreeIPA's own evaluation, read-only)
+  ipa user-status alice (read-only; failed logins and lockout on each server)
+LIMITATIONS
+  Runtime prerequisites were checked on this host with client mode (SSSD, identity lookup, NSS, PAM stack and account phase); no login is attempted and no credential is tested.
+  (--details lists every limitation, the API calls made and the relationships read)

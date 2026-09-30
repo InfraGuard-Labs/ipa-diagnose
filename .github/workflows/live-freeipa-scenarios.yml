@@ -1,6 +1,6 @@
 name: Live FreeIPA failure scenarios
 
-# Manually triggered only. One real single-node FreeIPA server (throwaway,
+# Manually triggered (or, on a freeze/ branch, by .github/freeze-live-trigger). One real single-node FreeIPA server (throwaway,
 # created and destroyed inside the job), then controlled, reversible faults
 # (stop a service / change one file's mode or group -> ipa-diagnose -> apply
 # the printed fix or restore -> ipa-diagnose verify) plus missing-dependency /
@@ -29,6 +29,10 @@ on:
         required: false
         default: "scenarios"
         type: string
+  # Freeze campaign: a change of .github/freeze-live-trigger on a freeze/ branch runs BOTH jobs (scenarios and bundle)
+  push:
+    branches: ["freeze/**"]
+    paths: [".github/freeze-live-trigger"]
 
 env:
   INSTALL_SOURCE: ${{ inputs.install_source }}
@@ -37,12 +41,14 @@ env:
   T: python3 scripts/lab_truth.py
   P: python3 scripts/lab_procedure.py
   D: docker exec ipa-s /root/.local/bin/ipa-diagnose
+  # Real text captures for docs/screenshots/1.0-candidate (read-only, 120 columns; published as annotations below)
+  CAP: python3 scripts/lab_captures.py run
 
 jobs:
   scenarios:
     if: ${{ inputs.suite != 'bundle' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 75
+    timeout-minutes: 110  # the freeze captures add about ten read-only diagnose runs
     steps:
       - uses: actions/checkout@v4
 
@@ -134,6 +140,7 @@ jobs:
           # Container quirk (live-observed): ipa-healthcheck MetaCheck WARNs "missing /proc/sys/crypto/fips_enabled";
           # ipa-diagnose honestly lists it as undiagnosed (NOT_FULLY_VERIFIED). Anything else must be absent.
           $T check S0b-healthy-single-server out/s0b-healthy-verified.json '{"overall_in": ["HEALTHY", "NOT_FULLY_VERIFIED"], "no_diagnoses": true, "undiagnosed_only": ["MetaCheck"], "completeness": "complete", "ruv_state_in": ["NONE_CONFIGURED", "VERIFIED"], "no_offered": true}'
+          $CAP srv-01-healthy-container-metacheck ipa-s "S0b healthy lab server (container-only MetaCheck warning)" -- ipa-diagnose
           head -25 out/s0b-healthy-verified.txt
 
       - name: F1 group mismatch on a non-key IPA file -> printed fix applied -> verify
@@ -146,6 +153,8 @@ jobs:
           $D --json > out/f1-group.json 2>/dev/null; $D --details > out/f1-group.txt 2>&1
           if grep -q '/etc/ipa/ca.crt' out/f1-healthcheck-failures.json; then
             $T check F1-group-mismatch out/f1-group.json '{"diagnosed_contains": ["File ownership/mode"], "resolution": {"procedure": "proc.files.restore-expected-permissions", "status": "OFFERED", "argv": ["chgrp", "-h", "root", "/etc/ipa/ca.crt"]}}'
+            $CAP srv-02-file-group-fix-confirm-first ipa-s "F1 wrong group on /etc/ipa/ca.crt (fix with CONFIRM FIRST)" -- ipa-diagnose
+            $D --json > out/f1-group.json 2>/dev/null
             $P apply out/f1-group.json proc.files.restore-expected-permissions ipa-s out/f1-apply.txt
             $D verify --json > out/f1-verify.json 2>/dev/null
             $P verify out/f1-verify.json "proc.files.restore-expected-permissions (group, /etc/ipa/ca.crt)"
@@ -207,6 +216,7 @@ jobs:
           docker exec ipa-s mv /usr/bin/ipa-healthcheck /usr/bin/ipa-healthcheck.off || true
           $D --details > out/s1-no-healthcheck.txt 2>&1; echo "exit=$?" >> out/s1-no-healthcheck.txt || true
           $D --json > out/s1-no-healthcheck.json 2>/dev/null || true
+          $CAP srv-09-healthcheck-missing-unknown ipa-s "S1 ipa-healthcheck binary hidden (no base evidence)" -- ipa-diagnose
           docker exec ipa-s mv /usr/bin/ipa-healthcheck.off /usr/bin/ipa-healthcheck || true
           $T check S1-healthcheck-missing out/s1-no-healthcheck.json '{"overall_not": ["HEALTHY"], "completeness_not": "complete", "no_offered": true}'
           LDS=$(docker exec ipa-s bash -c 'command -v ldapsearch')
@@ -236,11 +246,18 @@ jobs:
           $D --json > out/s3-dirsrv-down.json 2>/dev/null || true
           docker exec ipa-s ipa-healthcheck --failures-only --output-type json > out/s3-dirsrv-down-healthcheck-failures.json 2>&1 || true
           $D ai-preview > out/s3-ai-preview.txt 2>&1; echo "exit=$?" >> out/s3-ai-preview.txt || true
+          $CAP srv-03-dirsrv-stopped ipa-s "S3 Directory Server stopped" -- ipa-diagnose
+          $CAP srv-04-dirsrv-stopped-details ipa-s "S3 Directory Server stopped (--details)" -- ipa-diagnose --details
+          $CAP srv-05-dirsrv-stopped-json ipa-s "S3 Directory Server stopped (--json)" -- ipa-diagnose --json
+          $CAP srv-06-dirsrv-stopped-ai-preview ipa-s "S3 ai-preview (no provider configured, nothing sent)" -- ipa-diagnose ai-preview
+          $D --json > out/s3-dirsrv-down.json 2>/dev/null || true
           $T check S3-dirsrv-down out/s3-dirsrv-down.json "{\"primary_contains\": \"dirsrv\", \"primary_status\": \"DIAGNOSED\", \"no_diagnosed\": [\"clock skew\", \"expired\", \"records\"], \"resolution\": {\"procedure\": \"proc.service.start-stopped-service\", \"status\": \"OFFERED\", \"argv\": [\"systemctl\", \"start\", \"dirsrv@$INST.service\"], \"no_argv0\": [\"ipactl\"]}}"
           $P expect out/s3-dirsrv-down.json proc.service.start-stopped-service OFFERED
           $P apply out/s3-dirsrv-down.json proc.service.start-stopped-service ipa-s out/s3-apply.txt || docker exec ipa-s systemctl start dirsrv@$INST.service
           sleep 30; docker exec ipa-s ipactl status > out/s3-ipactl-after.txt 2>&1 || true
+          docker exec ipa-s bash -c 'd=/var/lib/ipa-diagnose; [ -d $d ] || d=/root/.cache/ipa-diagnose; rm -rf /tmp/cap-state; cp -a $d /tmp/cap-state'
           $D verify --json > out/s3-verify.json 2>/dev/null
+          $CAP srv-07-verify-after-fix ipa-s "S3 verify after running the printed fix" -- IPA_DIAGNOSE_STATE_DIR=/tmp/cap-state ipa-diagnose verify
           $P verify out/s3-verify.json "proc.service.start-stopped-service (dirsrv)"
           $T verify S3-dirsrv-fix-verify out/s3-verify.json '{"verify_not": ["STILL_PRESENT", "CHANGED"]}'
           head -25 out/s3-dirsrv-down.txt
@@ -254,6 +271,7 @@ jobs:
           $D --details > out/s4-dns-down.txt 2>&1; echo "exit=$?" >> out/s4-dns-down.txt || true
           $D --json > out/s4-dns-down.json 2>/dev/null || true
           docker exec ipa-s ipa-healthcheck --failures-only --output-type json > out/s4-dns-down-healthcheck-failures.json 2>&1 || true
+          $CAP srv-10-dns-stopped-unknown ipa-s "S4 this server's named stopped (ipa-healthcheck does not finish)" -- ipa-diagnose
           # Live-observed: with this server's named stopped, ipa-healthcheck itself does not finish within 120 s
           # (the server resolves through its own named) -> UNKNOWN with a DNS hint. Either that, or named as PRIMARY.
           $T check S4-named-down out/s4-dns-down.json '{"overall_in": ["UNKNOWN", "CRITICAL", "DEGRADED"], "not_primary": ["DNS record", "clock", "certificate"], "no_diagnosed": ["clock skew", "expired", "replication"], "no_offered": true}'
@@ -273,6 +291,8 @@ jobs:
           $D --details > out/s5-kdc-down.txt 2>&1; echo "exit=$?" >> out/s5-kdc-down.txt || true
           $D --json > out/s5-kdc-down.json 2>/dev/null || true
           docker exec ipa-s ipa-healthcheck --failures-only --output-type json > out/s5-kdc-down-healthcheck-failures.json 2>&1 || true
+          $CAP srv-08-kdc-stopped ipa-s "S5 Kerberos KDC stopped" -- ipa-diagnose
+          $D --json > out/s5-kdc-down.json 2>/dev/null || true
           $T check S5-krb5kdc-down out/s5-kdc-down.json '{"primary_contains": "krb5kdc", "primary_status": "DIAGNOSED", "no_diagnosed": ["clock skew", "named", "dirsrv"], "resolution": {"procedure": "proc.service.start-stopped-service", "status": "OFFERED", "argv": ["systemctl", "start", "krb5kdc.service"], "no_argv0": ["ipactl"]}}'
           $P expect out/s5-kdc-down.json proc.service.start-stopped-service OFFERED
           $P apply out/s5-kdc-down.json proc.service.start-stopped-service ipa-s out/s5-apply.txt || docker exec ipa-s systemctl start krb5kdc.service
@@ -288,7 +308,9 @@ jobs:
           docker exec ipa-s systemctl stop krb5kdc.service
           sleep 5
           $D --json > out/v1-kdc-down.json 2>/dev/null
+          docker exec ipa-s bash -c 'd=/var/lib/ipa-diagnose; [ -d $d ] || d=/root/.cache/ipa-diagnose; rm -rf /tmp/cap-state; cp -a $d /tmp/cap-state'
           $D verify --json > out/v1-verify-unfixed.json 2>/dev/null; echo "exit=$?" > out/v1-verify-unfixed-exit.txt
+          $CAP srv-11-verify-still-present ipa-s "V1 verify with the KDC left stopped (nothing fixed)" -- IPA_DIAGNOSE_STATE_DIR=/tmp/cap-state ipa-diagnose verify
           $T verify V1-verify-problem-still-present out/v1-verify-unfixed.json '{"verify_not": ["RESOLVED"]}'
           # V2: re-baseline, corrupt the saved fix record's criteria digest, then really fix: must not be RESOLVED
           $D --json > out/v2-kdc-down.json 2>/dev/null
@@ -317,6 +339,7 @@ jobs:
           docker exec ipa-s systemctl is-active certmonger.service > out/s6-certmonger-state-during.txt 2>&1
           $D --details > out/s6-certmonger-down.txt 2>&1; echo "exit=$?" >> out/s6-certmonger-down.txt || true
           $D --json > out/s6-certmonger-down.json 2>/dev/null || true
+          $CAP srv-12-certmonger-masked-fix-withheld ipa-s "S6 certmonger masked and stopped (start command withheld)" -- ipa-diagnose
           docker exec ipa-s ipa-healthcheck --failures-only --output-type json > out/s6-certmonger-down-healthcheck-failures.json 2>&1 || true
           $P expect out/s6-certmonger-down.json proc.service.start-stopped-service WITHHELD masked
           $T check S6-certmonger-masked out/s6-certmonger-down.json '{"primary_contains": "certmonger", "no_diagnosed": ["expired", "network"], "no_offered": true, "resolution": {"procedure": "proc.service.start-stopped-service", "status": "WITHHELD", "reason_contains": "masked"}}'
@@ -389,6 +412,31 @@ jobs:
           done
           cat out/s9-timing.txt
 
+      # GitHub keeps at most 10 notice annotations per step: the captures are published over several steps
+      - name: Publish real CLI captures (1)
+        if: always()
+        run: |
+          python3 scripts/lab_captures.py attach rows-scenarios-truth out/truth/results.jsonl
+          python3 scripts/lab_captures.py attach rows-scenarios-procedures out/slice1-procedures.txt
+          cp env.txt out/env-scenarios.txt 2>/dev/null; python3 scripts/lab_captures.py attach rows-scenarios-env out/env-scenarios.txt
+          python3 scripts/lab_captures.py attach rows-scenarios-timing out/s9-timing.txt
+          python3 scripts/lab_captures.py emit 0
+      - name: Publish real CLI captures (2)
+        if: always()
+        run: python3 scripts/lab_captures.py emit 10
+      - name: Publish real CLI captures (3)
+        if: always()
+        run: python3 scripts/lab_captures.py emit 20
+      - name: Publish real CLI captures (4)
+        if: always()
+        run: python3 scripts/lab_captures.py emit 30
+      - name: Publish real CLI captures (5)
+        if: always()
+        run: python3 scripts/lab_captures.py emit 40
+      - name: Publish real CLI captures (6)
+        if: always()
+        run: python3 scripts/lab_captures.py emit 50
+
       - name: Cleanup
         if: always()
         run: docker rm -f ipa-s 2>/dev/null || true; docker volume rm ipa-data 2>/dev/null || true
@@ -408,7 +456,7 @@ jobs:
     # Support bundles (1.0 Slice 2) from real states of the same throwaway server: fresh install, healthy, Directory
     # Server stopped, KDC stopped, ipa-healthcheck missing, unprivileged. Canary secrets (never real credentials) are
     # planted where a bundle could meet them; scripts/lab_bundle.py fails the job if any reaches a bundle.
-    if: ${{ inputs.suite == 'bundle' }}
+    if: ${{ inputs.suite == 'bundle' || github.event_name == 'push' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -504,6 +552,7 @@ jobs:
           set +e
           docker exec ipa-s systemctl stop dirsrv@$INST.service; sleep 5
           bash scripts/lab_bundle_run.sh B2-dirsrv-down b2 root '{"overall_in": ["CRITICAL"], "resolution": {"procedure": "proc.service.start-stopped-service", "status": "OFFERED"}}'
+          $CAP bundle-01-preview-dirsrv-stopped ipa-s "B2 bundle --preview with the Directory Server stopped (writes nothing)" -- ipa-diagnose bundle --preview
           docker exec ipa-s systemctl start dirsrv@$INST.service; sleep 20
 
       - name: B3 Kerberos KDC stopped (canary user in root's credential cache)
@@ -550,6 +599,7 @@ jobs:
             /usr/bin/time -f "bundle   run $n: %e s" docker exec ipa-s /root/.local/bin/ipa-diagnose bundle --output /root/b7-$n.tar.gz > /dev/null 2>> out/b7-timing.txt
           done
           cat out/b7-timing.txt
+          $CAP bundle-02-validate ipa-s "B7 bundle validate on a bundle just written (no extraction)" -- ipa-diagnose bundle validate /root/b7-1.tar.gz
 
       - name: B8 CA journal (Dogtag unit, digester echo of a fake AJP attribute, CA stopped)
         run: |
@@ -590,6 +640,16 @@ jobs:
           if grep -q B6-output-safety-FAIL out/truth/bundle-results.jsonl; then a=1; fi
           if ! grep -q '"scenario": "B0-fresh-install' out/truth/bundle-results.jsonl; then echo "FAIL  B0 (no result row)"; a=1; fi
           exit $a
+
+      - name: Publish real CLI captures (1)
+        if: always()
+        run: |
+          python3 scripts/lab_captures.py attach rows-bundle out/truth/bundle-results.jsonl
+          cp out/b7-timing.txt out/b7-timing-copy.txt 2>/dev/null; python3 scripts/lab_captures.py attach rows-bundle-timing out/b7-timing-copy.txt
+          python3 scripts/lab_captures.py emit 0
+      - name: Publish real CLI captures (2)
+        if: always()
+        run: python3 scripts/lab_captures.py emit 10
 
       - name: Cleanup
         if: always()

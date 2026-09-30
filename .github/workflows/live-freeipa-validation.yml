@@ -1,6 +1,6 @@
 name: Live FreeIPA validation lab
 
-# Manually triggered only - never runs on push/PR. This is the real
+# Manually triggered (or, on a freeze/ branch, by a change of .github/freeze-live-trigger; never on a PR). This is the real
 # validation lab: it installs the PUBLIC ipa-diagnose v0.1.1 artifact
 # (from production PyPI, per the "public artifact first" rule - not
 # built from source) against real, live FreeIPA servers running on
@@ -23,9 +23,13 @@ on:
         description: "Where to install ipa-diagnose from: 'pypi' (public artifact, default, per the public-artifact-first rule) or 'source' (this exact checked-out commit - only for retesting a not-yet-released fix before it's published)"
         required: false
         default: "pypi"
+  # Freeze campaign: a change of .github/freeze-live-trigger on a freeze/ branch runs this lab from that commit's source
+  push:
+    branches: ["freeze/**"]
+    paths: [".github/freeze-live-trigger"]
 
 env:
-  INSTALL_SOURCE: ${{ inputs.install_source }}
+  INSTALL_SOURCE: ${{ github.event_name == 'push' && 'source' || inputs.install_source }}
   IPA_PASSWORD: LiveLabSecret123
 
 jobs:

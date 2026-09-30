@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1044" height="1147" viewBox="0 0 1044 1147" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" font-size="13.5">
+<rect width="1044" height="1147" rx="8" fill="#0d1117"/>
+<rect width="1044" height="34" rx="8" fill="#161b22"/>
+<circle cx="18" cy="17" r="5" fill="#ff5f56"/><circle cx="36" cy="17" r="5" fill="#ffbd2e"/><circle cx="54" cy="17" r="5" fill="#27c93f"/>
+<text x="76" y="22" fill="#8b949e">$ ipa-diagnose replication --verify   (exit 4)</text>
+<rect x="18" y="44" width="1008" height="22" rx="4" fill="#12261e"/>
+<text x="26" y="60" fill="#3fb950" font-weight="bold">REAL LIVE CAPTURE - FreeIPA 4.13.4 / Fedora 43 lab - commit b58f3d6, run 36742907976</text>
+<text x="18" y="89" fill="#c9d1d9" xml:space="preserve">VERIFY (compared with the replication result of 2026-09-30T16:31:13Z; every check re-run now)</text>
+<text x="18" y="106" fill="#3fb950" xml:space="preserve">  RESOLVED           (found last time) This server&#x27;s Directory Server is not running: not found again; the checks it res</text>
+<text x="18" y="123" fill="#c9d1d9" xml:space="preserve">ted on answer now</text>
+<text x="18" y="140" fill="#c9d1d9" xml:space="preserve">  Exact RUV equality is not required; a fresh successful session after the saved result is.</text>
+<text x="18" y="157" fill="#c9d1d9" xml:space="preserve">  The VERIFY answer above is authoritative; below is the current state from this run.</text>
+<text x="18" y="174" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="191" fill="#c9d1d9" xml:space="preserve">ipa-diagnose replication: ipa02.lab.test (realm LAB.TEST)</text>
+<text x="18" y="208" fill="#c9d1d9" xml:space="preserve">  LIVE; FreeIPA 4.13.4, 389-ds 3.1.5</text>
+<text x="18" y="225" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="242" fill="#c9d1d9" xml:space="preserve">ipa02.lab.test: nothing failing was found, but an agreement is not green yet (transient; recheck later).</text>
+<text x="18" y="259" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="276" fill="#c9d1d9" xml:space="preserve">REPLICATION (per suffix and direction; observed from ipa02.lab.test)</text>
+<text x="18" y="293" fill="#c9d1d9" xml:space="preserve">  ca      ipa02.lab.test -&gt; ipa01.lab.test  NOT GREEN YET (NO_SESSIONS)  [LDAP/SASL/GSSAPI, port 389]</text>
+<text x="18" y="310" fill="#c9d1d9" xml:space="preserve">  ca      ipa01.lab.test -&gt; ipa02.lab.test  OK  (read from ipa01.lab.test; its last session ended 2026-09-30T16:29:47Z)</text>
+<text x="18" y="327" fill="#c9d1d9" xml:space="preserve">  domain  ipa02.lab.test -&gt; ipa01.lab.test  OK  [LDAP/SASL/GSSAPI, port 389] last session ended 2026-09-30T16:31:18Z</text>
+<text x="18" y="344" fill="#c9d1d9" xml:space="preserve">  domain  ipa01.lab.test -&gt; ipa02.lab.test  NOT GREEN YET  (read from ipa01.lab.test; its last session ended 2026-09-30T</text>
+<text x="18" y="361" fill="#c9d1d9" xml:space="preserve">16:30:09Z)</text>
+<text x="18" y="378" fill="#c9d1d9" xml:space="preserve">  domain  ipa02.lab.test -&gt; ipa03.lab.test  OK  [LDAP/SASL/GSSAPI, port 389] last session ended 2026-09-30T16:31:18Z</text>
+<text x="18" y="395" fill="#c9d1d9" xml:space="preserve">  domain  ipa03.lab.test -&gt; ipa02.lab.test  OK  (read from ipa03.lab.test; its last session ended 2026-09-30T16:30:12Z)</text>
+<text x="18" y="412" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="429" fill="#c9d1d9" xml:space="preserve">ROOT CAUSE</text>
+<text x="18" y="446" fill="#c9d1d9" xml:space="preserve">  [WARNING] The ca agreement ipa02.lab.test -&gt; ipa01.lab.test is not green yet (no sessions) - confidence HIGH</text>
+<text x="18" y="463" fill="#c9d1d9" xml:space="preserve">      no replication session has run since the Directory Server started (not proof of health). Status: Error (0) No repl</text>
+<text x="18" y="480" fill="#c9d1d9" xml:space="preserve">ication sessions started since server startup.</text>
+<text x="18" y="497" fill="#c9d1d9" xml:space="preserve">      Impact: Not a failure by itself, and not proof of health: 389-DS retries by itself. Run ipa-diagnose replication a</text>
+<text x="18" y="514" fill="#c9d1d9" xml:space="preserve">gain after the next session.</text>
+<text x="18" y="531" fill="#c9d1d9" xml:space="preserve">  [WARNING] ipa01.lab.test last could not reach ipa02.lab.test (domain); ipa02.lab.test&#x27;s Directory Server is running no</text>
+<text x="18" y="548" fill="#c9d1d9" xml:space="preserve">w - confidence MEDIUM</text>
+<text x="18" y="565" fill="#c9d1d9" xml:space="preserve">      Read from ipa01.lab.test: Error (-1) Problem connecting to replica - LDAP error: Can&#x27;t contact LDAP server (connec</text>
+<text x="18" y="582" fill="#c9d1d9" xml:space="preserve">tion error) (session ended 2026-09-30T16:30:09Z). Whether ipa01.lab.test can reach ipa02.lab.test now is shown by its ne</text>
+<text x="18" y="599" fill="#c9d1d9" xml:space="preserve">xt session.</text>
+<text x="18" y="616" fill="#c9d1d9" xml:space="preserve">      Impact: Changes from the peer wait until it reaches this server.</text>
+<text x="18" y="633" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="650" fill="#c9d1d9" xml:space="preserve">HANDOFF (the remaining evidence is on another server; nothing was changed)</text>
+<text x="18" y="667" fill="#c9d1d9" xml:space="preserve">  On ipa01.lab.test run:</text>
+<text x="18" y="684" fill="#c9d1d9" xml:space="preserve">    sudo ipa-diagnose replication --peer ipa02.lab.test</text>
+<text x="18" y="701" fill="#c9d1d9" xml:space="preserve">  Why: ipa01.lab.test last could not reach ipa02.lab.test (domain); ipa02.lab.test&#x27;s Directory Server is running now. Th</text>
+<text x="18" y="718" fill="#c9d1d9" xml:space="preserve">e path from ipa01.lab.test can only be tested on ipa01.lab.test. Nothing was changed on ipa02.lab.test or ipa01.lab.test</text>
+<text x="18" y="735" fill="#c9d1d9" xml:space="preserve">; ipa-diagnose never changes another server.</text>
+<text x="18" y="752" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="769" fill="#c9d1d9" xml:space="preserve">RESOLUTION (only for causes on this server)</text>
+<text x="18" y="786" fill="#c9d1d9" xml:space="preserve">  No fix is printed: nothing to fix.</text>
+<text x="18" y="803" fill="#c9d1d9" xml:space="preserve">NEXT READ-ONLY STEPS</text>
+<text x="18" y="820" fill="#c9d1d9" xml:space="preserve">  sudo ipa-diagnose replication --peer ipa01.lab.test --verify (after a few minutes)</text>
+<text x="18" y="837" fill="#c9d1d9" xml:space="preserve">  sudo ipa-diagnose replication --verify (after ipa01.lab.test&#x27;s next session)</text>
+<text x="18" y="854" fill="#c9d1d9" xml:space="preserve">TOPOLOGY (context)</text>
+<text x="18" y="871" fill="#c9d1d9" xml:space="preserve">  servers: ipa01.lab.test, ipa02.lab.test, ipa03.lab.test</text>
+<text x="18" y="888" fill="#c9d1d9" xml:space="preserve">  ca: 1 segment(s)</text>
+<text x="18" y="905" fill="#c9d1d9" xml:space="preserve">  domain: 2 segment(s); articulation point(s): ipa02.lab.test</text>
+<text x="18" y="922" fill="#c9d1d9" xml:space="preserve">  only one server holds: DNS (ipa01.lab.test)</text>
+<text x="18" y="939" fill="#c9d1d9" xml:space="preserve">  CA renewal master: ipa01.lab.test</text>
+<text x="18" y="956" fill="#c9d1d9" xml:space="preserve">LIMITATIONS</text>
+<text x="18" y="973" fill="#c9d1d9" xml:space="preserve">  Replication is directional and per suffix: this server sees its OWN outbound agreements. The reverse direction is only</text>
+<text x="18" y="990" fill="#d29922" xml:space="preserve"> reported when it could be read from the peer (read-only, with your own Kerberos ticket); otherwise it is NOT VERIFIED a</text>
+<text x="18" y="1007" fill="#c9d1d9" xml:space="preserve">nd a handoff to the peer is printed.</text>
+<text x="18" y="1024" fill="#c9d1d9" xml:space="preserve">  Nothing is changed on this server or any other; no command runs on another server; fixes are printed only for causes o</text>
+<text x="18" y="1041" fill="#c9d1d9" xml:space="preserve">n this server, and only when every safety gate passes.</text>
+<text x="18" y="1058" fill="#c9d1d9" xml:space="preserve">  planner: 24 of 30 checks run, 4.437 s; stop: every relevant check in the plan was visited</text>
+<text x="18" y="1137" fill="#6e7681" font-size="11">46 lines, complete; long lines folded at 120 columns, as a 120-column terminal shows them</text>
+</svg>

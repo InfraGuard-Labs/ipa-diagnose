@@ -89,3 +89,7 @@ The fixtures' shapes match the real answers. `user_show --all` carries `nsaccoun
 `memberof_hostgroup` and `memberofindirect_hostgroup`. `hbacsvc_show` carries `memberof_hbacsvcgroup`.
 `hbacrule_show` carries `ipaenabledflag: [true]`. `group_show` / `hostgroup_show` carry `member_*` and
 `memberof_*`. `hbactest` returns `value`, `matched`, `notmatched`, `error`, `warning` and `messages`.
+
+## Freeze campaign re-run (final product code)
+
+Access scenarios A01-A25 re-run on the final freeze product code (b58f3d6), run [36742907967](https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36742907967), **FreeIPA 4.13.4** / Fedora 43: **25/25 PASS, 0 false allows, 0 false denies** (every AUTHORIZATION answer compared with an independent ipa hbactest). Also 25/25 in freeze run 1 (36724948123). Details: [freeze-audit.md](freeze-audit.md).

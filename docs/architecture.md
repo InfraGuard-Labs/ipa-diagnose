@@ -1,27 +1,52 @@
 # Architecture
 
+ipa-diagnose is one deterministic pipeline with four entry points. Each answers one question about one subject, reads
+only, prints (never runs) a fix when every gate passes, and has a fresh-evidence verification:
+
 ```text
-ipa-healthcheck JSON  +  targeted read-only evidence
-        │           (journalctl, getcert, ipa-replica-manage, dig, klist/kvno, ldapsearch)
-        ▼
-Evidence Normalizer
-        ▼
-Privacy / Redaction
-        ▼
-Diagnostic Engine (5 packs)
-        ▼
-Correlation + Prioritization
-        ▼
-Structured Diagnosis
-   ┌────────┴────────┐
-   ▼                 ▼
-Local Explanation   Optional AI
-   └────────┬────────┘
-            ▼
-           CLI
-            ▼
-        Verification
+             SERVER                  ACCESS                   CLIENT                 REPLICATION
+         ipa-diagnose [verify]   access USER HOST SVC     client [--verify]      replication [--verify]
+         (this server)           (FreeIPA policy)   ─ --runtime ─► (this client)  (this server, per suffix
+                                                                                   and direction, peers)
+ L0 read-only   ipa-healthcheck JSON   fixed allowlist of      closed check registry  closed check registry
+    evidence    + staged collectors    read-only JSON-RPC      (SSSD, DNS, TCP, TLS,   (LDAPI topology/agreements,
+                (journal, getcert,     calls with the caller's  clock, keytab, KDC,     peer DNS/TCP/root DSE, GSSAPI
+                ldapsearch, dig, ...)  own ticket (hbactest)    NSS, PAM account phase) reproduction, reverse read)
+ L1 typed       Finding / EvidenceItem  API answers with the    CheckResult facts, each with provenance (command, time,
+    evidence    with provenance         call they came from     LIVE or REPLAY) and a declared evidence shape
+ L2 relations   causality chain         relationship index      facts of earlier steps  EnvironmentGraph (servers,
+                DNS > Kerberos >        (user/group/host/rule   (what is already known) roles, segments, agreements,
+                Replication > Certs,    edges, cycle-safe)                              observer-relative facts)
+                Directory Server under all
+ L3 planning    fixed staged collection fixed bounded call      planner: explicit       planner + bounded for_each
+                (collectors run only    sequence (<= 60 calls)  ordered steps, gates,   per agreement subject
+                for a pack with a                               budgets, full trace
+                WARNING+ finding)
+ L4 diagnosis   5 packs + correlation:  FreeIPA's hbactest      rules over the trace:   cause chains through a
+                PRIMARY / RELATED /     decides; the index      PRIMARY / RELATED /     capability DAG; a link only
+                INDEPENDENT /           explains (COMPLETE /    INDEPENDENT /           from a registered
+                UNDIAGNOSED, UNKNOWN    INCOMPLETE /            UNDIAGNOSED /           discriminator; handoff to
+                is first-class          CONTRADICTING)          CONTRADICTING           the peer where it stops
+ L5 resolution  procedure catalogue (knowledge/procedures -> procedures.json): typed values, applicability, fresh
+                read-only checks, withhold_if, prerequisites; printed only.  A deny is policy: no fix.  Replication adds
+                the Resolution Safety gate (this server only, LIVE <= 300 s, fresh revalidation, forbidden operations)
+                and the No-Google gate.
+ L6 verify      verify: fresh evidence  (policy is asked again  client --verify: fresh  replication --verify: a
+                + the fix's own checks;  each time; nothing      checks per earlier      fresh successful session
+                RESOLVED / STILL_PRESENT saved)                  diagnosis               after the saved result, or
+                / PARTIALLY / CHANGED /                                                  PENDING (bounded)
+                UNABLE_TO_VERIFY
+
+ Side paths:  bundle  - pseudonymized, redacted structure of a fresh server diagnosis (+ optional access, client,
+                        replication parts), fail-closed leak self-test; never uploaded      (docs/support-bundle.md)
+              AI      - optional, server diagnoses only: explains an already-computed diagnosis after the privacy
+                        pipeline (ai-preview shows the exact payload); never decides, never supplies a command
 ```
+
+The layer numbers (L0-L6) are the ones the code and the Slice 5 section below use. The server path predates the
+planner: its "planning" is staged collection, and its relationships are the fixed causality chain plus each rule's
+`upstream_candidates`. The access path never plans: its call sequence is fixed. Exit codes and status words for every
+command: [exit-codes.md](exit-codes.md).
 
 ## Evidence model
 
@@ -120,11 +145,16 @@ and [docs/security-privacy.md](security-privacy.md) for the payload pipeline.
 ## CLI and rendering
 
 `cli.py` wires collection → diagnosis → (optional) AI explanation →
-rendering, for three subcommands (`diagnose` [default], `verify`,
-`ai-preview`). `render/console.py` renders the default and `--details`
+rendering for the server commands (`diagnose` [default], `verify`,
+`ai-preview`) and dispatches `bundle`, `access`, `client` and `replication`
+to their own modules (`bundle/cli.py`, `access/cli.py`, `client/cli.py`,
+`replication/cli.py`). `render/console.py` renders the default and `--details`
 views; `render/json_output.py` serializes the same `DiagnosisReport` for
 `--json`/automation use - both from the identical `DiagnosisReport` object,
-so there is exactly one source of truth for what a run concluded.
+so there is exactly one source of truth for what a run concluded. Each of the
+other commands likewise renders text and JSON from one result object, with its
+own versioned JSON contract (`access_schema_version`, `client_schema_version`,
+`replication_schema_version`, the bundle manifest).
 
 ## Access diagnosis (`access/`)
 
@@ -185,3 +215,9 @@ holds the plan's step dependencies to the same DAG. Details: [replication-mode.m
 ## Verification (`verify.py`)
 
 See [docs/verification.md](verification.md).
+
+## Resolution and the support bundle
+
+Procedures are data compiled from `knowledge/procedures/*.yaml` and gated per run: [resolution.md](resolution.md).
+The support bundle's pipeline (structure, prohibited fields, redaction before truncation, pseudonyms, bounds, a
+fail-closed self-test): [support-bundle.md](support-bundle.md).

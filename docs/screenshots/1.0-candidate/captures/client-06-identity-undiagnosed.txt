@@ -1,0 +1,51 @@
+ipa-diagnose client: client1.lab.test (IPA domain lab.test, server ipa01.lab.test)
+  LIVE; asked about user ghost, service sshd; SSSD 2.12.0, IPA client 4.13.4
+
+client1.lab.test: a problem was found, but its cause is not established (see UNDIAGNOSED under ROOT CAUSE).
+
+  AUTHENTICATION  NOT VERIFIED nothing on this host's authentication path was found broken; no credential was tested
+  AUTHORIZATION   NOT VERIFIED not evaluated by client mode: FreeIPA's own decision comes from ipa-diagnose access USER HOST SERVICE
+  RUNTIME ACCESS  FAIL         a login by ghost through sshd is expected to fail on this host: SSSD does not resolve ghost although IPA has it
+
+ROOT CAUSE
+  [UNDIAGNOSED] SSSD does not resolve ghost although IPA has it - confidence LOW
+      IPA has ghost, SSSD is online and holds no cache entry for it, and no cache database error is signalled. Possible reasons ipa-diagnose does not check: filter_users, min_id/max_id, an ID range or ID view, or a POSIX attribute missing on the user.
+      Impact: This user cannot log in here.
+
+CHECKED FOR YOU
+  ✓ IPA client configuration present: enrolled in lab.test (LAB.TEST) as client1.lab.test; server ipa01.lab.test
+  ✓ SSSD and IPA client versions: SSSD 2.12.0, IPA client 4.13.4, fedora 43
+  ✓ SSSD configured for the IPA domain: sssd.conf: IPA domain lab.test, servers _srv_, ipa01.lab.test, access_provider ipa
+  ✓ Resolvers configured: 1 resolver(s) in /etc/resolv.conf; search lab.test
+  ✓ IPA server name resolves: ipa01.lab.test resolves to 172.30.0.10
+  ✓ LDAP SRV records (_ldap._tcp): _ldap._tcp.lab.test: 1 record(s) (ipa01.lab.test)
+  ✓ Kerberos SRV records (_kerberos._tcp): _kerberos._tcp.lab.test: 1 record(s) (ipa01.lab.test)
+  ✓ IPA server answers on 443 (HTTPS): TCP ipa01.lab.test:443: open
+  ✓ IPA server answers on 389 (LDAP): TCP ipa01.lab.test:389: open
+  ✓ IPA server answers on 88 (Kerberos, TCP): TCP ipa01.lab.test:88: open
+  ✓ IPA server certificate trusted: the IPA server's certificate verifies with this host's IPA CA (/etc/ipa/ca.crt)
+  ✓ Clock agrees with the IPA server: this host's clock is 1 s ahead of the IPA server's (verified TLS)
+  ✓ Host keytab present with this host's key: /etc/krb5.keytab has keys for host/client1.lab.test@LAB.TEST (kvno 1)
+  ✓ KDC accepts this host's key: the KDC accepted this host's key: the host principal exists and the keytab matches
+  ✓ SSSD service running: sssd.service is running
+  ✓ SSSD configuration valid (sssctl config-check): sssctl config-check found no issue
+  ✓ SSSD online with the IPA server: SSSD domain lab.test is online; active IPA ipa01.lab.test
+  ✗ User resolves through SSSD: SSSD (getent -s sss) does not resolve ghost (exit 2)
+  ✓ Group admins resolves through SSSD: SSSD resolves group admins
+  ✓ IPA has the user (asked as this host): IPA has user ghost
+  ✓ PAM service reaches SSSD: PAM service sshd: pam_sss in account yes, in auth yes
+  ✓ SSSD cache entry of the user: SSSD cache has no entry for ghost
+  ✓ SSSD log signals: 193 recent SSSD log line(s): no known problem signal
+  (5 not needed check(s) not run; --details says why)
+RULED OUT
+  enrollment configuration is present; SSSD is configured for the IPA domain; the IPA server name resolves; LDAP SRV records exist; Kerberos SRV records exist; the server answers on HTTPS; the server answers on LDAP; the server answers on Kerberos (TCP); the server's certificate is trusted; the clocks agree; the host keytab holds this host's key; the KDC accepts this host's key; SSSD is running; the SSSD configuration is valid; SSSD is online; SSSD resolves the group admins; IPA has the user; the PAM service uses SSSD
+RESOLUTION
+  No fix is suggested; the next read-only steps are below.
+NEXT READ-ONLY STEPS
+  sssctl user-show ghost (read-only)
+  grep -E 'filter_users|min_id|max_id' /etc/sssd/sssd.conf (read-only)
+VERIFY
+  Run ipa-diagnose client --user ghost --service sshd again after any change: every check is re-run with fresh evidence.
+LIMITATIONS
+  No login is attempted and no credential is tested: RUNTIME ACCESS and AUTHENTICATION are never reported as PASS.
+  planner: 23 of 28 checks run, 1 result(s) reused, 0.135 s; stop: every relevant check in the plan was visited

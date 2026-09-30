@@ -1,0 +1,16 @@
+────────────────────────────────────────────────── FreeIPA Diagnosis ───────────────────────────────────────────────────
+Host: ipa01.lab.test    Generated: 2026-09-30T16:22:53Z
+Overall: NOT_FULLY_VERIFIED
+Not fully verified: 1 ipa-healthcheck finding(s) that no ipa-diagnose rule explains remain (see UNDIAGNOSED below). No 
+cause is claimed.
+
+No problem was diagnosed by any rule and all expected evidence was collected, but ipa-healthcheck reported findings that
+no ipa-diagnose rule can explain (listed below). They are not confirmed harmless - review them.
+───────────────────────────────────────── UNDIAGNOSED ipa-healthcheck FINDINGS ─────────────────────────────────────────
+1 finding(s) not explained by any ipa-diagnose rule. That does not mean they are harmless - review them with 
+ipa-healthcheck. No cause is claimed.
+  • [WARNING] ipahealthcheck.meta.core.MetaCheck: (no message; fields: key, fqdn, fips, acme, ipa_version, 
+ipa_api_version) - meta
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+Diagnostic packs evaluated: directory-server, dns, kerberos, replication, certificates

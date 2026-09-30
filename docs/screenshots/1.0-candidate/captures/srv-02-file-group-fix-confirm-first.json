@@ -1,0 +1,13 @@
+{
+ "captured_at": "2026-09-30T16:23:32Z",
+ "columns": 120,
+ "command": "ipa-diagnose",
+ "commit": "b58f3d62c5992c352f2385139e08d50767a73473",
+ "container": "ipa-s",
+ "env": [],
+ "exit": 1,
+ "name": "srv-02-file-group-fix-confirm-first",
+ "run_id": "36742907611",
+ "scenario": "F1 wrong group on /etc/ipa/ca.crt (fix with CONFIRM FIRST)",
+ "user": "root"
+}

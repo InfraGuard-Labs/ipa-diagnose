@@ -1,0 +1,35 @@
+ipa-diagnose replication: ipa02.lab.test (realm LAB.TEST)
+  LIVE; FreeIPA 4.13.4, 389-ds 3.1.5
+
+ipa02.lab.test: This server's Directory Server is not running.
+
+ROOT CAUSE
+  [PRIMARY] This server's Directory Server is not running - confidence HIGH
+      dirsrv@LAB-TEST.service is inactive. Its agreements cannot run, and its agreements, topology and RUV cannot be read (they are read over its LDAPI socket).
+      Impact: No replication to or from this server; IPA on this server (LDAP, KDC, API) does not work.
+      Chain: this server's Directory Server (dirsrv@LAB-TEST) is not running
+      Stops here: why it stopped is in its own log
+
+RESOLUTION (only for causes on this server)
+  For 'This server's Directory Server is not running': Start the stopped service (risk MEDIUM; ipa-diagnose never runs it)
+    NO-GOOGLE: every step, its host, its expected result, what to do if it fails, backup, rollback and verification are below, and this procedure was verified live on this FreeIPA version and OS.
+    ✓ ipa-diagnose is running as root (starting a system service needs root)
+    1. On ipa02.lab.test: Start only dirsrv@LAB-TEST.service; no other service is started or stopped
+         systemctl start dirsrv@LAB-TEST.service
+       Expected: the command returns without an error and dirsrv@LAB-TEST.service is active. If it fails, it stays stopped and systemctl status shows why
+    If a step fails: If 'systemctl start' fails, the unit stays stopped and nothing else changed: read 'systemctl status dirsrv@LAB-TEST.service' and 'journalctl -u dirsrv@LAB-TEST.service -n 50' (read-only) for the reason, fix that cause, and run ipa-diagnose replication again. Do not use 'ipactl start' instead: it stops every IPA service when one of them fails to start.
+    What changes: dirsrv@LAB-TEST.service goes from inactive to running. No configuration, data or other service is changed.
+    Backup: no backup is needed: the procedure starts a service; no file, configuration or directory data is changed
+    Rollback: Stop it again (back to the state it was in)  ->  systemctl stop dirsrv@LAB-TEST.service
+    Note: This starts the one stopped service; it does not establish why it stopped. If it stopped because of a failure (see the last result and log line above), the same cause can stop it again. ipactl start is deliberately not used: if any IPA service fails to start, ipactl stops all IPA services.
+    Verify (tied to this incident):
+      - dirsrv@LAB-TEST.service is active
+      - This server's Directory Server is not running: no longer found by a fresh ipa-diagnose replication run
+      run: sudo ipa-diagnose replication --verify
+NEXT READ-ONLY STEPS
+  systemctl status dirsrv@LAB-TEST (read-only)
+  journalctl -u dirsrv@LAB-TEST -n 50 (read-only)
+LIMITATIONS
+  Replication is directional and per suffix: this server sees its OWN outbound agreements. The reverse direction is only reported when it could be read from the peer (read-only, with your own Kerberos ticket); otherwise it is NOT VERIFIED and a handoff to the peer is printed.
+  Nothing is changed on this server or any other; no command runs on another server; fixes are printed only for causes on this server, and only when every safety gate passes.
+  planner: 5 of 9 checks run, 0.04 s; stop: every relevant check in the plan was visited

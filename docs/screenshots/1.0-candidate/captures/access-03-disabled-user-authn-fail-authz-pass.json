@@ -1,0 +1,15 @@
+{
+ "captured_at": "2026-09-30T16:22:34Z",
+ "columns": 120,
+ "command": "ipa-diagnose access erin app01.lab.test sshd",
+ "commit": "b58f3d62c5992c352f2385139e08d50767a73473",
+ "container": "ipa-s",
+ "env": [
+  "KRB5CCNAME=FILE:/root/admin.ccache"
+ ],
+ "exit": 1,
+ "name": "access-03-disabled-user-authn-fail-authz-pass",
+ "run_id": "36742907967",
+ "scenario": "A08-disabled-user",
+ "user": "root"
+}

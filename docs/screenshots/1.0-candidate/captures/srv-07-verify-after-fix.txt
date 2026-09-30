@@ -1,0 +1,11 @@
+───────────────────────────────────────────────────── Verification ─────────────────────────────────────────────────────
+Comparing against diagnosis from 2026-09-30T16:27:56Z
+Evidence for this check: COMPLETE
+
+✓ RESOLVED  Required service 'dirsrv' is not running
+    The diagnosis is gone and the fix's own checks pass: ✓ dirsrv@LAB-TEST.service is active
+✓ RESOLVED  One or more ipa-healthcheck checks failed to run
+    The condition that triggered this diagnosis is no longer present in fresh evidence.
+
+Overall status is still NOT_FULLY_VERIFIED (exit 4): 1 ipa-healthcheck finding(s) that no ipa-diagnose rule explains 
+remain. Run `sudo ipa-diagnose` to list them.

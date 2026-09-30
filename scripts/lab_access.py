@@ -236,10 +236,25 @@ def side_how(doc, rule, side):
     return None
 
 
+CAPTURE = {"A03-nested-group-allow": "access-01-nested-group-allow", "A06-no-rule-deny": "access-02-deny-is-policy",
+           "A08-disabled-user": "access-03-disabled-user-authn-fail-authz-pass",
+           "A12-no-ticket": "access-04-no-ticket-unknown"}
+
+
+def capture(name: str, scenario_id: str, argv: list, cc: str) -> None:
+    """A real text capture for the screenshot index (scripts/lab_captures.py): read-only, same state, 120 columns."""
+
+    subprocess.run([sys.executable, "scripts/lab_captures.py", "run", name, C, scenario_id, "--",
+                    f"KRB5CCNAME={cc}", "ipa-diagnose"] + argv, env={**os.environ, "IPA_DIAGNOSE_BIN": TOOL},
+                   timeout=300)
+
+
 def scenario(sid, user, host, svc, expected, checks=lambda doc, text: {}, cc=ADMIN_CC, ind_user=None,
              ind_host=None, independent=True):
     ind = hbactest(ind_user or user, ind_host or host, svc) if independent else None
     rc, doc, err, secs, text = access(user, host, svc, cc=cc)
+    if sid in CAPTURE:
+        capture(CAPTURE[sid], sid, ["access", user, host, svc], cc)
     return row(sid, [user, host, svc], expected, ind, rc, doc, err, secs, text, checks(doc, text))
 
 

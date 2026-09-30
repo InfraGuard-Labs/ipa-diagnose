@@ -1,0 +1,13 @@
+{
+ "captured_at": "2026-09-30T16:27:43Z",
+ "columns": 120,
+ "command": "ipa-diagnose ai-preview",
+ "commit": "b58f3d62c5992c352f2385139e08d50767a73473",
+ "container": "ipa-s",
+ "env": [],
+ "exit": 2,
+ "name": "srv-06-dirsrv-stopped-ai-preview",
+ "run_id": "36742907611",
+ "scenario": "S3 ai-preview (no provider configured, nothing sent)",
+ "user": "root"
+}
