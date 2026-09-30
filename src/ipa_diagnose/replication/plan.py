@@ -271,7 +271,8 @@ def g_chrony(ctx) -> Tuple[bool, str]:
         if r.base_step in ("peer.rootdse", "peer.time") and isinstance(r.facts.get("offset"), (int, float)) \
                 and abs(r.facts["offset"]) >= CLOCK_WARN:
             return True, f"this host's clock differs from {r.subject}'s: is this host's NTP working?"
-        if r.base_step == "gssapi" and r.facts.get("error_class") == S.GSSAPI_CLOCK_SKEW:
+        if r.base_step == "gssapi" and (r.facts.get("error_class") == S.GSSAPI_CLOCK_SKEW
+                                        or r.facts.get("kinit_class") == "clock_skew"):
             return True, "Kerberos reported clock skew: is this host's NTP working?"
     for r in ctx.records.values():
         if r.step_id == "agreements":

@@ -364,7 +364,7 @@ def peer_offset(t: _T, subj: str):
 
 
 _KINIT_TO_CLASS = {"kdc_unreachable": S.GSSAPI_NO_KDC, "kdc_unresolvable": S.GSSAPI_NO_KDC,
-                   "clock_skew": S.GSSAPI_CLOCK_SKEW, "key_rejected": S.GSSAPI_CREDENTIALS,
+                   "key_rejected": S.GSSAPI_CREDENTIALS,
                    "keytab_no_entry": S.GSSAPI_CREDENTIALS, "principal_unknown": S.GSSAPI_CREDENTIALS,
                    "principal_revoked": S.GSSAPI_CREDENTIALS}
 _SPECIFIC = (S.GSSAPI_NO_KDC, S.GSSAPI_CLOCK_SKEW, S.GSSAPI_SERVER_NOT_FOUND, S.GSSAPI_CREDENTIALS)
@@ -384,7 +384,10 @@ def kerberos_class(cls: str, gs: Any, off: Optional[float]) -> "tuple[str, str]"
     if gs.outcome == P:
         return NOT_REPRODUCED, "reproduction"
     if gs.facts.get("kinit_ok") is False:
-        return _KINIT_TO_CLASS.get(gs.facts.get("kinit_class"), S.GSSAPI_OTHER), "reproduction (kinit)"
+        kc = gs.facts.get("kinit_class")
+        if kc == "clock_skew":  # against this host's KDC, not the consumer: never the pair's clock by itself
+            return S.GSSAPI_OTHER, "reproduction (kinit: clock skew against the KDC)"
+        return _KINIT_TO_CLASS.get(kc, S.GSSAPI_OTHER), "reproduction (kinit)"
     bce = gs.facts.get("error_class")
     if bce in _SPECIFIC:
         return bce, "reproduction (bind)"
@@ -528,10 +531,13 @@ def _peer_path(t: _T, b: _Builder, me: str, item: Dict[str, Any], subj: str, rel
                     boundary=f"why it does not answer can only be seen on {consumer}",
                     handoff=handoff(consumer, me, f"The remaining evidence is local to {consumer}."),
                     next_action=[f"on {consumer}: ipactl status   (read-only)"])
+    where = peer_here if pstate == "open" else f"pair:{me}>{consumer}"
     root = b.add(ReplDiagnosis(
-        "PEER_DS_NOT_ANSWERING", peer_here, f"{consumer}'s Directory Server does not answer {me}",
-        "PEER_DS", "FAIL", confidence, claim + "." + stale, f"No replication {me} -> {consumer}.",
-        [x.step_id for x in (prt, rd) if x], "peer", next_steps=chain.next_action, handoff=chain.handoff))
+        "PEER_DS_NOT_ANSWERING", where, f"{consumer}'s Directory Server does not answer {me}",
+        "PEER_DS", "FAIL", confidence, claim + "." + stale + ("" if pstate == "open" else
+                                                              " A filter on the path looks the same from here."),
+        f"No replication {me} -> {consumer}.", [x.step_id for x in (prt, rd) if x],
+        "peer" if pstate == "open" else "pair", next_steps=chain.next_action, handoff=chain.handoff))
     return root, chain
 
 
@@ -695,6 +701,9 @@ def _agreement(t: _T, b: _Builder, me: str, realm: str, item: Dict[str, Any],
     if isinstance(off, (int, float)) and abs(off) >= KRB_TOLERANCE and b.get("PAIR_CLOCK_SKEW",
                                                                                f"pair:{me}>{consumer}") is None:
         _pair_skew(t, b, me, consumer, subj, off, via_chain=False)  # established, whatever else fails
+    if root is None and cls != S.TRANSPORT:
+        # the recorded status is stale-possible (live lab); what this host sees of the peer NOW is its own chain
+        _peer_now(t, b, me, item, subj, rel_key)
     if chain is None:
         chain = b.chain(rel_key, [L0], boundary=(
             "the status is not one ipa-diagnose recognizes" if cls == S.UNCLASSIFIED else
@@ -778,13 +787,14 @@ def _reverse(t: _T, b: _Builder, me: str, realm: str, item: Dict[str, Any],
                             f"Read from {consumer}: {r.facts.get('status_text') or '?'}.",
                             "389-DS retries by itself.", [r.step_id], "peer", kind=TRANSIENT))
         return "TRANSIENT"
-    if cls == S.TRANSPORT and t.o("local.ds") == P:
+    if cls == S.TRANSPORT and t.o("local.ds") in (P, W, U):
         # the peer recorded that it could not reach this server's Directory Server, which runs NOW: the record may be
         # from before it started (live lab, run 36660487204) or the path from the peer may be broken - not
         # established from here; never green, never a root: the peer's next session (read again) decides
         b.add(ReplDiagnosis(
             "REPLICATION_TRANSIENT", rel_key, f"{consumer} last could not reach {me} ({suffix}); {me}'s Directory "
-            "Server is running now", "REPLICATION", "WARN", "MEDIUM",
+            + ("Server is running now" if t.o("local.ds") == P else "Server is not shown stopped"),
+            "REPLICATION", "WARN", "MEDIUM",
             f"Read from {consumer}: {r.facts.get('status_text') or '?'} (session ended "
             f"{r.facts.get('last_update_end') or 'at an unknown time'}). Whether {consumer} can reach {me} now is "
             f"shown by its next session.", "Changes from the peer wait until it reaches this server.", [r.step_id,
@@ -796,7 +806,11 @@ def _reverse(t: _T, b: _Builder, me: str, realm: str, item: Dict[str, Any],
     L0 = Link(f"{consumer} -> {me} ({suffix} suffix) fails: {S.MEANING.get(cls, cls)} (read from {consumer})",
               rel_key, "REPLICATION", [r.step_id], "agreement-status", "peer")
     kt = (roots or {}).get("keytab")
-    if kt is not None and (cls in (S.INVALID_CREDENTIALS,) or cls in S.GSSAPI):
+    off, _orec, _w = peer_offset(t, item["subject"])
+    skewed = isinstance(off, (int, float)) and abs(off) >= KRB_TOLERANCE
+    # only the forms the ACCEPTING side produces (LDAP 49, or 389-DS's generic "Local error"): NO_KDC, credentials,
+    # server-not-found and clock-skew classes happen on the peer's own side and are never this server's keytab
+    if kt is not None and cls in (S.INVALID_CREDENTIALS, S.GSSAPI_OTHER) and not skewed:
         # this server ACCEPTS that bind: with its own Directory Server keytab unusable it cannot accept Kerberos
         c = b.chain(rel_key, [L0, Link(f"the GSSAPI bind of {consumer} to {me} fails on the accepting side ({me})",
                                        rel_key, "KERBEROS", [r.step_id], "reverse-acceptor-kerberos", "local"),

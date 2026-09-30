@@ -108,6 +108,50 @@ def test_a_reverse_49_explained_by_this_servers_own_keytab_is_not_a_second_root(
     assert rev.role == "RELATED" and rev.related_to == roots[0].key
 
 
+@pytest.mark.parametrize("text", [S.NO_KDC_TEXT, S.SKEW_TEXT, S.NOT_FOUND_TEXT, S.CREDS_TEXT])
+def test_peer_side_kerberos_failures_are_not_blamed_on_this_servers_keytab(text):
+    """Re-review blocker: these classes happen on the peer's own side before this server accepts anything."""
+
+    r = H.run(Lab(me=IPA03).keytab(owner="root", group="root", dirsrv_can_read=False).set_reverse(
+        IPA02, text, suffix="domain"))
+    rev = next(d for d in r.diagnoses if d.code == "REVERSE_REPLICATION_FAILING")
+    assert rev.related_to is None and rev.role == "INDEPENDENT" and rev.handoff["host"] == IPA02
+
+
+def test_a_reverse_49_with_a_measured_skew_is_not_this_servers_keytab():
+    lab = Lab(me=IPA03).keytab(owner="root", group="root", dirsrv_can_read=False).set_reverse(
+        IPA02, S.INVALID_TEXT, suffix="domain")
+    lab.data[S.key("repl.peer_rootdse", {"host": IPA02, "port": "389", "transport": "LDAP"})]["fields"][
+        "offset_seconds"] = 900.0
+    rev = next(d for d in H.run(lab).diagnoses if d.code == "REVERSE_REPLICATION_FAILING")
+    assert rev.related_to is None
+
+
+@pytest.mark.parametrize("fault", ["peer_ds_stopped", "peer_unreachable"])
+def test_a_failing_non_transport_status_still_uses_what_the_peer_shows_now(fault):
+    r = H.run(getattr(Lab(), fault)(IPA02, recorded=False).set_status(IPA02, S.LOCAL_ERROR_TEXT))
+    assert any(d.code in ("PEER_DS_NOT_ACCEPTING", "PEER_UNREACHABLE") and d.role in ("PRIMARY", "INDEPENDENT")
+               for d in r.diagnoses)
+    assert r.handoffs
+
+
+def test_a_kinit_clock_skew_is_not_the_pairs_clock():
+    lab = Lab().kerberos_failure(IPA02, kinit_ok=False, kinit_class="clock_skew", bind_attempted=False,
+                                 bind_ok=False)
+    lab.data[S.key("repl.peer_rootdse", {"host": IPA02, "port": "389", "transport": "LDAP"})]["fields"][
+        "offset_seconds"] = 400.0
+    r = H.run(lab)
+    assert not any(ln.discriminator == "kerberos-clock-skew" for c in r.chains for ln in c.links)
+    assert r.trace.get("time.local").outcome.value != "SKIPPED"
+
+
+def test_both_ports_refused_is_a_pair_level_finding():
+    lab = Lab().peer_ds_stopped(IPA02)
+    lab.data[S.key("net.tcp", {"host": IPA02, "port": "443"})]["fields"].update(state="refused", open=False)
+    d = H.primary(H.run(lab))
+    assert d.code == "PEER_DS_NOT_ANSWERING" and d.scope == "pair" and "filter on the path" in d.detail
+
+
 def test_unreachable_peer_is_never_called_dead_and_says_from_where_and_when():
     r = H.run(Lab().peer_unreachable(IPA02))
     p = H.primary(r)

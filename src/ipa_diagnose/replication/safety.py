@@ -45,12 +45,12 @@ SLICE5_PROCEDURES: Dict[str, Dict[str, Any]] = {
         # ipa-diagnose replication run blind, only the printed steps run, replication --verify RESOLVED). The
         # catalogue's own verified_on records (single-server service scenarios) do not count here.
         "replication_live": (
-            {"tier": "LIVE", "freeipa": "4.13.4", "os": "fedora-43", "date": "2026-09-30",
+            {"tier": "LIVE", "freeipa": "4.13.4", "os": "fedora-43", "date": "2026-09-30 (UTC)",
              "scenario": "replication lab R05/R05b: krb5kdc stopped on ipa01 (confirmed with systemctl), "
                          "ipa-diagnose replication run blind, the printed 'systemctl start krb5kdc.service' run "
                          "verbatim, replication --verify RESOLVED",
              "evidence": "https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36654176983"},
-            {"tier": "LIVE", "freeipa": "4.13.4", "os": "fedora-43", "date": "2026-09-30",
+            {"tier": "LIVE", "freeipa": "4.13.4", "os": "fedora-43", "date": "2026-09-30 (UTC)",
              "scenario": "replication lab R02b/R02c: dirsrv stopped on ipa02 (confirmed with systemctl), "
                          "ipa-diagnose replication run blind on ipa02, the printed 'systemctl start "
                          "dirsrv@LAB-TEST.service' run verbatim, replication --verify RESOLVED",
