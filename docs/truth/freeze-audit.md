@@ -89,7 +89,10 @@ printed sections but make no No-Google label.
 | cache uncertainty | - | `test_cache_removal_is_not_offered_on_a_suspicion`, `test_one_log_line_and_an_absent_entry_do_not_justify_cache_removal` | - | C11 (damaged cache did not break SSSD: nothing offered) |
 | product-wide sweep | 124 fixtures: no fix for a symptom or non-DIAGNOSED diagnosis, allowlisted programs only, `systemctl start` only, complete fixes | 29 scenarios x root/non-root: no fix without root, only PRIMARY/INDEPENDENT, no `/var/lib/sss`, no `initctl` | 25 scenarios: replay never offers, live offers only `systemctl start` for this server | `tests/test_freeze_campaigns.py` |
 
-**Unsafe applicable mutating commands found: 0.**
+**Unsafe applicable mutating commands in the gated procedures: 0.** The reviews did find ungated state-changing
+text on two side paths, both fixed before the final runs (see "Findings of this campaign"): the server console printed
+v0.1.3 pack actions (for example `ipa-getkeytab`, labelled "reversible", and `ipa-cert-fix`) for diagnoses no
+procedure covers; and in `--replay`, a recorded unit name chose the command target.
 
 ## False root cause campaign
 
@@ -171,6 +174,30 @@ cover the boundary.
 Audited across every command: [../exit-codes.md](../exit-codes.md). Inconsistencies found and fixed: `access --help`
 did not list exit 5 (`--runtime`); `bundle --help` and the top-level `--help` stated no exit codes; `client --help`
 did not say what 1/4 mean with `--verify`. Regression: `test_every_command_help_states_its_exit_codes`.
+
+## Findings of this campaign (all fixed, each with a regression test)
+
+Found by the live runs, the whole-product sweeps and six fresh reviewers (FreeIPA subject-matter, diagnosis
+correctness, resolution safety, security/privacy, docs/claims, fresh user), then one focused fresh re-review:
+
+| Finding | Where it came from | Fix (commit) |
+|---|---|---|
+| `replication --verify` answered STILL_PRESENT seconds after the printed fix on the peer: the agreement still recorded the old failure, but the fresh checks no longer reproduced it (live R02d, runs 36724948206 and 36729641548) | live lab | PENDING (bounded), as the verify contract says (de93d10) |
+| server/client printed a fix step without its expected result or failure hint (only with `--details`, or never) | No-Google audit | expected result in every default view (70254c3, 55ab9c2) |
+| the server console printed ungated state-changing v0.1.3 pack actions for diagnoses with no procedure (`ipa-getkeytab` called "reversible", `ipa-cert-fix`, `certutil -A`, `db2index.pl`, `systemctl restart named-pkcs11`) | SME + resolution-safety reviews | read-only steps only in the console; JSON `actions` unchanged; 7 console golden entries changed and listed in `tests/data/GOLDEN_CHANGES.md` (90e7fe4) |
+| in `--replay`, a recorded unit chose the command target, and the fix was labelled definitive | resolution-safety review | a recorded unit must be the service's own unit; replayed fixes never definitive; JSON `source` (87794c4) |
+| a recorded LDAP 49 was RELATED to a local KDC that is down now, or a locally rejected key | diagnosis review | the local fault is its own root; the 49 is UNDIAGNOSED with steps on the peer (90e7fe4) |
+| an OSError starting ldapsearch, or a local socket error, became a HIGH peer diagnosis | diagnosis review | NOT_RUN: the check did not run (90e7fe4) |
+| a peer cause that only changed shape was RESOLVED at item level | diagnosis review | CHANGED while any FAIL about that peer remains (90e7fe4) |
+| services that need the Directory Server were INDEPENDENT problems with their own start commands while dirsrv was down | SME review | RELATED to the stopped dirsrv, as replication mode does (c9a9f1f) |
+| the PAM account phase (`sssctl user-checks -a acct`) could reset pam_faillock / pam_tally2 failed-login counters (unlock a locked account); the docs claimed it could not | SME review | not run when the account stack contains them or cannot be read (c9a9f1f) |
+| `sssctl cache-remove` without `--restore` (local overrides not imported again) | SME review | `--stop --restore --start` (c9a9f1f) |
+| RA-agent desync: read-only commands that list nothing / match no unit; `ipa-certupdate` suggested as the (wrong) recovery | SME review | corrected commands; the recovery named without a command (90e7fe4) |
+| the peer finding's "the agreement's status still shows success" sentence did not say which agreement | live capture | names suffix and direction (3456dfd) |
+| exit codes missing from `access --help` (5), `bundle --help`, the top-level `--help` | consistency audit | stated everywhere (70254c3) |
+| a policy allow did not point to `access --runtime` | journey audit | named in VERIFY (3cbee7b) |
+| a replication verify test depended on import time and failed on slow runs | baseline test run | per-test clock (26f9549) |
+| stale README/doc claims (RUNTIME ACCESS "always" NOT VERIFIED, "3+ replicas not live", Python 3.10/3.13 "not in CI", replay "HEALTHY", EL rows "Supported", "no cache deletion ever printed") | claim audit + docs review | corrected (several commits) |
 
 ## Known limitations (unchanged by the freeze)
 
