@@ -311,6 +311,9 @@ def _render_resolution(d: Diagnosis, r, console: Console, *, details: bool) -> N
                   "run by you (ipa-diagnose never runs a fix itself).")
     if not r.definitive:
         console.print(f"[yellow]{escape(r.verification_label)}[/yellow]")
+    if r.replay:
+        console.print("[bold yellow]Recorded evidence (--replay): these commands describe the recorded system, not "
+                      "this host. Do not run them here.[/bold yellow]")
     if r.confirm_first:
         console.print("  [bold]First confirm[/bold] (read-only) that nothing changed since the checks above; "
                       "if the output differs, do not run the fix - run ipa-diagnose again:")

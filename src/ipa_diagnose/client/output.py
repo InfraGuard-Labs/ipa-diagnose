@@ -192,6 +192,9 @@ def render(r: ClientResult, console: Console, details: bool = False) -> None:
             p(f"  For '{x['title']}': {rr['title']} (risk {rr['risk']}; ipa-diagnose never runs it)", "bold")
             if rr["verification_label"]:
                 p(f"    {rr['verification_label']}", "yellow")
+            if d["source_mode"] != "LIVE":
+                p("    Recorded evidence (--replay): these commands describe the recorded system, not this host. "
+                  "Do not run them here.", "bold yellow")
             for pr in rr["prerequisites"]:
                 p(f"    {'✓' if pr['state'] == 'met' else '!'} "
                   f"{'Before running, accept that: ' if pr['state'] == 'confirm' else ''}{pr['text']}")
