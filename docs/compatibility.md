@@ -13,16 +13,16 @@ Fedora 43 (see "Live FreeIPA validation"); the EL rows are packaging and contain
 
 | Platform | Default/available Python | Core diagnosis (targeted) | PyPI/pipx | RPM | Validation |
 |---|---|---|---|---|---|
-| RHEL 9 (via UBI9/Rocky9/Alma9) | 3.9 (system) | Supported | Works (EPEL needed for `pipx` itself) | `.el9.` RPM, EPEL+CRB needed for `rich` | CONTAINER TESTED (UBI9 + Rocky9 + Alma9, independently) + RPM INSTALL TESTED |
-| RHEL 10 (via UBI10/Alma10) | 3.12 (system) | Supported | Works (EPEL needed for `pipx` itself) | `.el10.` RPM, EPEL+CRB needed for `rich` | CONTAINER TESTED (UBI10 + Alma10; **Rocky 10: NOT TESTED**, no Docker Hub image exists) + RPM INSTALL TESTED |
+| RHEL 9 (via UBI9/Rocky9/Alma9) | 3.9 (system) | Targeted (not live-tested) | Works (EPEL needed for `pipx` itself) | `.el9.` RPM, EPEL+CRB needed for `rich` | CONTAINER TESTED (UBI9 + Rocky9 + Alma9, independently) + RPM INSTALL TESTED |
+| RHEL 10 (via UBI10/Alma10) | 3.12 (system) | Targeted (not live-tested) | Works (EPEL needed for `pipx` itself) | `.el10.` RPM, EPEL+CRB needed for `rich` | CONTAINER TESTED (UBI10 + Alma10; **Rocky 10: NOT TESTED**, no Docker Hub image exists) + RPM INSTALL TESTED |
 | RHEL 8 (via UBI8/Rocky8/Alma8) | 3.6.8 (system, never touched); `python39` module = 3.9.25 | Packaging tested; FreeIPA 4.9 / ipa-healthcheck 0.12 NOT validated live; via the `python39` module | Works, manual steps required (no EPEL `pipx` package on EL8; `python39` module install needed first) | `.el8.` RPM, uses `python39`, `rich` vendored (no EL8 `python39-rich` package exists anywhere) | CONTAINER TESTED (UBI8 + Rocky8 + Alma8, independently) + RPM INSTALL TESTED |
-| Rocky Linux 8 | Same as RHEL 8 row | Supported | Works via `python39`; **Rocky8's own non-modular `python3.12` package is broken** (`pyexpat` ABI mismatch, confirmed, unrelated to this project) - use `python39` | Same `.el8.` RPM as above, independently installed and tested on Rocky8 | CONTAINER TESTED |
-| Rocky Linux 9 | 3.9 (system) | Supported | Works | Same `.el9.` RPM, independently installed and tested on Rocky9 | CONTAINER TESTED |
+| Rocky Linux 8 | Same as RHEL 8 row | Targeted (not live-tested) | Works via `python39`; **Rocky8's own non-modular `python3.12` package is broken** (`pyexpat` ABI mismatch, confirmed, unrelated to this project) - use `python39` | Same `.el8.` RPM as above, independently installed and tested on Rocky8 | CONTAINER TESTED |
+| Rocky Linux 9 | 3.9 (system) | Targeted (not live-tested) | Works | Same `.el9.` RPM, independently installed and tested on Rocky9 | CONTAINER TESTED |
 | Rocky Linux 10 | - | - | - | - | **NOT TESTED** - no `rockylinux:10` image exists on Docker Hub (only `rockylinux/rockylinux:10` exists and was used for a secondary EL10 cross-distro install check, not full independent validation) |
-| AlmaLinux 8 | 3.6.8 (system); `python39` = 3.9.25 | Supported | Works via `python39` (Alma8's `python3.12` package works fine, unlike Rocky8's) | Same `.el8.` RPM, independently installed and tested on Alma8 | CONTAINER TESTED |
-| AlmaLinux 9 | 3.9 (system) | Supported | Works | Same `.el9.` RPM, independently installed and tested on Alma9 - a 5-package install (`ipa-diagnose` + `rich`/`pygments`/`CommonMark`/`setuptools`), clean uninstall | CONTAINER TESTED |
-| AlmaLinux 10 | 3.12 (system) | Supported | Works | Same `.el10.` RPM, independently installed and tested on Alma10 | CONTAINER TESTED |
-| Fedora (current stable, pinned to an exact tag - see `packaging/rpm/fedora/`) | 3.14 (current stable's default) | Supported | Works, no EPEL needed | `.fc44.` RPM, no dependency workarounds needed (Fedora's own toolchain is current) | RPM INSTALL TESTED + PYPI INSTALL TESTED |
+| AlmaLinux 8 | 3.6.8 (system); `python39` = 3.9.25 | Targeted (not live-tested) | Works via `python39` (Alma8's `python3.12` package works fine, unlike Rocky8's) | Same `.el8.` RPM, independently installed and tested on Alma8 | CONTAINER TESTED |
+| AlmaLinux 9 | 3.9 (system) | Targeted (not live-tested) | Works | Same `.el9.` RPM, independently installed and tested on Alma9 - a 5-package install (`ipa-diagnose` + `rich`/`pygments`/`CommonMark`/`setuptools`), clean uninstall | CONTAINER TESTED |
+| AlmaLinux 10 | 3.12 (system) | Targeted (not live-tested) | Works | Same `.el10.` RPM, independently installed and tested on Alma10 | CONTAINER TESTED |
+| Fedora (current stable, pinned to an exact tag - see `packaging/rpm/fedora/`) | 3.14 (current stable's default) | Supported (Fedora 43 live-validated) | Works, no EPEL needed | `.fc44.` RPM, no dependency workarounds needed (Fedora's own toolchain is current) | RPM INSTALL TESTED + PYPI INSTALL TESTED |
 
 Every platform above additionally passed: `--version`, `--help`, graceful
 behavior with no FreeIPA present, `--replay` against the project's own

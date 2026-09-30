@@ -49,7 +49,6 @@ a high-risk procedure that ipa-diagnose has not verified, so it points to the do
 | **Client**: one user's SSSD cache entry is inconsistent | `sss_cache -u USER` (expire; nothing deleted) | LOW | IPA has the user (asked with the host's identity), SSSD runs and is online, SSSD holds an entry for the user, yet a lookup through SSSD fails |
 | **Client**: SSSD's cache database is failing | `sssctl cache-remove --stop --restore --start` (backs up local overrides; removes cached passwords) | HIGH | all of the above plus SSSD's own log reporting cache-database errors and the cache entry unreadable; you accept the loss of offline logins first. Never `rm /var/lib/sss/db/*` |
 | **Client**: clock skew, stale/missing/wrong host keytab, host principal unknown, not enrolled | none - reasons shown (no clock step on clients, no keytab replacement, no re-enrollment) | - | - |
-
 | **Replication** (`ipa-diagnose replication`): this server's own Directory Server or KDC is stopped | `systemctl start dirsrv@<INSTANCE>.service` / `systemctl start krb5kdc.service` (the same procedure as a stopped IPA service), rollback `systemctl stop` | MEDIUM | in addition to that procedure's gates, the replication Resolution Safety gate: the cause is on THIS server and is the deepest proven link of its chain, PRIMARY or INDEPENDENT, HIGH confidence, no contradiction, LIVE evidence younger than 300 s, the unit re-checked stopped just now; a KDC stopped because the Directory Server is stopped gets no fix of its own ([replication-mode.md](replication-mode.md)) |
 | **Replication**: peer-side causes, keytab/principal problems, clock skew, replica data needing re-initialization, RUV candidates, missing replication manager | none - a handoff or the reason is shown; re-initialization, force-sync, RUV clean-up, topology changes, keytab replacement and clock steps are never printed | - | - |
 
@@ -187,7 +186,7 @@ shell-quoted. `checked[].source` is `live` (run on this host now) or `recorded` 
 Procedures are data (`knowledge/procedures/*.yaml`), compiled and validated into
 `src/ipa_diagnose/resolution/procedures.json` by `scripts/compile_knowledge.py`. The loader rejects unknown
 fields, expressions in place of structured conditions, shell metacharacters or untyped values in commands, fix
-and rollback programs outside a fixed allowlist (systemctl, chmod, chown, chgrp, chronyc, getcert), CONFIRM
+and rollback programs outside a fixed allowlist (systemctl, chmod, chown, chgrp, chronyc, getcert, sss_cache, and sssctl for `cache-remove` only), CONFIRM
 FIRST programs other than `stat`/`readlink -f`, and steps labelled with less risk than what they change. A
 procedure can only claim `BUILT_IN_VERIFIED` with an authoritative source, a version constraint, regression
 tests, an independent review record and - for any step that changes state - a live-lab verification record. An

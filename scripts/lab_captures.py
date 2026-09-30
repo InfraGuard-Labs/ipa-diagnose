@@ -27,9 +27,11 @@ from __future__ import annotations
 import base64
 import datetime
 import gzip
+import io
 import json
 import os
 import pathlib
+import re
 import subprocess
 import sys
 import urllib.request
@@ -57,7 +59,7 @@ def _chunks() -> list:
 def run(name: str, container: str, scenario: str, argv: list) -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     env = []
-    while argv and "=" in argv[0] and not argv[0].startswith("/"):
+    while argv and re.match(r"^[A-Z_][A-Z0-9_]*=", argv[0]):
         env += ["-e", argv.pop(0)]
     exe = argv[0]
     if exe == "ipa-diagnose":
@@ -97,7 +99,20 @@ def attach(name: str, path: str) -> int:
     return 0
 
 
+def _forbidden() -> list:
+    """Values that must never be published (captures are PUBLIC annotations): the lab password and the planted
+    canaries. Only fake values exist in the labs, but a future lab mistake must not be published."""
+
+    vals = [os.environ.get("IPA_PASSWORD", ""), "zqlivecanary", "ZqLiveCanary", "CANARY-C14"]
+    return [v for v in vals if len(v) >= 6]
+
+
 def emit(skip: int) -> int:
+    bad = [p.name for p in OUT.glob("*.txt") if any(v.lower() in p.read_text(encoding="utf-8", errors="replace").lower()
+                                                   for v in _forbidden())]
+    if bad:
+        print(f"REFUSED: forbidden value in {bad}; nothing published")
+        return 1
     chunks = _chunks()
     for title, part in chunks[skip:skip + 10]:
         print(f"::notice title={title}::{part}")
@@ -125,6 +140,8 @@ def fetch(run_id: str, out_dir: str) -> int:
                 title = a.get("title") or ""
                 if title.startswith("capture "):
                     _c, name, frac = title.split(" ")
+                    if not re.fullmatch(r"[a-z0-9][a-z0-9._-]{0,80}", name) or ".." in name:
+                        continue  # never let an annotation title choose a path outside OUT_DIR
                     i, n = (int(x) for x in frac.split("/"))
                     parts.setdefault(name, {})[i] = (n, a["message"])
             if len(anns) < 100:
@@ -139,7 +156,12 @@ def fetch(run_id: str, out_dir: str) -> int:
             print(f"INCOMPLETE {name}: have {sorted(got)} of {n}")
             continue
         blob = "".join(got[i][1] for i in range(1, n + 1))
-        payload = json.loads(gzip.decompress(base64.b64decode(blob)).decode("utf-8"))
+        with gzip.GzipFile(fileobj=io.BytesIO(base64.b64decode(blob))) as gz:
+            raw = gz.read(8 * 1024 * 1024 + 1)
+        if len(raw) > 8 * 1024 * 1024:
+            print(f"TOO LARGE {name}: skipped")
+            continue
+        payload = json.loads(raw.decode("utf-8"))
         (dest / f"{name}.txt").write_text(payload["text"], encoding="utf-8")
         (dest / f"{name}.json").write_text(json.dumps(payload["meta"], indent=1, sort_keys=True), encoding="utf-8")
         done += 1

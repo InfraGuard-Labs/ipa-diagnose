@@ -31,7 +31,7 @@ diagnosis that is already computed.
 | 6 | Verify recovery with fresh evidence | `verify`, `client --verify`, `replication --verify` | Is the original incident really gone? | Never trusts the fix command's exit code; RESOLVED needs fresh evidence and the fix's own checks; replication can answer PENDING |
 | 7 | Diagnose HBAC access policy | `ipa-diagnose access USER HOST SERVICE` | Does FreeIPA policy allow this, and why? | The decision is FreeIPA's own `hbactest`; a deny is policy, never "broken"; trusted-domain (AD) users are UNKNOWN |
 | 8 | Continue from policy into the runtime side | `access ... --runtime` (as root on HOST) | Policy allows it, but would the login fail on this host? | No login is attempted: RUNTIME ACCESS is FAIL or NOT VERIFIED, never PASS |
-| 9 | Diagnose a FreeIPA client and SSSD | `sudo ipa-diagnose client [--user U --service S]` | Is this client enrolled and able to resolve and authenticate IPA identities? | No credential is tested; one host; no cache deletion, re-enrollment, keytab replacement or clock step is ever printed |
+| 9 | Diagnose a FreeIPA client and SSSD | `sudo ipa-diagnose client [--user U --service S]` | Is this client enrolled and able to resolve and authenticate IPA identities? | No credential is tested; one host; never prints `rm /var/lib/sss/db/*`, re-enrollment, keytab replacement or a clock step (the only cache removal it can print is a gated `sssctl cache-remove`, tested on recorded evidence only, after you accept losing offline logins) |
 | 10 | Diagnose replication per suffix and direction | `sudo ipa-diagnose replication [--peer FQDN]` | Does replication to and from this server work, and what is the deepest cause? | One server's view; the reverse direction needs your Kerberos ticket; never prints re-initialization, RUV clean-up or topology changes |
 | 11 | Model the environment it reasons about | `replication` (topology, roles, segments) | Which servers, roles and paths matter for this answer? | A bounded, per-run, lookup-only model (at most 8 agreements per run); not a directory mirror |
 | 12 | Create a privacy-reduced support bundle | `sudo ipa-diagnose bundle [--preview]`, `bundle validate FILE` | What can I hand to someone helping me? | Pseudonymized and credential-scanned, **not** secret-free: review it before sharing; nothing is uploaded |
@@ -70,7 +70,7 @@ FreeIPA's decision, RUNTIME ACCESS fails, and no login is attempted:
 ![ipa-diagnose access --runtime: AUTHORIZATION PASS from FreeIPA hbactest, RUNTIME ACCESS FAIL because SSSD is not running on the host](docs/screenshots/1.0-candidate/04_access_policy_vs_runtime.svg)
 
 **Replication: a cause chain across servers.** ipa02's Directory Server was stopped for the test. Seen from ipa01, the
-chain stops at what ipa01 can prove ("ipa02 is up but refuses connections on 389"), and ipa-diagnose prints the command
+chain stops at what ipa01 can prove ("ipa02.lab.test is up (443 answers) but refuses connections on port 389"), and ipa-diagnose prints the command
 to run on ipa02 instead of changing anything there:
 
 ![ipa-diagnose replication on ipa01: per-suffix, per-direction states, a cause chain ending at 'ipa02 refuses connections on 389', and a handoff to ipa02](docs/screenshots/1.0-candidate/05_replication_cause_chain_handoff.svg)
@@ -127,6 +127,8 @@ checkout: `ipa-diagnose --replay tests/fixtures/resolution/service-not-running`.
   contradicting, and the prerequisites are met. Otherwise the report says "No fix is shown" and why.
 - **Procedures are evidence-gated data** (`knowledge/procedures/`). Each has a knowledge tier, and the output says
   where it was verified live. A symptom (RELATED) never gets its own fix, and neither does a cause on another server.
+  For a diagnosis no procedure covers, the console shows only read-only next steps; older state-changing guidance
+  stays only in the v1 JSON `actions` list, for compatibility, and is not meant to be run from there.
 - **Dangerous recovery is withheld on purpose.** It never prints `ipactl start`, `rm /var/lib/sss/db/*`, re-enrollment,
   keytab replacement, clock steps on clients, re-initialization, force-sync, RUV clean-up or topology changes. The
   reason is explained and the decision is left to you.
@@ -164,7 +166,7 @@ not GPG-signed: check the file against `SHA256SUMS` (`sha256sum -c --ignore-miss
 # Rocky Linux / AlmaLinux 9 or 10 (rich comes from EPEL; on RHEL enable CodeReady Builder and EPEL the Red Hat way)
 sudo dnf install -y epel-release dnf-plugins-core && sudo dnf config-manager --set-enabled crb
 sudo dnf install ./ipa-diagnose-<version>.el9.noarch.rpm        # or .el10.
-# RHEL / Rocky / AlmaLinux 8 (uses the python39 module, installed alongside the system Python)
+# Rocky Linux / AlmaLinux 8 (RHEL 8 untested) (uses the python39 module, installed alongside the system Python)
 sudo dnf install -y python39 && sudo dnf install ./ipa-diagnose-<version>.el8.noarch.rpm
 # Fedora 44 (only the .fc44 file is published; on Fedora 43 use pipx)
 sudo dnf install ./ipa-diagnose-<version>.fc44.noarch.rpm
@@ -190,7 +192,7 @@ Per-distribution details, what the EL8 package does to Python, AI extras and the
 |---|---|---|
 | **LIVE** | Disposable `freeipa/freeipa-server:fedora-43` containers on GitHub-hosted runners: FreeIPA 4.13.3 (the image's package until late September 2026) and 4.13.4 (the image's package since then, including every run on the current code); Fedora 43 only. Labs: a single server (DNS + CA); a server plus an enrolled Fedora 43 client (SSSD 2.12); three servers in a line (two with a CA). Every fault injected and independently confirmed, the tool run blind, printed fixes applied verbatim, then verified | [docs/truth/](docs/truth/) |
 | **LIVE SIMULATED** | Clock skew: only ipa-diagnose's own process clock was shifted (libfaketime); no server or client clock was changed | client C05, replication R12 |
-| **PACKAGING / CONTAINER** | RPM build, install, `--version`, `--help`, replay, uninstall and reinstall on Rocky/Alma 8 and 9, AlmaLinux 10, Fedora 43 and 44. Rocky and Alma stand in for RHEL; **RHEL itself was never tested**. pipx paths; wheel and sdist; the full test suite on Python 3.9-3.14 | [docs/compatibility.md](docs/compatibility.md) |
+| **PACKAGING / CONTAINER** | RPM build, install, `--version`, `--help`, replay, uninstall and reinstall on Rocky/Alma 8 and 9, AlmaLinux 10, Fedora 43 and 44 (the .fc43 build is install-tested but not published). Rocky and Alma stand in for RHEL; **RHEL itself was never tested**. pipx paths; wheel and sdist; the full test suite on Python 3.9-3.14 | [docs/compatibility.md](docs/compatibility.md) |
 | **FIXTURE / REPLAY** | Everything else, for example stale RUVs, CA-suffix-only failures, generation-ID mismatch, real clock skew, an expiring DS certificate, the clock-step and SSSD cache procedures, EL8-era ipa-healthcheck | `tests/` |
 | **Not validated** | RHEL; FreeIPA on any EL distribution; FreeIPA 4.9; AD trust; CA-less; other topologies; real logins | - |
 

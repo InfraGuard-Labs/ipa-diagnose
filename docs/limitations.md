@@ -57,10 +57,11 @@ contributor without redesigning anything.
   they're unimportant, but because the packs chosen are where the research
   showed the clearest, best-documented, highest-value gap in
   `ipa-healthcheck`'s own coverage.
-- **Diagnosis-first, not auto-remediation**, by design (see the master
-  design brief this project was built against): `ipa-diagnose` never
-  executes a CAUTION or HIGH_RISK action automatically, and has no "fix it
-  for me" mode in v1.
+- **Diagnosis-first, never remediation**, by design: `ipa-diagnose` never
+  executes any fix. Gated procedures are printed for the administrator to
+  run; state-changing pack guidance that no procedure covers is not printed
+  in the console at all (it stays in the v1 JSON `actions` list for
+  compatibility).
 - **The correlation model is a fixed 4-pack causality chain** (DNS →
   Kerberos → Replication → Certificates, Directory Server foundational under
   all) plus per-rule `upstream_candidates` - it's deterministic and testable
@@ -105,8 +106,8 @@ contributor without redesigning anything.
   the network (as "unreachable from this server at a time", never "dead") while
   389-DS still recorded the last session as successful. See
   [truth/replication-truth-matrix.md](truth/replication-truth-matrix.md).
-- **Replay mode** (`--replay`) with no `healthcheck.json` still reports
-  `HEALTHY`; replay is a fixture mode, not a live claim.
+- **Replay mode** (`--replay`) with no `healthcheck.json` reports UNKNOWN (exit 3), never HEALTHY;
+  replay is a fixture mode, not a live claim.
 - **Older (EL8-era) FreeIPA, Trust/AD and CA-less deployments were not
   exercised live; the only multi-server topology exercised live is the
   replication lab's line of three servers** (FreeIPA 4.13.4 / Fedora 43).

@@ -9,7 +9,7 @@ That distinction is not theoretical: Red Hat Bugzilla 1441262 documents
 `ipa group-del` returning "Insufficient access" while *still deleting the
 group* - an error message (or, symmetrically, a clean exit code) is not
 reliable proof of what actually happened. Several remediation paths this
-tool recommends (a cert renewal, an NSS DB fix, a service restart) also
+tool recommends (a certificate renewal, a service start) also
 require a follow-up step - like a service restart to resync in-memory
 state - that's easy to skip and would otherwise look like "the fix didn't
 work" or, worse, silently look fine.
