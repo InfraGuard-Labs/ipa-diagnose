@@ -101,10 +101,15 @@ jobs:
       # GitHub keeps at most 10 notice annotations per step
       - name: Publish real CLI captures (1)
         if: always()
-        run: python3 scripts/lab_captures.py emit 0
+        run: |
+          python3 scripts/lab_captures.py attach rows-client out/truth/client-results.jsonl
+          python3 scripts/lab_captures.py emit 0
       - name: Publish real CLI captures (2)
         if: always()
         run: python3 scripts/lab_captures.py emit 10
+      - name: Publish real CLI captures (3)
+        if: always()
+        run: python3 scripts/lab_captures.py emit 20
 
       - name: Cleanup
         if: always()

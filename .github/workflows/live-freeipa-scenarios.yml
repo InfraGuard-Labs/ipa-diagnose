@@ -415,7 +415,12 @@ jobs:
       # GitHub keeps at most 10 notice annotations per step: the captures are published over several steps
       - name: Publish real CLI captures (1)
         if: always()
-        run: python3 scripts/lab_captures.py emit 0
+        run: |
+          python3 scripts/lab_captures.py attach rows-scenarios-truth out/truth/results.jsonl
+          python3 scripts/lab_captures.py attach rows-scenarios-procedures out/slice1-procedures.txt
+          cp env.txt out/env-scenarios.txt 2>/dev/null; python3 scripts/lab_captures.py attach rows-scenarios-env out/env-scenarios.txt
+          python3 scripts/lab_captures.py attach rows-scenarios-timing out/s9-timing.txt
+          python3 scripts/lab_captures.py emit 0
       - name: Publish real CLI captures (2)
         if: always()
         run: python3 scripts/lab_captures.py emit 10
@@ -425,6 +430,12 @@ jobs:
       - name: Publish real CLI captures (4)
         if: always()
         run: python3 scripts/lab_captures.py emit 30
+      - name: Publish real CLI captures (5)
+        if: always()
+        run: python3 scripts/lab_captures.py emit 40
+      - name: Publish real CLI captures (6)
+        if: always()
+        run: python3 scripts/lab_captures.py emit 50
 
       - name: Cleanup
         if: always()
@@ -630,9 +641,15 @@ jobs:
           if ! grep -q '"scenario": "B0-fresh-install' out/truth/bundle-results.jsonl; then echo "FAIL  B0 (no result row)"; a=1; fi
           exit $a
 
-      - name: Publish real CLI captures
+      - name: Publish real CLI captures (1)
         if: always()
-        run: python3 scripts/lab_captures.py emit 0
+        run: |
+          python3 scripts/lab_captures.py attach rows-bundle out/truth/bundle-results.jsonl
+          cp out/b7-timing.txt out/b7-timing-copy.txt 2>/dev/null; python3 scripts/lab_captures.py attach rows-bundle-timing out/b7-timing-copy.txt
+          python3 scripts/lab_captures.py emit 0
+      - name: Publish real CLI captures (2)
+        if: always()
+        run: python3 scripts/lab_captures.py emit 10
 
       - name: Cleanup
         if: always()

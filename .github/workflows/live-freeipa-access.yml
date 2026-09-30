@@ -81,9 +81,14 @@ jobs:
           cat out/access-timing.txt 2>/dev/null | head -12 | tr '\n' ' ' | sed 's/^/::notice title=access timing::/'; echo
           python3 scripts/lab_access.py summary
 
-      - name: Publish real CLI captures
+      - name: Publish real CLI captures (1)
         if: always()
-        run: python3 scripts/lab_captures.py emit 0
+        run: |
+          python3 scripts/lab_captures.py attach rows-access out/truth/access-results.jsonl
+          python3 scripts/lab_captures.py emit 0
+      - name: Publish real CLI captures (2)
+        if: always()
+        run: python3 scripts/lab_captures.py emit 10
 
       - name: Cleanup
         if: always()

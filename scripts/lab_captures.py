@@ -81,6 +81,22 @@ def run(name: str, container: str, scenario: str, argv: list) -> int:
     return 0
 
 
+def attach(name: str, path: str) -> int:
+    """Publish a lab result file (for example out/truth/results.jsonl) with the captures, so its rows can be read
+    back without the run's artifact. The file is copied unchanged."""
+
+    OUT.mkdir(parents=True, exist_ok=True)
+    src = pathlib.Path(path)
+    text = src.read_text(encoding="utf-8", errors="replace") if src.exists() else f"(missing: {path})"
+    (OUT / f"{name}.txt").write_text(text, encoding="utf-8")
+    (OUT / f"{name}.json").write_text(json.dumps({"name": name, "file": path, "commit": os.environ.get("GITHUB_SHA", ""),
+                                                  "run_id": os.environ.get("GITHUB_RUN_ID", ""), "command": "",
+                                                  "exit": None, "scenario": "lab result rows"}, indent=1),
+                                      encoding="utf-8")
+    print(f"attached {path} as {name}: {len(text.splitlines())} lines")
+    return 0
+
+
 def emit(skip: int) -> int:
     chunks = _chunks()
     for title, part in chunks[skip:skip + 10]:
@@ -134,6 +150,8 @@ def fetch(run_id: str, out_dir: str) -> int:
 def main(argv: list) -> int:
     if len(argv) >= 6 and argv[1] == "run" and argv[5] == "--":
         return run(argv[2], argv[3], argv[4], argv[6:])
+    if len(argv) == 4 and argv[1] == "attach":
+        return attach(argv[2], argv[3])
     if len(argv) == 3 and argv[1] == "emit":
         return emit(int(argv[2]))
     if len(argv) == 4 and argv[1] == "fetch":
