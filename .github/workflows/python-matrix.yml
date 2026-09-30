@@ -5,6 +5,11 @@ name: Python matrix and build
 # runners only (nothing installed locally).
 on:
   workflow_dispatch:
+  # On a slice branch, also when .github/ci-trigger changes (so the FINAL commit of a slice is tested on free
+  # runners without a token).
+  push:
+    branches: ["slice[0-9]*/**"]
+    paths: [".github/ci-trigger"]
 
 permissions:
   contents: read

@@ -1,0 +1,4 @@
+{
+ "is_root": true,
+ "note": "SYNTHETIC replication fixture (scripts/make_replication_fixtures.py); describes no live system"
+}

@@ -51,7 +51,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "command",
         nargs="?",
-        choices=["diagnose", "verify", "ai-preview", "bundle", "access", "client"],
+        choices=["diagnose", "verify", "ai-preview", "bundle", "access", "client", "replication"],
         default="diagnose",
         help="diagnose (default): run diagnosis. verify: check if previously diagnosed problems cleared. "
         "ai-preview: show exactly what would be sent to the AI provider. "
@@ -59,7 +59,9 @@ def build_parser() -> argparse.ArgumentParser:
         "access USER HOST SERVICE: does FreeIPA policy authorize this login, and why "
         "(see 'ipa-diagnose access --help'). "
         "client: is this IPA client enrolled and able to resolve and authenticate IPA identities, and why not "
-        "(see 'ipa-diagnose client --help').",
+        "(see 'ipa-diagnose client --help'). "
+        "replication: does replication to and from this IPA server work, per suffix and direction, and what is the "
+        "deepest proven cause (see 'ipa-diagnose replication --help').",
     )
     _add_common_args(parser)
     return parser
@@ -257,7 +259,7 @@ def _first_positional(argv: list) -> Optional[str]:
     for a in argv:
         if skip:
             skip = False
-        elif a in ("--replay", "--ai-provider", "--user", "--service"):
+        elif a in ("--replay", "--ai-provider", "--user", "--service", "--peer"):
             skip = True
         elif a == "--":
             return None
@@ -285,6 +287,11 @@ def main(argv: Optional[list] = None) -> int:
         from ipa_diagnose.client.cli import run as run_client
 
         return _guarded(lambda: run_client(argv), err_console)
+    if _first_positional(argv) == "replication":
+        # `replication` has its own options (--peer, --verify); nothing else changes.
+        from ipa_diagnose.replication.cli import run as run_replication
+
+        return _guarded(lambda: run_replication(argv), err_console)
 
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -312,6 +319,11 @@ def main(argv: Optional[list] = None) -> int:
 
             return run_client(["client"] + (["--replay", args.replay] if args.replay else [])
                               + (["--json"] if args.json else []) + (["--details"] if args.details else []))
+        if command == "replication":  # reached only through an unusual spelling such as `ipa-diagnose -- replication`
+            from ipa_diagnose.replication.cli import run as run_replication
+
+            return run_replication(["replication"] + (["--replay", args.replay] if args.replay else [])
+                                   + (["--json"] if args.json else []) + (["--details"] if args.details else []))
         if command == "access":  # `ipa-diagnose -- access` carries no USER HOST SERVICE
             err_console.print("usage: ipa-diagnose access USER HOST SERVICE [--json] [--details] [--replay DIR]",
                               markup=False)

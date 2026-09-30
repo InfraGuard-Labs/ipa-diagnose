@@ -150,6 +150,38 @@ and retries, suppresses duplicate checks, keeps partial evidence on cancellation
 `client/verify.py` (L6) re-checks with fresh evidence. `access/runtime.py` connects `access --runtime` to it. The
 L2 relationship index stays in `access/`. Details: [client-mode.md](client-mode.md).
 
+## Replication mode and the environment model (Slice 5)
+
+The layering Slice 5 added, as an extension of the planner (not a replacement):
+
+```text
+L0  closed read-only check registry (resolution/checks.py + client_checks.py + replication/checks.py)
+L1  typed evidence (CheckResult fields, declared evidence shape, LIVE/REPLAY)
+L2  EnvironmentGraph (environment/graph.py): bounded, lookup-only, per run, built from collected evidence
+L3  planner (planner/core.py): explicit ordered steps + bounded for_each templates with subjects
+L4  diagnosis (replication/diagnose.py): cause chains through a capability DAG and a discriminator registry
+L5  resolution (replication/safety.py + the Slice 1 engine): Resolution Safety gate, No-Google gate
+L6  fresh verification (replication/verify.py), with bounded PENDING
+```
+
+**Subjects and for_each.** A plan may contain a `ForEach` template: a small, fixed list of steps repeated once per
+subject (for replication: one outbound agreement, `domain:<consumer>` or `ca:<consumer>`). Subjects come only from
+an earlier step's established list fact, each is validated by a declared type, they run in sorted order, and each
+template has an instance budget under a static global bound; subjects dropped by the budget are named and the
+enumeration is PARTIAL (never healthy by omission). A record's identity is (step, subject); gates and classifiers
+of a template step read their OWN subject's facts first. Template steps cannot stop the run or retry; they may end
+only their own subject (`stop_subject`). The client plan has no template and runs exactly as before.
+
+**EnvironmentGraph** (`environment/graph.py`) is context, not a reasoner: closed entity and relation kinds, facts
+with state (ESTABLISHED / UNKNOWN / CONTRADICTED), evidence, time, LIVE/REPLAY and, for observer-relative facts,
+`observed_from`; enumerations with COMPLETE / PARTIAL / NOT_ASKED / FAILED, and absence read only from a COMPLETE
+enumeration. Its API is lookups only (no traversal, no inference). `access/relations.py` is unchanged.
+
+**Causal model** (`replication/causal.py`): a capability DAG (where a cause may be looked for) and a closed
+registry of discriminators (the rules that may establish one link). A chain link exists only when a registered
+discriminator for exactly that step fired on established evidence; `check_chain` refuses anything else, and a test
+holds the plan's step dependencies to the same DAG. Details: [replication-mode.md](replication-mode.md).
+
 ## Verification (`verify.py`)
 
 See [docs/verification.md](verification.md).

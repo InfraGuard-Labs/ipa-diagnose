@@ -36,13 +36,16 @@ TOP_DIR = "ipa-diagnose-bundle"
 MEMBERS = ("README.txt", "manifest.json", "environment.json", "report.json", "healthcheck.json", "evidence.json",
            "collection-errors.json", "topology.json", "verification.json", "redaction-report.json", "SHA256SUMS")
 # Members present only when asked for (`bundle --access USER HOST SERVICE`); a bundle without them stays valid.
-OPTIONAL_MEMBERS = ("access.json", "client.json")
+OPTIONAL_MEMBERS = ("access.json", "client.json", "replication.json")
 ALL_MEMBERS = MEMBERS[:MEMBERS.index("verification.json") + 1] + OPTIONAL_MEMBERS + MEMBERS[MEMBERS.index(
     "verification.json") + 1:]
 DESCRIPTIONS = {
     "access.json": "one access question (ipa-diagnose access): states, FreeIPA's decision, rule paths; pseudonymized",
     "client.json": "one client investigation (ipa-diagnose client): states, diagnosis codes, step outcomes; "
                    "pseudonymized, structure only",
+    "replication.json": "one replication investigation (ipa-diagnose replication): per-suffix, per-direction "
+                        "states, diagnosis codes, cause-chain structure, step outcomes; pseudonymized, structure "
+                        "only",
     "README.txt": "what this bundle is and is not, and how to inspect it",
     "manifest.json": "bundle format, versions, source mode, sanitization status, truncation, member checksums",
     "environment.json": "OS and FreeIPA component versions of the diagnosed host",
@@ -581,8 +584,121 @@ def _project_access(result: Any, mode: str, s: Sanitizer) -> Dict[str, Any]:
     }
 
 
+# replication.json keeps only these facts (enumerations, booleans and numbers)
+_REPLICATION_FACTS = {"state", "resolved", "answered", "offset", "error_class", "kinit_ok", "kinit_class", "bind_ok",
+                      "visible", "classes", "synchronized", "complete", "online"}
+
+
+def _project_replication(result: Any, mode: str, s: Sanitizer) -> Dict[str, Any]:
+    """STRUCTURE for one replication investigation: per-suffix, per-direction states, diagnosis codes and roles,
+    cause-chain structure (capabilities and discriminators, never the claim text), step outcomes and a few enumerated
+    facts. No status text (it embeds names), no commands, no keytab principals, no LDAP entries."""
+
+    import re as _re
+
+    from ipa_diagnose.replication.run import REPLICATION_SCHEMA_VERSION
+
+    pn = _structural_pn(s)
+
+    def host(h: Optional[str]) -> Optional[str]:
+        return pn("HOST", h) if h else None
+
+    def subject(v: Optional[str]) -> Optional[str]:
+        if not isinstance(v, str):
+            return None
+        m = _re.fullmatch(r"(domain|ca):([A-Za-z0-9.-]+)>([A-Za-z0-9.-]+)", v)
+        if m:
+            return f"{m.group(1)}:{host(m.group(2))}>{host(m.group(3))}"
+        m = _re.fullmatch(r"(domain|ca):([A-Za-z0-9.-]+)", v)
+        if m:
+            return f"{m.group(1)}:{host(m.group(2))}"
+        m = _re.fullmatch(r"server:([A-Za-z0-9.-]+)", v)
+        if m:
+            return f"server:{host(m.group(1))}"
+        m = _re.fullmatch(r"pair:([A-Za-z0-9.-]+)>([A-Za-z0-9.-]+)", v)
+        if m:
+            return f"pair:{host(m.group(1))}>{host(m.group(2))}"
+        m = _re.fullmatch(r"principal:ldap/([A-Za-z0-9.-]+)@[A-Za-z0-9.-]+", v)
+        if m:
+            return f"principal:ldap/{host(m.group(1))}"
+        if _re.fullmatch(r"ruv:(domain|ca):[0-9]{1,5}", v) or v == "group:replication managers":
+            return v
+        return "(other)"
+
+    def key(k: Optional[str]) -> Optional[str]:
+        if not isinstance(k, str) or "@" not in k:
+            return None
+        code, _, subj = k.partition("@")
+        return f"{code}@{subject(subj)}"
+
+    def step_id(sid: str) -> str:
+        base, sep, subj = sid.partition("@")
+        return f"{base}@{subject(subj)}" if sep else base
+
+    def fact_ok(k: str, v: Any) -> bool:
+        if k not in _REPLICATION_FACTS:
+            return False
+        if isinstance(v, list):
+            return all(isinstance(x, str) and x.replace("_", "").isalnum() for x in v)
+        return v is None or isinstance(v, (bool, int, float)) or (isinstance(v, str) and v.replace("_", "").isalnum())
+
+    env = result.environment
+    topo = result.topology or {}
+    return {
+        "source_mode": mode,
+        "replication_schema_version": REPLICATION_SCHEMA_VERSION,
+        "status": result.status,
+        "host": host(env.get("host")),
+        "versions": {"freeipa": env.get("freeipa"), "ds": env.get("ds_version"), "os": env.get("os"),
+                     "os_version": env.get("os_version"), "systemd": env.get("systemd")},
+        "scope": {"peer": host(result.inputs.get("peer"))},
+        "relationships": [{"subject": subject(x.get("subject")), "suffix": x.get("suffix"),
+                           "supplier": host(x.get("supplier")), "consumer": host(x.get("consumer")),
+                           "direction": x.get("direction"), "state": x.get("state"),
+                           "transport": x.get("transport"), "bind_method": x.get("bind_method"),
+                           "port": x.get("port"), "enabled": x.get("enabled"),
+                           "update_in_progress": x.get("update_in_progress"), "investigated": x.get("investigated"),
+                           "last_update_end": x.get("last_update_end")} for x in result.relationships],
+        "diagnoses": [{"key": key(d.key), "code": d.code, "subject": subject(d.subject), "role": d.role,
+                       "capability": d.capability, "severity": d.severity, "confidence": d.confidence,
+                       "scope": d.scope, "kind": d.kind, "related_to": key(d.related_to),
+                       "explains": [key(x) for x in d.explains]} for d in result.diagnoses],
+        "cause_chains": [{"subject": subject(c.subject),
+                          "links": [{"capability": ln.capability, "discriminator": ln.discriminator,
+                                     "scope": ln.scope, "subject": subject(ln.subject)} for ln in c.links],
+                          "stops_with_handoff_to": host((c.handoff or {}).get("host"))} for c in result.chains],
+        "handoffs": [{"to": host(h.get("host")), "commands_included": False} for h in result.handoffs],
+        "resolutions": [{"diagnosis": key(k), "status": v.status, "procedure_id": v.procedure_id,
+                         "risk": v.risk if v.steps else None, "tier": v.tier or None, "commands_included": False,
+                         "no_google_claimed": bool(((result.gates.get(k) or {}).get("no_google") or {}).get("claimed"))}
+                        for k, v in result.resolutions.items() if not k.startswith("_")],
+        "topology": {"complete": topo.get("complete"), "servers": [host(h) for h in topo.get("servers") or []],
+                     "roles": {host(h): r for h, r in (topo.get("roles") or {}).items()},
+                     "suffixes": {n: {"servers": [host(h) for h in x.get("servers") or []],
+                                      "segments": [[host(g.get("left")), host(g.get("right"))]
+                                                   for g in x.get("segments") or []],
+                                      "articulation_points": [host(h) for h in x.get("articulation_points") or []]}
+                                  for n, x in (topo.get("suffixes") or {}).items()},
+                     "sole_role_holder": {r: host(h) for r, h in (topo.get("sole_role_holder") or {}).items()},
+                     "renewal_master": host(topo.get("renewal_master"))},
+        "steps": [{"step": step_id(r.step_id), "capability": r.capability, "check": r.check, "outcome": r.outcome.value,
+                   "check_status": r.status or None, "skipped_because": r.skip_reason.split(":", 1)[0] or None,
+                   "seconds": r.seconds, "facts": {k: v for k, v in r.facts.items() if fact_ok(k, v)}}
+                  for r in result.trace.records],
+        "enumerations": {t: {"status": e.get("status"), "investigated": len(e.get("subjects") or []),
+                             "dropped": len(e.get("dropped") or []), "rejected": len(e.get("rejected") or [])}
+                         for t, e in result.trace.enumerations.items()},
+        "planner": {k: v for k, v in result.trace.summary().items() if k not in ("bounds", "enumerations")},
+        "completeness": {"level": result.completeness["level"],
+                         "not_verified_steps": [step_id(g["step"]) for g in result.completeness["not_verified"]]},
+        "note": "Names are bundle pseudonyms. Structure only: no agreement status text, LDAP entries, commands, "
+                "principals or key material. Replication is per suffix and per direction, observed from HOST-001.",
+    }
+
+
 def build(evidence: EvidenceBundle, report: DiagnosisReport, *, previous: Optional[Dict[str, Any]] = None,
-          created_at: Optional[str] = None, access: Any = None, client: Any = None) -> Built:
+          created_at: Optional[str] = None, access: Any = None, client: Any = None,
+          replication: Any = None) -> Built:
     mode = "REPLAY" if evidence.replay_source is not None else "LIVE"
     created_at = created_at or datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     dropped: collections.Counter = collections.Counter()
@@ -629,6 +745,8 @@ def build(evidence: EvidenceBundle, report: DiagnosisReport, *, previous: Option
             raw["access.json"] = _project_access(access, mode, s)
         if client is not None:
             raw["client.json"] = _project_client(client, mode, s)
+        if replication is not None:
+            raw["replication.json"] = _project_replication(replication, mode, s)
         # REDACT -> PSEUDONYMIZE -> BOUND, for every key and string
         final = {name: s.transform(obj) for name, obj in raw.items()}
     except SanitizeTimeout:

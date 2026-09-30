@@ -200,6 +200,49 @@ def _ipa_port(v: Any) -> Optional[str]:
     return v if v in IPA_PORTS else None
 
 
+# ---- replication (Slice 5): the values that reach ldapsearch/ldapwhoami/kinit and name a replication subject
+
+_DC_SUFFIX_RE = re.compile(r"^dc=[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:,dc=[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$")
+REPL_TRANSPORTS = ("LDAP", "TLS", "SSL")
+SUFFIX_KINDS = ("domain", "ca")
+
+
+def _ldap_port(v: Any) -> Optional[str]:
+    v = str(v) if isinstance(v, int) and not isinstance(v, bool) else v
+    if not isinstance(v, str) or not v.isdigit() or len(v) > 5 or v.startswith("0"):
+        return None
+    return v if 1 <= int(v) <= 65535 else None
+
+
+def _repl_transport(v: Any) -> Optional[str]:
+    return v if v in REPL_TRANSPORTS else None
+
+
+def _domain_suffix(v: Any) -> Optional[str]:
+    """An IPA domain suffix exactly as FreeIPA writes it (dc=example,dc=test): no other DN shape reaches a command."""
+
+    if not isinstance(v, str) or len(v) > 512:
+        return None
+    v = v.lower()
+    return v if _DC_SUFFIX_RE.fullmatch(v) else None
+
+
+def _ldap_principal(v: Any) -> Optional[str]:
+    if not isinstance(v, str) or not v.startswith("ldap/") or v.count("@") != 1:
+        return None
+    host, _, realm = v[len("ldap/"):].partition("@")
+    return v if _fqdn(host) == host and _realm(realm) == realm else None
+
+
+def _agreement_subject(v: Any) -> Optional[str]:
+    """domain:FQDN or ca:FQDN - one outbound agreement of this server (suffix kind + consumer)."""
+
+    if not isinstance(v, str):
+        return None
+    kind, sep, host = v.partition(":")
+    return v if sep and kind in SUFFIX_KINDS and _fqdn(host) == host else None
+
+
 VALIDATORS: Dict[str, Callable[[Any], Optional[str]]] = {
     "ipa_user": _ipa_name,
     "ipa_group": _ipa_name,
@@ -222,6 +265,11 @@ VALIDATORS: Dict[str, Callable[[Any], Optional[str]]] = {
     "ipa_account": _ipa_account,
     "chmod_remove": _chmod_remove,
     "chmod_add": _chmod_add,
+    "ldap_port": _ldap_port,
+    "repl_transport": _repl_transport,
+    "domain_suffix": _domain_suffix,
+    "ldap_principal": _ldap_principal,
+    "agreement_subject": _agreement_subject,
 }
 
 

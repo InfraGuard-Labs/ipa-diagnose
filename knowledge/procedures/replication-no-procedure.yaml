@@ -1,0 +1,55 @@
+# Replication causes (Slice 5) that are established but for which ipa-diagnose deliberately prints no fix: each fix
+# would be a keytab, principal, LDAP, clock, re-initialization or RUV change on an IPA server, which Slice 5 never
+# prints (docs/replication-mode.md "What is never printed").
+- kind: no_procedure
+  id: none.replication.ds-keytab-problem
+  resolves:
+    diagnosis: replication.ds-keytab-problem
+  reason: >-
+    No keytab fix is printed. Replacing the Directory Server keytab (ipa-getkeytab) changes this server's LDAP service
+    key in IPA and invalidates the key every other copy holds, and a wrong owner or mode keeps the Directory Server
+    from reading it. Compare the owner, mode and principals with what ipa-healthcheck --source ipahealthcheck.ipa.files
+    reports (read-only) and with the FreeIPA documentation for your version before changing anything.
+
+- kind: no_procedure
+  id: none.replication.peer-principal-missing
+  resolves:
+    diagnosis: replication.peer-principal-missing
+  reason: >-
+    No fix is printed. Re-creating a server's ldap/ service principal and its keys affects every supplier and every
+    client of that server; find out first how the principal was lost (ipa service-show, ipa server-show; read-only).
+
+- kind: no_procedure
+  id: none.replication.pair-clock-skew
+  resolves:
+    diagnosis: replication.pair-clock-skew
+  reason: >-
+    No clock change is printed: which clock is wrong is not established from one server, and stepping an IPA server's
+    clock (in particular backwards) can break Kerberos tickets and replication in other ways. Check the time service
+    on both servers (chronyc tracking, chronyc sources, timedatectl; read-only) and correct the one that is wrong.
+
+- kind: no_procedure
+  id: none.replication.not-a-manager
+  resolves:
+    diagnosis: replication.not-a-manager
+  reason: >-
+    No fix is printed: adding a member to cn=replication managers is an LDAP write to data every server replicates,
+    and the consumer's copy of the group may differ from this server's. Check the topology with an administrator.
+
+- kind: no_procedure
+  id: none.replication.needs-admin-action
+  resolves:
+    diagnosis: replication.needs-admin-action
+  reason: >-
+    Nothing is printed on purpose: re-initializing a replica overwrites its data from a supplier, and a RUV clean-up
+    removes replication metadata for good. Which server holds the right data is a decision for the topology's owner;
+    ipa-diagnose never prints re-initialization, force-sync or RUV clean-up commands.
+
+- kind: no_procedure
+  id: none.replication.ruv-candidate
+  resolves:
+    diagnosis: replication.ruv-candidate
+  reason: >-
+    No RUV clean-up is printed: a RUV element seen on one server is a candidate only (a server being installed or
+    removed looks the same), and cleaning a live replica's RUV element damages replication. Check every server's RUV
+    with ipa-healthcheck --source ipahealthcheck.ds.ruv (read-only) first.
