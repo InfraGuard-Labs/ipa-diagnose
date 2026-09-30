@@ -1,7 +1,12 @@
 # ipa-diagnose
 
 **Evidence-backed root causes for FreeIPA / Red Hat IdM: servers, clients, access policy and replication. When a fix
-is proven safe it prints the fix, and afterwards it checks with fresh evidence that the original problem is gone.**
+passes its safety gates it prints the fix (it never runs it), and `verify` then re-checks with fresh evidence whether
+the original problem is gone.**
+
+> Live-validated only on Fedora 43 with FreeIPA 4.13.3/4.13.4 in disposable lab containers - not yet on RHEL IdM or
+> any EL distribution (those are packaging-tested only). What was tested where: [Supported and validated
+> environments](#supported-and-validated-environments).
 
 ```text
 DETECT → INVESTIGATE → CORRELATE → ROOT CAUSE → RESOLVE → VERIFY
@@ -23,7 +28,7 @@ diagnosis that is already computed.
 | 3 | Reach the deepest supported root cause | `ipa-diagnose`, `client`, `replication` | What is the deepest cause the evidence proves? | Stops where the evidence stops and names the next read-only step |
 | 4 | Show evidence and what was ruled out | `--details` | Why should I believe it? | Every fact carries the command that produced it and whether it is LIVE or recorded |
 | 5 | Print a safe, complete fix when one is proven | printed `FIX` | What exactly do I run, where, and what should happen? | Printed, never run. 7 procedures; 3 applied verbatim and verified in the live lab (start a stopped IPA service, restore an IPA file's owner/group/mode, start SSSD) |
-| 6 | Verify recovery with fresh evidence | `verify`, `client --verify`, `replication --verify` | Is the original incident really gone? | Never trusts a command's exit code; RESOLVED needs fresh evidence and the fix's own checks; replication can answer PENDING |
+| 6 | Verify recovery with fresh evidence | `verify`, `client --verify`, `replication --verify` | Is the original incident really gone? | Never trusts the fix command's exit code; RESOLVED needs fresh evidence and the fix's own checks; replication can answer PENDING |
 | 7 | Diagnose HBAC access policy | `ipa-diagnose access USER HOST SERVICE` | Does FreeIPA policy allow this, and why? | The decision is FreeIPA's own `hbactest`; a deny is policy, never "broken"; trusted-domain (AD) users are UNKNOWN |
 | 8 | Continue from policy into the runtime side | `access ... --runtime` (as root on HOST) | Policy allows it, but would the login fail on this host? | No login is attempted: RUNTIME ACCESS is FAIL or NOT VERIFIED, never PASS |
 | 9 | Diagnose a FreeIPA client and SSSD | `sudo ipa-diagnose client [--user U --service S]` | Is this client enrolled and able to resolve and authenticate IPA identities? | No credential is tested; one host; no cache deletion, re-enrollment, keytab replacement or clock step is ever printed |
@@ -35,9 +40,10 @@ diagnosis that is already computed.
 
 ## See it in action
 
-Every image below is the exact text `ipa-diagnose` printed in the live lab: FreeIPA 4.13.4 on Fedora 43, disposable
-containers on a free GitHub runner, fake `lab.test` names. They are not mock-ups. The faults were injected on purpose
-and the tool was not told what they were. Commands, commits, runs and limits for each image:
+Every image below is the exact text `ipa-diagnose` printed in the live lab (FreeIPA 4.13.4 on Fedora 43, disposable
+containers on a GitHub runner, fake `lab.test` names), sometimes shortened to a line range and with long lines folded at
+120 columns; each image's footer says which. They are not mock-ups. The faults were injected on purpose and the tool
+was not told what they were. Commands, commits, runs, raw captures and limits for each image:
 [docs/screenshots/1.0-candidate/](docs/screenshots/1.0-candidate/index.md).
 
 **Root cause, evidence and the printed fix.** The Directory Server is stopped. ipa-diagnose names the unit and prints
@@ -47,7 +53,9 @@ them fails to start.
 ![ipa-diagnose on a server whose Directory Server is stopped: CRITICAL, root cause 'dirsrv is not running', read-only checks, and a printed systemctl start fix with rollback and verify](docs/screenshots/1.0-candidate/01_server_root_cause_and_fix.svg)
 
 **Verify with fresh evidence.** The printed command was run as shown, then `ipa-diagnose verify` re-collected
-everything:
+everything and compared it with the last saved diagnosis. Both items are RESOLVED; the exit code stays 4
+(NOT_FULLY_VERIFIED) because one unrelated upstream warning, caused by the lab container, is still unexplained, and
+ipa-diagnose never calls a run healthy while that is so:
 
 ![ipa-diagnose verify after the printed fix: RESOLVED items and whether the fresh evidence was complete](docs/screenshots/1.0-candidate/02_server_verify_resolved.svg)
 
@@ -61,15 +69,16 @@ FreeIPA's decision, RUNTIME ACCESS fails, and no login is attempted:
 
 ![ipa-diagnose access --runtime: AUTHORIZATION PASS from FreeIPA hbactest, RUNTIME ACCESS FAIL because SSSD is not running on the host](docs/screenshots/1.0-candidate/04_access_policy_vs_runtime.svg)
 
-**Replication: a cause chain across servers.** ipa02's Directory Server is stopped, seen from ipa01. The chain stops at
-what ipa01 can prove, and ipa-diagnose prints the command to run on ipa02 instead of changing anything there:
+**Replication: a cause chain across servers.** ipa02's Directory Server was stopped for the test. Seen from ipa01, the
+chain stops at what ipa01 can prove ("ipa02 is up but refuses connections on 389"), and ipa-diagnose prints the command
+to run on ipa02 instead of changing anything there:
 
 ![ipa-diagnose replication on ipa01: per-suffix, per-direction states, a cause chain ending at 'ipa02 refuses connections on 389', and a handoff to ipa02](docs/screenshots/1.0-candidate/05_replication_cause_chain_handoff.svg)
 
 **A complete fix, when it is proven.** This server's own KDC is stopped. Every step shows its host, its expected
 result, what to do if it fails, backup, rollback and verification tied to the incident:
 
-![ipa-diagnose replication on ipa01 with its KDC stopped: the NO-GOOGLE fix block for systemctl start krb5kdc.service](docs/screenshots/1.0-candidate/06_replication_complete_fix.svg)
+![ipa-diagnose replication on ipa01 with its KDC stopped: the complete fix block (host, expected result, failure handling, backup, rollback, verification) for systemctl start krb5kdc.service](docs/screenshots/1.0-candidate/06_replication_complete_fix.svg)
 
 **No guessing.** With `ipa-healthcheck` unavailable there is no base evidence, so the answer is UNKNOWN (exit 3),
 never healthy:
@@ -84,8 +93,8 @@ sudo ipa-diagnose --details          # full evidence, confidence, what each chec
 sudo ipa-diagnose --json             # machine-readable, for monitoring and automation
 sudo ipa-diagnose verify             # after a fix: is the problem found last time really gone?
 
-kinit alice; ipa-diagnose access john app03.example.test sshd      # does FreeIPA policy allow john there, and why?
-sudo ipa-diagnose access john app03.example.test sshd --runtime    # on app03 itself: would the login fail there?
+kinit alice; ipa-diagnose access john app03.example.test sshd      # any enrolled host, no root: does policy allow it?
+sudo ipa-diagnose access john app03.example.test sshd --runtime    # as root on app03 itself: would the login fail?
 
 sudo ipa-diagnose client --user john --service sshd                # on a client: enrolled, resolving, why not?
 sudo ipa-diagnose replication                                      # on a server: per suffix and direction, why not?
@@ -97,12 +106,14 @@ sudo ipa-diagnose ai-preview         # exactly what an AI provider would receive
 sudo ipa-diagnose --no-ai            # never contact an AI provider (also what happens when none is configured)
 ```
 
-For the reverse replication direction, run `sudo -i`, `kinit admin` and then `ipa-diagnose replication` in that root
-session (sudo does not pass your ticket on). To try it without a FreeIPA host, replay recorded evidence from a git
+`access` asks FreeIPA with your own Kerberos ticket (any authenticated IPA user can normally run the HBAC evaluation);
+`sudo` does not pass your ticket on, so for `access --runtime` and for the reverse replication direction get the ticket
+in the root session itself: `sudo -i`, `kinit <user>`, then run the command. To try it without a FreeIPA host, replay recorded evidence from a git
 checkout: `ipa-diagnose --replay tests/fixtures/resolution/service-not-running`. Replayed output is labelled as such.
 
-**In monitoring, alert on any non-zero exit.** 0 means healthy (or resolved). 3 and 4 mean "could not tell" and
-"not fully verified", and neither counts as OK. The codes for every command are in
+**In monitoring, alert on any non-zero exit.** For the server diagnosis: 0 HEALTHY, 1 DEGRADED, 2 CRITICAL,
+3 UNKNOWN, 4 NOT_FULLY_VERIFIED; `access --runtime` adds 5 (policy allows, the host would refuse) and
+`replication --verify` 3 (PENDING). 3 and 4 never count as OK. Every command's codes:
 [docs/exit-codes.md](docs/exit-codes.md).
 
 ## How it stays safe

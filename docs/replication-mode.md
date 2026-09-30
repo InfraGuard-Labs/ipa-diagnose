@@ -165,7 +165,9 @@ visible, another host or another `--peer` scope is UNABLE_TO_VERIFY, never RESOL
 be observed is never reported as verified.
 
 **PENDING** (exit 3, never 0): the failure is gone but no fresh successful session has happened yet (or the agreement
-is busy / backing off / has no session yet). It carries a next recheck time and is bounded: 10 minutes from the first
+is busy / backing off / has no session yet, or it still records the old failure from its last session while this
+run's own checks no longer reproduce it - for example the peer answers again and 389-DS has not retried yet, as seen
+in the freeze live run). It carries a next recheck time and is bounded: 10 minutes from the first
 PENDING, after which it becomes STILL_PRESENT (still transient) or UNABLE_TO_VERIFY (no fresh session).
 
 Exact RUV equality is **not** required: active multi-master topologies keep changing, so unequal sequence numbers

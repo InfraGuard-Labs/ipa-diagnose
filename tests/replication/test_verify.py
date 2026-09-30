@@ -100,6 +100,28 @@ def test_a_transient_state_after_the_fix_is_never_green(text):
     assert out[SYM_D] == "PENDING" and code == 3
 
 
+def test_a_recorded_failure_that_is_not_reproduced_now_is_pending_not_still_present():
+    """Freeze live run 36729641548 (R02d): the peer's Directory Server was started again and answered from ipa01, but
+    389-DS on ipa01 had not retried yet, so the agreement still recorded 'Can't contact LDAP server'. The fresh run
+    itself classifies that as not reproduced (transient); verify must answer PENDING (exit 3), not STILL_PRESENT."""
+
+    peer_down = Lab().peer_ds_stopped(IPA02)
+    _r, prev = baseline(peer_down)
+    peer = f"PEER_DS_NOT_ACCEPTING@server:{IPA02}"
+    stale = fixed_later().set_status(IPA02, S.TRANSPORT_TEXT, suffix="domain")  # peer answers; old status kept
+    cmp, out, code = verify(prev, stale)
+    assert out[SYM_D] == "PENDING" and code == 3, out
+    assert out.get(peer) in (None, "PENDING"), out
+    # a failure the fresh checks DO reproduce stays STILL_PRESENT
+    _c, out2, code2 = verify(prev, Lab(now=LATER).peer_ds_stopped(IPA02))
+    assert out2[SYM_D] == "STILL_PRESENT" and code2 == 1
+    # and PENDING is bounded as before: after the window it becomes STILL_PRESENT, never RESOLVED
+    since = LATER - datetime.timedelta(seconds=V.CONVERGENCE_WINDOW + 1)
+    prev["pending"] = {SYM_D: since.strftime("%Y-%m-%dT%H:%M:%SZ")}
+    _c, out3, _code3 = verify(prev, stale)
+    assert out3[SYM_D] == "STILL_PRESENT"
+
+
 def test_still_failing_is_still_present():
     _r, prev = baseline(Lab().local_kdc_stopped())
     _c, out, code = verify(prev, Lab(now=LATER).local_kdc_stopped())

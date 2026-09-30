@@ -49,7 +49,9 @@ def render(text: str, title: str, provenance: str, max_lines: int = 60, start: i
     for ln in shown:
         colour = "#c9d1d9"
         low = ln.lower()
-        if "critical" in low or "not running" in low or "overall: unknown" in low:
+        if "✓ resolved" in low or low.lstrip().startswith("resolved"):
+            colour = "#3fb950"  # a RESOLVED line naming what was 'not running' is good news, not red
+        elif "critical" in low or "not running" in low or "overall: unknown" in low:
             colour = "#ff7b72"
         elif "degraded" in low or "not verified" in low or "not_fully_verified" in low or "partial" in low:
             colour = "#d29922"

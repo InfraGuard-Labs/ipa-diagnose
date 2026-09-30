@@ -203,6 +203,13 @@ def compare(previous: Dict[str, Any], fresh: ReplicationResult, runner: Any,
         if st in S.TRANSIENT or st == "TRANSIENT":
             return "TRANSIENT", f"it is not green yet ({st})"
         if st != S.OK:
+            here = [d for d in fresh.diagnoses if d.subject == subject]
+            if here and all(d.kind == "TRANSIENT" and d.severity != "FAIL" for d in here):
+                # the agreement still RECORDS the old failure, but this run's own checks no longer reproduce it
+                # (for example the peer answers LDAP again and 389-DS has not retried yet): the next session decides.
+                # Freeze live run 36729641548, R02d: this was STILL_PRESENT seconds after the fix on the peer.
+                return "TRANSIENT", (f"it still records {st} from its last session, but the failure is not "
+                                     "reproduced now; waiting for the next session")
             return "FAILING", f"it reports {st} now"
         end = _parse(x.get("last_update_end"))
         if end is None or base_time is None or end <= base_time:
