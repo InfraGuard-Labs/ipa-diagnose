@@ -55,6 +55,29 @@ def test_client_offered_fix_shows_the_expected_result(capsys, tmp_path):
            "stopped and 'systemctl status sssd' shows why." in out
 
 
+def test_access_runtime_fix_shows_the_expected_result_and_the_replay_warning(capsys, tmp_path):
+    from tests.access.helpers import World
+    from tests.client import scenarios as CS
+
+    d = tmp_path / "rt"
+    CH.write_checks(CH.scenario("sssd-stopped"), directory=d)
+    World().user("alice").host(CS.HOST).service("sshd").rule(
+        "r1", users=["alice"], hosts=[CS.HOST], services=["sshd"]).write(d, "alice", CS.HOST, "sshd")
+    code = main(["access", "alice", CS.HOST, "sshd", "--replay", str(d), "--runtime"])
+    out = _flat(capsys.readouterr().out)
+    assert code == 5
+    assert "systemctl start sssd.service Expected: the command returns without an error" in out
+    assert "Recorded evidence (--replay): these commands describe the recorded system, not this host." in out
+
+
+def test_replayed_server_and_client_fixes_say_not_to_run_them_here(capsys, tmp_path):
+    main(["--replay", str(FIXTURES / "resolution" / "service-not-running")])
+    assert "Do not run them here." in _flat(capsys.readouterr().out)
+    fx = CH.write_checks(CH.scenario("sssd-stopped"), directory=tmp_path / "c")
+    main(["client", "--replay", str(fx)])
+    assert "Do not run them here." in _flat(capsys.readouterr().out)
+
+
 def _help(capsys, argv):
     with pytest.raises(SystemExit) as e:
         main(argv)

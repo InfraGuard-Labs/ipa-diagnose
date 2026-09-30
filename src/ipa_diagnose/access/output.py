@@ -501,8 +501,12 @@ def render(r: AccessResult, console: Console, details: bool = False) -> None:
             for code, rr in c["resolution"].items():
                 if rr["status"] == "OFFERED":
                     p(f"  Fix on this host: {rr['title']} (risk {rr['risk']}; ipa-diagnose never runs it)")
+                    if d.get("source_mode") != "LIVE":
+                        p("       Recorded evidence (--replay): these commands describe the recorded system, not "
+                          "this host. Do not run them here.", "bold yellow")
                     for stp in rr["steps"]:
                         p(f"       {stp['command']}", "bold cyan")
+                        p(f"       Expected: {stp['expected']}")
                     for pr in rr["prerequisites"]:
                         if pr["state"] == "confirm":
                             p(f"       Before running, accept that: {pr['text']}")
