@@ -66,6 +66,7 @@ Per outbound agreement, bounded (at most 8 agreements; more are named, not inves
 | agreement port answers | TCP connect | one connection in the peer's logs |
 | peer Directory Server answers, and its clock | anonymous base search of the peer's root DSE (`currentTime`) | one anonymous LDAP connection in the peer's access log |
 | is the host up at all | TCP 443, only when the agreement port does not answer | one connection |
+| peer clock, if the root DSE gives none | HTTPS `HEAD` to the peer, TLS verified with `/etc/ipa/ca.crt`, its `Date` header | one anonymous HTTPS request in the peer's access log |
 | the supplier's GSSAPI bind, reproduced | `kinit -k -t /etc/dirsrv/ds.keytab ldap/<this host>` into a private temporary cache, then `ldapwhoami -Y GSSAPI -N` to the agreement's host/port/transport; only when the agreement is failing (or this server's KDC is down) | Kerberos requests in the KDC log; one bind on the peer; the cache is removed at once |
 | reverse direction | read-only search of the peer's agreements towards this server, with your own ticket | one service-ticket request, one search in the peer's access log |
 

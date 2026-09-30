@@ -165,6 +165,26 @@ def test_pair_skew_on_a_green_agreement_is_still_reported():
     assert H.primary(r).code == "PAIR_CLOCK_SKEW" and "behind" in H.primary(r).detail
 
 
+def test_peer_clock_falls_back_to_the_https_date_header_when_the_root_dse_has_none():
+    lab = Lab().set_status(IPA02, S.SKEW_TEXT).rootdse_without_clock(IPA02, https_offset=-700.0)
+    r = H.run(lab)
+    p = H.primary(r)
+    assert p.code == "PAIR_CLOCK_SKEW" and "HTTPS Date header" in p.detail and "behind" in p.detail
+    assert r.trace.get("peer.time", subject=f"domain:{IPA02}").outcome.value == "WARN"
+
+
+def test_no_peer_clock_at_all_stops_the_skew_chain_at_kerberos():
+    lab = Lab().set_status(IPA02, S.SKEW_TEXT).rootdse_without_clock(IPA02)
+    r = H.run(lab)
+    assert "PAIR_CLOCK_SKEW" not in codes(r)
+    assert any(c.links[-1].capability == "KERBEROS" and "could not be read" in c.boundary for c in r.chains)
+
+
+def test_the_https_clock_is_not_read_when_the_root_dse_gives_it():
+    r = H.run(Lab())
+    assert r.trace.get("peer.time", subject=f"domain:{IPA02}").skip_reason.startswith("not needed")
+
+
 def test_server_not_found_is_taken_to_the_missing_principal_only_when_the_list_is_complete():
     lab = Lab().set_status(IPA02, S.NOT_FOUND_TEXT)
     lab.data[S.key("repl.principals", {})]["fields"]["ldap_principals"] = [IPA01, IPA03]

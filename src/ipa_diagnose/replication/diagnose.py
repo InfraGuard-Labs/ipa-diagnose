@@ -267,12 +267,12 @@ def _gssapi_chain(t: _T, b: _Builder, me: str, realm: str, item: Dict[str, Any],
                                  "systemctl status krb5kdc   (read-only)"])
         return None, c
     if eff == S.GSSAPI_CLOCK_SKEW:
-        off = t.f("peer.rootdse", "offset", subject=subj)
+        off, orec, where = peer_offset(t, subj)
         if isinstance(off, (int, float)) and abs(off) >= KRB_TOLERANCE:
             pair = f"pair:{me}>{consumer}"
             links.append(Link(f"{me}'s clock is {abs(off):.0f} s {'ahead of' if off >= 0 else 'behind'} {consumer}'s "
-                              f"(measured from {consumer}'s root DSE)", pair, "TIME",
-                              ev_gs + [t.rec("peer.rootdse", subj).step_id], "kerberos-clock-skew", "pair"))
+                              f"(measured from {consumer}'s {where})", pair, "TIME",
+                              ev_gs + [orec.step_id], "kerberos-clock-skew", "pair"))
             root = _pair_skew(t, b, me, consumer, subj, off, via_chain=True)
             c = b.chain(rel_key, links, boundary=(f"which clock is wrong is not established from here: {consumer}'s "
                                                   f"time service can only be checked on {consumer}"),
@@ -348,6 +348,18 @@ def _gssapi_chain(t: _T, b: _Builder, me: str, realm: str, item: Dict[str, Any],
     return None, c
 
 
+def peer_offset(t: _T, subj: str):
+    """The peer's clock offset as measured from this host (root DSE currentTime, else its HTTPS Date header):
+    (offset or None, the step that measured it, where it came from)."""
+
+    for base, where in (("peer.rootdse", "root DSE"), ("peer.time", "HTTPS Date header")):
+        r = t.rec(base, subj)
+        off = r.facts.get("offset") if r is not None and r.outcome != SK else None
+        if isinstance(off, (int, float)):
+            return off, r, where
+    return None, None, None
+
+
 def _pair_skew(t: _T, b: _Builder, me: str, consumer: str, subj: str, off: float, via_chain: bool) -> ReplDiagnosis:
     pair = f"pair:{me}>{consumer}"
     existing = b.get("PAIR_CLOCK_SKEW", pair)
@@ -359,10 +371,11 @@ def _pair_skew(t: _T, b: _Builder, me: str, consumer: str, subj: str, off: float
                   f" This host's own time service is {'synchronized' if sync else 'NOT synchronized'}"
                   + (f" (offset {local_off:+.3f} s to its source)" if isinstance(local_off, (int, float)) else "")
                   + (": this host's clock may be the wrong one." if not sync else "."))
+    _o, rec, where = peer_offset(t, subj)
     detail = (f"{me}'s clock is {abs(off):.0f} s {'ahead of' if off >= 0 else 'behind'} {consumer}'s, measured from "
-              f"{consumer}'s root DSE; Kerberos refuses more than {KRB_TOLERANCE} s.{local_note} Which clock is wrong "
+              f"{consumer}'s {where}; Kerberos refuses more than {KRB_TOLERANCE} s.{local_note} Which clock is wrong "
               f"is not established from here: {consumer}'s time service can only be checked on {consumer}")
-    ev = [t.rec("peer.rootdse", subj).step_id] + (["time.local"] if t.o("time.local") not in (None, SK) else [])
+    ev = [rec.step_id] + (["time.local"] if t.o("time.local") not in (None, SK) else [])
     c = None
     if not via_chain:
         c = b.chain(pair, [Link(f"{me}'s clock differs from {consumer}'s by {abs(off):.0f} s", pair, "TIME", ev,
@@ -398,7 +411,7 @@ def _agreement(t: _T, b: _Builder, me: str, realm: str, item: Dict[str, Any],
                             "local", next_steps=[f"ipa topologysegment-find {suffix}   (read-only)"]))
         return
     rd = t.rec("peer.rootdse", subj)
-    off = t.f("peer.rootdse", "offset", subject=subj)
+    off, orec, _where = peer_offset(t, subj)
     if cls == S.OK:
         age = _ago(item.get("last_update_start"))
         if item.get("update_in_progress") and age is not None and age > LONG_SESSION_SECONDS:
@@ -411,8 +424,8 @@ def _agreement(t: _T, b: _Builder, me: str, realm: str, item: Dict[str, Any],
         elif isinstance(off, (int, float)) and abs(off) >= CLOCK_WARN:
             b.add(ReplDiagnosis("PAIR_CLOCK_DRIFT", f"pair:{me}>{consumer}", f"The clocks of {me} and {consumer} "
                                 f"differ by {abs(off):.0f} s", "TIME", "WARN", "HIGH",
-                                f"Measured from {consumer}'s root DSE (under the {KRB_TOLERANCE} s Kerberos "
-                                "tolerance).", "No failure yet; Kerberos fails beyond 300 s.", [rd.step_id], "pair",
+                                f"Measured from {consumer}'s {_where} (under the {KRB_TOLERANCE} s Kerberos "
+                                "tolerance).", "No failure yet; Kerberos fails beyond 300 s.", [orec.step_id], "pair",
                                 next_steps=["chronyc tracking   (read-only, here and on " + consumer + ")"]))
         return
     if cls in S.TRANSIENT:

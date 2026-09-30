@@ -242,6 +242,19 @@ class Lab:
         self.gssapi(peer, bind_ok=False, bind_error_class="GSSAPI_CLOCK_SKEW")
         return self
 
+    def rootdse_without_clock(self, peer: str, https_offset: Optional[float] = None) -> "Lab":
+        """389-DS may not publish currentTime in the anonymous root DSE: the clock then comes from the peer's
+        HTTPS Date header (or not at all)."""
+
+        self.data[key("repl.peer_rootdse", {"host": peer, "port": "389", "transport": "LDAP"})]["fields"][
+            "offset_seconds"] = None
+        if https_offset is not None:
+            self.data[key("ipa.https", {"server": peer})] = ok({
+                "ca_file": True, "tls": "verified", "tls_ok": True, "http_status": 200,
+                "offset_seconds": https_offset, "offset_abs": abs(https_offset), "date_source": "verified TLS",
+                "round_trip": 0.02}, f"HTTPS to {peer}: TLS verified")
+        return self
+
     def keytab(self, **fields) -> "Lab":
         self.data[key("repl.ds_keytab", {})]["fields"].update(fields)
         return self

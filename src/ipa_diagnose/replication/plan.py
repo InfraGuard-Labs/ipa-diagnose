@@ -170,6 +170,15 @@ def c_rootdse(res, ctx) -> Classified:
     return Classified(F, res.display, facts)
 
 
+def c_peer_time(res, ctx) -> Classified:
+    off = res.fields.get("offset_seconds")
+    if not isinstance(off, (int, float)):
+        return Classified(U, "the peer's clock could not be read over HTTPS", {"offset": None})
+    txt = (f"this host's clock is {abs(off):.0f} s {'ahead of' if off >= 0 else 'behind'} the peer's "
+           f"({res.fields.get('date_source') or 'HTTPS'} Date header)")
+    return Classified(W if abs(off) >= CLOCK_WARN else P, txt, {"offset": off})
+
+
 def c_gssapi(res, ctx) -> Classified:
     f = res.fields
     facts = {"kinit_ok": f.get("kinit_ok"), "kinit_class": f.get("kinit_class"), "bind_ok": f.get("bind_ok"),
@@ -222,6 +231,15 @@ def g_https(ctx) -> Tuple[bool, str]:
     return False, "the agreement's LDAP port answers"
 
 
+def g_peer_time(ctx) -> Tuple[bool, str]:
+    if ctx.outcome("peer.dns") != P:
+        return False, "the peer's name does not resolve here"
+    if isinstance(ctx.fact("peer.rootdse.offset"), (int, float)):
+        return False, "the peer's root DSE already gave its clock"
+    return True, ("the peer's root DSE gave no clock: read it from the peer's HTTPS Date header (for Kerberos, "
+                  "clocks must agree within 300 s)")
+
+
 def _failing(ctx) -> bool:
     return ctx.item.get("status_class") not in (S.OK,)
 
@@ -249,7 +267,7 @@ def g_gssapi(ctx) -> Tuple[bool, str]:
 
 def g_chrony(ctx) -> Tuple[bool, str]:
     for r in ctx.records.values():
-        if r.base_step == "peer.rootdse" and isinstance(r.facts.get("offset"), (int, float)) \
+        if r.base_step in ("peer.rootdse", "peer.time") and isinstance(r.facts.get("offset"), (int, float)) \
                 and abs(r.facts["offset"]) >= CLOCK_WARN:
             return True, f"this host's clock differs from {r.subject}'s: is this host's NTP working?"
         if r.base_step == "gssapi" and r.facts.get("error_class") == S.GSSAPI_CLOCK_SKEW:
@@ -289,6 +307,10 @@ def replication_plan() -> list:
                  params={"host": ("item", "consumer"), "port": ("item", "port"),
                          "transport": ("item", "transport")}, requires=(Req("peer.dns"),), after=("peer.port",),
                  classify=c_rootdse),
+            Step("peer.time", "TIME", "ipa.https", "Peer clock (HTTPS Date header)",
+                 "Only when the root DSE gives no time: the peer's clock from its HTTPS Date header (anonymous HEAD "
+                 "request, TLS verified with /etc/ipa/ca.crt).", params={"server": ("item", "consumer")},
+                 after=("peer.dns", "peer.rootdse"), when=g_peer_time, classify=c_peer_time),
             Step("peer.https", "NETWORK", "net.tcp", "Peer host answers on 443 (is it up?)",
                  "Only when the agreement's port does not answer: separates a stopped Directory Server on a running "
                  "host from a host that cannot be reached.", params={"host": ("item", "consumer"), "port": "443"},
