@@ -177,18 +177,16 @@ _probe = [0]
 
 
 def trigger(c: str, suffix: str = "domain") -> None:
-    """Make a change on server c so its agreements start a session (a fake user, or a CA profile description)."""
+    """Make a change on server c so its agreements start a session. The lab writes through c's LDAPI socket as root
+    (SASL EXTERNAL), which needs no Kerberos: with c's own KDC stopped, kinit on c fails (run 36657552130 - an IPA
+    server's Kerberos library uses its own KDC). Domain suffix: the description of a lab-only entry; CA suffix
+    (o=ipaca): the description of ou=people,o=ipaca."""
 
     _probe[0] += 1
-    admin(c)
-    if suffix == "domain":
-        out = ipa(c, f"user-add probe{_probe[0]}x{c} --first=Probe --last=Lab")
-        log("triggers", f"{iso(now())} {c} domain change: {'made' if 'Added user' in out else 'FAILED: ' + out[-200:]}")
-    else:
-        # a change in o=ipaca: re-importing a profile writes it to Dogtag's LDAP profile store (the CA suffix);
-        # a --desc change alone only touches IPA's own entry in the domain suffix (lesson of run 36652068103)
-        sh(c, "ipa certprofile-show caIPAserviceCert --out /root/probe-profile.cfg >/dev/null && "
-              "ipa certprofile-mod caIPAserviceCert --file /root/probe-profile.cfg >/dev/null", cc=ADMIN_CC)
+    dn = (f"uid=admin,cn=users,cn=accounts,{BASEDN}" if suffix == "domain" else "ou=people,o=ipaca")
+    ldif = f"dn: {dn}\nchangetype: modify\nreplace: description\ndescription: lab probe {_probe[0]} from {c}\n"
+    rc, out, err, _ = dx(c, f"ldapmodify -Q -Y EXTERNAL -H {LDAPI}", stdin=ldif)
+    log("triggers", f"{iso(now())} {c} {suffix} change: {'made' if rc == 0 else 'FAILED: ' + (out + err)[-200:]}")
 
 
 def wait_agreement(c: str, peer: str, suffix: str, want_ok: bool, since: datetime.datetime, timeout: int = 240) -> dict:
@@ -512,7 +510,10 @@ def r02() -> None:
     rc4, doc4, secs4, hist4 = verify_until("ipa01")
     items4 = {i["key"]: i["outcome"] for i in (doc4 or {}).get("items", [])}
     sym = f"REPLICATION_FAILING@domain:{FQ['ipa01']}>{FQ['ipa02']}"
-    ok4 = items4.get(sym) == "RESOLVED" and "STILL_PRESENT" not in items4.values() and rc4 in (0, 4)
+    # the agreement's recorded status may never have shown the failure (389-DS lag): then the peer-side root is
+    # the only item; either way every item must be RESOLVED
+    ok4 = bool(items4) and set(items4.values()) == {"RESOLVED"} and (sym in items4 or any(
+        k.startswith("PEER_DS_NOT_ACCEPTING@") for k in items4)) and rc4 in (0, 4)
     _write({"scenario": "R02d-verify-after-fix-supplier", "result": "PASS" if ok4 else "FAIL",
             "problems": [] if ok4 else [f"verify on ipa01: exit {rc4}, items {items4}"], "exit": rc4,
             "verify_items": items4, "history": hist4, "pending_seen": any(h["exit"] == 3 for h in hist4),
