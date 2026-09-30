@@ -1,4 +1,4 @@
 Changing this file on a freeze/ branch runs every live lab on that commit: live-freeipa-scenarios.yml (scenarios and
 bundle jobs), live-freeipa-validation.yml, live-freeipa-access.yml, live-freeipa-client.yml and
 live-freeipa-replication.yml.
-freeze live run 1
+freeze live run 2 (after the review fixes)
