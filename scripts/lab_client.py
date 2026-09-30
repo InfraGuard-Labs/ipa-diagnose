@@ -139,6 +139,21 @@ def details(args: str, name: str, cc: str = None) -> str:
     return out
 
 
+def capture(name: str, scenario: str, args: list, cc: str = None, env: tuple = ()) -> None:
+    """A real text capture for the screenshot index (scripts/lab_captures.py): read-only, same state, 120 columns."""
+
+    env = ([f"KRB5CCNAME={cc}"] if cc else []) + list(env)
+    subprocess.run([sys.executable, "scripts/lab_captures.py", "run", name, C, scenario, "--"] + env
+                   + ["ipa-diagnose"] + args, env={**os.environ, "IPA_DIAGNOSE_BIN": TOOL}, timeout=700)
+
+
+def snapshot_state() -> None:
+    """Copy the saved results before a verify so a text capture can read the same baseline (lab state untouched)."""
+
+    sh(C, "d=/var/lib/ipa-diagnose; [ -d $d ] || d=/root/.cache/ipa-diagnose; rm -rf /tmp/cap-state; "
+          "cp -a $d /tmp/cap-state")
+
+
 def diag(doc) -> dict:
     return {d["code"]: d["role"] for d in (doc or {}).get("diagnoses", [])}
 
@@ -273,6 +288,7 @@ KEY_CAUSES = ("HOST_KEY_REJECTED", "HOST_KEYTAB_MISSING", "HOST_KEYTAB_WRONG_PRI
 def c00():
     rc, doc, err, secs = client(ARGS)
     details(ARGS.replace(" --json", ""), "C00")
+    capture("client-00-healthy", "C00 healthy enrolled client", ["client", "--user", "alice", "--service", "sshd"])
     acct = next((s for s in (doc or {}).get("steps", []) if s["step"] == "pam.acct"), {})
     row("C00-healthy-baseline", {"exit": 0, "status": ("HEALTHY", "HEALTHY_WITH_WARNINGS"), "primary": (None,),
                                  "runtime": "NOT_VERIFIED", "offered": {}}, rc, doc, secs,
@@ -289,6 +305,9 @@ def c01_c02():
     ind = {"inactive": confirm("sssd", "systemctl is-active sssd", "inactive")}
     rc, doc, err, secs = client(ARGS)
     details(ARGS.replace(" --json", ""), "C01")
+    capture("client-01-sssd-stopped", "C01 SSSD stopped on the client",
+            ["client", "--user", "alice", "--service", "sshd"])
+    rc, doc, err, secs = client(ARGS)  # the saved baseline is the JSON run's again (verify compares with it)
     row("C01-sssd-stopped", {"exit": 1, "primary": ("SSSD_NOT_RUNNING",), "runtime": "FAIL",
                              "offered": {"SSSD_NOT_RUNNING": "proc.client.start-sssd"},
                              "forbidden": NETWORK_CAUSES + KEY_CAUSES}, rc, doc, secs, ind)
@@ -299,7 +318,10 @@ def c01_c02():
         applied = " ".join(argv)
         sh(C, " ".join(shlex.quote(a) for a in argv))
         time.sleep(5)
+    snapshot_state()
     rc, doc, err, secs = client("client --verify --json")
+    capture("client-02-verify-resolved", "C02 client --verify after running the printed fix",
+            ["client", "--verify"], env=("IPA_DIAGNOSE_STATE_DIR=/tmp/cap-state",))
     items = {i["code"]: i["outcome"] for i in (doc or {}).get("items", [])}
     ok = items == {"SSSD_NOT_RUNNING": "RESOLVED"} and rc == 0
     _write({"scenario": "C02-sssd-recovered-verify", "result": "PASS" if ok and applied else "FAIL",
@@ -363,6 +385,8 @@ def c07():
            "ipa_has_user": confirm("ipa", "ipa user-show ghost", "User login: ghost", container=S)}
     rc, doc, err, secs = client("client --user ghost --service sshd --json")
     details("client --user ghost --service sshd", "C07")
+    capture("client-06-identity-undiagnosed", "C07 IPA has the user, SSSD filters it (not a cause the tool knows)",
+            ["client", "--user", "ghost", "--service", "sshd"])
     row("C07-identity-lookup-failure", {"exit": 1, "roles": {"IDENTITY_LOOKUP_FAILS": "UNDIAGNOSED"},
                                         "forbidden": ("USER_NOT_IN_IPA", "SSSD_CACHE_DB_ERROR",
                                                       "SSSD_CACHE_INCONSISTENT") + NETWORK_CAUSES + KEY_CAUSES,
@@ -383,6 +407,8 @@ def c08():
            "ldap_blocked": confirm("nc", f"timeout 5 bash -c '</dev/tcp/{SERVER_IP}/389'", expect_rc=1)}
     rc, doc, err, secs = client(ARGS)
     details(ARGS.replace(" --json", ""), "C08")
+    capture("client-03-server-unreachable-sssd-offline", "C08 IPA server ports blocked from the client; SSSD offline",
+            ["client", "--user", "alice", "--service", "sshd"])
     row("C08-sssd-offline", {"exit": 1, "primary": ("SERVER_UNREACHABLE",),
                              "roles": {"SSSD_OFFLINE": "RELATED"},
                              "forbidden": ("SSSD_CACHE_DB_ERROR", "SSSD_CACHE_INCONSISTENT") + KEY_CAUSES,
@@ -399,6 +425,9 @@ def c09():
                    container=S)
     sh(C, "systemctl stop sssd")
     rc, doc, err, secs = _access()
+    capture("client-04-access-runtime-hbac-pass-sssd-stopped",
+            "C09 FreeIPA HBAC allows alice on client1 via sshd; SSSD stopped on client1",
+            ["access", "alice", HOST, "sshd", "--runtime"], cc=ADMIN_CC)
     rt = (doc or {}).get("runtime_access") or {}
     problems = []
     if (doc or {}).get("authorization", {}).get("state") != "PASS":
@@ -425,6 +454,8 @@ def c09b():
     host_denies = confirm("user-checks", "sssctl user-checks alice -a acct -s sshd", "Permission denied")
     rc, doc, err, secs = _access()
     details(f"access alice {HOST} sshd --runtime", "C09b", cc=ADMIN_CC)
+    capture("client-05-access-runtime-host-refuses", "C09b HBAC allows alice; the host's SSSD access_provider refuses",
+            ["access", "alice", HOST, "sshd", "--runtime"], cc=ADMIN_CC)
     rt = (doc or {}).get("runtime_access") or {}
     cd = {d["code"]: d["role"] for d in (rt.get("client") or {}).get("diagnoses", [])}
     problems = []
@@ -514,6 +545,8 @@ def c13():
            "dns": confirm("getent", f"getent ahosts {SERVER}", expect_rc=2)}
     rc, doc, err, secs = client(ARGS)
     details(ARGS.replace(" --json", ""), "C13")
+    capture("client-07-two-independent-causes", "C13 dead DNS resolver AND an sssd.conf typo at the same time",
+            ["client", "--user", "alice", "--service", "sshd"])
     got = diag(doc)
     both = got.get("SSSD_CONFIG_INVALID") in ("PRIMARY", "INDEPENDENT") and any(
         got.get(c) in ("PRIMARY", "INDEPENDENT") for c in ("DNS_RESOLVER_NOT_ANSWERING", "DNS_SERVER_UNRESOLVABLE"))

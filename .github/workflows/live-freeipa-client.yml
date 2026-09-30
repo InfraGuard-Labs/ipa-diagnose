@@ -19,8 +19,8 @@ on:
         default: "fedora-43"
         type: string
   push:
-    branches: ["slice4/planner-client-mode"]
-    paths: [".github/live-client-trigger"]
+    branches: ["slice4/planner-client-mode", "freeze/**"]
+    paths: [".github/live-client-trigger", ".github/freeze-live-trigger"]
 
 env:
   IMAGE: ${{ inputs.image || 'fedora-43' }}
@@ -97,6 +97,14 @@ jobs:
 
       - name: Client assertions (fail on any FAIL or missing row)
         run: python3 scripts/lab_client.py summary
+
+      # GitHub keeps at most 10 notice annotations per step
+      - name: Publish real CLI captures (1)
+        if: always()
+        run: python3 scripts/lab_captures.py emit 0
+      - name: Publish real CLI captures (2)
+        if: always()
+        run: python3 scripts/lab_captures.py emit 10
 
       - name: Cleanup
         if: always()

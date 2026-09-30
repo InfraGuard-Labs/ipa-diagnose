@@ -47,7 +47,71 @@ REQUIRED = [
     "R06-ds-keytab-unreadable-disposable-replica", "R07-peer-kdc-stopped-reverse-direction",
     "R08-multi-cause-middle-server", "R09-budget-scope-peer", "R10-non-root", "R11-support-bundle",
     "R12-simulated-clock-offset",
+    # integrated journey (freeze): the server diagnosis (`ipa-diagnose`) run in the same injected state must agree
+    # with replication mode on this server's own cause and must not invent a local cause for a peer-side fault
+    "J01-server-diagnose-agrees-local-ds-stopped", "J02-server-diagnose-no-local-cause-peer-ds-stopped",
+    "J03-server-diagnose-agrees-local-kdc-stopped",
 ]
+
+
+def capture(name: str, c: str, scenario: str, args: list, ticket: bool = True, env: tuple = ()) -> None:
+    """A real text capture for the screenshot index (scripts/lab_captures.py): read-only, same state, 120 columns."""
+
+    cc = [f"KRB5CCNAME={ADMIN_CC if ticket else 'FILE:/nonexistent-lab-cache'}"]
+    subprocess.run([sys.executable, "scripts/lab_captures.py", "run", name, c, scenario, "--"] + cc + list(env)
+                   + ["ipa-diagnose"] + args, env={**os.environ, "IPA_DIAGNOSE_BIN": TOOL}, timeout=700)
+
+
+def snapshot_state(c: str) -> None:
+    """Copy the saved results before a verify so a text capture can read the same baseline (lab state untouched)."""
+
+    sh(c, "d=/var/lib/ipa-diagnose; [ -d $d ] || d=/root/.cache/ipa-diagnose; rm -rf /tmp/cap-state; "
+          "cp -a $d /tmp/cap-state")
+
+
+def server_diagnose(c: str):
+    """`ipa-diagnose --json` (the server diagnosis, not replication mode) on server c."""
+
+    rc, out, err, secs = dx(c, f"{TOOL} --json", timeout=600)
+    try:
+        doc = json.loads(out)
+    except ValueError:
+        doc = None
+    log("tool-runs", f"[{c}] $ {TOOL} --json\n[rc={rc} {secs}s]\n{out[:30000]}\n{err[:3000]}")
+    return rc, doc, secs
+
+
+def journey_row(sid: str, c: str, rc: int, doc, secs: float, primary_unit: str = None, argv: list = None,
+                no_local: bool = False, replication_offer: dict = None) -> None:
+    """Cross-mode consistency: the server diagnosis names the same local cause (and the same printed argv) as
+    replication mode, or - for a peer-side fault - claims no local service failure on this server."""
+
+    problems = []
+    diags = (doc or {}).get("diagnoses", [])
+    prim = [d for d in diags if d.get("priority") == "PRIMARY_PROBLEM"]
+    res = [r for r in ((doc or {}).get("v2") or {}).get("resolutions", []) if r.get("status") == "OFFERED"]
+    offered_argv = [s.get("argv") for r in res for s in r.get("steps") or []]
+    if doc is None:
+        problems.append("no JSON answer")
+    if primary_unit and not any(primary_unit in (d.get("title") or "") and d.get("status") == "DIAGNOSED"
+                                for d in prim):
+        problems.append(f"PRIMARY is not '{primary_unit}': {[d.get('title') for d in prim]}")
+    if argv and argv not in offered_argv:
+        problems.append(f"server diagnosis did not offer {argv}: {offered_argv}")
+    if argv and replication_offer is not None and [argv] not in replication_offer.values():
+        problems.append(f"replication mode offered {replication_offer}, not {argv}")
+    local_claims = [d.get("title") for d in diags if d.get("status") == "DIAGNOSED"
+                    and "is not running" in (d.get("title") or "")]
+    if no_local and local_claims:
+        problems.append(f"FALSE ROOT CAUSE: local service claimed on {c}: {local_claims}")
+    if any(a and a[0] == "ipactl" for a in offered_argv):
+        problems.append("ipactl offered")
+    _write({"scenario": sid, "result": "FAIL" if problems else "PASS", "problems": problems, "exit": rc,
+            "status": (doc or {}).get("overall_status"), "primary": [d.get("title") for d in prim],
+            "offered_argv": offered_argv, "false_root_cause": bool(no_local and local_claims), "seconds": secs,
+            "mode": "server diagnosis (ipa-diagnose --json)",
+            "debug": {"diagnoses": [f"{d.get('priority')} {d.get('status')} {d.get('title')}"[:160]
+                                    for d in diags][:12]}})
 
 
 # ---------------------------------------------------------------- docker helpers
@@ -467,6 +531,8 @@ def r01() -> None:
     for c in SERVERS:
         rc, doc, secs = tool(c)
         details(c, f"r01-healthy-{c}")
+        if c == "ipa02":
+            capture("repl-01-healthy-ipa02", c, "R01 healthy three-server lab (operator ticket)", ["replication"])
         row(f"R01-healthy-with-ticket-{c}", {"status": ["HEALTHY"], "roots": [], "offered": {}}, rc, doc, secs,
             {"all_agreements_green": {"confirmed": all(a.get("nsds5replicalastupdatestatus", "").startswith(
                 "Error (0) Replica acquired") for a in agreements(c))}})
@@ -490,19 +556,35 @@ def r02() -> None:
         "nsds5replicalastupdatestatus", "Error (0)"), "observed": a.get("nsds5replicalastupdatestatus", "")[:200]}
     rc, doc, secs = tool("ipa01")
     details("ipa01", "r02-supplier")
+    capture("repl-02-peer-ds-stopped-from-ipa01", "ipa01", "R02 dirsrv stopped on ipa02, seen from ipa01",
+            ["replication"])
     row("R02-peer-ds-stopped-supplier-view",
         {"status": ["PROBLEM_FOUND"], "primary": [f"PEER_DS_NOT_ACCEPTING@server:{FQ['ipa02']}"],
          "roots": [f"PEER_DS_NOT_ACCEPTING@server:{FQ['ipa02']}"], "offered": {}, "handoff_to": ["ipa02"],
          "absent": ["LOCAL_"]}, rc, doc, secs, ind)
+    jrc, jdoc, jsecs = server_diagnose("ipa01")
+    journey_row("J02-server-diagnose-no-local-cause-peer-ds-stopped", "ipa01", jrc, jdoc, jsecs, no_local=True)
     rc2, doc2, secs2 = tool("ipa02")
     details("ipa02", "r02b-local")
+    capture("repl-03-local-ds-stopped-ipa02", "ipa02", "R02b dirsrv stopped on ipa02, seen on ipa02 (fix printed)",
+            ["replication"])
     ind2 = {"ds_stopped_on_ipa02": ind["ds_stopped_on_ipa02"]}
     key = f"LOCAL_DS_NOT_RUNNING@server:{FQ['ipa02']}"
     r = row("R02b-peer-ds-stopped-local-view-and-fix",
             {"status": ["PROBLEM_FOUND"], "primary": [key], "roots": [key],
              "offered": {key: [["systemctl", "start", f"dirsrv@{INST}.service"]]}}, rc2, doc2, secs2, ind2)
+    jrc, jdoc, jsecs = server_diagnose("ipa02")
+    journey_row("J01-server-diagnose-agrees-local-ds-stopped", "ipa02", jrc, jdoc, jsecs, primary_unit="dirsrv",
+                argv=["systemctl", "start", f"dirsrv@{INST}.service"],
+                replication_offer={k: [s["argv"] for s in v.get("steps", [])] for k, v in offered(doc2).items()})
+    # the fix is applied from replication mode's printed argv; re-read it fresh so the Safety gate's 300 s
+    # freshness bound applies to what the administrator runs (the server diagnosis above took time)
+    rc2, doc2, secs2 = tool("ipa02")
     applied = apply_printed("ipa02", doc2, key) if r["result"] == "PASS" else {"applied": [], "all_ok": False}
+    snapshot_state("ipa02")
     rc3, doc3, secs3, hist = verify_until("ipa02")
+    capture("repl-04-verify-resolved-ipa02", "ipa02", "R02c replication --verify after the printed fix",
+            ["replication", "--verify"], env=("IPA_DIAGNOSE_STATE_DIR=/tmp/cap-state",))
     items = {i["key"]: i["outcome"] for i in (doc3 or {}).get("items", [])}
     ok = applied["all_ok"] and items.get(key) == "RESOLVED" and rc3 in (0, 4)
     _write({"scenario": "R02c-verify-after-fix-local", "result": "PASS" if ok else "FAIL",
@@ -535,6 +617,8 @@ def r03() -> None:
             "nsds5replicalastupdatestatus", "Error (0)"), "observed": a.get("nsds5replicalastupdatestatus", "")[:200]}
         rc, doc, secs = tool("ipa01")
         details("ipa01", "r03-unreachable")
+        capture("repl-05-peer-unreachable-from-ipa01", "ipa01", "R03 ipa02 disconnected from the network",
+                ["replication"])
         text = json.dumps(doc or {}).lower()
         row("R03-peer-unreachable",
             {"status": ["PROBLEM_FOUND"], "primary": [f"PEER_UNREACHABLE@pair:{FQ['ipa01']}>{FQ['ipa02']}"],
@@ -576,6 +660,13 @@ def r05() -> None:
             {"status": ["PROBLEM_FOUND"], "primary": [key], "roots": [key],
              "offered": {key: [["systemctl", "start", "krb5kdc.service"]]}, "no_google": True}, rc, doc, secs, ind,
             {"agreement_states": [f"{x['subject']}={x.get('state')}" for x in (doc or {}).get("relationships", [])]})
+    jrc, jdoc, jsecs = server_diagnose("ipa01")
+    journey_row("J03-server-diagnose-agrees-local-kdc-stopped", "ipa01", jrc, jdoc, jsecs, primary_unit="krb5kdc",
+                argv=["systemctl", "start", "krb5kdc.service"],
+                replication_offer={k: [s["argv"] for s in v.get("steps", [])] for k, v in offered(doc).items()})
+    rc, doc, secs = tool("ipa01")  # fresh again before applying (the Safety gate's 300 s evidence bound)
+    capture("repl-06-local-kdc-stopped-ipa01", "ipa01", "R05 krb5kdc stopped on ipa01 (No-Google fix printed)",
+            ["replication"])
     applied = apply_printed("ipa01", doc, key) if r["result"] == "PASS" else {"applied": [], "all_ok": False}
     rc2, doc2, secs2, hist = verify_until("ipa01")
     items = {i["key"]: i["outcome"] for i in (doc2 or {}).get("items", [])}
@@ -651,6 +742,8 @@ def r08() -> None:
             "nsds5replicalastupdatestatus", "Error (0)"), "observed": a.get("nsds5replicalastupdatestatus", "")[:200]}
         rc, doc, secs = tool("ipa02")
         details("ipa02", "r08-multi")
+        capture("repl-07-two-causes-ipa02", "ipa02", "R08 krb5kdc stopped on ipa02 AND dirsrv stopped on ipa03",
+                ["replication"])
         k1 = f"LOCAL_KDC_NOT_RUNNING@server:{FQ['ipa02']}"
         k2 = f"PEER_DS_NOT_ACCEPTING@server:{FQ['ipa03']}"
         row("R08-multi-cause-middle-server",
@@ -685,6 +778,8 @@ def r11() -> None:
     rc, out, err, secs = dx("ipa01", f"cd /root && rm -f repl-bundle.tar.gz && {TOOL} bundle --replication "
                                      "--output /root/repl-bundle.tar.gz", cc=ADMIN_CC, timeout=600)
     vrc, vout, verr, _ = dx("ipa01", f"{TOOL} bundle validate /root/repl-bundle.tar.gz")
+    capture("repl-09-bundle-preview-ipa01", "ipa01", "R11 bundle --replication --preview (writes nothing)",
+            ["bundle", "--replication", "--preview"])
     members = sh("ipa01", "tar -tzf /root/repl-bundle.tar.gz")
     leak = sh("ipa01", "mkdir -p /root/rb && tar -xzf /root/repl-bundle.tar.gz -C /root/rb && "
                        f"grep -rIl -e {FQ['ipa02']} -e {DOMAIN} -e {REALM} -e 172.31.0. /root/rb | wc -l")
@@ -712,6 +807,9 @@ def r12() -> None:
     prefix = f"FAKETIME=+15m LD_PRELOAD={lib} "
     ind = {"process_clock_shifted": confirm("ipa01", f"{prefix}date -u +%s; date -u +%s")}
     rc, doc, secs = tool("ipa01", prefix=prefix)
+    capture("repl-08-simulated-clock-offset-ipa01", "ipa01",
+            "R12 LIVE SIMULATED: only ipa-diagnose's own process clock +15 min (libfaketime); servers untouched",
+            ["replication"], env=("FAKETIME=+15m", f"LD_PRELOAD={lib}"))
     key = f"PAIR_CLOCK_SKEW@pair:{FQ['ipa01']}>{FQ['ipa02']}"
     text = json.dumps(doc or {}).lower()
     row("R12-simulated-clock-offset",

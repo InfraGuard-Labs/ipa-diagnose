@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
   # On a slice branch, also when .github/ci-trigger changes (candidate artifacts are never published from here).
   push:
-    branches: ["slice[0-9]*/**"]
+    branches: ["slice[0-9]*/**", "freeze/**"]
     paths: [".github/ci-trigger"]
 
 permissions:

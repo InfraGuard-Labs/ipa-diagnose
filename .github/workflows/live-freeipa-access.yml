@@ -19,8 +19,8 @@ on:
         default: "fedora-43"
         type: string
   push:
-    branches: ["slice3/access-diagnosis"]
-    paths: [".github/live-access-trigger"]
+    branches: ["slice3/access-diagnosis", "freeze/**"]
+    paths: [".github/live-access-trigger", ".github/freeze-live-trigger"]
 
 env:
   IMAGE: ${{ inputs.image || 'fedora-43' }}
@@ -80,6 +80,10 @@ jobs:
         run: |
           cat out/access-timing.txt 2>/dev/null | head -12 | tr '\n' ' ' | sed 's/^/::notice title=access timing::/'; echo
           python3 scripts/lab_access.py summary
+
+      - name: Publish real CLI captures
+        if: always()
+        run: python3 scripts/lab_captures.py emit 0
 
       - name: Cleanup
         if: always()
