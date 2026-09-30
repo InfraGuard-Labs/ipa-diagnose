@@ -1,15 +1,15 @@
 {
- "captured_at": "2026-09-30T14:02:11Z",
+ "captured_at": "2026-09-30T16:22:30Z",
  "columns": 120,
  "command": "ipa-diagnose access dave app01.lab.test sshd",
- "commit": "d06c16c03584fef907f0a6975cce80cafb747c48",
+ "commit": "b58f3d62c5992c352f2385139e08d50767a73473",
  "container": "ipa-s",
  "env": [
   "KRB5CCNAME=FILE:/root/admin.ccache"
  ],
  "exit": 1,
  "name": "access-02-deny-is-policy",
- "run_id": "36724948123",
+ "run_id": "36742907967",
  "scenario": "A06-no-rule-deny",
  "user": "root"
 }

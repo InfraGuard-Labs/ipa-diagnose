@@ -40,6 +40,7 @@ RESOLUTION
     ✓ ipa-diagnose is running as root (starting a system service needs root)
     1. Start only sssd.service; no other service is started or stopped
          systemctl start sssd.service
+       Expected: the command returns without an error and sssd.service is active. If it fails, it stays stopped and 'systemctl status sssd' shows why.
     What changes: sssd.service goes from inactive to running. SSSD reads its existing configuration and cache; nothing is edited or deleted.
     Rollback: Stop it again (back to the state it was in)  ->  systemctl stop sssd.service
     Note: This starts SSSD; it does not establish why it stopped. If it stopped because of a failure (see the last result and log line above), the same cause can stop it again.
@@ -52,4 +53,4 @@ VERIFY
     - SSSD resolves the group admins (present in every IPA domain)
 LIMITATIONS
   No login is attempted and no credential is tested: RUNTIME ACCESS and AUTHENTICATION are never reported as PASS.
-  planner: 18 of 28 checks run, 1 result(s) reused, 0.074 s; stop: every relevant check in the plan was visited
+  planner: 18 of 28 checks run, 1 result(s) reused, 0.058 s; stop: every relevant check in the plan was visited

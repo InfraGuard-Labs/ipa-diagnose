@@ -4,7 +4,7 @@
 <circle cx="18" cy="17" r="5" fill="#ff5f56"/><circle cx="36" cy="17" r="5" fill="#ffbd2e"/><circle cx="54" cy="17" r="5" fill="#27c93f"/>
 <text x="76" y="22" fill="#8b949e">$ ipa-diagnose access dave app01.lab.test sshd   (exit 1)</text>
 <rect x="18" y="44" width="1008" height="22" rx="4" fill="#12261e"/>
-<text x="26" y="60" fill="#3fb950" font-weight="bold">REAL LIVE CAPTURE - FreeIPA 4.13.4 / Fedora 43 lab - commit d06c16c, run 36724948123</text>
+<text x="26" y="60" fill="#3fb950" font-weight="bold">REAL LIVE CAPTURE - FreeIPA 4.13.4 / Fedora 43 lab - commit b58f3d6, run 36742907967</text>
 <text x="18" y="89" fill="#c9d1d9" xml:space="preserve">ipa-diagnose access: dave -&gt; app01.lab.test via sshd</text>
 <text x="18" y="106" fill="#c9d1d9" xml:space="preserve">  LIVE; asked FreeIPA as admin@LAB.TEST on ipa01.lab.test (API 4.13.4)</text>
 <text x="18" y="123" fill="#c9d1d9" xml:space="preserve"></text>

@@ -4,10 +4,10 @@ ipa-diagnose replication: ipa01.lab.test (realm LAB.TEST)
 ipa01.lab.test: This server's KDC (krb5kdc) is not running.
 
 REPLICATION (per suffix and direction; observed from ipa01.lab.test)
-  ca      ipa01.lab.test -> ipa02.lab.test  OK  [LDAP/SASL/GSSAPI, port 389] last session ended 2026-09-30T14:22:20Z
-  ca      ipa02.lab.test -> ipa01.lab.test  OK  (read from ipa02.lab.test; its last session ended 2026-09-30T14:22:20Z)
-  domain  ipa01.lab.test -> ipa02.lab.test  OK  [LDAP/SASL/GSSAPI, port 389] last session ended 2026-09-30T14:22:23Z
-  domain  ipa02.lab.test -> ipa01.lab.test  OK  (read from ipa02.lab.test; its last session ended 2026-09-30T14:22:19Z)
+  ca      ipa01.lab.test -> ipa02.lab.test  OK  [LDAP/SASL/GSSAPI, port 389] last session ended 2026-09-30T16:44:13Z
+  ca      ipa02.lab.test -> ipa01.lab.test  OK  (read from ipa02.lab.test; its last session ended 2026-09-30T16:44:13Z)
+  domain  ipa01.lab.test -> ipa02.lab.test  OK  [LDAP/SASL/GSSAPI, port 389] last session ended 2026-09-30T16:44:13Z
+  domain  ipa02.lab.test -> ipa01.lab.test  OK  (read from ipa02.lab.test; its last session ended 2026-09-30T16:44:13Z)
 
 ROOT CAUSE
   [PRIMARY] This server's KDC (krb5kdc) is not running - confidence HIGH
@@ -43,4 +43,4 @@ TOPOLOGY (context)
 LIMITATIONS
   Replication is directional and per suffix: this server sees its OWN outbound agreements. The reverse direction is only reported when it could be read from the peer (read-only, with your own Kerberos ticket); otherwise it is NOT VERIFIED and a handoff to the peer is printed.
   Nothing is changed on this server or any other; no command runs on another server; fixes are printed only for causes on this server, and only when every safety gate passes.
-  planner: 19 of 23 checks run, 2.899 s; stop: every relevant check in the plan was visited
+  planner: 19 of 23 checks run, 3.125 s; stop: every relevant check in the plan was visited

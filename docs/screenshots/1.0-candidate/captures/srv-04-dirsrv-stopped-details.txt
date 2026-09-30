@@ -1,5 +1,5 @@
 ────────────────────────────────────────────────── FreeIPA Diagnosis ───────────────────────────────────────────────────
-Host: ipa01.lab.test    Generated: 2026-09-30T14:05:14Z
+Host: ipa01.lab.test    Generated: 2026-09-30T16:27:37Z
 Overall: CRITICAL
 Evidence: PARTIAL
   RUV state: NOT VERIFIED - ipa-replica-manage list -v ipa01.lab.test exited 1: ; ipa-replica-manage list-ruv exited 1: 
@@ -24,7 +24,7 @@ CHECKED FOR YOU
 Read-only checks ipa-diagnose ran on this host just now (results, not problems):
   - Privileges: running as root
   - State of dirsrv: dirsrv@LAB-TEST.service: inactive (dead)
-  - Recent log of dirsrv@LAB-TEST.service: last log line: dirsrv@LAB-TEST.service: Consumed 11.278s CPU time, 99.9M 
+  - Recent log of dirsrv@LAB-TEST.service: last log line: dirsrv@LAB-TEST.service: Consumed 10.523s CPU time, 99.8M 
 memory peak.
 
 IMPACT
@@ -33,8 +33,6 @@ ipa-healthcheck checks that could not connect) may be consequences.
 
 FIX
 Start the stopped service - 1 step on this server, run by you (ipa-diagnose never runs a fix itself).
-Verified in a live lab on FreeIPA 4.13.3 / fedora-43 only - not yet on this FreeIPA version/OS. Check each step before 
-running it.
   1. Start only dirsrv@LAB-TEST.service; no other service is started or stopped
        systemctl start dirsrv@LAB-TEST.service
        expected: the command returns without an error and dirsrv@LAB-TEST.service is active. If it fails, it stays 
@@ -72,13 +70,12 @@ HIGH: Direct report from ipa-healthcheck's service status check.
 ABOUT THIS FIX
 Procedure proc.service.start-stopped-service | applies to: FreeIPA server 4.9 or later, below 5.0 | knowledge tier: 
 BUILT_IN_VERIFIED
-Verified in a live lab on FreeIPA 4.13.3 / fedora-43 only - not yet on this FreeIPA version/OS. Check each step before 
-running it.
+Verified in a live lab on FreeIPA 4.13.3 / fedora-43, FreeIPA 4.13.4 / fedora-43; independently reviewed.
 
 ─────────────────────────────────────────────────── RELATED SYMPTOMS ───────────────────────────────────────────────────
   • One or more ipa-healthcheck checks failed to run  (related to: Required service 'dirsrv' is not running)
     1 ipa-healthcheck check(s) raised an exception instead of returning a result, so they say nothing about the state of
-the system: IPAauthzdatapacCheck: ldap2 is not connected (ldap2_140254314475744 in MainThread). This is most often a 
+the system: IPAauthzdatapacCheck: ldap2 is not connected (ldap2_140098501898128 in MainThread). This is most often a 
 consequence of another problem in this report (for example a stopped service the check needs).
 
 ───────────────────────────────────────── UNDIAGNOSED ipa-healthcheck FINDINGS ─────────────────────────────────────────

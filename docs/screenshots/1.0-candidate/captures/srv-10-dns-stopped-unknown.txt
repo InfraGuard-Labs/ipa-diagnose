@@ -1,5 +1,5 @@
 ────────────────────────────────────────────────── FreeIPA Diagnosis ───────────────────────────────────────────────────
-Host: ipa01.lab.test    Generated: 2026-09-30T14:19:20Z
+Host: ipa01.lab.test    Generated: 2026-09-30T16:41:14Z
 Overall: UNKNOWN
 Evidence: INSUFFICIENT
   ipa-healthcheck evidence could not be collected - nothing can be reported healthy.

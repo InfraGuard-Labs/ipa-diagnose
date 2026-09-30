@@ -1,5 +1,5 @@
 ────────────────────────────────────────────────── FreeIPA Diagnosis ───────────────────────────────────────────────────
-Host: ipa01.lab.test    Generated: 2026-09-30T14:20:53Z
+Host: ipa01.lab.test    Generated: 2026-09-30T16:42:45Z
 Overall: CRITICAL
 
 ─────────────────────────────────────────────────── PRIMARY PROBLEM ────────────────────────────────────────────────────
@@ -17,7 +17,7 @@ CHECKED FOR YOU
 Read-only checks ipa-diagnose ran on this host just now (results, not problems):
   - Privileges: running as root
   - State of krb5kdc: krb5kdc.service: inactive (dead)
-  - Recent log of krb5kdc.service: last log line: krb5kdc.service: Consumed 1.154s CPU time, 10.5M memory peak.
+  - Recent log of krb5kdc.service: last log line: krb5kdc.service: Consumed 1.118s CPU time, 10.4M memory peak.
 
 IMPACT
 Functions that depend on this service are unavailable or degraded. Other failures in this report (for example 
@@ -25,10 +25,10 @@ ipa-healthcheck checks that could not connect) may be consequences.
 
 FIX
 Start the stopped service - 1 step on this server, run by you (ipa-diagnose never runs a fix itself).
-Verified in a live lab on FreeIPA 4.13.3 / fedora-43 only - not yet on this FreeIPA version/OS. Check each step before 
-running it.
   1. Start only krb5kdc.service; no other service is started or stopped
        systemctl start krb5kdc.service
+       expected: the command returns without an error and krb5kdc.service is active. If it fails, it stays stopped and 
+systemctl status shows why
 
 PREREQUISITES
   ✓ ipa-diagnose is running as root (starting a system service needs root) (checked)

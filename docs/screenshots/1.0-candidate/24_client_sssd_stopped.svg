@@ -1,10 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1044" height="1232" viewBox="0 0 1044 1232" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" font-size="13.5">
-<rect width="1044" height="1232" rx="8" fill="#0d1117"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1044" height="1266" viewBox="0 0 1044 1266" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" font-size="13.5">
+<rect width="1044" height="1266" rx="8" fill="#0d1117"/>
 <rect width="1044" height="34" rx="8" fill="#161b22"/>
 <circle cx="18" cy="17" r="5" fill="#ff5f56"/><circle cx="36" cy="17" r="5" fill="#ffbd2e"/><circle cx="54" cy="17" r="5" fill="#27c93f"/>
 <text x="76" y="22" fill="#8b949e">$ ipa-diagnose client --user alice --service sshd   (exit 1)</text>
 <rect x="18" y="44" width="1008" height="22" rx="4" fill="#12261e"/>
-<text x="26" y="60" fill="#3fb950" font-weight="bold">REAL LIVE CAPTURE - FreeIPA 4.13.4 / Fedora 43 lab - commit d06c16c, run 36724948253</text>
+<text x="26" y="60" fill="#3fb950" font-weight="bold">REAL LIVE CAPTURE - FreeIPA 4.13.4 / Fedora 43 lab - commit b58f3d6, run 36742908065</text>
 <text x="18" y="89" fill="#c9d1d9" xml:space="preserve">ipa-diagnose client: client1.lab.test (IPA domain lab.test, server ipa01.lab.test)</text>
 <text x="18" y="106" fill="#c9d1d9" xml:space="preserve">  LIVE; asked about user alice, service sshd; SSSD 2.12.0, IPA client 4.13.4</text>
 <text x="18" y="123" fill="#c9d1d9" xml:space="preserve"></text>
@@ -53,20 +53,22 @@
 <text x="18" y="854" fill="#c9d1d9" xml:space="preserve">    ✓ ipa-diagnose is running as root (starting a system service needs root)</text>
 <text x="18" y="871" fill="#c9d1d9" xml:space="preserve">    1. Start only sssd.service; no other service is started or stopped</text>
 <text x="18" y="888" fill="#c9d1d9" xml:space="preserve">         systemctl start sssd.service</text>
-<text x="18" y="905" fill="#c9d1d9" xml:space="preserve">    What changes: sssd.service goes from inactive to running. SSSD reads its existing configuration and cache; nothing i</text>
-<text x="18" y="922" fill="#c9d1d9" xml:space="preserve">s edited or deleted.</text>
-<text x="18" y="939" fill="#c9d1d9" xml:space="preserve">    Rollback: Stop it again (back to the state it was in)  -&gt;  systemctl stop sssd.service</text>
-<text x="18" y="956" fill="#c9d1d9" xml:space="preserve">    Note: This starts SSSD; it does not establish why it stopped. If it stopped because of a failure (see the last resul</text>
-<text x="18" y="973" fill="#c9d1d9" xml:space="preserve">t and log line above), the same cause can stop it again.</text>
-<text x="18" y="990" fill="#c9d1d9" xml:space="preserve">NEXT READ-ONLY STEPS</text>
-<text x="18" y="1007" fill="#c9d1d9" xml:space="preserve">  systemctl status sssd (read-only)</text>
-<text x="18" y="1024" fill="#c9d1d9" xml:space="preserve">  journalctl -u sssd -n 30 (read-only)</text>
-<text x="18" y="1041" fill="#c9d1d9" xml:space="preserve">VERIFY</text>
-<text x="18" y="1058" fill="#c9d1d9" xml:space="preserve">  After a fix, run: ipa-diagnose client --verify --user alice --service sshd   (fresh checks; compares with this run)</text>
-<text x="18" y="1075" fill="#c9d1d9" xml:space="preserve">    - sssd.service is active</text>
-<text x="18" y="1092" fill="#c9d1d9" xml:space="preserve">    - SSSD resolves the group admins (present in every IPA domain)</text>
-<text x="18" y="1109" fill="#c9d1d9" xml:space="preserve">LIMITATIONS</text>
-<text x="18" y="1126" fill="#c9d1d9" xml:space="preserve">  No login is attempted and no credential is tested: RUNTIME ACCESS and AUTHENTICATION are never reported as PASS.</text>
-<text x="18" y="1143" fill="#c9d1d9" xml:space="preserve">  planner: 18 of 28 checks run, 1 result(s) reused, 0.074 s; stop: every relevant check in the plan was visited</text>
-<text x="18" y="1222" fill="#6e7681" font-size="11">55 lines, complete; long lines folded at 120 columns, as a 120-column terminal shows them</text>
+<text x="18" y="905" fill="#c9d1d9" xml:space="preserve">       Expected: the command returns without an error and sssd.service is active. If it fails, it stays stopped and &#x27;sys</text>
+<text x="18" y="922" fill="#c9d1d9" xml:space="preserve">temctl status sssd&#x27; shows why.</text>
+<text x="18" y="939" fill="#c9d1d9" xml:space="preserve">    What changes: sssd.service goes from inactive to running. SSSD reads its existing configuration and cache; nothing i</text>
+<text x="18" y="956" fill="#c9d1d9" xml:space="preserve">s edited or deleted.</text>
+<text x="18" y="973" fill="#c9d1d9" xml:space="preserve">    Rollback: Stop it again (back to the state it was in)  -&gt;  systemctl stop sssd.service</text>
+<text x="18" y="990" fill="#c9d1d9" xml:space="preserve">    Note: This starts SSSD; it does not establish why it stopped. If it stopped because of a failure (see the last resul</text>
+<text x="18" y="1007" fill="#c9d1d9" xml:space="preserve">t and log line above), the same cause can stop it again.</text>
+<text x="18" y="1024" fill="#c9d1d9" xml:space="preserve">NEXT READ-ONLY STEPS</text>
+<text x="18" y="1041" fill="#c9d1d9" xml:space="preserve">  systemctl status sssd (read-only)</text>
+<text x="18" y="1058" fill="#c9d1d9" xml:space="preserve">  journalctl -u sssd -n 30 (read-only)</text>
+<text x="18" y="1075" fill="#c9d1d9" xml:space="preserve">VERIFY</text>
+<text x="18" y="1092" fill="#c9d1d9" xml:space="preserve">  After a fix, run: ipa-diagnose client --verify --user alice --service sshd   (fresh checks; compares with this run)</text>
+<text x="18" y="1109" fill="#c9d1d9" xml:space="preserve">    - sssd.service is active</text>
+<text x="18" y="1126" fill="#c9d1d9" xml:space="preserve">    - SSSD resolves the group admins (present in every IPA domain)</text>
+<text x="18" y="1143" fill="#c9d1d9" xml:space="preserve">LIMITATIONS</text>
+<text x="18" y="1160" fill="#c9d1d9" xml:space="preserve">  No login is attempted and no credential is tested: RUNTIME ACCESS and AUTHENTICATION are never reported as PASS.</text>
+<text x="18" y="1177" fill="#c9d1d9" xml:space="preserve">  planner: 18 of 28 checks run, 1 result(s) reused, 0.058 s; stop: every relevant check in the plan was visited</text>
+<text x="18" y="1256" fill="#6e7681" font-size="11">56 lines, complete; long lines folded at 120 columns, as a 120-column terminal shows them</text>
 </svg>

@@ -22,14 +22,14 @@ CHECKED FOR YOU
   ✓ IPA server answers on 389 (LDAP): TCP ipa01.lab.test:389: open
   ✓ IPA server answers on 88 (Kerberos, TCP): TCP ipa01.lab.test:88: open
   ✓ IPA server certificate trusted: the IPA server's certificate verifies with this host's IPA CA (/etc/ipa/ca.crt)
-  ✓ Clock agrees with the IPA server: this host's clock is 1 s ahead of the IPA server's (verified TLS)
+  ✓ Clock agrees with the IPA server: this host's clock is 0 s ahead of the IPA server's (verified TLS)
   ✓ Host keytab present with this host's key: /etc/krb5.keytab has keys for host/client1.lab.test@LAB.TEST (kvno 1)
   ✓ KDC accepts this host's key: the KDC accepted this host's key: the host principal exists and the keytab matches
   ✓ SSSD service running: sssd.service is running
   ✓ SSSD configuration valid (sssctl config-check): sssctl config-check found no issue
   ✓ SSSD online with the IPA server: SSSD domain lab.test is online; active IPA ipa01.lab.test
-  ✓ User resolves through SSSD: SSSD (getent -s sss) resolves alice (UID 1549800003)
-  ✓ User resolves through the system NSS stack: the system's NSS stack (getent) resolves alice (UID 1549800003)
+  ✓ User resolves through SSSD: SSSD (getent -s sss) resolves alice (UID 371000003)
+  ✓ User resolves through the system NSS stack: the system's NSS stack (getent) resolves alice (UID 371000003)
   ✓ PAM service reaches SSSD: PAM service sshd: pam_sss in account yes, in auth yes
   ✓ PAM account phase for the user (sssctl user-checks): PAM account check for alice via sshd on this host: Success
   (7 not needed check(s) not run; --details says why)
@@ -41,4 +41,4 @@ VERIFY
   Run ipa-diagnose client --user alice --service sshd again after any change: every check is re-run with fresh evidence.
 LIMITATIONS
   No login is attempted and no credential is tested: RUNTIME ACCESS and AUTHENTICATION are never reported as PASS.
-  planner: 21 of 28 checks run, 1 result(s) reused, 0.11 s; stop: every relevant check in the plan was visited
+  planner: 21 of 28 checks run, 1 result(s) reused, 0.095 s; stop: every relevant check in the plan was visited

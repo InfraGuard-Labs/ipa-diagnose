@@ -1,4 +1,4 @@
-VERIFY (compared with the replication result of 2026-09-30T14:09:48Z; every check re-run now)
+VERIFY (compared with the replication result of 2026-09-30T16:31:13Z; every check re-run now)
   RESOLVED           (found last time) This server's Directory Server is not running: not found again; the checks it rested on answer now
   Exact RUV equality is not required; a fresh successful session after the saved result is.
   The VERIFY answer above is authoritative; below is the current state from this run.
@@ -9,16 +9,19 @@ ipa-diagnose replication: ipa02.lab.test (realm LAB.TEST)
 ipa02.lab.test: nothing failing was found, but an agreement is not green yet (transient; recheck later).
 
 REPLICATION (per suffix and direction; observed from ipa02.lab.test)
-  ca      ipa02.lab.test -> ipa01.lab.test  OK  [LDAP/SASL/GSSAPI, port 389] last session ended 2026-09-30T14:09:52Z
-  ca      ipa01.lab.test -> ipa02.lab.test  OK  (read from ipa01.lab.test; its last session ended 2026-09-30T14:08:15Z)
-  domain  ipa02.lab.test -> ipa01.lab.test  OK  [LDAP/SASL/GSSAPI, port 389] last session ended 2026-09-30T14:09:52Z
-  domain  ipa01.lab.test -> ipa02.lab.test  NOT GREEN YET  (read from ipa01.lab.test; its last session ended 2026-09-30T14:08:37Z)
-  domain  ipa02.lab.test -> ipa03.lab.test  OK  [LDAP/SASL/GSSAPI, port 389] last session ended 2026-09-30T14:09:52Z
-  domain  ipa03.lab.test -> ipa02.lab.test  OK  (read from ipa03.lab.test; its last session ended 2026-09-30T14:08:39Z)
+  ca      ipa02.lab.test -> ipa01.lab.test  NOT GREEN YET (NO_SESSIONS)  [LDAP/SASL/GSSAPI, port 389]
+  ca      ipa01.lab.test -> ipa02.lab.test  OK  (read from ipa01.lab.test; its last session ended 2026-09-30T16:29:47Z)
+  domain  ipa02.lab.test -> ipa01.lab.test  OK  [LDAP/SASL/GSSAPI, port 389] last session ended 2026-09-30T16:31:18Z
+  domain  ipa01.lab.test -> ipa02.lab.test  NOT GREEN YET  (read from ipa01.lab.test; its last session ended 2026-09-30T16:30:09Z)
+  domain  ipa02.lab.test -> ipa03.lab.test  OK  [LDAP/SASL/GSSAPI, port 389] last session ended 2026-09-30T16:31:18Z
+  domain  ipa03.lab.test -> ipa02.lab.test  OK  (read from ipa03.lab.test; its last session ended 2026-09-30T16:30:12Z)
 
 ROOT CAUSE
+  [WARNING] The ca agreement ipa02.lab.test -> ipa01.lab.test is not green yet (no sessions) - confidence HIGH
+      no replication session has run since the Directory Server started (not proof of health). Status: Error (0) No replication sessions started since server startup.
+      Impact: Not a failure by itself, and not proof of health: 389-DS retries by itself. Run ipa-diagnose replication again after the next session.
   [WARNING] ipa01.lab.test last could not reach ipa02.lab.test (domain); ipa02.lab.test's Directory Server is running now - confidence MEDIUM
-      Read from ipa01.lab.test: Error (-1) Problem connecting to replica - LDAP error: Can't contact LDAP server (connection error) (session ended 2026-09-30T14:08:37Z). Whether ipa01.lab.test can reach ipa02.lab.test now is shown by its next session.
+      Read from ipa01.lab.test: Error (-1) Problem connecting to replica - LDAP error: Can't contact LDAP server (connection error) (session ended 2026-09-30T16:30:09Z). Whether ipa01.lab.test can reach ipa02.lab.test now is shown by its next session.
       Impact: Changes from the peer wait until it reaches this server.
 
 HANDOFF (the remaining evidence is on another server; nothing was changed)
@@ -29,6 +32,7 @@ HANDOFF (the remaining evidence is on another server; nothing was changed)
 RESOLUTION (only for causes on this server)
   No fix is printed: nothing to fix.
 NEXT READ-ONLY STEPS
+  sudo ipa-diagnose replication --peer ipa01.lab.test --verify (after a few minutes)
   sudo ipa-diagnose replication --verify (after ipa01.lab.test's next session)
 TOPOLOGY (context)
   servers: ipa01.lab.test, ipa02.lab.test, ipa03.lab.test
@@ -39,4 +43,4 @@ TOPOLOGY (context)
 LIMITATIONS
   Replication is directional and per suffix: this server sees its OWN outbound agreements. The reverse direction is only reported when it could be read from the peer (read-only, with your own Kerberos ticket); otherwise it is NOT VERIFIED and a handoff to the peer is printed.
   Nothing is changed on this server or any other; no command runs on another server; fixes are printed only for causes on this server, and only when every safety gate passes.
-  planner: 22 of 30 checks run, 3.92 s; stop: every relevant check in the plan was visited
+  planner: 24 of 30 checks run, 4.437 s; stop: every relevant check in the plan was visited

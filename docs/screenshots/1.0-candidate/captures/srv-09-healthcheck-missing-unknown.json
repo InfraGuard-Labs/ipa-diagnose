@@ -1,13 +1,13 @@
 {
- "captured_at": "2026-09-30T14:03:52Z",
+ "captured_at": "2026-09-30T16:26:18Z",
  "columns": 120,
  "command": "ipa-diagnose",
- "commit": "d06c16c03584fef907f0a6975cce80cafb747c48",
+ "commit": "b58f3d62c5992c352f2385139e08d50767a73473",
  "container": "ipa-s",
  "env": [],
  "exit": 3,
  "name": "srv-09-healthcheck-missing-unknown",
- "run_id": "36724948194",
+ "run_id": "36742907611",
  "scenario": "S1 ipa-healthcheck binary hidden (no base evidence)",
  "user": "root"
 }

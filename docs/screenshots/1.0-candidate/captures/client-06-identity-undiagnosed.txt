@@ -48,4 +48,4 @@ VERIFY
   Run ipa-diagnose client --user ghost --service sshd again after any change: every check is re-run with fresh evidence.
 LIMITATIONS
   No login is attempted and no credential is tested: RUNTIME ACCESS and AUTHENTICATION are never reported as PASS.
-  planner: 23 of 28 checks run, 1 result(s) reused, 0.169 s; stop: every relevant check in the plan was visited
+  planner: 23 of 28 checks run, 1 result(s) reused, 0.135 s; stop: every relevant check in the plan was visited

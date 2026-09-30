@@ -4,7 +4,7 @@
 <circle cx="18" cy="17" r="5" fill="#ff5f56"/><circle cx="36" cy="17" r="5" fill="#ffbd2e"/><circle cx="54" cy="17" r="5" fill="#27c93f"/>
 <text x="76" y="22" fill="#8b949e">$ ipa-diagnose client --user alice --service sshd   (exit 1)</text>
 <rect x="18" y="44" width="1008" height="22" rx="4" fill="#12261e"/>
-<text x="26" y="60" fill="#3fb950" font-weight="bold">REAL LIVE CAPTURE - FreeIPA 4.13.4 / Fedora 43 lab - commit d06c16c, run 36724948253</text>
+<text x="26" y="60" fill="#3fb950" font-weight="bold">REAL LIVE CAPTURE - FreeIPA 4.13.4 / Fedora 43 lab - commit b58f3d6, run 36742908065</text>
 <text x="18" y="89" fill="#c9d1d9" xml:space="preserve">ipa-diagnose client: client1.lab.test (IPA domain lab.test, server ipa01.lab.test)</text>
 <text x="18" y="106" fill="#c9d1d9" xml:space="preserve">  LIVE; asked about user alice, service sshd; SSSD 2.12.0, IPA client 4.13.4</text>
 <text x="18" y="123" fill="#c9d1d9" xml:space="preserve"></text>
@@ -50,16 +50,16 @@
 <text x="18" y="803" fill="#c9d1d9" xml:space="preserve">  ✗ Kerberos SRV records (_kerberos._tcp): _kerberos._tcp.lab.test: no record (TIMEOUT)</text>
 <text x="18" y="820" fill="#c9d1d9" xml:space="preserve">  ✓ Host keytab present with this host&#x27;s key: /etc/krb5.keytab has keys for host/client1.lab.test@LAB.TEST (kvno 1)</text>
 <text x="18" y="837" fill="#c9d1d9" xml:space="preserve">  ✗ KDC accepts this host&#x27;s key: kinit with the host keytab failed: timeout (no answer within 20 s)</text>
-<text x="18" y="854" fill="#c9d1d9" xml:space="preserve">  ✓ This host&#x27;s NTP synchronization: clock offset +0.002 s, leap status Normal</text>
+<text x="18" y="854" fill="#c9d1d9" xml:space="preserve">  ✓ This host&#x27;s NTP synchronization: clock offset -0.000 s, leap status Normal</text>
 <text x="18" y="871" fill="#c9d1d9" xml:space="preserve">  ✓ SSSD service running: sssd.service is running</text>
 <text x="18" y="888" fill="#c9d1d9" xml:space="preserve">  ✗ SSSD configuration valid (sssctl config-check): sssctl config-check: 1 issue(s)</text>
 <text x="18" y="905" fill="#c9d1d9" xml:space="preserve">  ✗ SSSD online with the IPA server: SSSD domain lab.test is OFFLINE</text>
-<text x="18" y="922" fill="#c9d1d9" xml:space="preserve">  ✓ User resolves through SSSD: SSSD (getent -s sss) resolves alice (UID 1549800003)</text>
-<text x="18" y="939" fill="#c9d1d9" xml:space="preserve">  ✓ User resolves through the system NSS stack: the system&#x27;s NSS stack (getent) resolves alice (UID 1549800003)</text>
+<text x="18" y="922" fill="#c9d1d9" xml:space="preserve">  ✓ User resolves through SSSD: SSSD (getent -s sss) resolves alice (UID 371000003)</text>
+<text x="18" y="939" fill="#c9d1d9" xml:space="preserve">  ✓ User resolves through the system NSS stack: the system&#x27;s NSS stack (getent) resolves alice (UID 371000003)</text>
 <text x="18" y="956" fill="#c9d1d9" xml:space="preserve">  ✓ PAM service reaches SSSD: PAM service sshd: pam_sss in account yes, in auth yes</text>
 <text x="18" y="973" fill="#c9d1d9" xml:space="preserve">  ✗ PAM account phase for the user (sssctl user-checks): PAM account check for alice via sshd on this host: Permission d</text>
 <text x="18" y="990" fill="#c9d1d9" xml:space="preserve">enied</text>
-<text x="18" y="1007" fill="#c9d1d9" xml:space="preserve">  ! SSSD log signals: 2300 recent SSSD log line(s): offline x13, server_unreachable x9</text>
+<text x="18" y="1007" fill="#c9d1d9" xml:space="preserve">  ! SSSD log signals: 2300 recent SSSD log line(s): offline x14, server_unreachable x9</text>
 <text x="18" y="1024" fill="#c9d1d9" xml:space="preserve">  (6 blocked, 4 not needed check(s) not run; --details says why)</text>
 <text x="18" y="1041" fill="#c9d1d9" xml:space="preserve">RULED OUT</text>
 <text x="18" y="1058" fill="#c9d1d9" xml:space="preserve">  enrollment configuration is present; SSSD is configured for the IPA domain; the host keytab holds this host&#x27;s key; SSS</text>

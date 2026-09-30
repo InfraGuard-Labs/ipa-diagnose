@@ -1,5 +1,5 @@
 ────────────────────────────────────────────────── FreeIPA Diagnosis ───────────────────────────────────────────────────
-Host: ipa01.lab.test    Generated: 2026-09-30T14:00:20Z
+Host: ipa01.lab.test    Generated: 2026-09-30T16:22:53Z
 Overall: NOT_FULLY_VERIFIED
 Not fully verified: 1 ipa-healthcheck finding(s) that no ipa-diagnose rule explains remain (see UNDIAGNOSED below). No 
 cause is claimed.

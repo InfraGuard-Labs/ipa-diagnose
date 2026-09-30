@@ -4,9 +4,9 @@
 <circle cx="18" cy="17" r="5" fill="#ff5f56"/><circle cx="36" cy="17" r="5" fill="#ffbd2e"/><circle cx="54" cy="17" r="5" fill="#27c93f"/>
 <text x="76" y="22" fill="#8b949e">$ ipa-diagnose   (exit 2)</text>
 <rect x="18" y="44" width="1008" height="22" rx="4" fill="#12261e"/>
-<text x="26" y="60" fill="#3fb950" font-weight="bold">REAL LIVE CAPTURE - FreeIPA 4.13.4 / Fedora 43 lab - commit d06c16c, run 36724948194</text>
+<text x="26" y="60" fill="#3fb950" font-weight="bold">REAL LIVE CAPTURE - FreeIPA 4.13.4 / Fedora 43 lab - commit b58f3d6, run 36742907611</text>
 <text x="18" y="89" fill="#c9d1d9" xml:space="preserve">────────────────────────────────────────────────── FreeIPA Diagnosis ───────────────────────────────────────────────────</text>
-<text x="18" y="106" fill="#c9d1d9" xml:space="preserve">Host: ipa01.lab.test    Generated: 2026-09-30T14:23:54Z</text>
+<text x="18" y="106" fill="#c9d1d9" xml:space="preserve">Host: ipa01.lab.test    Generated: 2026-09-30T16:45:39Z</text>
 <text x="18" y="123" fill="#ff7b72" xml:space="preserve">Overall: CRITICAL</text>
 <text x="18" y="140" fill="#d29922" xml:space="preserve">Evidence: PARTIAL</text>
 <text x="18" y="157" fill="#d29922" xml:space="preserve">  NOT VERIFIED: certmonger - &#x27;getcert list&#x27; exited 1:</text>
@@ -26,7 +26,7 @@
 <text x="18" y="395" fill="#c9d1d9" xml:space="preserve">Read-only checks ipa-diagnose ran on this host just now (results, not problems):</text>
 <text x="18" y="412" fill="#c9d1d9" xml:space="preserve">  - Privileges: running as root</text>
 <text x="18" y="429" fill="#c9d1d9" xml:space="preserve">  - State of certmonger: certmonger.service: inactive (dead), load state: masked</text>
-<text x="18" y="446" fill="#c9d1d9" xml:space="preserve">  - Recent log of certmonger.service: last log line: certmonger.service: Consumed 30.196s CPU time, 1.1G memory peak.</text>
+<text x="18" y="446" fill="#c9d1d9" xml:space="preserve">  - Recent log of certmonger.service: last log line: certmonger.service: Consumed 30.131s CPU time, 1.1G memory peak.</text>
 <text x="18" y="463" fill="#c9d1d9" xml:space="preserve"></text>
 <text x="18" y="480" fill="#c9d1d9" xml:space="preserve">IMPACT</text>
 <text x="18" y="497" fill="#d29922" xml:space="preserve">Functions that depend on this service are unavailable or degraded. Other failures in this report (for example </text>

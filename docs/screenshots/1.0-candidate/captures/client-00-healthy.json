@@ -1,13 +1,13 @@
 {
- "captured_at": "2026-09-30T13:59:04Z",
+ "captured_at": "2026-09-30T16:20:50Z",
  "columns": 120,
  "command": "ipa-diagnose client --user alice --service sshd",
- "commit": "d06c16c03584fef907f0a6975cce80cafb747c48",
+ "commit": "b58f3d62c5992c352f2385139e08d50767a73473",
  "container": "ipa-c",
  "env": [],
  "exit": 0,
  "name": "client-00-healthy",
- "run_id": "36724948253",
+ "run_id": "36742908065",
  "scenario": "C00 healthy enrolled client",
  "user": "root"
 }

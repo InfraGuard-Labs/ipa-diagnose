@@ -94,3 +94,7 @@ Notes that belong with the rows:
 - **Python matrix:** 3.9 to 3.14 green.
 - **RPM release candidate:** builds, clean-container install, lifecycle and uninstall green on EL8, EL9, EL10, Fedora 43 and 44.
 - **Two-node validation lab:** green.
+
+## Freeze campaign re-run (final product code)
+
+Server scenarios re-run on the final freeze product code (b58f3d6), run [36742907611](https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36742907611), **FreeIPA 4.13.4** / Fedora 43 (the image's package moved from 4.13.3): **27 of 27 rows PASS** (the rows above minus the validation-lab rows H1, H2, R1, R2, whose two-node lab was re-run green in [36742907684](https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36742907684)); procedure assertions **16 PASS, 0 FAIL** (service start for dirsrv and krb5kdc, file group and mode after CONFIRM FIRST, each applied verbatim and verified RESOLVED; certmonger masked withheld). Also green in freeze runs 1 and 2 (36724948194, 36741278374). Details: [freeze-audit.md](freeze-audit.md).

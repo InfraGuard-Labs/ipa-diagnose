@@ -1,15 +1,15 @@
 {
- "captured_at": "2026-09-30T14:22:10Z",
+ "captured_at": "2026-09-30T16:44:00Z",
  "columns": 120,
  "command": "ipa-diagnose verify",
- "commit": "d06c16c03584fef907f0a6975cce80cafb747c48",
+ "commit": "b58f3d62c5992c352f2385139e08d50767a73473",
  "container": "ipa-s",
  "env": [
   "IPA_DIAGNOSE_STATE_DIR=/tmp/cap-state"
  ],
  "exit": 2,
  "name": "srv-11-verify-still-present",
- "run_id": "36724948194",
+ "run_id": "36742907611",
  "scenario": "V1 verify with the KDC left stopped (nothing fixed)",
  "user": "root"
 }

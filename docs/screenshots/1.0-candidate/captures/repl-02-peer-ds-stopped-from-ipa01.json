@@ -1,15 +1,15 @@
 {
- "captured_at": "2026-09-30T14:09:22Z",
+ "captured_at": "2026-09-30T16:30:52Z",
  "columns": 120,
  "command": "ipa-diagnose replication",
- "commit": "d06c16c03584fef907f0a6975cce80cafb747c48",
+ "commit": "b58f3d62c5992c352f2385139e08d50767a73473",
  "container": "ipa01",
  "env": [
   "KRB5CCNAME=FILE:/root/admin.ccache"
  ],
  "exit": 1,
  "name": "repl-02-peer-ds-stopped-from-ipa01",
- "run_id": "36724948206",
+ "run_id": "36742907976",
  "scenario": "R02 dirsrv stopped on ipa02, seen from ipa01",
  "user": "root"
 }

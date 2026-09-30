@@ -34,15 +34,15 @@ CHECKED FOR YOU
   ✗ Kerberos SRV records (_kerberos._tcp): _kerberos._tcp.lab.test: no record (TIMEOUT)
   ✓ Host keytab present with this host's key: /etc/krb5.keytab has keys for host/client1.lab.test@LAB.TEST (kvno 1)
   ✗ KDC accepts this host's key: kinit with the host keytab failed: timeout (no answer within 20 s)
-  ✓ This host's NTP synchronization: clock offset +0.002 s, leap status Normal
+  ✓ This host's NTP synchronization: clock offset -0.000 s, leap status Normal
   ✓ SSSD service running: sssd.service is running
   ✗ SSSD configuration valid (sssctl config-check): sssctl config-check: 1 issue(s)
   ✗ SSSD online with the IPA server: SSSD domain lab.test is OFFLINE
-  ✓ User resolves through SSSD: SSSD (getent -s sss) resolves alice (UID 1549800003)
-  ✓ User resolves through the system NSS stack: the system's NSS stack (getent) resolves alice (UID 1549800003)
+  ✓ User resolves through SSSD: SSSD (getent -s sss) resolves alice (UID 371000003)
+  ✓ User resolves through the system NSS stack: the system's NSS stack (getent) resolves alice (UID 371000003)
   ✓ PAM service reaches SSSD: PAM service sshd: pam_sss in account yes, in auth yes
   ✗ PAM account phase for the user (sssctl user-checks): PAM account check for alice via sshd on this host: Permission denied
-  ! SSSD log signals: 2300 recent SSSD log line(s): offline x13, server_unreachable x9
+  ! SSSD log signals: 2300 recent SSSD log line(s): offline x14, server_unreachable x9
   (6 blocked, 4 not needed check(s) not run; --details says why)
 RULED OUT
   enrollment configuration is present; SSSD is configured for the IPA domain; the host keytab holds this host's key; SSSD is running; SSSD resolves the user; the system NSS stack resolves the user; the PAM service uses SSSD
@@ -60,4 +60,4 @@ VERIFY
   Run ipa-diagnose client --user alice --service sshd again after any change: every check is re-run with fresh evidence.
 LIMITATIONS
   No login is attempted and no credential is tested: RUNTIME ACCESS and AUTHENTICATION are never reported as PASS.
-  planner: 18 of 28 checks run, 0 result(s) reused, 27.268 s; stop: every relevant check in the plan was visited
+  planner: 18 of 28 checks run, 0 result(s) reused, 27.354 s; stop: every relevant check in the plan was visited

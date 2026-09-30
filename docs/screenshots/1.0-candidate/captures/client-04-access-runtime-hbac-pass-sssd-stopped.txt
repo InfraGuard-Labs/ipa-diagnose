@@ -4,7 +4,7 @@ ipa-diagnose access: alice -> client1.lab.test via sshd
 FreeIPA HBAC policy authorizes alice to access client1.lab.test through sshd, but the login is expected to fail on this host: SSSD is not running.
 
   AUTHENTICATION  NOT VERIFIED the IPA account exists and is enabled; no credential was tested
-                               the password expired at 2026-09-30T13:58:57Z: a password login must change it first
+                               the password expired at 2026-09-30T16:20:44Z: a password login must change it first
   AUTHORIZATION   PASS         FreeIPA HBAC policy allows this request (rule: r_client)
   RUNTIME ACCESS  FAIL         checked on client1.lab.test: a login by alice through sshd is expected to fail on this host: SSSD is not running
 
@@ -13,7 +13,7 @@ ROOT CAUSE
 WHY
   Matched rule r_client (enabled) - user: alice listed directly | host: client1.lab.test listed directly | service: sshd listed directly
 ALSO NOTED
-  The password of alice expired at 2026-09-30T13:58:57Z: A password login must change the password first; logins that do not use the password (for example SSH keys) are not affected by this.
+  The password of alice expired at 2026-09-30T16:20:44Z: A password login must change the password first; logins that do not use the password (for example SSH keys) are not affected by this.
 RUNTIME (--runtime)
   investigated on this host with client mode's planner
   [PRIMARY] SSSD is not running - confidence HIGH
@@ -23,6 +23,7 @@ RUNTIME (--runtime)
   (16 runtime check(s) on this host passed; --details lists them)
   Fix on this host: Start SSSD (risk MEDIUM; ipa-diagnose never runs it)
        systemctl start sssd.service
+       Expected: the command returns without an error and sssd.service is active. If it fails, it stays stopped and 'systemctl status sssd' shows why.
 CHECKED FOR YOU
   [ok  ] user alice exists, enabled, no principal expiration set or readable; 1 direct and 0 nested groups
   [ok  ] host client1.lab.test exists; 0 direct and 0 nested hostgroups

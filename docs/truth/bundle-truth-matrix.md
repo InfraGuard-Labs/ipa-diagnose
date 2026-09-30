@@ -76,3 +76,7 @@ refused it: an ipa-healthcheck traceback quoting `api.env.host` was taken for a 
 became an identifier. That run failed closed and nothing leaked, but the harness wrote no result row for a missing
 bundle, so the gap was silent. Since `38bdb0d` a missing bundle is a FAIL row, and the job fails when any expected
 scenario has no row. The rows above come from the first run after both fixes.
+
+## Freeze campaign re-run (final product code)
+
+Bundle scenarios B0-B8 re-run on the final freeze product code (b58f3d6), run [36742907611](https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36742907611) (bundle job), FreeIPA 4.13.4 / Fedora 43: **8/8 PASS** (B0-B5, B6 output safety, B8 CA journal); no planted canary or lab identifier reached a bundle; timing: diagnose 12.8-13.8 s, preview 12.8-14.1 s, bundle 13.8-13.9 s. Details: [freeze-audit.md](freeze-audit.md).

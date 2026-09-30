@@ -234,7 +234,7 @@ docker compose build dev
 docker compose run --rm test          # the full test suite
 ```
 
-About 2,500 tests (the count is in the freeze audit): unit, per-scenario fixtures with pinned outcomes, adversarial suites and product-wide sweeps. Contributions: [docs/contributing.md](docs/contributing.md). Every
+About 2,700 tests (2,687 passing on the final code; see the freeze audit): unit, per-scenario fixtures with pinned outcomes, adversarial suites and product-wide sweeps. Contributions: [docs/contributing.md](docs/contributing.md). Every
 new rule needs a fixture with an expected outcome, and "I'm not sure" (`UNKNOWN`) is always an acceptable answer.
 
 ## License

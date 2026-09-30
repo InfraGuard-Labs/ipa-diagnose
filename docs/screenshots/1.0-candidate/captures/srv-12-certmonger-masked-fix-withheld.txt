@@ -1,5 +1,5 @@
 ────────────────────────────────────────────────── FreeIPA Diagnosis ───────────────────────────────────────────────────
-Host: ipa01.lab.test    Generated: 2026-09-30T14:23:54Z
+Host: ipa01.lab.test    Generated: 2026-09-30T16:45:39Z
 Overall: CRITICAL
 Evidence: PARTIAL
   NOT VERIFIED: certmonger - 'getcert list' exited 1:
@@ -19,7 +19,7 @@ CHECKED FOR YOU
 Read-only checks ipa-diagnose ran on this host just now (results, not problems):
   - Privileges: running as root
   - State of certmonger: certmonger.service: inactive (dead), load state: masked
-  - Recent log of certmonger.service: last log line: certmonger.service: Consumed 30.196s CPU time, 1.1G memory peak.
+  - Recent log of certmonger.service: last log line: certmonger.service: Consumed 30.131s CPU time, 1.1G memory peak.
 
 IMPACT
 Functions that depend on this service are unavailable or degraded. Other failures in this report (for example 

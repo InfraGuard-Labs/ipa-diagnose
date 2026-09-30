@@ -19,5 +19,6 @@ Support bundle preview - nothing was written
     redaction-report.json         1.4 KiB
     SHA256SUMS                    0.8 KiB
   Never included: passwords and Directory Manager credentials; private keys (TLS, SSH, CA); keytab contents; Kerberos tickets and credential caches; API, bearer and cloud tokens; cookies and authorization headers; AI provider credentials; environment variables and shell history; raw journals and raw tool output; full LDAP entries and configuration files; commands of offered fixes and rollbacks; the local replay fixture path; the pseudonym mapping itself
+  Free text that is included (selected log lines, error messages) is pattern-redacted only; a secret in an unknown format could remain.
 Before sharing, review it. It is pseudonymized and credential-scanned, but it still contains operational detail (service names, versions, error text, timestamps, topology shape).
 Create it with: ipa-diagnose bundle [--output PATH]

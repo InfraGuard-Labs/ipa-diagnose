@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-30T14:05:21Z",
+  "generated_at": "2026-09-30T16:27:43Z",
   "hostname": "ipa01.lab.test",
   "overall_status": "CRITICAL",
   "packs_evaluated": [
@@ -82,7 +82,7 @@
       },
       "evidence_for": [
         {
-          "evidence_id": "5d16486f-6430-4e77-85d1-a6629a11a013",
+          "evidence_id": "e84b9420-3387-45b3-929c-302a94413ad5",
           "kind": "finding",
           "why_relevant": "ipa-healthcheck states this service is not running."
         }
@@ -112,7 +112,7 @@
       "priority": "RELATED_SYMPTOM",
       "severity": "CRITICAL",
       "title": "One or more ipa-healthcheck checks failed to run",
-      "why": "1 ipa-healthcheck check(s) raised an exception instead of returning a result, so they say nothing about the state of the system: IPAauthzdatapacCheck: ldap2 is not connected (ldap2_140473897709456 in MainThread). This is most often a consequence of another problem in this report (for example a stopped service the check needs).\n\nMay be a downstream symptom of the directory-server problem reported above (not established).",
+      "why": "1 ipa-healthcheck check(s) raised an exception instead of returning a result, so they say nothing about the state of the system: IPAauthzdatapacCheck: ldap2 is not connected (ldap2_140296750313360 in MainThread). This is most often a consequence of another problem in this report (for example a stopped service the check needs).\n\nMay be a downstream symptom of the directory-server problem reported above (not established).",
       "ai_explanation": null,
       "confidence": {
         "level": "INSUFFICIENT",
@@ -122,7 +122,7 @@
       },
       "evidence_for": [
         {
-          "evidence_id": "2672db97-44eb-4a7f-8871-2adee52664aa",
+          "evidence_id": "a48d0109-df5c-4b0c-a4b7-141d908c2413",
           "kind": "finding",
           "why_relevant": "ipa-healthcheck check raised an exception."
         }
@@ -184,7 +184,7 @@
             "label": "Recent log of dirsrv@LAB-TEST.service",
             "check": "systemd.journal_tail",
             "status": "OK",
-            "result": "last log line: dirsrv@LAB-TEST.service: Consumed 11.278s CPU time, 99.9M memory peak.",
+            "result": "last log line: dirsrv@LAB-TEST.service: Consumed 10.523s CPU time, 99.8M memory peak.",
             "command": "journalctl --no-pager -o cat -n 20 -u dirsrv@LAB-TEST.service",
             "source": "live"
           }
@@ -248,8 +248,9 @@
         ],
         "applies_to": "FreeIPA server 4.9 or later, below 5.0",
         "tier": "BUILT_IN_VERIFIED",
-        "definitive": false,
-        "verification_label": "Verified in a live lab on FreeIPA 4.13.3 / fedora-43 only - not yet on this FreeIPA version/OS. Check each step before running it.",
+        "definitive": true,
+        "source": "live",
+        "verification_label": "Verified in a live lab on FreeIPA 4.13.3 / fedora-43, FreeIPA 4.13.4 / fedora-43; independently reviewed.",
         "limitations": "This starts the one stopped service; it does not establish why it stopped. If it stopped because of a failure (see the last result and log line above), the same cause can stop it again. ipactl start is deliberately not used: if any IPA service fails to start, ipactl stops all IPA services.",
         "reference": null,
         "impact_note": ""
@@ -260,7 +261,7 @@
       "fixes": [
         {
           "procedure_id": "proc.service.start-stopped-service",
-          "procedure_digest": "fd3f9461496da3697801440712c214f35dc27495bbf5a3a3302e50567883fb0f",
+          "procedure_digest": "c2ab674a4b231c822735c1ecb4013b2cb8691c2c86ace9f00e38e48ccd62a256",
           "bindings": {
             "service": "dirsrv"
           },

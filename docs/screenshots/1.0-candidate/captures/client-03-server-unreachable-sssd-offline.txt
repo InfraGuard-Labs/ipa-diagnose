@@ -31,12 +31,12 @@ CHECKED FOR YOU
   ✗ IPA server answers on 88 (Kerberos, TCP): TCP ipa01.lab.test:88: refused
   ✓ Host keytab present with this host's key: /etc/krb5.keytab has keys for host/client1.lab.test@LAB.TEST (kvno 1)
   ✗ KDC accepts this host's key: kinit with the host keytab failed: kdc unreachable (kinit: Cannot contact any KDC for realm 'LAB.TEST' while getting initial credentials)
-  ✓ This host's NTP synchronization: clock offset +0.001 s, leap status Normal
+  ✓ This host's NTP synchronization: clock offset -0.001 s, leap status Normal
   ✓ SSSD service running: sssd.service is running
   ✓ SSSD configuration valid (sssctl config-check): sssctl config-check found no issue
   ✗ SSSD online with the IPA server: SSSD domain lab.test is OFFLINE; active IPA ipa01.lab.test
-  ✓ User resolves through SSSD: SSSD (getent -s sss) resolves alice (UID 1549800003)
-  ✓ User resolves through the system NSS stack: the system's NSS stack (getent) resolves alice (UID 1549800003)
+  ✓ User resolves through SSSD: SSSD (getent -s sss) resolves alice (UID 371000003)
+  ✓ User resolves through the system NSS stack: the system's NSS stack (getent) resolves alice (UID 371000003)
   ✓ PAM service reaches SSSD: PAM service sshd: pam_sss in account yes, in auth yes
   ✓ PAM account phase for the user (sssctl user-checks): PAM account check for alice via sshd on this host: Success
   ! SSSD log signals: 1164 recent SSSD log line(s): offline x5, server_unreachable x4
@@ -56,4 +56,4 @@ VERIFY
   Run ipa-diagnose client --user alice --service sshd again after any change: every check is re-run with fresh evidence.
 LIMITATIONS
   No login is attempted and no credential is tested: RUNTIME ACCESS and AUTHENTICATION are never reported as PASS.
-  planner: 21 of 28 checks run, 0 result(s) reused, 0.132 s; stop: every relevant check in the plan was visited
+  planner: 21 of 28 checks run, 0 result(s) reused, 0.101 s; stop: every relevant check in the plan was visited

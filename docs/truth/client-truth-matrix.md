@@ -62,3 +62,7 @@ from here, via [claim-register.md](claim-register.md) (section "Slice 4").
 **Selectivity and time (final run 36621111151):** healthy client 21 of 28 checks with `--user/--service` (18 without); failures 17-23; each run 0.2-0.6 s, except when the resolvers time out (C03 9.3 s, C13 29.3 s: DNS and SRV timeouts plus kinit). Exact outputs are in the run's artifact and annotations. **Limitations of this evidence:** one server, one client, one FreeIPA/SSSD version; C05 simulates the
 clock of ipa-diagnose's own process only (a container cannot have its own kernel clock); the C11 outcome depends on
 what SSSD 2.12 does with a damaged file and is recorded, not generalized; logins were never attempted.
+
+## Freeze campaign re-run (final product code)
+
+Client scenarios E00, C00-C14 re-run on the final freeze product code (b58f3d6), run [36742908065](https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36742908065), server and client 4.13.4 / Fedora 43, SSSD 2.12.0: **19/19 PASS, 0 false root causes**; C02 and C10 (printed `systemctl start sssd.service` run verbatim) RESOLVED; C09/C09b exit 5. The lab client has no pam_faillock in its account stack, so the PAM account phase ran (since the freeze it is not run where pam_faillock/pam_tally2 would reset counters). Also 19/19 in freeze runs 1 and 2. Details: [freeze-audit.md](freeze-audit.md).

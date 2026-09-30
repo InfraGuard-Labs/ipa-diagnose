@@ -1,5 +1,5 @@
 ────────────────────────────────────────────────── FreeIPA Diagnosis ───────────────────────────────────────────────────
-Host: ipa01.lab.test    Generated: 2026-09-30T14:01:15Z
+Host: ipa01.lab.test    Generated: 2026-09-30T16:23:46Z
 Overall: DEGRADED
 
 ─────────────────────────────────────────────────── PRIMARY PROBLEM ────────────────────────────────────────────────────
@@ -28,14 +28,15 @@ material until ownership/mode is corrected.
 FIX
 Set the owner, group or mode that ipa-healthcheck expects - 1 step on this server, run by you (ipa-diagnose never runs a
 fix itself).
-Verified in a live lab on FreeIPA 4.13.3 / fedora-43 only - not yet on this FreeIPA version/OS. Check each step before 
-running it.
+Verified in a live lab on FreeIPA 4.13.3 / fedora-43, FreeIPA 4.13.4 / fedora-43 (the maintainer has not promoted it to 
+built-in verified). Check each step before running it.
   First confirm (read-only) that nothing changed since the checks above; if the output differs, do not run the fix - run
 ipa-diagnose again:
        readlink -f /etc/ipa/ca.crt   expected: /data/etc/ipa/ca.crt
        stat -c %a:%U:%G:%h /etc/ipa/ca.crt   expected: 644:root:apache:1
   1. Set the group of /etc/ipa/ca.crt to root
        chgrp -h root /etc/ipa/ca.crt
+       expected: no output; the file's group is root
 
 PREREQUISITES
   ✓ ipa-diagnose is running as root (changing these files needs root) (checked)

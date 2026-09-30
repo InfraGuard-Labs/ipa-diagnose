@@ -1,10 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1044" height="637" viewBox="0 0 1044 637" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" font-size="13.5">
-<rect width="1044" height="637" rx="8" fill="#0d1117"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1044" height="671" viewBox="0 0 1044 671" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" font-size="13.5">
+<rect width="1044" height="671" rx="8" fill="#0d1117"/>
 <rect width="1044" height="34" rx="8" fill="#161b22"/>
 <circle cx="18" cy="17" r="5" fill="#ff5f56"/><circle cx="36" cy="17" r="5" fill="#ffbd2e"/><circle cx="54" cy="17" r="5" fill="#27c93f"/>
 <text x="76" y="22" fill="#8b949e">$ ipa-diagnose bundle --preview   (exit 0)</text>
 <rect x="18" y="44" width="1008" height="22" rx="4" fill="#12261e"/>
-<text x="26" y="60" fill="#3fb950" font-weight="bold">REAL LIVE CAPTURE - FreeIPA 4.13.4 / Fedora 43 lab - commit d06c16c, run 36724948194</text>
+<text x="26" y="60" fill="#3fb950" font-weight="bold">REAL LIVE CAPTURE - FreeIPA 4.13.4 / Fedora 43 lab - commit b58f3d6, run 36742907611</text>
 <text x="18" y="89" fill="#c9d1d9" xml:space="preserve">Support bundle preview - nothing was written</text>
 <text x="18" y="106" fill="#ff7b72" xml:space="preserve">  Source: LIVE diagnosis of this host, shown as HOST-001; overall status CRITICAL, evidence partial</text>
 <text x="18" y="123" fill="#c9d1d9" xml:space="preserve">  Contents: 2 diagnoses, 1 resolutions, 1 undiagnosed findings, 3 ipa-healthcheck problems (186 results), 3 evidence ite</text>
@@ -30,8 +30,10 @@
 <text x="18" y="463" fill="#c9d1d9" xml:space="preserve">ckets and credential caches; API, bearer and cloud tokens; cookies and authorization headers; AI provider credentials; e</text>
 <text x="18" y="480" fill="#c9d1d9" xml:space="preserve">nvironment variables and shell history; raw journals and raw tool output; full LDAP entries and configuration files; com</text>
 <text x="18" y="497" fill="#c9d1d9" xml:space="preserve">mands of offered fixes and rollbacks; the local replay fixture path; the pseudonym mapping itself</text>
-<text x="18" y="514" fill="#c9d1d9" xml:space="preserve">Before sharing, review it. It is pseudonymized and credential-scanned, but it still contains operational detail (service</text>
-<text x="18" y="531" fill="#c9d1d9" xml:space="preserve"> names, versions, error text, timestamps, topology shape).</text>
-<text x="18" y="548" fill="#c9d1d9" xml:space="preserve">Create it with: ipa-diagnose bundle [--output PATH]</text>
-<text x="18" y="627" fill="#6e7681" font-size="11">23 lines, complete; long lines folded at 120 columns, as a 120-column terminal shows them</text>
+<text x="18" y="514" fill="#c9d1d9" xml:space="preserve">  Free text that is included (selected log lines, error messages) is pattern-redacted only; a secret in an unknown forma</text>
+<text x="18" y="531" fill="#c9d1d9" xml:space="preserve">t could remain.</text>
+<text x="18" y="548" fill="#c9d1d9" xml:space="preserve">Before sharing, review it. It is pseudonymized and credential-scanned, but it still contains operational detail (service</text>
+<text x="18" y="565" fill="#c9d1d9" xml:space="preserve"> names, versions, error text, timestamps, topology shape).</text>
+<text x="18" y="582" fill="#c9d1d9" xml:space="preserve">Create it with: ipa-diagnose bundle [--output PATH]</text>
+<text x="18" y="661" fill="#6e7681" font-size="11">24 lines, complete; long lines folded at 120 columns, as a 120-column terminal shows them</text>
 </svg>

@@ -30,6 +30,7 @@ RISK
 VERIFY
   ipa hbactest --user=carol --host=app01.lab.test --service=sshd (FreeIPA's own evaluation, read-only)
   ipa user-status carol (read-only; failed logins and lockout on each server)
+  on app01.lab.test, as root: ipa-diagnose access carol app01.lab.test sshd --runtime (continues into that host's runtime side: SSSD, NSS, PAM stack and account phase; read-only; no login)
   on app01.lab.test, as root: sssctl user-checks carol -a acct -s sshd (the host's SSSD account check for this service; read-only; runtime evidence this command does not collect)
 LIMITATIONS
   Runtime access is not tested: no login is attempted, and the host's SSSD (including its offline cache), PAM stack, access_provider setting, network path and keytab are not checked.

@@ -1,15 +1,15 @@
 {
- "captured_at": "2026-09-30T14:23:05Z",
+ "captured_at": "2026-09-30T16:44:54Z",
  "columns": 120,
  "command": "ipa-diagnose replication",
- "commit": "d06c16c03584fef907f0a6975cce80cafb747c48",
+ "commit": "b58f3d62c5992c352f2385139e08d50767a73473",
  "container": "ipa01",
  "env": [
   "KRB5CCNAME=FILE:/root/admin.ccache"
  ],
  "exit": 1,
  "name": "repl-06-local-kdc-stopped-ipa01",
- "run_id": "36724948206",
+ "run_id": "36742907976",
  "scenario": "R05 krb5kdc stopped on ipa01 (No-Google fix printed)",
  "user": "root"
 }

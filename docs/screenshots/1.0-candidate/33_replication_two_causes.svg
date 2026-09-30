@@ -4,7 +4,7 @@
 <circle cx="18" cy="17" r="5" fill="#ff5f56"/><circle cx="36" cy="17" r="5" fill="#ffbd2e"/><circle cx="54" cy="17" r="5" fill="#27c93f"/>
 <text x="76" y="22" fill="#8b949e">$ ipa-diagnose replication   (exit 1)</text>
 <rect x="18" y="44" width="1008" height="22" rx="4" fill="#12261e"/>
-<text x="26" y="60" fill="#3fb950" font-weight="bold">REAL LIVE CAPTURE - FreeIPA 4.13.4 / Fedora 43 lab - commit d06c16c, run 36724948206</text>
+<text x="26" y="60" fill="#3fb950" font-weight="bold">REAL LIVE CAPTURE - FreeIPA 4.13.4 / Fedora 43 lab - commit b58f3d6, run 36742907976</text>
 <text x="18" y="89" fill="#c9d1d9" xml:space="preserve">ipa-diagnose replication: ipa02.lab.test (realm LAB.TEST)</text>
 <text x="18" y="106" fill="#c9d1d9" xml:space="preserve">  LIVE; FreeIPA 4.13.4, 389-ds 3.1.5</text>
 <text x="18" y="123" fill="#c9d1d9" xml:space="preserve"></text>
@@ -12,12 +12,12 @@
 <text x="18" y="157" fill="#c9d1d9" xml:space="preserve">es not accept connections.</text>
 <text x="18" y="174" fill="#c9d1d9" xml:space="preserve"></text>
 <text x="18" y="191" fill="#c9d1d9" xml:space="preserve">REPLICATION (per suffix and direction; observed from ipa02.lab.test)</text>
-<text x="18" y="208" fill="#c9d1d9" xml:space="preserve">  ca      ipa02.lab.test -&gt; ipa01.lab.test  OK  [LDAP/SASL/GSSAPI, port 389] last session ended 2026-09-30T14:25:27Z</text>
-<text x="18" y="225" fill="#c9d1d9" xml:space="preserve">  ca      ipa01.lab.test -&gt; ipa02.lab.test  OK  (read from ipa01.lab.test; its last session ended 2026-09-30T14:25:28Z)</text>
-<text x="18" y="242" fill="#c9d1d9" xml:space="preserve">  domain  ipa02.lab.test -&gt; ipa01.lab.test  OK  [LDAP/SASL/GSSAPI, port 389] last session ended 2026-09-30T14:25:50Z</text>
-<text x="18" y="259" fill="#c9d1d9" xml:space="preserve">  domain  ipa01.lab.test -&gt; ipa02.lab.test  OK  (read from ipa01.lab.test; its last session ended 2026-09-30T14:25:50Z)</text>
+<text x="18" y="208" fill="#c9d1d9" xml:space="preserve">  ca      ipa02.lab.test -&gt; ipa01.lab.test  OK  [LDAP/SASL/GSSAPI, port 389] last session ended 2026-09-30T16:46:48Z</text>
+<text x="18" y="225" fill="#c9d1d9" xml:space="preserve">  ca      ipa01.lab.test -&gt; ipa02.lab.test  OK  (read from ipa01.lab.test; its last session ended 2026-09-30T16:45:57Z)</text>
+<text x="18" y="242" fill="#c9d1d9" xml:space="preserve">  domain  ipa02.lab.test -&gt; ipa01.lab.test  OK  [LDAP/SASL/GSSAPI, port 389] last session ended 2026-09-30T16:46:56Z</text>
+<text x="18" y="259" fill="#c9d1d9" xml:space="preserve">  domain  ipa01.lab.test -&gt; ipa02.lab.test  OK  (read from ipa01.lab.test; its last session ended 2026-09-30T16:46:56Z)</text>
 <text x="18" y="276" fill="#c9d1d9" xml:space="preserve">  domain  ipa02.lab.test -&gt; ipa03.lab.test  FAILING (TRANSPORT)  [LDAP/SASL/GSSAPI, port 389] last session ended 2026-09</text>
-<text x="18" y="293" fill="#c9d1d9" xml:space="preserve">-30T14:25:30Z</text>
+<text x="18" y="293" fill="#c9d1d9" xml:space="preserve">-30T16:46:48Z</text>
 <text x="18" y="310" fill="#c9d1d9" xml:space="preserve">  domain  ipa03.lab.test -&gt; ipa02.lab.test  NOT OBSERVED  (not readable from here; see HANDOFF)</text>
 <text x="18" y="327" fill="#c9d1d9" xml:space="preserve"></text>
 <text x="18" y="344" fill="#c9d1d9" xml:space="preserve">ROOT CAUSE</text>
@@ -40,7 +40,7 @@
 <text x="18" y="633" fill="#c9d1d9" xml:space="preserve">  [RELATED] domain replication ipa02.lab.test -&gt; ipa03.lab.test fails (caused by: ipa03.lab.test&#x27;s Directory Server does</text>
 <text x="18" y="650" fill="#c9d1d9" xml:space="preserve"> not accept connections) - confidence HIGH</text>
 <text x="18" y="667" fill="#c9d1d9" xml:space="preserve">      the supplier could not connect to the consumer&#x27;s Directory Server. Last session status: Error (-1) Problem connect</text>
-<text x="18" y="684" fill="#c9d1d9" xml:space="preserve">ing to replica - LDAP error: Can&#x27;t contact LDAP server (connection error) (ended 2026-09-30T14:25:30Z).</text>
+<text x="18" y="684" fill="#c9d1d9" xml:space="preserve">ing to replica - LDAP error: Can&#x27;t contact LDAP server (connection error) (ended 2026-09-30T16:46:48Z).</text>
 <text x="18" y="701" fill="#c9d1d9" xml:space="preserve"></text>
 <text x="18" y="718" fill="#c9d1d9" xml:space="preserve">HANDOFF (the remaining evidence is on another server; nothing was changed)</text>
 <text x="18" y="735" fill="#c9d1d9" xml:space="preserve">  On ipa03.lab.test run:</text>
@@ -90,6 +90,6 @@
 <text x="18" y="1483" fill="#c9d1d9" xml:space="preserve">nd a handoff to the peer is printed.</text>
 <text x="18" y="1500" fill="#c9d1d9" xml:space="preserve">  Nothing is changed on this server or any other; no command runs on another server; fixes are printed only for causes o</text>
 <text x="18" y="1517" fill="#c9d1d9" xml:space="preserve">n this server, and only when every safety gate passes.</text>
-<text x="18" y="1534" fill="#c9d1d9" xml:space="preserve">  planner: 25 of 30 checks run, 3.43 s; stop: every relevant check in the plan was visited</text>
+<text x="18" y="1534" fill="#c9d1d9" xml:space="preserve">  planner: 25 of 30 checks run, 3.651 s; stop: every relevant check in the plan was visited</text>
 <text x="18" y="1613" fill="#6e7681" font-size="11">63 lines, complete; long lines folded at 120 columns, as a 120-column terminal shows them</text>
 </svg>

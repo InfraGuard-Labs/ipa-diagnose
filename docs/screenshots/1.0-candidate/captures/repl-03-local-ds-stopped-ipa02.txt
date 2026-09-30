@@ -32,4 +32,4 @@ NEXT READ-ONLY STEPS
 LIMITATIONS
   Replication is directional and per suffix: this server sees its OWN outbound agreements. The reverse direction is only reported when it could be read from the peer (read-only, with your own Kerberos ticket); otherwise it is NOT VERIFIED and a handoff to the peer is printed.
   Nothing is changed on this server or any other; no command runs on another server; fixes are printed only for causes on this server, and only when every safety gate passes.
-  planner: 5 of 9 checks run, 0.05 s; stop: every relevant check in the plan was visited
+  planner: 5 of 9 checks run, 0.04 s; stop: every relevant check in the plan was visited
