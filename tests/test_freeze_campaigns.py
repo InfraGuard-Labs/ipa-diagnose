@@ -60,6 +60,26 @@ def test_server_diagnosis_invariants_over_every_recorded_fixture(capsys, fx):
             assert c["source"] == "recorded"
 
 
+@pytest.mark.parametrize("fx", SERVER_FIXTURES, ids=lambda p: str(p.relative_to(FIXTURES)))
+def test_no_ungated_state_changing_command_reaches_the_console(capsys, monkeypatch, fx):
+    """Freeze SME + resolution-safety reviews: v0.1.3 pack actions that are not SAFE (ipa-getkeytab, ipa-cert-fix,
+    certutil -A, systemctl restart named-pkcs11, ...) were printed for diagnoses no procedure covers. Whatever the
+    fixture, a non-SAFE legacy command appears in the console only if it is also an offered, gated fix step."""
+
+    monkeypatch.setenv("COLUMNS", "400")  # no wrapping inside a command
+    main(["--replay", str(fx), "--json", "--no-ai"])
+    doc = json.loads(capsys.readouterr().out)
+    gated = {s["command"] for r in (doc.get("v2") or {}).get("resolutions") or [] if r["status"] == "OFFERED"
+             for s in r.get("steps") or []}
+    risky = {a["command"] for d in doc["diagnoses"] for a in d.get("actions") or []
+             if a.get("command") and a.get("risk") != "SAFE"} - gated
+    for extra in ([], ["--details"]):
+        main(["--replay", str(fx), "--no-ai", *extra])
+        out = " ".join(capsys.readouterr().out.split())
+        leaked = [c for c in risky if " ".join(c.split()) in out]
+        assert not leaked, (extra, leaked)
+
+
 CLIENT_CASES = [(n, root) for n in sorted(CS.SCENARIOS) for root in (True, False)]
 
 

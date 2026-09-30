@@ -218,6 +218,16 @@ def _render_primary_block(
         safe_style, safe_label = _RISK_STYLE[RiskLevel.SAFE]
         console.print(f"Safety: [{safe_style}]{safe_label}[/{safe_style}]")
         console.print()
+    elif d.actions and any(a.risk != RiskLevel.SAFE for a in d.actions):
+        # No reviewed procedure covers this diagnosis: its state-changing pack actions (v0.1.3 guidance, for example
+        # a keytab rotation, ipa-cert-fix or a RUV clean-up) are NOT printed - they were never gated for this host
+        # (freeze SME review). Only read-only steps are shown; the full list stays in the v1 JSON 'actions'.
+        _render_safe_legacy_actions(d, console, details=details)
+        hidden = sum(1 for a in d.actions if a.risk != RiskLevel.SAFE)
+        console.print(f"[dim]{hidden} state-changing step(s) from the diagnostic pack are not shown: no reviewed "
+                      "procedure establishes that they apply here and are safe. Decide on recovery with the "
+                      "documentation for this problem.[/dim]")
+        console.print()
     elif d.actions:
         first = d.actions[0]
         console.print(Text("DO THIS FIRST", style="bold underline"))
@@ -230,7 +240,7 @@ def _render_primary_block(
             console.print(f"\n[dim]{len(d.actions) - 1} additional step(s) - see --details.[/dim]")
         console.print()
 
-    if details and len(d.actions) > 1:
+    if details and len(d.actions) > 1 and all(a.risk == RiskLevel.SAFE for a in d.actions):
         console.print(Text("ADDITIONAL ACTIONS", style="bold underline"))
         for a in d.actions[1:]:
             style, label = _RISK_STYLE[a.risk]

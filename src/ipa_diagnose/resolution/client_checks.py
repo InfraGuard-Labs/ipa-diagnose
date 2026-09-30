@@ -269,7 +269,12 @@ def _tcp(params):
     except socket.gaierror:
         state = "unresolvable"
     except OSError as e:
-        state = "unreachable" if getattr(e, "errno", None) in (101, 113) else "error"
+        if getattr(e, "errno", None) not in (101, 113):
+            # a local socket error (EMFILE, EADDRNOTAVAIL, ...) says nothing about the peer: the check did not run
+            # (freeze review: two such errors became a HIGH 'peer unreachable')
+            return _res("net.tcp", params, NOT_RUN, {}, f"TCP {host}:{port}: could not test from this host "
+                        f"({type(e).__name__})", f"TCP connect {host}:{port} (5 s)")
+        state = "unreachable"
     fields = {"state": state, "open": state == "open", "seconds": round(time.monotonic() - start, 3)}
     return _res("net.tcp", params, OK, fields, f"TCP {host}:{port}: {state}", f"TCP connect {host}:{port} (5 s)")
 

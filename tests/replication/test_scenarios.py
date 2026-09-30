@@ -357,6 +357,10 @@ def test_ldap_49_with_a_kinit_that_cannot_reach_a_kdc_is_not_called_a_credential
     assert H.primary(r).code == "LOCAL_KDC_NOT_RUNNING"
     assert not any("obtained its own ticket" in c.boundary for c in r.chains)
     assert not any("no usable Kerberos credentials" in ln.claim for c in r.chains for ln in c.links)
+    # freeze review: a recorded LDAP 49 (ticket obtained, then refused) is NOT explained by a KDC that is down now
+    sym = next(d for d in r.diagnoses if d.key == f"REPLICATION_FAILING@domain:{IPA01}>{IPA02}")
+    assert sym.related_to is None and sym.key not in H.primary(r).explains
+    assert sym.role == "UNDIAGNOSED" and any(f"on {IPA02}:" in s for s in sym.next_steps)
 
 
 def test_a_tls_failure_is_not_called_a_directory_server_that_does_not_answer():
@@ -399,6 +403,27 @@ def test_ldap_49_with_a_rejected_local_key_is_the_local_key():
     r = H.run(lab)
     assert H.primary(r).code == "DS_KEY_REJECTED"
     assert r.resolutions[H.primary(r).key].status == "NONE"
+    # the recorded 49 is not claimed as explained by the local key (freeze review): undiagnosed, pointing to the peer
+    sym = next(d for d in r.diagnoses if d.key == f"REPLICATION_FAILING@domain:{IPA01}>{IPA02}")
+    assert sym.related_to is None and sym.role == "UNDIAGNOSED"
+
+
+def test_a_local_kdc_fix_is_not_claimed_to_resolve_a_recorded_49():
+    """Freeze review probe: KDC stopped + a recorded LDAP 49. After the KDC is started while the 49 remains, verify
+    must not say the KDC diagnosis is STILL_PRESENT (it is running) - and the 49 is not RESOLVED either."""
+
+    from tests.replication import test_verify as TV
+
+    lab = Lab().unit("krb5kdc").kerberos_failure(IPA02, S.INVALID_TEXT, kinit_ok=False, kinit_class="kdc_unreachable",
+                                                 bind_attempted=False, bind_ok=False)
+    r = H.run(lab, live=True)
+    assert not H.offered(r) or all(k.startswith("LOCAL_KDC") for k in H.offered(r))
+    _r, prev = TV.baseline(lab)
+    later = TV.fixed_later().kerberos_failure(IPA02, S.INVALID_TEXT, kinit_ok=True,
+                                              bind_error_class="INVALID_CREDENTIALS")
+    _c, out, _code = TV.verify(prev, later)
+    assert out[f"LOCAL_KDC_NOT_RUNNING@server:{IPA01}"] == "RESOLVED", out
+    assert out[f"REPLICATION_FAILING@domain:{IPA01}>{IPA02}"] != "RESOLVED", out
 
 
 # ---------------------------------------------------------------- authorization, data, CA suffix

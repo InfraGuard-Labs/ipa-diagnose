@@ -122,6 +122,26 @@ def test_a_recorded_failure_that_is_not_reproduced_now_is_pending_not_still_pres
     assert out3[SYM_D] == "STILL_PRESENT"
 
 
+def test_a_peer_cause_that_only_changed_shape_is_changed_not_resolved():
+    """Freeze review probe: the peer's port went from refused to timing out. PEER_DS_NOT_ACCEPTING@server:peer is gone
+    but PEER_DS_NOT_ANSWERING/PEER_UNREACHABLE for the same peer appears: CHANGED, never RESOLVED."""
+
+    peer = f"PEER_DS_NOT_ACCEPTING@server:{IPA02}"
+    _r, prev = baseline(Lab().peer_ds_stopped(IPA02, recorded=False))
+    later = Lab(now=LATER).peer_ds_stopped(IPA02, recorded=False)
+    later.data[S.key("net.tcp", {"host": IPA02, "port": "389"})] = S.ok(
+        {"state": "timeout", "open": False, "seconds": 5.0}, f"TCP {IPA02}:389: timeout")
+    _c, out, code = verify(prev, later)
+    assert out[peer] == "CHANGED", out
+    assert code != 0
+    # and from unreachable to refused
+    unreach = next(k for k in baseline(Lab().peer_unreachable(IPA02, recorded=False))[0].diagnoses
+                   if k.code == "PEER_UNREACHABLE").key
+    _r2, prev2 = baseline(Lab().peer_unreachable(IPA02, recorded=False))
+    _c, out2, _code2 = verify(prev2, Lab(now=LATER).peer_ds_stopped(IPA02, recorded=False))
+    assert out2[unreach] == "CHANGED", out2
+
+
 def test_still_failing_is_still_present():
     _r, prev = baseline(Lab().local_kdc_stopped())
     _c, out, code = verify(prev, Lab(now=LATER).local_kdc_stopped())

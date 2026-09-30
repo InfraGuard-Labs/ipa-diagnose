@@ -77,7 +77,7 @@
     ],
     "impact": "",
     "limitations": "A full confirmation would require comparing against the uid=ipara,ou=People,o=ipaca LDAP entry directly, which this pack does not query.",
-    "next_diagnostic_step": "Compare the RA agent certificate serial (`getcert list -c ipaCert`) against the uid=ipara,ou=People,o=ipaca LDAP entry with a read-only ldapsearch, and re-check `journalctl -u pki-tomcatd -u certmonger` for a repeat of the connectivity/auth error before concluding this is a real desync rather than a transient blip.",
+    "next_diagnostic_step": "Compare the RA agent certificate serial (`getcert list -f /var/lib/ipa/ra-agent.pem`) against the uid=ipara,ou=People,o=ipaca LDAP entry with a read-only ldapsearch, and re-check `journalctl -u pki-tomcatd@pki-tomcat -u certmonger` for a repeat of the connectivity/auth error before concluding this is a real desync rather than a transient blip.",
     "pack_id": "certificates",
     "priority": "SECONDARY_INDEPENDENT_PROBLEM",
     "related_to_titles": [],
