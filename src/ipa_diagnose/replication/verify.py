@@ -247,7 +247,9 @@ def compare(previous: Dict[str, Any], fresh: ReplicationResult, runner: Any,
             answered = True
             for sid in d["evidence"]:
                 r = fresh.trace.get(sid)
-                if r is None or r.outcome in (Outcome.SKIPPED, Outcome.UNKNOWN):
+                # a check skipped as NOT NEEDED now (what prompted it is gone) answered; any other skip did not
+                if r is None or r.outcome == Outcome.UNKNOWN or (
+                        r.outcome == Outcome.SKIPPED and not r.skip_reason.startswith("not needed")):
                     answered = False
                     why = f"the check it rested on ({sid}) did not answer now"
                     break
