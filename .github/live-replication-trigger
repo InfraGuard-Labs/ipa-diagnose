@@ -1,2 +1,3 @@
 Changing this file on the slice5/replication-environment-model branch starts .github/workflows/live-freeipa-replication.yml.
 run 7
+freeze: R02d debug rerun

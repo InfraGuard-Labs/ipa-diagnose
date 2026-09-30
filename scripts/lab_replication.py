@@ -591,8 +591,21 @@ def r02() -> None:
             "problems": [] if ok else [f"verify on ipa02: exit {rc3}, items {items}, applied {applied}, "
                                        f"history {hist}"],
             "exit": rc3, "verify_items": items, "applied": applied, "history": hist, "seconds": secs3})
+    # independent view from ipa01 at verify time (freeze run 1 saw STILL_PRESENT here seconds after the start)
+    ind4 = {"ds_active_on_ipa02": confirm("ipa02", f"systemctl is-active dirsrv@{INST}", "active"),
+            "ldap_open_from_ipa01": confirm("ipa01", f"timeout 5 bash -c '</dev/tcp/{FQ['ipa02']}/389' "
+                                                     "&& echo OPEN || echo CLOSED", "OPEN")}
     rc4, doc4, secs4, hist4 = verify_until("ipa01")
     items4 = {i["key"]: i["outcome"] for i in (doc4 or {}).get("items", [])}
+    cur4 = (doc4 or {}).get("current") or {}
+    dbg4 = {"independent_at_verify": {k: v.get("observed", "")[:160] for k, v in ind4.items()},
+            "fresh_relationships": [f"{x['subject']}={x.get('state')}: {(x.get('status_text') or '')[:120]}"
+                                    for x in cur4.get("relationships", [])][:6],
+            "fresh_diagnoses": [f"{d['role']} {d['key']}" for d in cur4.get("diagnoses", [])][:8],
+            "fresh_steps": [f"{s.get('step')}[{s.get('subject', '')}]={s.get('outcome')}: {(s.get('summary') or '')[:100]}"
+                            for s in (cur4.get("trace") or []) if "ipa02" in json.dumps(s)
+                            and s.get("outcome") not in ("PASS", "SKIPPED")][:8],
+            "items_detail": [f"{i['key']}: {(i.get('detail') or '')[:160]}" for i in (doc4 or {}).get("items", [])]}
     sym = f"REPLICATION_FAILING@domain:{FQ['ipa01']}>{FQ['ipa02']}"
     # the agreement's recorded status may never have shown the failure (389-DS lag): then the peer-side root is
     # the only item; either way every item must be RESOLVED
@@ -601,7 +614,7 @@ def r02() -> None:
     _write({"scenario": "R02d-verify-after-fix-supplier", "result": "PASS" if ok4 else "FAIL",
             "problems": [] if ok4 else [f"verify on ipa01: exit {rc4}, items {items4}"], "exit": rc4,
             "verify_items": items4, "history": hist4, "pending_seen": any(h["exit"] == 3 for h in hist4),
-            "seconds": secs4})
+            "seconds": secs4, "independent": ind4, "debug": dbg4})
     restore("r02")
 
 

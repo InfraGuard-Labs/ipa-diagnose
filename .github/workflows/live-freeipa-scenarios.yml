@@ -48,7 +48,7 @@ jobs:
   scenarios:
     if: ${{ inputs.suite != 'bundle' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 75
+    timeout-minutes: 110  # the freeze captures add about ten read-only diagnose runs
     steps:
       - uses: actions/checkout@v4
 
