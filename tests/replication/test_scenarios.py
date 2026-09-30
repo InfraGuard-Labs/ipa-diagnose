@@ -82,6 +82,32 @@ def test_peer_ds_refused_with_host_up_is_a_peer_side_cause_with_a_handoff():
     assert H.rel(r, f"domain:{IPA02}>{IPA01}")["state"] == "UNKNOWN"
 
 
+@pytest.mark.parametrize("fault,code", [("peer_ds_stopped", "PEER_DS_NOT_ACCEPTING"),
+                                        ("peer_unreachable", "PEER_UNREACHABLE")])
+def test_a_peer_that_does_not_answer_now_is_found_even_while_the_status_is_still_green(fault, code):
+    """Live finding (run 36654176983): the agreement status kept its last success after the peer went away."""
+
+    r = H.run(getattr(Lab(), fault)(IPA02, recorded=False))
+    p = H.primary(r)
+    assert p.code == code and "has not recorded this yet" in p.detail
+    assert H.rel(r, f"domain:{IPA01}>{IPA02}")["state"] == "OK"  # the recorded state is shown as it is
+    assert r.status == "PROBLEM_FOUND" and r.handoffs and not H.offered(r)
+    assert all(c.links[0].discriminator.endswith("-now") for c in r.chains)
+
+
+def test_a_reverse_49_explained_by_this_servers_own_keytab_is_not_a_second_root():
+    """Live finding (run 36654176983, R06): the peer's agreement towards a replica whose Directory Server cannot
+    read its keytab fails with LDAP 49; that is the replica's own keytab problem, not an independent peer cause."""
+
+    lab = Lab(me=IPA03).keytab(owner="root", group="root", dirsrv_can_read=False).set_reverse(
+        IPA02, S.INVALID_TEXT, suffix="domain")
+    r = H.run(lab)
+    roots = [d for d in r.diagnoses if d.role in ("PRIMARY", "INDEPENDENT")]
+    assert [d.code for d in roots] == ["DS_KEYTAB_PROBLEM"]
+    rev = next(d for d in r.diagnoses if d.code == "REVERSE_REPLICATION_FAILING")
+    assert rev.role == "RELATED" and rev.related_to == roots[0].key
+
+
 def test_unreachable_peer_is_never_called_dead_and_says_from_where_and_when():
     r = H.run(Lab().peer_unreachable(IPA02))
     p = H.primary(r)

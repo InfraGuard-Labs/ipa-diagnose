@@ -429,6 +429,126 @@ def _pair_skew(t: _T, b: _Builder, me: str, consumer: str, subj: str, off: float
         resolution_key="replication.pair-clock-skew"))
 
 
+# discriminator for each peer-path link: after a failing agreement status (REPLICATION -> ...) or, when the recorded
+# status is still green but this host's own checks of the peer fail now, as the first link of a chain (SYMPTOM -> ...)
+_PEER_DISC = {
+    False: {"dns": "peer-name-unresolved", "refused": "peer-ds-refused-host-up", "noanswer": "status-transport",
+            "tls": "status-tls"},
+    True: {"dns": "peer-name-unresolved-now", "refused": "peer-ds-refused-now", "noanswer": "peer-no-ldap-answer-now",
+           "tls": "peer-tls-fails-now"},
+}
+
+
+def _peer_path(t: _T, b: _Builder, me: str, item: Dict[str, Any], subj: str, rel_key: str, base: List[Link],
+               now: bool):
+    """Name resolution, port, root DSE and host reachability of the consumer as observed from this host now.
+    Returns (root, chain), "ANSWERS" when the peer answers LDAP now, or None when nothing could be established."""
+
+    consumer = item["consumer"]
+    port = item.get("port") or "?"
+    status_text = item.get("status_text") or "(no status)"
+    disc = _PEER_DISC[now]
+    rd = t.rec("peer.rootdse", subj)
+    dns, prt, https = t.rec("peer.dns", subj), t.rec("peer.port", subj), t.rec("peer.https", subj)
+    pstate = prt.facts.get("state") if prt and prt.outcome in (P, F) else None
+    hstate = https.facts.get("state") if https and https.outcome in (P, F) else None
+    peer_here = f"server:{consumer}"
+    stale = (f" The agreement's own status still shows its last session as successful (ended "
+             f"{item.get('last_update_end') or 'at an unknown time'}); it has not recorded this yet."
+             if now else "")
+    if dns is not None and dns.outcome == F:
+        pair = f"pair:{me}>{consumer}"
+        chain = b.chain(rel_key, base + [Link(f"{consumer} does not resolve through {me}'s resolver", pair, "DNS",
+                                              [dns.step_id], disc["dns"], "local")],
+                        boundary=("why the name does not resolve on this host (a missing or stale record, the "
+                                  "resolvers this host uses, /etc/hosts) is not established"),
+                        next_action=[f"getent ahosts {_q(consumer)}   (read-only)", "cat /etc/resolv.conf",
+                                     f"dig {_q(consumer)}   (if bind-utils is installed; read-only)"])
+        root = b.add(ReplDiagnosis(
+            "PEER_NAME_UNRESOLVED", pair, f"{consumer} does not resolve from {me}", "DNS", "FAIL", "HIGH",
+            dns.summary + f" (observed from {me})." + stale,
+            f"{me} cannot reach {consumer} by the name its agreements use: replication {me} -> {consumer} stops.",
+            [dns.step_id], "local", next_steps=chain.next_action))
+        return root, chain
+    if rd is None or rd.outcome == SK or rd.outcome == U:
+        return None
+    if rd.outcome in PASSISH:
+        return "ANSWERS"
+    if rd.facts.get("error_class") == S.TLS:
+        return _tls_root(b, me, consumer, rel_key, base, [rd.step_id], port, disc["tls"])
+    if pstate == "refused" and hstate == "open":
+        chain = b.chain(rel_key, base + [Link(
+            f"{consumer} is up (443 answers) but refuses connections on port {port}: its Directory Server is "
+            "not accepting connections", peer_here, "PEER_DS", [prt.step_id, https.step_id, rd.step_id],
+            disc["refused"], "peer")],
+            boundary=(f"whether the Directory Server on {consumer} is stopped, has failed or listens "
+                      f"elsewhere can only be seen on {consumer}"),
+            handoff=handoff(consumer, me, f"The remaining evidence is local to {consumer}."),
+            next_action=[f"on {consumer}: systemctl status dirsrv@{t.f('server', 'ds_instance') or '*'}; "
+                         "ipactl status   (read-only)"])
+        root = b.add(ReplDiagnosis(
+            "PEER_DS_NOT_ACCEPTING", peer_here, f"{consumer}'s Directory Server does not accept connections",
+            "PEER_DS", "FAIL", "HIGH",
+            f"From {me}: TCP {port} on {consumer} is refused while 443 answers ({prt.summary}; "
+            f"{https.summary}); an anonymous LDAP read gets no answer." + stale,
+            f"No replication to {consumer} (from any supplier that sees the same); LDAP clients of {consumer} "
+            "fail over or fail.", [prt.step_id, https.step_id, rd.step_id], "peer",
+            next_steps=chain.next_action, handoff=chain.handoff))
+        return root, chain
+    if pstate in ("timeout", "unreachable", "error") and hstate in ("timeout", "unreachable", "error"):
+        pair = f"pair:{me}>{consumer}"
+        when = ("an unrecorded time (recorded evidence)" if rd.source == "REPLAY"
+                else rd.collected_at or _now())
+        chain = b.chain(rel_key, base + [
+            Link(f"{consumer}'s Directory Server gives no LDAP answer to {me}", peer_here, "PEER_DS",
+                 [rd.step_id], disc["noanswer"], "peer"),
+            Link(f"{consumer} is unreachable from {me} at {when} (TCP {port}: {pstate}, TCP 443: {hstate})",
+                 pair, "NETWORK", [prt.step_id, https.step_id], "peer-unreachable", "pair")],
+            boundary=("a host that is down and a network path that blocks this host look the same from here; "
+                      f"nothing here says {consumer} is gone for good"),
+            handoff=handoff(consumer, me, f"Whether {consumer} is running can only be seen on {consumer} "
+                                          "(or its console)."),
+            next_action=[f"on {me}: ip route get $(getent ahosts {_q(consumer)} | awk 'NR==1{{print $1}}')   "
+                         "(read-only)", f"check whether {consumer} is running (its console) and the firewall "
+                                        "between the two"])
+        root = b.add(ReplDiagnosis(
+            "PEER_UNREACHABLE", pair, f"{consumer} is unreachable from {me}", "NETWORK", "FAIL", "HIGH",
+            f"Unreachable from {me} at {when}: TCP {port} {pstate}, TCP 443 {hstate}. The agreement's last "
+            f"session ended {item.get('last_update_end') or 'at an unknown time'} with: {status_text}." + stale,
+            f"No replication {me} -> {consumer}; changes pile up in {me}'s changelog until {consumer} is "
+            "reachable again.", [prt.step_id, https.step_id, rd.step_id], "pair",
+            next_steps=chain.next_action, handoff=chain.handoff))
+        return root, chain
+    confidence = "HIGH" if pstate == "open" else "MEDIUM"
+    claim = (f"{consumer} accepts TCP on {port} but its Directory Server does not answer LDAP" if
+             pstate == "open" else f"{consumer}'s Directory Server gives no LDAP answer to {me} "
+             f"(TCP {port}: {pstate or 'not checked'}, 443: {hstate or 'not checked'})")
+    chain = b.chain(rel_key, base + [Link(claim, peer_here, "PEER_DS", [x.step_id for x in (prt, rd) if x],
+                                          disc["noanswer"], "peer")],
+                    boundary=f"why it does not answer can only be seen on {consumer}",
+                    handoff=handoff(consumer, me, f"The remaining evidence is local to {consumer}."),
+                    next_action=[f"on {consumer}: ipactl status   (read-only)"])
+    root = b.add(ReplDiagnosis(
+        "PEER_DS_NOT_ANSWERING", peer_here, f"{consumer}'s Directory Server does not answer {me}",
+        "PEER_DS", "FAIL", confidence, claim + "." + stale, f"No replication {me} -> {consumer}.",
+        [x.step_id for x in (prt, rd) if x], "peer", next_steps=chain.next_action, handoff=chain.handoff))
+    return root, chain
+
+
+def _peer_now(t: _T, b: _Builder, me: str, item: Dict[str, Any], subj: str, rel_key: str) -> None:
+    """The agreement's recorded status is green (or transient), but this host's own checks show the consumer does
+    not answer NOW (389-DS keeps the last session's status until its next attempt is recorded - live lab, run
+    36654176983): the peer-side cause is reported from those checks, without a failing-status link."""
+
+    dns, rd = t.rec("peer.dns", subj), t.rec("peer.rootdse", subj)
+    if (dns is not None and dns.outcome == F) or (rd is not None and rd.outcome == F):
+        got = _peer_path(t, b, me, item, subj, rel_key, [], now=True)
+        if isinstance(got, tuple):
+            root, chain = got
+            if chain.chain_id not in root.chain_ids:
+                root.chain_ids.append(chain.chain_id)
+
+
 def _agreement(t: _T, b: _Builder, me: str, realm: str, item: Dict[str, Any],
                roots: Dict[str, Optional[ReplDiagnosis]]) -> None:
     subj = item["subject"]
@@ -447,6 +567,8 @@ def _agreement(t: _T, b: _Builder, me: str, realm: str, item: Dict[str, Any],
         return
     rd = t.rec("peer.rootdse", subj)
     off, orec, _where = peer_offset(t, subj)
+    if cls == S.OK or cls in S.TRANSIENT:
+        _peer_now(t, b, me, item, subj, rel_key)
     if cls == S.OK:
         age = _ago(item.get("last_update_start"))
         if item.get("update_in_progress") and age is not None and age > LONG_SESSION_SECONDS:
@@ -480,83 +602,9 @@ def _agreement(t: _T, b: _Builder, me: str, realm: str, item: Dict[str, Any],
     gs = t.rec("gssapi", subj)
     gssapi_agreement = str(item.get("bind_method") or "").upper() == "SASL/GSSAPI"
     if cls == S.TRANSPORT:
-        dns, prt, https = t.rec("peer.dns", subj), t.rec("peer.port", subj), t.rec("peer.https", subj)
-        pstate = prt.facts.get("state") if prt and prt.outcome in (P, F) else None
-        hstate = https.facts.get("state") if https and https.outcome in (P, F) else None
-        peer_here = f"server:{consumer}"
-        if dns is not None and dns.outcome == F:
-            pair = f"pair:{me}>{consumer}"
-            chain = b.chain(rel_key, [L0, Link(f"{consumer} does not resolve through {me}'s resolver", pair, "DNS",
-                                               [dns.step_id], "peer-name-unresolved", "local")],
-                            boundary=("why the name does not resolve on this host (a missing or stale record, the "
-                                      "resolvers this host uses, /etc/hosts) is not established"),
-                            next_action=[f"getent ahosts {_q(consumer)}   (read-only)", "cat /etc/resolv.conf",
-                                         f"dig {_q(consumer)}   (if bind-utils is installed; read-only)"])
-            root = b.add(ReplDiagnosis(
-                "PEER_NAME_UNRESOLVED", pair, f"{consumer} does not resolve from {me}", "DNS", "FAIL", "HIGH",
-                dns.summary + f" (observed from {me}).",
-                f"{me} cannot reach {consumer} by the name its agreements use: replication {me} -> {consumer} stops.",
-                [dns.step_id], "local", next_steps=chain.next_action))
-        elif rd is not None and rd.outcome == F and rd.facts.get("error_class") == S.TLS:
-            root, chain = _tls_root(b, me, consumer, rel_key, [L0], [rd.step_id], port)
-        elif rd is not None and rd.outcome == F:
-            if pstate == "refused" and hstate == "open":
-                chain = b.chain(rel_key, [L0, Link(
-                    f"{consumer} is up (443 answers) but refuses connections on port {port}: its Directory Server is "
-                    "not accepting connections", peer_here, "PEER_DS", [prt.step_id, https.step_id, rd.step_id],
-                    "peer-ds-refused-host-up", "peer")],
-                    boundary=(f"whether the Directory Server on {consumer} is stopped, has failed or listens "
-                              f"elsewhere can only be seen on {consumer}"),
-                    handoff=handoff(consumer, me, f"The remaining evidence is local to {consumer}."),
-                    next_action=[f"on {consumer}: systemctl status dirsrv@{t.f('server', 'ds_instance') or '*'}; "
-                                 "ipactl status   (read-only)"])
-                root = b.add(ReplDiagnosis(
-                    "PEER_DS_NOT_ACCEPTING", peer_here, f"{consumer}'s Directory Server does not accept connections",
-                    "PEER_DS", "FAIL", "HIGH",
-                    f"From {me}: TCP {port} on {consumer} is refused while 443 answers ({prt.summary}; "
-                    f"{https.summary}); an anonymous LDAP read gets no answer.",
-                    f"No replication to {consumer} (from any supplier that sees the same); LDAP clients of {consumer} "
-                    "fail over or fail.", [prt.step_id, https.step_id, rd.step_id], "peer",
-                    next_steps=chain.next_action, handoff=chain.handoff))
-            elif pstate in ("timeout", "unreachable", "error") and hstate in ("timeout", "unreachable", "error"):
-                pair = f"pair:{me}>{consumer}"
-                when = ("an unrecorded time (recorded evidence)" if rd.source == "REPLAY"
-                        else rd.collected_at or _now())
-                chain = b.chain(rel_key, [
-                    L0, Link(f"{consumer}'s Directory Server gives no LDAP answer to {me}", peer_here, "PEER_DS",
-                             [rd.step_id], "status-transport", "peer"),
-                    Link(f"{consumer} is unreachable from {me} at {when} (TCP {port}: {pstate}, TCP 443: {hstate})",
-                         pair, "NETWORK", [prt.step_id, https.step_id], "peer-unreachable", "pair")],
-                    boundary=("a host that is down and a network path that blocks this host look the same from here; "
-                              f"nothing here says {consumer} is gone for good"),
-                    handoff=handoff(consumer, me, f"Whether {consumer} is running can only be seen on {consumer} "
-                                                  "(or its console)."),
-                    next_action=[f"on {me}: ip route get $(getent ahosts {_q(consumer)} | awk 'NR==1{{print $1}}')   "
-                                 "(read-only)", f"check whether {consumer} is running (its console) and the firewall "
-                                                "between the two"])
-                root = b.add(ReplDiagnosis(
-                    "PEER_UNREACHABLE", pair, f"{consumer} is unreachable from {me}", "NETWORK", "FAIL", "HIGH",
-                    f"Unreachable from {me} at {when}: TCP {port} {pstate}, TCP 443 {hstate}. The agreement's last "
-                    f"session ended {item.get('last_update_end') or 'at an unknown time'} with: {status_text}.",
-                    f"No replication {me} -> {consumer}; changes pile up in {me}'s changelog until {consumer} is "
-                    "reachable again.", [prt.step_id, https.step_id, rd.step_id], "pair",
-                    next_steps=chain.next_action, handoff=chain.handoff))
-            else:
-                confidence = "HIGH" if pstate == "open" else "MEDIUM"
-                claim = (f"{consumer} accepts TCP on {port} but its Directory Server does not answer LDAP" if
-                         pstate == "open" else f"{consumer}'s Directory Server gives no LDAP answer to {me} "
-                         f"(TCP {port}: {pstate or 'not checked'}, 443: {hstate or 'not checked'})")
-                chain = b.chain(rel_key, [L0, Link(claim, peer_here, "PEER_DS", [x.step_id for x in (prt, rd) if x],
-                                                   "status-transport", "peer")],
-                                boundary=f"why it does not answer can only be seen on {consumer}",
-                                handoff=handoff(consumer, me, f"The remaining evidence is local to {consumer}."),
-                                next_action=[f"on {consumer}: ipactl status   (read-only)"])
-                root = b.add(ReplDiagnosis(
-                    "PEER_DS_NOT_ANSWERING", peer_here, f"{consumer}'s Directory Server does not answer {me}",
-                    "PEER_DS", "FAIL", confidence, claim + ".", f"No replication {me} -> {consumer}.",
-                    [x.step_id for x in (prt, rd) if x], "peer", next_steps=chain.next_action,
-                    handoff=chain.handoff))
-        elif rd is not None and rd.outcome in PASSISH:
+        got = _peer_path(t, b, me, item, subj, rel_key, [L0], now=False)
+        if got == "ANSWERS":
+            rd = t.rec("peer.rootdse", subj)
             b.add(ReplDiagnosis(
                 "REPLICATION_NOT_REPRODUCED", rel_key, f"The last {suffix} session {me} -> {consumer} could not "
                 "connect, but the peer answers now", "REPLICATION", "WARN", "MEDIUM",
@@ -565,6 +613,8 @@ def _agreement(t: _T, b: _Builder, me: str, realm: str, item: Dict[str, Any],
                 kind=TRANSIENT, next_steps=[f"sudo ipa-diagnose replication --peer {_q(consumer)} --verify   "
                                             "(after the next session)"]))
             return
+        if got is not None:
+            root, chain = got
     elif gssapi_agreement and (cls in S.GSSAPI or cls == S.INVALID_CREDENTIALS) \
             and kerberos_class(cls, gs, off)[0] in _SPECIFIC + (S.GSSAPI_OTHER,):
         eff, where = kerberos_class(cls, gs, off)
@@ -670,10 +720,11 @@ def _agreement(t: _T, b: _Builder, me: str, realm: str, item: Dict[str, Any],
             root.explains.append(d.key)
 
 
-def _tls_root(b: _Builder, me: str, consumer: str, rel_key: str, base: List[Link], ev: List[str], port: str):
+def _tls_root(b: _Builder, me: str, consumer: str, rel_key: str, base: List[Link], ev: List[str], port: str,
+              disc: str = "status-tls"):
     pair = f"pair:{me}>{consumer}"
     chain = b.chain(rel_key, base + [Link(f"the TLS layer of {me}'s connection to {consumer}:{port} fails", pair,
-                                          "TLS", ev, "status-tls", "pair")],
+                                          "TLS", ev, disc, "pair")],
                     boundary="which certificate or trust setting fails is not established",
                     next_action=[f"openssl s_client -connect {_q(consumer)}:{port} -CAfile /etc/ipa/ca.crt "
                                  "</dev/null   (read-only)"],
@@ -706,7 +757,8 @@ def _dropped(b: _Builder, me: str, item: Dict[str, Any]) -> None:
         next_steps=c.next_action))
 
 
-def _reverse(t: _T, b: _Builder, me: str, realm: str, item: Dict[str, Any]) -> str:
+def _reverse(t: _T, b: _Builder, me: str, realm: str, item: Dict[str, Any],
+             roots: Optional[Dict[str, Optional[ReplDiagnosis]]] = None) -> str:
     """The reverse direction (consumer -> this server): only what was READ from the peer. Returns its state."""
 
     subj = item["subject"]
@@ -728,6 +780,25 @@ def _reverse(t: _T, b: _Builder, me: str, realm: str, item: Dict[str, Any]) -> s
         return "TRANSIENT"
     L0 = Link(f"{consumer} -> {me} ({suffix} suffix) fails: {S.MEANING.get(cls, cls)} (read from {consumer})",
               rel_key, "REPLICATION", [r.step_id], "agreement-status", "peer")
+    kt = (roots or {}).get("keytab")
+    if kt is not None and (cls in (S.INVALID_CREDENTIALS,) or cls in S.GSSAPI):
+        # this server ACCEPTS that bind: with its own Directory Server keytab unusable it cannot accept Kerberos
+        c = b.chain(rel_key, [L0, Link(f"the GSSAPI bind of {consumer} to {me} fails on the accepting side ({me})",
+                                       rel_key, "KERBEROS", [r.step_id], "reverse-acceptor-kerberos", "local"),
+                              Link(f"{me} accepts it with its own Directory Server keytab, which "
+                                   f"{kt.title.split('keytab ', 1)[-1]}", f"server:{me}", "KEYTAB",
+                                   [r.step_id, "local.keytab"], "acceptor-keytab-unusable", "local")],
+                    boundary="ipa-diagnose does not print keytab replacement or ownership changes for ds.keytab in "
+                             "this version", next_action=kt.next_steps)
+        d = b.add(ReplDiagnosis(
+            "REVERSE_REPLICATION_FAILING", rel_key, f"{suffix} replication {consumer} -> {me} fails (read from "
+            f"{consumer})", "REPLICATION", "FAIL", "HIGH",
+            f"{S.MEANING.get(cls, cls)}. {consumer}'s own status: {r.facts.get('status_text') or '?'}.",
+            f"{suffix} changes made on {consumer} (and the ones it relays) do not reach {me}.", [r.step_id], "peer",
+            chain_ids=[c.chain_id], related_to=kt.key, next_steps=kt.next_steps))
+        kt.chain_ids.append(c.chain_id)
+        kt.explains.append(d.key)
+        return "FAILING"
     why = (f"the supplier of this direction is {consumer}: its Directory Server, KDC, keytab and clock can only be "
            f"checked on {consumer}.")
     c = b.chain(rel_key, [L0], boundary=why, handoff=handoff(consumer, me, "The remaining evidence is local to "
@@ -825,7 +896,7 @@ def diagnose(trace: Trace, inputs: Dict[str, Any]) -> Tuple[List[ReplDiagnosis],
              investigated]
     for item in sorted(items, key=lambda i: i["subject"]):
         _agreement(t, b, me, realm, item, roots)
-        extra["reverse"][item["subject"]] = _reverse(t, b, me, realm, item)
+        extra["reverse"][item["subject"]] = _reverse(t, b, me, realm, item, roots)
     for item in sorted((i for i in (t.f("agreements", "subjects") or []) if isinstance(i, dict)
                         and i.get("subject") in set(enum.get("dropped") or [])), key=lambda i: i["subject"]):
         _dropped(b, me, item)

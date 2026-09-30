@@ -198,8 +198,12 @@ class Lab:
         f.update(active_state=state, sub_state="dead" if state == "inactive" else state, result=result)
         return self
 
-    def peer_ds_stopped(self, peer: str) -> "Lab":
-        self.set_status(peer, TRANSPORT_TEXT)
+    def peer_ds_stopped(self, peer: str, recorded: bool = True) -> "Lab":
+        """recorded=False: the agreement's status still shows the last successful session (live lab, run
+        36654176983: 389-DS had not recorded the failure after 4 minutes and a pending change)."""
+
+        if recorded:
+            self.set_status(peer, TRANSPORT_TEXT)
         self.data[key("net.tcp", {"host": peer, "port": "389"})] = ok({"state": "refused", "open": False,
                                                                        "seconds": 0.01}, f"TCP {peer}:389: refused")
         self.data[key("repl.peer_rootdse", {"host": peer, "port": "389", "transport": "LDAP"})] = ok({
@@ -208,8 +212,9 @@ class Lab:
             "detail": "ldap_sasl_bind(SIMPLE): Can't contact LDAP server (-1)"}, f"{peer}:389: Can't contact LDAP server")
         return self
 
-    def peer_unreachable(self, peer: str) -> "Lab":
-        self.set_status(peer, TRANSPORT_TEXT)
+    def peer_unreachable(self, peer: str, recorded: bool = True) -> "Lab":
+        if recorded:
+            self.set_status(peer, TRANSPORT_TEXT)
         for port in ("389", "443"):
             self.data[key("net.tcp", {"host": peer, "port": port})] = ok({"state": "timeout", "open": False,
                                                                           "seconds": 5.0}, f"TCP {peer}:{port}: timeout")

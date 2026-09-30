@@ -44,7 +44,13 @@ SLICE5_PROCEDURES: Dict[str, Dict[str, Any]] = {
         # LIVE records of THIS procedure resolving a REPLICATION incident (lab: fault injected and confirmed,
         # ipa-diagnose replication run blind, only the printed steps run, replication --verify RESOLVED). The
         # catalogue's own verified_on records (single-server service scenarios) do not count here.
-        "replication_live": (),
+        "replication_live": (
+            {"tier": "LIVE", "freeipa": "4.13.4", "os": "fedora-43", "date": "2026-09-30",
+             "scenario": "replication lab R05/R05b: krb5kdc stopped on ipa01 (confirmed with systemctl), "
+                         "ipa-diagnose replication run blind, the printed 'systemctl start krb5kdc.service' run "
+                         "verbatim, replication --verify RESOLVED",
+             "evidence": "https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36654176983"},
+        ),
     },
 }
 # closed lists of reasons a procedure may give for having no backup / no rollback step

@@ -182,7 +182,8 @@ def trigger(c: str, suffix: str = "domain") -> None:
     _probe[0] += 1
     admin(c)
     if suffix == "domain":
-        ipa(c, f"user-add probe{_probe[0]}x{c} --first=Probe --last=Lab")
+        out = ipa(c, f"user-add probe{_probe[0]}x{c} --first=Probe --last=Lab")
+        log("triggers", f"{iso(now())} {c} domain change: {'made' if 'Added user' in out else 'FAILED: ' + out[-200:]}")
     else:
         # a change in o=ipaca: re-importing a profile writes it to Dogtag's LDAP profile store (the CA suffix);
         # a --desc change alone only touches IPA's own entry in the domain suffix (lesson of run 36652068103)
@@ -212,7 +213,7 @@ def wait_agreement(c: str, peer: str, suffix: str, want_ok: bool, since: datetim
 LAST_PENDING: list = []
 
 
-def wait_green(timeout: int = 600) -> bool:
+def wait_green(timeout: int = 900) -> bool:
     """Every agreement of every server is green: its last session succeeded (a domain agreement: a session that
     ended after this wait began) and none is in progress. A CA agreement that had no session since its server
     started is accepted only while nothing else fails (the lab's CA changes are rare)."""
@@ -486,8 +487,8 @@ def r02() -> None:
     t0 = now()
     trigger("ipa01", "domain")
     a = wait_agreement("ipa01", "ipa02", "domain", want_ok=False, since=t0)
-    ind["agreement_reports_error"] = {"confirmed": "Error (0)" not in a.get("nsds5replicalastupdatestatus", "Error (0)"),
-                                      "observed": a.get("nsds5replicalastupdatestatus", "")[:200]}
+    ind["agreement_status_observed"] = {"recorded_failure": "Error (0)" not in a.get(
+        "nsds5replicalastupdatestatus", "Error (0)"), "observed": a.get("nsds5replicalastupdatestatus", "")[:200]}
     rc, doc, secs = tool("ipa01")
     details("ipa01", "r02-supplier")
     row("R02-peer-ds-stopped-supplier-view",
@@ -496,10 +497,11 @@ def r02() -> None:
          "absent": ["LOCAL_"]}, rc, doc, secs, ind)
     rc2, doc2, secs2 = tool("ipa02")
     details("ipa02", "r02b-local")
+    ind2 = {"ds_stopped_on_ipa02": ind["ds_stopped_on_ipa02"]}
     key = f"LOCAL_DS_NOT_RUNNING@server:{FQ['ipa02']}"
     r = row("R02b-peer-ds-stopped-local-view-and-fix",
             {"status": ["PROBLEM_FOUND"], "primary": [key], "roots": [key],
-             "offered": {key: [["systemctl", "start", f"dirsrv@{INST}.service"]]}}, rc2, doc2, secs2, ind)
+             "offered": {key: [["systemctl", "start", f"dirsrv@{INST}.service"]]}}, rc2, doc2, secs2, ind2)
     applied = apply_printed("ipa02", doc2, key) if r["result"] == "PASS" else {"applied": [], "all_ok": False}
     rc3, doc3, secs3, hist = verify_until("ipa02")
     items = {i["key"]: i["outcome"] for i in (doc3 or {}).get("items", [])}
@@ -526,9 +528,8 @@ def r03() -> None:
         t0 = now()
         trigger("ipa01", "domain")
         a = wait_agreement("ipa01", "ipa02", "domain", want_ok=False, since=t0, timeout=300)
-        ind["agreement_reports_error"] = {"confirmed": "Error (0)" not in a.get("nsds5replicalastupdatestatus",
-                                                                                "Error (0)"),
-                                          "observed": a.get("nsds5replicalastupdatestatus", "")[:200]}
+        ind["agreement_status_observed"] = {"recorded_failure": "Error (0)" not in a.get(
+            "nsds5replicalastupdatestatus", "Error (0)"), "observed": a.get("nsds5replicalastupdatestatus", "")[:200]}
         rc, doc, secs = tool("ipa01")
         details("ipa01", "r03-unreachable")
         text = json.dumps(doc or {}).lower()
@@ -550,9 +551,8 @@ def r04() -> None:
         t0 = now()
         trigger("ipa01", "domain")
         a = wait_agreement("ipa01", "ipa02", "domain", want_ok=False, since=t0, timeout=300)
-        ind["agreement_reports_error"] = {"confirmed": "Error (0)" not in a.get("nsds5replicalastupdatestatus",
-                                                                                "Error (0)"),
-                                          "observed": a.get("nsds5replicalastupdatestatus", "")[:200]}
+        ind["agreement_status_observed"] = {"recorded_failure": "Error (0)" not in a.get(
+            "nsds5replicalastupdatestatus", "Error (0)"), "observed": a.get("nsds5replicalastupdatestatus", "")[:200]}
         rc, doc, secs = tool("ipa01")
         details("ipa01", "r04-dns")
         row("R04-local-dns-break-for-peer",
@@ -571,7 +571,7 @@ def r05() -> None:
     details("ipa01", "r05-kdc")
     r = row("R05-local-kdc-stopped-and-fix",
             {"status": ["PROBLEM_FOUND"], "primary": [key], "roots": [key],
-             "offered": {key: [["systemctl", "start", "krb5kdc.service"]]}}, rc, doc, secs, ind,
+             "offered": {key: [["systemctl", "start", "krb5kdc.service"]]}, "no_google": True}, rc, doc, secs, ind,
             {"agreement_states": [f"{x['subject']}={x.get('state')}" for x in (doc or {}).get("relationships", [])]})
     applied = apply_printed("ipa01", doc, key) if r["result"] == "PASS" else {"applied": [], "all_ok": False}
     rc2, doc2, secs2, hist = verify_until("ipa01")
@@ -595,9 +595,8 @@ def r06() -> None:
         t0 = now()
         trigger("ipa03", "domain")
         a = wait_agreement("ipa03", "ipa02", "domain", want_ok=False, since=t0, timeout=300)
-        ind["agreement_reports_error"] = {"confirmed": "Error (0)" not in a.get("nsds5replicalastupdatestatus",
-                                                                                "Error (0)"),
-                                          "observed": a.get("nsds5replicalastupdatestatus", "")[:300]}
+        ind["agreement_status_observed"] = {"recorded_failure": "Error (0)" not in a.get(
+            "nsds5replicalastupdatestatus", "Error (0)"), "observed": a.get("nsds5replicalastupdatestatus", "")[:300]}
         rc, doc, secs = tool("ipa03")
         details("ipa03", "r06-keytab")
         key = f"DS_KEYTAB_PROBLEM@server:{FQ['ipa03']}"
@@ -749,9 +748,13 @@ def summary() -> int:
           f"missing {missing}; false root {false_root}; missed {missed}; unsafe {unsafe}")
     compact = [f"{r['scenario']}={r['result']} exit={r.get('exit')} primary={r.get('primary')} "
                f"offered={list((r.get('offered') or {}).keys())} ng={r.get('no_google')} t={r.get('seconds')}s "
-               f"v={r.get('verify_items')} ipa={r.get('freeipa')}" for r in rows]
-    for i in range(0, len(compact), 3):
-        print(f"::notice title=rows {i + 1}-{min(i + 3, len(compact))}::{' || '.join(compact[i:i + 3])[:3900]}")
+               f"v={r.get('verify_items')} ipa={r.get('freeipa')}"
+               + (f" PROBLEMS={r.get('problems')}" if r.get("problems") else "")
+               + (f" OBS={ {k: v.get('observed', '')[:120] for k, v in (r.get('independent') or {}).items() if isinstance(v, dict)} }"
+                  if r.get("result") != "PASS" or "agreement_status_observed" in (r.get("independent") or {}) else "")
+               for r in rows]
+    for i in range(0, len(compact), 2):
+        print(f"::notice title=rows {i + 1}-{min(i + 2, len(compact))}::{' || '.join(compact[i:i + 2])[:3990]}")
     for r in rows:
         if r.get("chains"):
             print(f"::notice title=chains {r['scenario']}::{json.dumps(r['chains'])[:3900]}")

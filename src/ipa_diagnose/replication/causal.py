@@ -69,6 +69,23 @@ DISCRIMINATORS: Dict[str, Discriminator] = {d.disc_id: d for d in [
        "the Directory Server keytab is missing, not readable by the dirsrv user, or lacks this server's ldap/ key"),
     _d("pair-clock-skew", SYMPTOM, "TIME",
        "this host's clock differs from the peer's root DSE currentTime by at least the 300 s Kerberos tolerance"),
+    _d("peer-name-unresolved-now", SYMPTOM, "DNS",
+       "the peer's name does not resolve through this host's resolver now (the agreement's recorded status may still "
+       "show its last session as successful)"),
+    _d("peer-ds-refused-now", SYMPTOM, "PEER_DS",
+       "the agreement's LDAP port is refused now while 443 on the same peer accepts connections (the recorded status "
+       "may still show the last session as successful)"),
+    _d("peer-no-ldap-answer-now", SYMPTOM, "PEER_DS",
+       "this host's own read of the peer's root DSE gets no LDAP answer now (the recorded status may still show the "
+       "last session as successful)"),
+    _d("peer-tls-fails-now", SYMPTOM, "TLS",
+       "this host's own TLS connection to the agreement's port fails at the TLS layer now"),
+    _d("reverse-acceptor-kerberos", "REPLICATION", "KERBEROS",
+       "the peer's agreement towards this server fails with LDAP 49 or a GSSAPI class: its GSSAPI bind fails, and "
+       "this server is the side that accepts it"),
+    _d("acceptor-keytab-unusable", "KERBEROS", "KEYTAB",
+       "this server, the accepting side of that GSSAPI bind, cannot use its own Directory Server keytab (missing, "
+       "not readable by dirsrv, or without its ldap/ key)"),
     _d("status-transport", "REPLICATION", "PEER_DS",
        "status class TRANSPORT and this host's own read of the peer's root DSE gets no LDAP answer"),
     _d("peer-ds-refused-host-up", "REPLICATION", "PEER_DS",
