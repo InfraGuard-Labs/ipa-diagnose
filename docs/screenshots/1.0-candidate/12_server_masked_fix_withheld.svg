@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1044" height="926" viewBox="0 0 1044 926" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" font-size="13.5">
+<rect width="1044" height="926" rx="8" fill="#0d1117"/>
+<rect width="1044" height="34" rx="8" fill="#161b22"/>
+<circle cx="18" cy="17" r="5" fill="#ff5f56"/><circle cx="36" cy="17" r="5" fill="#ffbd2e"/><circle cx="54" cy="17" r="5" fill="#27c93f"/>
+<text x="76" y="22" fill="#8b949e">$ ipa-diagnose   (exit 2)</text>
+<rect x="18" y="44" width="1008" height="22" rx="4" fill="#12261e"/>
+<text x="26" y="60" fill="#3fb950" font-weight="bold">REAL LIVE CAPTURE - FreeIPA 4.13.4 / Fedora 43 lab - commit d06c16c, run 36724948194</text>
+<text x="18" y="89" fill="#c9d1d9" xml:space="preserve">────────────────────────────────────────────────── FreeIPA Diagnosis ───────────────────────────────────────────────────</text>
+<text x="18" y="106" fill="#c9d1d9" xml:space="preserve">Host: ipa01.lab.test    Generated: 2026-09-30T14:23:54Z</text>
+<text x="18" y="123" fill="#ff7b72" xml:space="preserve">Overall: CRITICAL</text>
+<text x="18" y="140" fill="#d29922" xml:space="preserve">Evidence: PARTIAL</text>
+<text x="18" y="157" fill="#d29922" xml:space="preserve">  NOT VERIFIED: certmonger - &#x27;getcert list&#x27; exited 1:</text>
+<text x="18" y="174" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="191" fill="#c9d1d9" xml:space="preserve">─────────────────────────────────────────────────── PRIMARY PROBLEM ────────────────────────────────────────────────────</text>
+<text x="18" y="208" fill="#c9d1d9" xml:space="preserve">ROOT CAUSE</text>
+<text x="18" y="225" fill="#ff7b72" xml:space="preserve">Required service &#x27;certmonger&#x27; is not running</text>
+<text x="18" y="242" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="259" fill="#c9d1d9" xml:space="preserve">WHY</text>
+<text x="18" y="276" fill="#ff7b72" xml:space="preserve">ipa-healthcheck (ipahealthcheck.meta.services.certmonger) directly reports: certmonger: not running. This is the check&#x27;s</text>
+<text x="18" y="293" fill="#ff7b72" xml:space="preserve">own statement, not an inference. Why the service is not running is NOT determined by this finding.</text>
+<text x="18" y="310" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="327" fill="#c9d1d9" xml:space="preserve">EVIDENCE</text>
+<text x="18" y="344" fill="#ff7b72" xml:space="preserve">  ✓ ipa-healthcheck states this service is not running.</text>
+<text x="18" y="361" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="378" fill="#c9d1d9" xml:space="preserve">CHECKED FOR YOU</text>
+<text x="18" y="395" fill="#c9d1d9" xml:space="preserve">Read-only checks ipa-diagnose ran on this host just now (results, not problems):</text>
+<text x="18" y="412" fill="#c9d1d9" xml:space="preserve">  - Privileges: running as root</text>
+<text x="18" y="429" fill="#c9d1d9" xml:space="preserve">  - State of certmonger: certmonger.service: inactive (dead), load state: masked</text>
+<text x="18" y="446" fill="#c9d1d9" xml:space="preserve">  - Recent log of certmonger.service: last log line: certmonger.service: Consumed 30.196s CPU time, 1.1G memory peak.</text>
+<text x="18" y="463" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="480" fill="#c9d1d9" xml:space="preserve">IMPACT</text>
+<text x="18" y="497" fill="#d29922" xml:space="preserve">Functions that depend on this service are unavailable or degraded. Other failures in this report (for example </text>
+<text x="18" y="514" fill="#c9d1d9" xml:space="preserve">ipa-healthcheck checks that could not connect) may be consequences.</text>
+<text x="18" y="531" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="548" fill="#c9d1d9" xml:space="preserve">FIX</text>
+<text x="18" y="565" fill="#c9d1d9" xml:space="preserve">No fix is shown - ipa-diagnose shows a fix only when it could confirm, with fresh read-only checks, that it applies here</text>
+<text x="18" y="582" fill="#c9d1d9" xml:space="preserve">and is safe to suggest.</text>
+<text x="18" y="599" fill="#c9d1d9" xml:space="preserve">  - certmonger.service is masked: someone disabled it on purpose. ipa-diagnose will not suggest unmasking it; find out </text>
+<text x="18" y="616" fill="#c9d1d9" xml:space="preserve">why it was masked first.</text>
+<text x="18" y="633" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="650" fill="#c9d1d9" xml:space="preserve">SAFE NEXT STEP</text>
+<text x="18" y="667" fill="#ff7b72" xml:space="preserve">Check why the service is not running before starting it.</text>
+<text x="18" y="684" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="701" fill="#c9d1d9" xml:space="preserve">    systemctl status --no-pager -- certmonger; journalctl --no-pager -n 50 -u certmonger</text>
+<text x="18" y="718" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="735" fill="#c9d1d9" xml:space="preserve">Safety: SAFE — read-only, no state change.</text>
+<text x="18" y="752" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="769" fill="#c9d1d9" xml:space="preserve">─────────────────────────────────────────────────── RELATED SYMPTOMS ───────────────────────────────────────────────────</text>
+<text x="18" y="786" fill="#ff7b72" xml:space="preserve">  • One or more ipa-healthcheck checks failed to run  (related to: Required service &#x27;certmonger&#x27; is not running)</text>
+<text x="18" y="803" fill="#ff7b72" xml:space="preserve">  • ipa-healthcheck reports ERROR/CRITICAL findings that no diagnostic rule explains  (related to: Required service </text>
+<text x="18" y="820" fill="#ff7b72" xml:space="preserve">&#x27;certmonger&#x27; is not running)</text>
+<text x="18" y="837" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="916" fill="#6e7681" font-size="11">lines 1-45 of 61 of the captured output</text>
+</svg>

@@ -1,0 +1,15 @@
+{
+ "captured_at": "2026-09-30T13:59:12Z",
+ "columns": 120,
+ "command": "ipa-diagnose client --verify",
+ "commit": "d06c16c03584fef907f0a6975cce80cafb747c48",
+ "container": "ipa-c",
+ "env": [
+  "IPA_DIAGNOSE_STATE_DIR=/tmp/cap-state"
+ ],
+ "exit": 0,
+ "name": "client-02-verify-resolved",
+ "run_id": "36724948253",
+ "scenario": "C02 client --verify after running the printed fix",
+ "user": "root"
+}

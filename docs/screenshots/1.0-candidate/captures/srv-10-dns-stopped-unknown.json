@@ -1,0 +1,13 @@
+{
+ "captured_at": "2026-09-30T14:16:29Z",
+ "columns": 120,
+ "command": "ipa-diagnose",
+ "commit": "d06c16c03584fef907f0a6975cce80cafb747c48",
+ "container": "ipa-s",
+ "env": [],
+ "exit": 3,
+ "name": "srv-10-dns-stopped-unknown",
+ "run_id": "36724948194",
+ "scenario": "S4 this server's named stopped (ipa-healthcheck does not finish)",
+ "user": "root"
+}

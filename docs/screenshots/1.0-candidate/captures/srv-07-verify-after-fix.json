@@ -1,0 +1,15 @@
+{
+ "captured_at": "2026-09-30T14:06:47Z",
+ "columns": 120,
+ "command": "ipa-diagnose verify",
+ "commit": "d06c16c03584fef907f0a6975cce80cafb747c48",
+ "container": "ipa-s",
+ "env": [
+  "IPA_DIAGNOSE_STATE_DIR=/tmp/cap-state"
+ ],
+ "exit": 4,
+ "name": "srv-07-verify-after-fix",
+ "run_id": "36724948194",
+ "scenario": "S3 verify after running the printed fix",
+ "user": "root"
+}

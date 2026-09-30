@@ -1,0 +1,15 @@
+{
+ "captured_at": "2026-09-30T14:08:52Z",
+ "columns": 120,
+ "command": "ipa-diagnose replication",
+ "commit": "d06c16c03584fef907f0a6975cce80cafb747c48",
+ "container": "ipa02",
+ "env": [
+  "KRB5CCNAME=FILE:/root/admin.ccache"
+ ],
+ "exit": 0,
+ "name": "repl-01-healthy-ipa02",
+ "run_id": "36724948206",
+ "scenario": "R01 healthy three-server lab (operator ticket)",
+ "user": "root"
+}

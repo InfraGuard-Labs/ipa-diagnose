@@ -1,0 +1,15 @@
+{
+ "captured_at": "2026-09-30T14:09:41Z",
+ "columns": 120,
+ "command": "ipa-diagnose replication",
+ "commit": "d06c16c03584fef907f0a6975cce80cafb747c48",
+ "container": "ipa02",
+ "env": [
+  "KRB5CCNAME=FILE:/root/admin.ccache"
+ ],
+ "exit": 1,
+ "name": "repl-03-local-ds-stopped-ipa02",
+ "run_id": "36724948206",
+ "scenario": "R02b dirsrv stopped on ipa02, seen on ipa02 (fix printed)",
+ "user": "root"
+}

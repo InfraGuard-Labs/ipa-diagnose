@@ -1,0 +1,24 @@
+Support bundle preview - nothing was written
+  Source: LIVE diagnosis of this host, shown as HOST-001; overall status NOT_FULLY_VERIFIED, evidence complete
+  Contents: 0 diagnoses, 0 resolutions, 1 undiagnosed findings, 1 ipa-healthcheck problems (312 results), 6 evidence items, 0 collection errors
+  Pseudonymized: host 3, domain 1, realm 1, suffix 1, instance 1
+  Redacted: 0 value(s); secret-named fields removed: 0; raw output fields dropped: 0
+  Replication investigation: included (replication.json, pseudonymized, structure only)
+  Leak self-test: passed
+  Estimated size: 19.2 KiB compressed
+  Files:
+    README.txt                    3.1 KiB
+    manifest.json                 4.5 KiB
+    environment.json              0.5 KiB
+    report.json                   1.4 KiB
+    healthcheck.json             68.6 KiB
+    evidence.json                 4.5 KiB
+    collection-errors.json        0.1 KiB
+    topology.json                 1.5 KiB
+    verification.json             1.1 KiB
+    replication.json              9.8 KiB
+    redaction-report.json         1.4 KiB
+    SHA256SUMS                    0.9 KiB
+  Never included: passwords and Directory Manager credentials; private keys (TLS, SSH, CA); keytab contents; Kerberos tickets and credential caches; API, bearer and cloud tokens; cookies and authorization headers; AI provider credentials; environment variables and shell history; raw journals and raw tool output; full LDAP entries and configuration files; commands of offered fixes and rollbacks; the local replay fixture path; the pseudonym mapping itself
+Before sharing, review it. It is pseudonymized and credential-scanned, but it still contains operational detail (service names, versions, error text, timestamps, topology shape).
+Create it with: ipa-diagnose bundle [--output PATH]

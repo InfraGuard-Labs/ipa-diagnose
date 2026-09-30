@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1044" height="977" viewBox="0 0 1044 977" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" font-size="13.5">
+<rect width="1044" height="977" rx="8" fill="#0d1117"/>
+<rect width="1044" height="34" rx="8" fill="#161b22"/>
+<circle cx="18" cy="17" r="5" fill="#ff5f56"/><circle cx="36" cy="17" r="5" fill="#ffbd2e"/><circle cx="54" cy="17" r="5" fill="#27c93f"/>
+<text x="76" y="22" fill="#8b949e">$ ipa-diagnose replication   (exit 1)</text>
+<rect x="18" y="44" width="1008" height="22" rx="4" fill="#12261e"/>
+<text x="26" y="60" fill="#3fb950" font-weight="bold">REAL LIVE CAPTURE - FreeIPA 4.13.4 / Fedora 43 lab - commit d06c16c, run 36724948206</text>
+<text x="18" y="89" fill="#c9d1d9" xml:space="preserve">ipa-diagnose replication: ipa01.lab.test (realm LAB.TEST)</text>
+<text x="18" y="106" fill="#c9d1d9" xml:space="preserve">  LIVE; FreeIPA 4.13.4, 389-ds 3.1.5</text>
+<text x="18" y="123" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="140" fill="#ff7b72" xml:space="preserve">ipa01.lab.test: This server&#x27;s KDC (krb5kdc) is not running.</text>
+<text x="18" y="157" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="174" fill="#c9d1d9" xml:space="preserve">REPLICATION (per suffix and direction; observed from ipa01.lab.test)</text>
+<text x="18" y="191" fill="#c9d1d9" xml:space="preserve">  ca      ipa01.lab.test -&gt; ipa02.lab.test  OK  [LDAP/SASL/GSSAPI, port 389] last session ended 2026-09-30T14:22:20Z</text>
+<text x="18" y="208" fill="#c9d1d9" xml:space="preserve">  ca      ipa02.lab.test -&gt; ipa01.lab.test  OK  (read from ipa02.lab.test; its last session ended 2026-09-30T14:22:20Z)</text>
+<text x="18" y="225" fill="#c9d1d9" xml:space="preserve">  domain  ipa01.lab.test -&gt; ipa02.lab.test  OK  [LDAP/SASL/GSSAPI, port 389] last session ended 2026-09-30T14:22:23Z</text>
+<text x="18" y="242" fill="#c9d1d9" xml:space="preserve">  domain  ipa02.lab.test -&gt; ipa01.lab.test  OK  (read from ipa02.lab.test; its last session ended 2026-09-30T14:22:19Z)</text>
+<text x="18" y="259" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="276" fill="#c9d1d9" xml:space="preserve">ROOT CAUSE</text>
+<text x="18" y="293" fill="#ff7b72" xml:space="preserve">  [PRIMARY] This server&#x27;s KDC (krb5kdc) is not running - confidence HIGH</text>
+<text x="18" y="310" fill="#c9d1d9" xml:space="preserve">      krb5kdc.service is inactive.</text>
+<text x="18" y="327" fill="#c9d1d9" xml:space="preserve">      Impact: No Kerberos ticket is issued by this server. Its GSSAPI replication agreements fail once the Directory Ser</text>
+<text x="18" y="344" fill="#c9d1d9" xml:space="preserve">ver&#x27;s current tickets expire (if this server&#x27;s Kerberos configuration names only itself); clients and other servers that</text>
+<text x="18" y="361" fill="#c9d1d9" xml:space="preserve"> use this KDC fail over to others or fail.</text>
+<text x="18" y="378" fill="#ff7b72" xml:space="preserve">      Chain: this server&#x27;s KDC (krb5kdc) is not running</text>
+<text x="18" y="395" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="412" fill="#c9d1d9" xml:space="preserve">RESOLUTION (only for causes on this server)</text>
+<text x="18" y="429" fill="#ff7b72" xml:space="preserve">  For &#x27;This server&#x27;s KDC (krb5kdc) is not running&#x27;: Start the stopped service (risk MEDIUM; ipa-diagnose never runs it)</text>
+<text x="18" y="446" fill="#c9d1d9" xml:space="preserve">    NO-GOOGLE: every step, its host, its expected result, what to do if it fails, backup, rollback and verification are </text>
+<text x="18" y="463" fill="#c9d1d9" xml:space="preserve">below, and this procedure was verified live on this FreeIPA version and OS.</text>
+<text x="18" y="480" fill="#c9d1d9" xml:space="preserve">    ✓ ipa-diagnose is running as root (starting a system service needs root)</text>
+<text x="18" y="497" fill="#c9d1d9" xml:space="preserve">    1. On ipa01.lab.test: Start only krb5kdc.service; no other service is started or stopped</text>
+<text x="18" y="514" fill="#c9d1d9" xml:space="preserve">         systemctl start krb5kdc.service</text>
+<text x="18" y="531" fill="#c9d1d9" xml:space="preserve">       Expected: the command returns without an error and krb5kdc.service is active. If it fails, it stays stopped and s</text>
+<text x="18" y="548" fill="#c9d1d9" xml:space="preserve">ystemctl status shows why</text>
+<text x="18" y="565" fill="#c9d1d9" xml:space="preserve">    If a step fails: If &#x27;systemctl start&#x27; fails, the unit stays stopped and nothing else changed: read &#x27;systemctl status</text>
+<text x="18" y="582" fill="#c9d1d9" xml:space="preserve"> krb5kdc.service&#x27; and &#x27;journalctl -u krb5kdc.service -n 50&#x27; (read-only) for the reason, fix that cause, and run ipa-diag</text>
+<text x="18" y="599" fill="#c9d1d9" xml:space="preserve">nose replication again. Do not use &#x27;ipactl start&#x27; instead: it stops every IPA service when one of them fails to start.</text>
+<text x="18" y="616" fill="#c9d1d9" xml:space="preserve">    What changes: krb5kdc.service goes from inactive to running. No configuration, data or other service is changed.</text>
+<text x="18" y="633" fill="#c9d1d9" xml:space="preserve">    Backup: no backup is needed: the procedure starts a service; no file, configuration or directory data is changed</text>
+<text x="18" y="650" fill="#c9d1d9" xml:space="preserve">    Rollback: Stop it again (back to the state it was in)  -&gt;  systemctl stop krb5kdc.service</text>
+<text x="18" y="667" fill="#c9d1d9" xml:space="preserve">    Note: This starts the one stopped service; it does not establish why it stopped. If it stopped because of a failure </text>
+<text x="18" y="684" fill="#c9d1d9" xml:space="preserve">(see the last result and log line above), the same cause can stop it again. ipactl start is deliberately not used: if an</text>
+<text x="18" y="701" fill="#c9d1d9" xml:space="preserve">y IPA service fails to start, ipactl stops all IPA services.</text>
+<text x="18" y="718" fill="#c9d1d9" xml:space="preserve">    Verify (tied to this incident):</text>
+<text x="18" y="735" fill="#c9d1d9" xml:space="preserve">      - krb5kdc.service is active</text>
+<text x="18" y="752" fill="#ff7b72" xml:space="preserve">      - This server&#x27;s KDC (krb5kdc) is not running: no longer found by a fresh ipa-diagnose replication run</text>
+<text x="18" y="769" fill="#c9d1d9" xml:space="preserve">      run: sudo ipa-diagnose replication --verify</text>
+<text x="18" y="786" fill="#c9d1d9" xml:space="preserve">NEXT READ-ONLY STEPS</text>
+<text x="18" y="803" fill="#c9d1d9" xml:space="preserve">  systemctl status krb5kdc (read-only)</text>
+<text x="18" y="820" fill="#c9d1d9" xml:space="preserve">  journalctl -u krb5kdc -n 50 (read-only)</text>
+<text x="18" y="837" fill="#c9d1d9" xml:space="preserve">TOPOLOGY (context)</text>
+<text x="18" y="854" fill="#c9d1d9" xml:space="preserve">  servers: ipa01.lab.test, ipa02.lab.test, ipa03.lab.test</text>
+<text x="18" y="871" fill="#c9d1d9" xml:space="preserve">  ca: 1 segment(s)</text>
+<text x="18" y="888" fill="#c9d1d9" xml:space="preserve">  domain: 2 segment(s); articulation point(s): ipa02.lab.test</text>
+<text x="18" y="967" fill="#6e7681" font-size="11">lines 1-40 of 46 of the captured output; long lines folded at 120 columns, as a 120-column terminal shows them</text>
+</svg>

@@ -1,0 +1,15 @@
+────────────────────────────────────────────────── FreeIPA Diagnosis ───────────────────────────────────────────────────
+Host: ipa01.lab.test    Generated: 2026-09-30T14:03:55Z
+Overall: UNKNOWN
+Evidence: INSUFFICIENT
+  ipa-healthcheck evidence could not be collected - nothing can be reported healthy.
+  NOT VERIFIED: ipa-healthcheck (base health evidence) - ipa-healthcheck is not installed or not on PATH
+    What to do: Install ipa-healthcheck (dnf install freeipa-healthcheck).
+Service state, read by ipa-diagnose itself (ipa-healthcheck gave no results):
+  all IPA units it checked are active
+
+ipa-healthcheck produced no results, so its checks tell nothing about this server. This is NOT a healthy result.
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+Diagnostic packs: not evaluated (no ipa-healthcheck evidence to evaluate)
+Evidence collection issues (1):
+  - ipa-healthcheck: ipa-healthcheck is not installed or not on PATH

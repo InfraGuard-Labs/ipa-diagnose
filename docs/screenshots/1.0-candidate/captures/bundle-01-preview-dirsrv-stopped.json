@@ -1,0 +1,13 @@
+{
+ "captured_at": "2026-09-30T14:00:18Z",
+ "columns": 120,
+ "command": "ipa-diagnose bundle --preview",
+ "commit": "d06c16c03584fef907f0a6975cce80cafb747c48",
+ "container": "ipa-s",
+ "env": [],
+ "exit": 0,
+ "name": "bundle-01-preview-dirsrv-stopped",
+ "run_id": "36724948194",
+ "scenario": "B2 bundle --preview with the Directory Server stopped (writes nothing)",
+ "user": "root"
+}

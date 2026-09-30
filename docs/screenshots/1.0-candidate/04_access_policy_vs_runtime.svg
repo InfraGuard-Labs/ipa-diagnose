@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1044" height="1011" viewBox="0 0 1044 1011" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" font-size="13.5">
+<rect width="1044" height="1011" rx="8" fill="#0d1117"/>
+<rect width="1044" height="34" rx="8" fill="#161b22"/>
+<circle cx="18" cy="17" r="5" fill="#ff5f56"/><circle cx="36" cy="17" r="5" fill="#ffbd2e"/><circle cx="54" cy="17" r="5" fill="#27c93f"/>
+<text x="76" y="22" fill="#8b949e">$ ipa-diagnose access alice client1.lab.test sshd --runtime   (exit 5)</text>
+<rect x="18" y="44" width="1008" height="22" rx="4" fill="#12261e"/>
+<text x="26" y="60" fill="#3fb950" font-weight="bold">REAL LIVE CAPTURE - FreeIPA 4.13.4 / Fedora 43 lab - commit d06c16c, run 36724948253</text>
+<text x="18" y="89" fill="#c9d1d9" xml:space="preserve">ipa-diagnose access: alice -&gt; client1.lab.test via sshd</text>
+<text x="18" y="106" fill="#c9d1d9" xml:space="preserve">  LIVE; asked FreeIPA as admin@LAB.TEST on ipa01.lab.test (API 4.13.4)</text>
+<text x="18" y="123" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="140" fill="#c9d1d9" xml:space="preserve">FreeIPA HBAC policy authorizes alice to access client1.lab.test through sshd, but the login is expected to fail on this </text>
+<text x="18" y="157" fill="#ff7b72" xml:space="preserve">host: SSSD is not running.</text>
+<text x="18" y="174" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="191" fill="#d29922" xml:space="preserve">  AUTHENTICATION  NOT VERIFIED the IPA account exists and is enabled; no credential was tested</text>
+<text x="18" y="208" fill="#c9d1d9" xml:space="preserve">                               the password expired at 2026-09-30T13:58:57Z: a password login must change it first</text>
+<text x="18" y="225" fill="#c9d1d9" xml:space="preserve">  AUTHORIZATION   PASS         FreeIPA HBAC policy allows this request (rule: r_client)</text>
+<text x="18" y="242" fill="#c9d1d9" xml:space="preserve">  RUNTIME ACCESS  FAIL         checked on client1.lab.test: a login by alice through sshd is expected to fail on this ho</text>
+<text x="18" y="259" fill="#ff7b72" xml:space="preserve">st: SSSD is not running</text>
+<text x="18" y="276" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="293" fill="#c9d1d9" xml:space="preserve">ROOT CAUSE</text>
+<text x="18" y="310" fill="#ff7b72" xml:space="preserve">  on this host: SSSD is not running</text>
+<text x="18" y="327" fill="#c9d1d9" xml:space="preserve">WHY</text>
+<text x="18" y="344" fill="#c9d1d9" xml:space="preserve">  Matched rule r_client (enabled) - user: alice listed directly | host: client1.lab.test listed directly | service: sshd</text>
+<text x="18" y="361" fill="#c9d1d9" xml:space="preserve"> listed directly</text>
+<text x="18" y="378" fill="#c9d1d9" xml:space="preserve">ALSO NOTED</text>
+<text x="18" y="395" fill="#c9d1d9" xml:space="preserve">  The password of alice expired at 2026-09-30T13:58:57Z: A password login must change the password first; logins that do</text>
+<text x="18" y="412" fill="#c9d1d9" xml:space="preserve"> not use the password (for example SSH keys) are not affected by this.</text>
+<text x="18" y="429" fill="#c9d1d9" xml:space="preserve">RUNTIME (--runtime)</text>
+<text x="18" y="446" fill="#c9d1d9" xml:space="preserve">  investigated on this host with client mode&#x27;s planner</text>
+<text x="18" y="463" fill="#ff7b72" xml:space="preserve">  [PRIMARY] SSSD is not running - confidence HIGH</text>
+<text x="18" y="480" fill="#c9d1d9" xml:space="preserve">      sssd.service is inactive.</text>
+<text x="18" y="497" fill="#c9d1d9" xml:space="preserve">  [!!  ] SSSD service running: sssd.service is inactive</text>
+<text x="18" y="514" fill="#c9d1d9" xml:space="preserve">  [!   ] SSSD log signals: 1206 recent SSSD log line(s): offline x5, server_unreachable x4</text>
+<text x="18" y="531" fill="#c9d1d9" xml:space="preserve">  (16 runtime check(s) on this host passed; --details lists them)</text>
+<text x="18" y="548" fill="#c9d1d9" xml:space="preserve">  Fix on this host: Start SSSD (risk MEDIUM; ipa-diagnose never runs it)</text>
+<text x="18" y="565" fill="#c9d1d9" xml:space="preserve">       systemctl start sssd.service</text>
+<text x="18" y="582" fill="#c9d1d9" xml:space="preserve">CHECKED FOR YOU</text>
+<text x="18" y="599" fill="#c9d1d9" xml:space="preserve">  [ok  ] user alice exists, enabled, no principal expiration set or readable; 1 direct and 0 nested groups</text>
+<text x="18" y="616" fill="#c9d1d9" xml:space="preserve">  [ok  ] host client1.lab.test exists; 0 direct and 0 nested hostgroups</text>
+<text x="18" y="633" fill="#c9d1d9" xml:space="preserve">  [ok  ] HBAC service sshd is defined; in 0 service group(s)</text>
+<text x="18" y="650" fill="#c9d1d9" xml:space="preserve">  [ok  ] FreeIPA evaluated 2 enabled HBAC rule(s): access granted; matched: r_client</text>
+<text x="18" y="667" fill="#c9d1d9" xml:space="preserve">  [ok  ] rule r_client: enabled</text>
+<text x="18" y="684" fill="#c9d1d9" xml:space="preserve">IMPACT</text>
+<text x="18" y="701" fill="#ff7b72" xml:space="preserve">  FreeIPA HBAC policy is not what stops this login: the runtime side on this host is (SSSD is not running). Fixing the p</text>
+<text x="18" y="718" fill="#c9d1d9" xml:space="preserve">olicy would not help.</text>
+<text x="18" y="735" fill="#c9d1d9" xml:space="preserve">RESOLUTION</text>
+<text x="18" y="752" fill="#c9d1d9" xml:space="preserve">  Nothing to fix in FreeIPA HBAC policy for this request.</text>
+<text x="18" y="769" fill="#c9d1d9" xml:space="preserve">RISK</text>
+<text x="18" y="786" fill="#c9d1d9" xml:space="preserve">  None from this command: it only reads.</text>
+<text x="18" y="803" fill="#c9d1d9" xml:space="preserve">VERIFY</text>
+<text x="18" y="820" fill="#c9d1d9" xml:space="preserve">  ipa hbactest --user=alice --host=client1.lab.test --service=sshd (FreeIPA&#x27;s own evaluation, read-only)</text>
+<text x="18" y="837" fill="#c9d1d9" xml:space="preserve">  ipa user-status alice (read-only; failed logins and lockout on each server)</text>
+<text x="18" y="854" fill="#c9d1d9" xml:space="preserve">  after a fix on this host: ipa-diagnose client --verify (fresh checks)</text>
+<text x="18" y="871" fill="#c9d1d9" xml:space="preserve">LIMITATIONS</text>
+<text x="18" y="888" fill="#c9d1d9" xml:space="preserve">  Runtime prerequisites were checked on this host with client mode (SSSD, identity lookup, NSS, PAM stack and account ph</text>
+<text x="18" y="905" fill="#c9d1d9" xml:space="preserve">ase); no login is attempted and no credential is tested.</text>
+<text x="18" y="922" fill="#c9d1d9" xml:space="preserve">  (--details lists every limitation, the API calls made and the relationships read)</text>
+<text x="18" y="1001" fill="#6e7681" font-size="11">44 lines, complete; long lines folded at 120 columns, as a 120-column terminal shows them</text>
+</svg>

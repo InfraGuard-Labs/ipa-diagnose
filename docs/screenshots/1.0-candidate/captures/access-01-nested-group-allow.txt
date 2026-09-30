@@ -1,0 +1,36 @@
+ipa-diagnose access: carol -> app01.lab.test via sshd
+  LIVE; asked FreeIPA as admin@LAB.TEST on ipa01.lab.test (API 4.13.4)
+
+FreeIPA HBAC policy authorizes carol to access app01.lab.test through sshd.
+
+  AUTHENTICATION  NOT VERIFIED the IPA account exists and is enabled; no credential was tested
+  AUTHORIZATION   PASS         FreeIPA HBAC policy allows this request (rule: r_nested)
+  RUNTIME ACCESS  NOT VERIFIED not tested; the host has no keytab in FreeIPA, so it may not be enrolled
+                               no login was attempted; the host's SSSD, PAM configuration, network path and keytab were not checked
+
+ROOT CAUSE
+  no blocker found in FreeIPA HBAC policy or in the account attributes read (disabled, principal expiry, preserved). Not checked: whether the password or other credential is valid, and lockout after failed logins.
+WHY
+  Matched rule r_nested (enabled) - user: carol is a nested member of devs (carol -> backend -> devs) | host: app01.lab.test listed directly | service: sshd listed directly
+ALSO NOTED
+  FreeIPA holds no Kerberos key for app01.lab.test: The host entry exists but has no keytab, which usually means it is not (or no longer) enrolled: SSSD on it cannot use FreeIPA, whatever the policy says. Runtime access is not checked by this command.
+CHECKED FOR YOU
+  [ok  ] user carol exists, enabled, no principal expiration set or readable; 2 direct and 1 nested groups
+  [!!  ] host app01.lab.test exists; 0 direct and 0 nested hostgroups; no keytab in IPA
+  [ok  ] HBAC service sshd is defined; in 0 service group(s)
+  [ok  ] FreeIPA evaluated 13 enabled HBAC rule(s): access granted; matched: r_nested
+  [ok  ] rule r_nested: enabled
+  [ok  ] group devs contains backend of this object's groups (read to explain the nesting)
+IMPACT
+  FreeIPA HBAC policy is not what stops this login. If the login still fails, the cause is elsewhere (credentials, lockout, the host's SSSD, PAM, network or keytab), which this command does not test.
+RESOLUTION
+  Nothing to fix in FreeIPA HBAC policy for this request.
+RISK
+  None from this command: it only reads.
+VERIFY
+  ipa hbactest --user=carol --host=app01.lab.test --service=sshd (FreeIPA's own evaluation, read-only)
+  ipa user-status carol (read-only; failed logins and lockout on each server)
+  on app01.lab.test, as root: sssctl user-checks carol -a acct -s sshd (the host's SSSD account check for this service; read-only; runtime evidence this command does not collect)
+LIMITATIONS
+  Runtime access is not tested: no login is attempted, and the host's SSSD (including its offline cache), PAM stack, access_provider setting, network path and keytab are not checked.
+  (--details lists every limitation, the API calls made and the relationships read)

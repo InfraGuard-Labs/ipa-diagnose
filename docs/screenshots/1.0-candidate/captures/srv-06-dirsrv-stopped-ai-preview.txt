@@ -1,0 +1,44 @@
+╭──────────── Exact payload that would be sent to the AI provider (healthcheck.service-not-running-dirsrv) ────────────╮
+│ System prompt:                                                                                                       │
+│ You are explaining a FreeIPA diagnostic result to a system administrator.                                            │
+│                                                                                                                      │
+│ You will be given a diagnosis that was already computed deterministically by                                         │
+│ ipa-diagnose, along with the specific evidence that supports it. Your ONLY                                           │
+│ job is to explain it more clearly in plain language.                                                                 │
+│                                                                                                                      │
+│ Rules you must follow exactly:                                                                                       │
+│ - Do not state or imply any root cause, evidence, confidence level, impact,                                          │
+│   or recommended command that is not already present in the material given                                           │
+│   to you. You are explaining, not diagnosing.                                                                        │
+│ - Do not invent hostnames, error messages, dates, or numbers.                                                        │
+│ - Do not suggest any command that is not already listed in the provided                                              │
+│   actions. Better: do not write any command, program name or code at all -                                           │
+│   ipa-diagnose prints the commands itself, and an explanation that contains                                          │
+│   one is discarded.                                                                                                  │
+│ - If something in the input is unclear, say the diagnosis is unclear rather                                          │
+│   than guessing at what it might mean.                                                                               │
+│ - Keep your explanation under 200 words, plain language, no markdown headers.                                        │
+│                                                                                                                      │
+│ User prompt (built from the diagnosis + selected evidence only):                                                     │
+│ DIAGNOSIS: Required service 'dirsrv' is not running                                                                  │
+│ STATUS: DIAGNOSED                                                                                                    │
+│ CONFIDENCE: HIGH (Direct report from ipa-healthcheck's service status check.)                                        │
+│ WHY (already determined, do not contradict): ipa-healthcheck (ipahealthcheck.meta.services.dirsrv) directly reports: │
+│ dirsrv: not running. This is the check's own statement, not an inference. Why the service is not running is NOT      │
+│ determined by this finding.                                                                                          │
+│ IMPACT (already determined): Functions that depend on this service are unavailable or degraded. Other failures in    │
+│ this report (for example ipa-healthcheck checks that could not connect) may be consequences.                         │
+│ LIMITATIONS: Root cause of the outage is not established by this finding alone.                                      │
+│                                                                                                                      │
+│ SUPPORTING EVIDENCE:                                                                                                 │
+│ - [ERROR] (ipahealthcheck.meta.services.dirsrv) dirsrv: not running  -- relevant because: ipa-healthcheck states     │
+│ this service is not running.                                                                                         │
+│                                                                                                                      │
+│ APPROVED ACTIONS (do not add or modify commands):                                                                    │
+│ - (SAFE) Check why the service is not running before starting it.                                                    │
+│                                                                                                                      │
+│ Explain this to the administrator in plain language, under 200 words.                                                │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+Evidence sent: 1 item(s). Excluded from bundle: 188 item(s) not relevant to this diagnosis.
+No secrets or sensitive fields detected in the selected evidence.
+

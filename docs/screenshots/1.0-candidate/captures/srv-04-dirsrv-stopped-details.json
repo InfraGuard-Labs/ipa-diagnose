@@ -1,0 +1,13 @@
+{
+ "captured_at": "2026-09-30T14:05:08Z",
+ "columns": 120,
+ "command": "ipa-diagnose --details",
+ "commit": "d06c16c03584fef907f0a6975cce80cafb747c48",
+ "container": "ipa-s",
+ "env": [],
+ "exit": 2,
+ "name": "srv-04-dirsrv-stopped-details",
+ "run_id": "36724948194",
+ "scenario": "S3 Directory Server stopped (--details)",
+ "user": "root"
+}

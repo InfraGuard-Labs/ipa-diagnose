@@ -1,0 +1,13 @@
+{
+ "captured_at": "2026-09-30T14:00:06Z",
+ "columns": 120,
+ "command": "ipa-diagnose",
+ "commit": "d06c16c03584fef907f0a6975cce80cafb747c48",
+ "container": "ipa-s",
+ "env": [],
+ "exit": 4,
+ "name": "srv-01-healthy-container-metacheck",
+ "run_id": "36724948194",
+ "scenario": "S0b healthy lab server (container-only MetaCheck warning)",
+ "user": "root"
+}

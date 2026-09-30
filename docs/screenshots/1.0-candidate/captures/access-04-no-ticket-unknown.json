@@ -1,0 +1,15 @@
+{
+ "captured_at": "2026-09-30T14:02:22Z",
+ "columns": 120,
+ "command": "ipa-diagnose access alice app01.lab.test sshd",
+ "commit": "d06c16c03584fef907f0a6975cce80cafb747c48",
+ "container": "ipa-s",
+ "env": [
+  "KRB5CCNAME=FILE:/root/none.ccache"
+ ],
+ "exit": 3,
+ "name": "access-04-no-ticket-unknown",
+ "run_id": "36724948123",
+ "scenario": "A12-no-ticket",
+ "user": "root"
+}

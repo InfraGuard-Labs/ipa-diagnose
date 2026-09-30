@@ -1,0 +1,61 @@
+────────────────────────────────────────────────── FreeIPA Diagnosis ───────────────────────────────────────────────────
+Host: ipa01.lab.test    Generated: 2026-09-30T14:23:54Z
+Overall: CRITICAL
+Evidence: PARTIAL
+  NOT VERIFIED: certmonger - 'getcert list' exited 1:
+
+─────────────────────────────────────────────────── PRIMARY PROBLEM ────────────────────────────────────────────────────
+ROOT CAUSE
+Required service 'certmonger' is not running
+
+WHY
+ipa-healthcheck (ipahealthcheck.meta.services.certmonger) directly reports: certmonger: not running. This is the check's
+own statement, not an inference. Why the service is not running is NOT determined by this finding.
+
+EVIDENCE
+  ✓ ipa-healthcheck states this service is not running.
+
+CHECKED FOR YOU
+Read-only checks ipa-diagnose ran on this host just now (results, not problems):
+  - Privileges: running as root
+  - State of certmonger: certmonger.service: inactive (dead), load state: masked
+  - Recent log of certmonger.service: last log line: certmonger.service: Consumed 30.196s CPU time, 1.1G memory peak.
+
+IMPACT
+Functions that depend on this service are unavailable or degraded. Other failures in this report (for example 
+ipa-healthcheck checks that could not connect) may be consequences.
+
+FIX
+No fix is shown - ipa-diagnose shows a fix only when it could confirm, with fresh read-only checks, that it applies here
+and is safe to suggest.
+  - certmonger.service is masked: someone disabled it on purpose. ipa-diagnose will not suggest unmasking it; find out 
+why it was masked first.
+
+SAFE NEXT STEP
+Check why the service is not running before starting it.
+
+    systemctl status --no-pager -- certmonger; journalctl --no-pager -n 50 -u certmonger
+
+Safety: SAFE — read-only, no state change.
+
+─────────────────────────────────────────────────── RELATED SYMPTOMS ───────────────────────────────────────────────────
+  • One or more ipa-healthcheck checks failed to run  (related to: Required service 'certmonger' is not running)
+  • ipa-healthcheck reports ERROR/CRITICAL findings that no diagnostic rule explains  (related to: Required service 
+'certmonger' is not running)
+
+───────────────────────────────────────── UNDIAGNOSED ipa-healthcheck FINDINGS ─────────────────────────────────────────
+3 finding(s) not explained by any ipa-diagnose rule. That does not mean they are harmless - review them with 
+ipa-healthcheck. No cause is claimed.
+  • [CRITICAL] ipahealthcheck.ipa.certs.CertmongerFIPSTokensCheck [check crashed]: CalledProcessError(Command 
+['/bin/systemctl', 'start', 'certmonger.service'] returned non-zero exit status 1: 'Failed to start certmonger.service: 
+Unit certmonger.service is masked.\n')
+  • [CRITICAL] ipahealthcheck.ipa.files.IPAFileCheck [check crashed]: CalledProcessError(Command ['/bin/systemctl', 
+'start', 'certmonger.service'] returned non-zero exit status 1: 'Failed to start certmonger.service: Unit 
+certmonger.service is masked.\n')
+  • [WARNING] ipahealthcheck.meta.core.MetaCheck: (no message; fields: key, fqdn, fips, acme, ipa_version, 
+ipa_api_version) - meta
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+Diagnostic packs evaluated: directory-server, dns, kerberos, replication, certificates
+Evidence collection issues (1):
+  - certmonger: 'getcert list' exited 1:

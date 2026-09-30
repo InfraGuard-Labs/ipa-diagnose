@@ -44,37 +44,37 @@ and the tool was not told what they were. Commands, commits, runs and limits for
 `systemctl start` for exactly that unit. It does not print `ipactl start`, which stops every IPA service when one of
 them fails to start.
 
-![ipa-diagnose on a server whose Directory Server is stopped: CRITICAL, root cause 'dirsrv is not running', read-only checks, and a printed systemctl start fix with rollback and verify](SCREENSHOT_SERVER_ROOT_CAUSE)
+![ipa-diagnose on a server whose Directory Server is stopped: CRITICAL, root cause 'dirsrv is not running', read-only checks, and a printed systemctl start fix with rollback and verify](docs/screenshots/1.0-candidate/01_server_root_cause_and_fix.svg)
 
 **Verify with fresh evidence.** The printed command was run as shown, then `ipa-diagnose verify` re-collected
 everything:
 
-![ipa-diagnose verify after the printed fix: RESOLVED items and whether the fresh evidence was complete](SCREENSHOT_SERVER_VERIFY)
+![ipa-diagnose verify after the printed fix: RESOLVED items and whether the fresh evidence was complete](docs/screenshots/1.0-candidate/02_server_verify_resolved.svg)
 
 **A client and SSSD.** The IPA server's ports are blocked from the client. The unreachable server is the cause, and
 SSSD being offline is shown as a consequence of it, not as a second problem:
 
-![ipa-diagnose client: the IPA server is unreachable (PRIMARY) and SSSD offline is RELATED to it, with what was checked and ruled out](SCREENSHOT_CLIENT)
+![ipa-diagnose client: the IPA server is unreachable (PRIMARY) and SSSD offline is RELATED to it, with what was checked and ruled out](docs/screenshots/1.0-candidate/03_client_server_unreachable.svg)
 
 **Policy vs runtime.** FreeIPA's HBAC policy allows alice, but SSSD is stopped on the host. AUTHORIZATION stays
 FreeIPA's decision, RUNTIME ACCESS fails, and no login is attempted:
 
-![ipa-diagnose access --runtime: AUTHORIZATION PASS from FreeIPA hbactest, RUNTIME ACCESS FAIL because SSSD is not running on the host](SCREENSHOT_ACCESS_RUNTIME)
+![ipa-diagnose access --runtime: AUTHORIZATION PASS from FreeIPA hbactest, RUNTIME ACCESS FAIL because SSSD is not running on the host](docs/screenshots/1.0-candidate/04_access_policy_vs_runtime.svg)
 
 **Replication: a cause chain across servers.** ipa02's Directory Server is stopped, seen from ipa01. The chain stops at
 what ipa01 can prove, and ipa-diagnose prints the command to run on ipa02 instead of changing anything there:
 
-![ipa-diagnose replication on ipa01: per-suffix, per-direction states, a cause chain ending at 'ipa02 refuses connections on 389', and a handoff to ipa02](SCREENSHOT_REPLICATION_CHAIN)
+![ipa-diagnose replication on ipa01: per-suffix, per-direction states, a cause chain ending at 'ipa02 refuses connections on 389', and a handoff to ipa02](docs/screenshots/1.0-candidate/05_replication_cause_chain_handoff.svg)
 
 **A complete fix, when it is proven.** This server's own KDC is stopped. Every step shows its host, its expected
 result, what to do if it fails, backup, rollback and verification tied to the incident:
 
-![ipa-diagnose replication on ipa01 with its KDC stopped: the NO-GOOGLE fix block for systemctl start krb5kdc.service](SCREENSHOT_REPLICATION_FIX)
+![ipa-diagnose replication on ipa01 with its KDC stopped: the NO-GOOGLE fix block for systemctl start krb5kdc.service](docs/screenshots/1.0-candidate/06_replication_complete_fix.svg)
 
 **No guessing.** With `ipa-healthcheck` unavailable there is no base evidence, so the answer is UNKNOWN (exit 3),
 never healthy:
 
-![ipa-diagnose with ipa-healthcheck unavailable: overall UNKNOWN, what could not be collected, and no cause claimed](SCREENSHOT_UNKNOWN)
+![ipa-diagnose with ipa-healthcheck unavailable: overall UNKNOWN, what could not be collected, and no cause claimed](docs/screenshots/1.0-candidate/07_server_unknown_no_guessing.svg)
 
 ## Quick start
 
@@ -220,7 +220,7 @@ docker compose build dev
 docker compose run --rm test          # the full test suite
 ```
 
-TEST_COUNT_LINE Contributions: [docs/contributing.md](docs/contributing.md). Every
+About 2,500 tests (the count is in the freeze audit): unit, per-scenario fixtures with pinned outcomes, adversarial suites and product-wide sweeps. Contributions: [docs/contributing.md](docs/contributing.md). Every
 new rule needs a fixture with an expected outcome, and "I'm not sure" (`UNKNOWN`) is always an acceptable answer.
 
 ## License

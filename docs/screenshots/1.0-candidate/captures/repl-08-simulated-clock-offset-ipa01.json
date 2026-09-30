@@ -1,0 +1,17 @@
+{
+ "captured_at": "2026-09-30T14:27:19Z",
+ "columns": 120,
+ "command": "ipa-diagnose replication",
+ "commit": "d06c16c03584fef907f0a6975cce80cafb747c48",
+ "container": "ipa01",
+ "env": [
+  "KRB5CCNAME=FILE:/root/admin.ccache",
+  "FAKETIME=+15m",
+  "LD_PRELOAD=/usr/lib64/libfaketime.so.1"
+ ],
+ "exit": 1,
+ "name": "repl-08-simulated-clock-offset-ipa01",
+ "run_id": "36724948206",
+ "scenario": "R12 LIVE SIMULATED: only ipa-diagnose's own process clock +15 min (libfaketime); servers untouched",
+ "user": "root"
+}

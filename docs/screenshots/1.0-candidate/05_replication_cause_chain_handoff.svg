@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1044" height="909" viewBox="0 0 1044 909" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" font-size="13.5">
+<rect width="1044" height="909" rx="8" fill="#0d1117"/>
+<rect width="1044" height="34" rx="8" fill="#161b22"/>
+<circle cx="18" cy="17" r="5" fill="#ff5f56"/><circle cx="36" cy="17" r="5" fill="#ffbd2e"/><circle cx="54" cy="17" r="5" fill="#27c93f"/>
+<text x="76" y="22" fill="#8b949e">$ ipa-diagnose replication   (exit 1)</text>
+<rect x="18" y="44" width="1008" height="22" rx="4" fill="#12261e"/>
+<text x="26" y="60" fill="#3fb950" font-weight="bold">REAL LIVE CAPTURE - FreeIPA 4.13.4 / Fedora 43 lab - commit d06c16c, run 36724948206</text>
+<text x="18" y="89" fill="#c9d1d9" xml:space="preserve">ipa-diagnose replication: ipa01.lab.test (realm LAB.TEST)</text>
+<text x="18" y="106" fill="#c9d1d9" xml:space="preserve">  LIVE; FreeIPA 4.13.4, 389-ds 3.1.5</text>
+<text x="18" y="123" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="140" fill="#c9d1d9" xml:space="preserve">ipa01.lab.test: ipa02.lab.test&#x27;s Directory Server does not accept connections.</text>
+<text x="18" y="157" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="174" fill="#c9d1d9" xml:space="preserve">REPLICATION (per suffix and direction; observed from ipa01.lab.test)</text>
+<text x="18" y="191" fill="#c9d1d9" xml:space="preserve">  ca      ipa01.lab.test -&gt; ipa02.lab.test  OK  [LDAP/SASL/GSSAPI, port 389] last session ended 2026-09-30T14:08:15Z</text>
+<text x="18" y="208" fill="#c9d1d9" xml:space="preserve">  ca      ipa02.lab.test -&gt; ipa01.lab.test  NOT OBSERVED  (not readable from here; see HANDOFF)</text>
+<text x="18" y="225" fill="#c9d1d9" xml:space="preserve">  domain  ipa01.lab.test -&gt; ipa02.lab.test  FAILING (TRANSPORT)  [LDAP/SASL/GSSAPI, port 389] last session ended 2026-09</text>
+<text x="18" y="242" fill="#c9d1d9" xml:space="preserve">-30T14:08:37Z</text>
+<text x="18" y="259" fill="#c9d1d9" xml:space="preserve">  domain  ipa02.lab.test -&gt; ipa01.lab.test  NOT OBSERVED  (not readable from here; see HANDOFF)</text>
+<text x="18" y="276" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="293" fill="#c9d1d9" xml:space="preserve">ROOT CAUSE</text>
+<text x="18" y="310" fill="#c9d1d9" xml:space="preserve">  [PRIMARY] ipa02.lab.test&#x27;s Directory Server does not accept connections - confidence HIGH</text>
+<text x="18" y="327" fill="#c9d1d9" xml:space="preserve">      From ipa01.lab.test: TCP 389 on ipa02.lab.test is refused while 443 answers (TCP ipa02.lab.test:389: refused; TCP </text>
+<text x="18" y="344" fill="#c9d1d9" xml:space="preserve">ipa02.lab.test:443: open); an anonymous LDAP read gets no answer. The agreement&#x27;s own status still shows its last sessio</text>
+<text x="18" y="361" fill="#c9d1d9" xml:space="preserve">n as successful (ended 2026-09-30T14:08:15Z); it has not recorded this yet.</text>
+<text x="18" y="378" fill="#c9d1d9" xml:space="preserve">      Impact: No replication to ipa02.lab.test (from any supplier that sees the same); LDAP clients of ipa02.lab.test fa</text>
+<text x="18" y="395" fill="#c9d1d9" xml:space="preserve">il over or fail.</text>
+<text x="18" y="412" fill="#c9d1d9" xml:space="preserve">      Chain: ipa02.lab.test is up (443 answers) but refuses connections on port 389: its Directory Server is not accepti</text>
+<text x="18" y="429" fill="#c9d1d9" xml:space="preserve">ng connections</text>
+<text x="18" y="446" fill="#c9d1d9" xml:space="preserve">      Stops here: whether the Directory Server on ipa02.lab.test is stopped, has failed or listens elsewhere can only be</text>
+<text x="18" y="463" fill="#c9d1d9" xml:space="preserve"> seen on ipa02.lab.test</text>
+<text x="18" y="480" fill="#c9d1d9" xml:space="preserve">      Chain: ipa01.lab.test -&gt; ipa02.lab.test (domain suffix) fails: the supplier could not connect to the consumer&#x27;s Di</text>
+<text x="18" y="497" fill="#c9d1d9" xml:space="preserve">rectory Server  -&gt;  ipa02.lab.test is up (443 answers) but refuses connections on port 389: its Directory Server is not </text>
+<text x="18" y="514" fill="#c9d1d9" xml:space="preserve">accepting connections</text>
+<text x="18" y="531" fill="#c9d1d9" xml:space="preserve">      Stops here: whether the Directory Server on ipa02.lab.test is stopped, has failed or listens elsewhere can only be</text>
+<text x="18" y="548" fill="#c9d1d9" xml:space="preserve"> seen on ipa02.lab.test</text>
+<text x="18" y="565" fill="#c9d1d9" xml:space="preserve">  [RELATED] domain replication ipa01.lab.test -&gt; ipa02.lab.test fails (caused by: ipa02.lab.test&#x27;s Directory Server does</text>
+<text x="18" y="582" fill="#c9d1d9" xml:space="preserve"> not accept connections) - confidence HIGH</text>
+<text x="18" y="599" fill="#c9d1d9" xml:space="preserve">      the supplier could not connect to the consumer&#x27;s Directory Server. Last session status: Error (-1) Problem connect</text>
+<text x="18" y="616" fill="#c9d1d9" xml:space="preserve">ing to replica - LDAP error: Can&#x27;t contact LDAP server (connection error) (ended 2026-09-30T14:08:37Z).</text>
+<text x="18" y="633" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="650" fill="#c9d1d9" xml:space="preserve">HANDOFF (the remaining evidence is on another server; nothing was changed)</text>
+<text x="18" y="667" fill="#c9d1d9" xml:space="preserve">  On ipa02.lab.test run:</text>
+<text x="18" y="684" fill="#c9d1d9" xml:space="preserve">    sudo ipa-diagnose replication --peer ipa01.lab.test</text>
+<text x="18" y="701" fill="#c9d1d9" xml:space="preserve">  Why: ipa02.lab.test&#x27;s Directory Server does not accept connections. The remaining evidence is local to ipa02.lab.test.</text>
+<text x="18" y="718" fill="#c9d1d9" xml:space="preserve"> Nothing was changed on ipa01.lab.test or ipa02.lab.test; ipa-diagnose never changes another server.</text>
+<text x="18" y="735" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="752" fill="#c9d1d9" xml:space="preserve">RESOLUTION (only for causes on this server)</text>
+<text x="18" y="769" fill="#c9d1d9" xml:space="preserve">  No fix is printed: the causes found are not on this server, or no fix is established for them (see HANDOFF and the nex</text>
+<text x="18" y="786" fill="#c9d1d9" xml:space="preserve">t read-only steps).</text>
+<text x="18" y="803" fill="#c9d1d9" xml:space="preserve">NEXT READ-ONLY STEPS</text>
+<text x="18" y="820" fill="#c9d1d9" xml:space="preserve">  on ipa02.lab.test: systemctl status dirsrv@LAB-TEST; ipactl status (read-only)</text>
+<text x="18" y="899" fill="#6e7681" font-size="11">lines 1-31 of 44 of the captured output; long lines folded at 120 columns, as a 120-column terminal shows them</text>
+</svg>

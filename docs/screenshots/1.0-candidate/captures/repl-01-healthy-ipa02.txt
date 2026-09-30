@@ -1,0 +1,28 @@
+ipa-diagnose replication: ipa02.lab.test (realm LAB.TEST)
+  LIVE; FreeIPA 4.13.4, 389-ds 3.1.5
+
+ipa02.lab.test: every investigated replication agreement is green in both directions.
+
+REPLICATION (per suffix and direction; observed from ipa02.lab.test)
+  ca      ipa02.lab.test -> ipa01.lab.test  OK  [LDAP/SASL/GSSAPI, port 389] last session ended 2026-09-30T14:08:15Z
+  ca      ipa01.lab.test -> ipa02.lab.test  OK  (read from ipa01.lab.test; its last session ended 2026-09-30T14:08:15Z)
+  domain  ipa02.lab.test -> ipa01.lab.test  OK  [LDAP/SASL/GSSAPI, port 389] last session ended 2026-09-30T14:08:37Z
+  domain  ipa01.lab.test -> ipa02.lab.test  OK  (read from ipa01.lab.test; its last session ended 2026-09-30T14:08:37Z)
+  domain  ipa02.lab.test -> ipa03.lab.test  OK  [LDAP/SASL/GSSAPI, port 389] last session ended 2026-09-30T14:08:37Z
+  domain  ipa03.lab.test -> ipa02.lab.test  OK  (read from ipa03.lab.test; its last session ended 2026-09-30T14:08:39Z)
+
+ROOT CAUSE
+  none found in what was checked
+
+RESOLUTION (only for causes on this server)
+  No fix is printed: nothing to fix.
+TOPOLOGY (context)
+  servers: ipa01.lab.test, ipa02.lab.test, ipa03.lab.test
+  ca: 1 segment(s)
+  domain: 2 segment(s); articulation point(s): ipa02.lab.test
+  only one server holds: DNS (ipa01.lab.test)
+  CA renewal master: ipa01.lab.test
+LIMITATIONS
+  Replication is directional and per suffix: this server sees its OWN outbound agreements. The reverse direction is only reported when it could be read from the peer (read-only, with your own Kerberos ticket); otherwise it is NOT VERIFIED and a handoff to the peer is printed.
+  Nothing is changed on this server or any other; no command runs on another server; fixes are printed only for causes on this server, and only when every safety gate passes.
+  planner: 22 of 30 checks run, 3.673 s; stop: every relevant check in the plan was visited

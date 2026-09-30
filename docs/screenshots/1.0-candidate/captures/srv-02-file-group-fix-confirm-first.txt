@@ -1,0 +1,78 @@
+────────────────────────────────────────────────── FreeIPA Diagnosis ───────────────────────────────────────────────────
+Host: ipa01.lab.test    Generated: 2026-09-30T14:01:15Z
+Overall: DEGRADED
+
+─────────────────────────────────────────────────── PRIMARY PROBLEM ────────────────────────────────────────────────────
+ROOT CAUSE
+File ownership/mode mismatch on an IPA-managed security-critical file
+
+WHY
+ipa-healthcheck's ipahealthcheck.ipa.files.IPAFileCheck directly reports an incorrect owner, group, or mode on a 
+security-critical file: Group of /etc/ipa/ca.crt is apache and should be root. This finding is itself direct evidence of
+a plain Unix ownership/permissions problem, independent of whether SELinux is also involved.
+
+EVIDENCE
+  ✓ ipahealthcheck.ipa.files.IPAFileCheck reports a file ownership/mode problem: Group of /etc/ipa/ca.crt is apache and 
+should be root
+
+CHECKED FOR YOU
+Read-only checks ipa-diagnose ran on this host just now (results, not problems):
+  - Privileges: running as root
+  - Current group of /etc/ipa/ca.crt: /etc/ipa/ca.crt: mode 0644, owner root, group apache
+  - Group root exists: group root: exists
+
+IMPACT
+dirsrv (or the RA agent / Tomcat/PKI NSS DB it depends on) can fail to start or fail to read its own certificate 
+material until ownership/mode is corrected.
+
+FIX
+Set the owner, group or mode that ipa-healthcheck expects - 1 step on this server, run by you (ipa-diagnose never runs a
+fix itself).
+Verified in a live lab on FreeIPA 4.13.3 / fedora-43 only - not yet on this FreeIPA version/OS. Check each step before 
+running it.
+  First confirm (read-only) that nothing changed since the checks above; if the output differs, do not run the fix - run
+ipa-diagnose again:
+       readlink -f /etc/ipa/ca.crt   expected: /data/etc/ipa/ca.crt
+       stat -c %a:%U:%G:%h /etc/ipa/ca.crt   expected: 644:root:apache:1
+  1. Set the group of /etc/ipa/ca.crt to root
+       chgrp -h root /etc/ipa/ca.crt
+
+PREREQUISITES
+  ✓ ipa-diagnose is running as root (changing these files needs root) (checked)
+
+WHAT THIS CHANGES
+  - /etc/ipa/ca.crt: group apache -> root. Nothing else about the file changes.
+  Why it matters: A file that is too permissive can expose secrets in it to local users; one with the wrong owner or 
+group can stop the IPA service that needs it from reading it.
+
+RISK
+LOW - a small, reversible change
+
+ROLLBACK
+  - Put the previous group of /etc/ipa/ca.crt back (this restores the state ipa-healthcheck flagged)
+       chgrp -h apache /etc/ipa/ca.crt
+
+VERIFY
+After the fix, run (on the server):
+
+    sudo ipa-diagnose verify
+
+It re-runs the diagnosis and checks, with fresh evidence:
+  - /etc/ipa/ca.crt has group root
+
+LIMITATIONS
+This sets only the owner, group or mode ipa-healthcheck reports; it does not change SELinux labels. If a service still 
+cannot read the file afterwards, check 'ls -Z' and 'ausearch -m avc'. When ipa-healthcheck accepts more than one value, 
+the change would add permissions, or the owner is not an IPA service account, no fix is chosen for you. The checks 
+describe the file as it was when ipa-diagnose ran: run the commands straight away, and run ipa-diagnose again if 
+anything may have changed since (chown -h and chgrp -h do not follow a link at the file itself, but directories on the 
+way are followed).
+
+───────────────────────────────────────── UNDIAGNOSED ipa-healthcheck FINDINGS ─────────────────────────────────────────
+1 finding(s) not explained by any ipa-diagnose rule. That does not mean they are harmless - review them with 
+ipa-healthcheck. No cause is claimed.
+  • [WARNING] ipahealthcheck.meta.core.MetaCheck: (no message; fields: key, fqdn, fips, acme, ipa_version, 
+ipa_api_version) - meta
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+Diagnostic packs evaluated: directory-server, dns, kerberos, replication, certificates

@@ -1,0 +1,63 @@
+ipa-diagnose replication: ipa02.lab.test (realm LAB.TEST)
+  LIVE; FreeIPA 4.13.4, 389-ds 3.1.5
+
+ipa02.lab.test: 2 independent problems: This server's KDC (krb5kdc) is not running; ipa03.lab.test's Directory Server does not accept connections.
+
+REPLICATION (per suffix and direction; observed from ipa02.lab.test)
+  ca      ipa02.lab.test -> ipa01.lab.test  OK  [LDAP/SASL/GSSAPI, port 389] last session ended 2026-09-30T14:25:27Z
+  ca      ipa01.lab.test -> ipa02.lab.test  OK  (read from ipa01.lab.test; its last session ended 2026-09-30T14:25:28Z)
+  domain  ipa02.lab.test -> ipa01.lab.test  OK  [LDAP/SASL/GSSAPI, port 389] last session ended 2026-09-30T14:25:50Z
+  domain  ipa01.lab.test -> ipa02.lab.test  OK  (read from ipa01.lab.test; its last session ended 2026-09-30T14:25:50Z)
+  domain  ipa02.lab.test -> ipa03.lab.test  FAILING (TRANSPORT)  [LDAP/SASL/GSSAPI, port 389] last session ended 2026-09-30T14:25:30Z
+  domain  ipa03.lab.test -> ipa02.lab.test  NOT OBSERVED  (not readable from here; see HANDOFF)
+
+ROOT CAUSE
+  [PRIMARY] This server's KDC (krb5kdc) is not running - confidence HIGH
+      krb5kdc.service is inactive.
+      Impact: No Kerberos ticket is issued by this server. Its GSSAPI replication agreements fail once the Directory Server's current tickets expire (if this server's Kerberos configuration names only itself); clients and other servers that use this KDC fail over to others or fail.
+      Chain: this server's KDC (krb5kdc) is not running
+  [INDEPENDENT] ipa03.lab.test's Directory Server does not accept connections - confidence HIGH
+      From ipa02.lab.test: TCP 389 on ipa03.lab.test is refused while 443 answers (TCP ipa03.lab.test:389: refused; TCP ipa03.lab.test:443: open); an anonymous LDAP read gets no answer.
+      Impact: No replication to ipa03.lab.test (from any supplier that sees the same); LDAP clients of ipa03.lab.test fail over or fail.
+      Chain: ipa02.lab.test -> ipa03.lab.test (domain suffix) fails: the supplier could not connect to the consumer's Directory Server  ->  ipa03.lab.test is up (443 answers) but refuses connections on port 389: its Directory Server is not accepting connections
+      Stops here: whether the Directory Server on ipa03.lab.test is stopped, has failed or listens elsewhere can only be seen on ipa03.lab.test
+  [RELATED] domain replication ipa02.lab.test -> ipa03.lab.test fails (caused by: ipa03.lab.test's Directory Server does not accept connections) - confidence HIGH
+      the supplier could not connect to the consumer's Directory Server. Last session status: Error (-1) Problem connecting to replica - LDAP error: Can't contact LDAP server (connection error) (ended 2026-09-30T14:25:30Z).
+
+HANDOFF (the remaining evidence is on another server; nothing was changed)
+  On ipa03.lab.test run:
+    sudo ipa-diagnose replication --peer ipa02.lab.test
+  Why: ipa03.lab.test's Directory Server does not accept connections. The remaining evidence is local to ipa03.lab.test. Nothing was changed on ipa02.lab.test or ipa03.lab.test; ipa-diagnose never changes another server.
+
+RESOLUTION (only for causes on this server)
+  For 'This server's KDC (krb5kdc) is not running': Start the stopped service (risk MEDIUM; ipa-diagnose never runs it)
+    NO-GOOGLE: every step, its host, its expected result, what to do if it fails, backup, rollback and verification are below, and this procedure was verified live on this FreeIPA version and OS.
+    ✓ ipa-diagnose is running as root (starting a system service needs root)
+    1. On ipa02.lab.test: Start only krb5kdc.service; no other service is started or stopped
+         systemctl start krb5kdc.service
+       Expected: the command returns without an error and krb5kdc.service is active. If it fails, it stays stopped and systemctl status shows why
+    If a step fails: If 'systemctl start' fails, the unit stays stopped and nothing else changed: read 'systemctl status krb5kdc.service' and 'journalctl -u krb5kdc.service -n 50' (read-only) for the reason, fix that cause, and run ipa-diagnose replication again. Do not use 'ipactl start' instead: it stops every IPA service when one of them fails to start.
+    What changes: krb5kdc.service goes from inactive to running. No configuration, data or other service is changed.
+    Backup: no backup is needed: the procedure starts a service; no file, configuration or directory data is changed
+    Rollback: Stop it again (back to the state it was in)  ->  systemctl stop krb5kdc.service
+    Note: This starts the one stopped service; it does not establish why it stopped. If it stopped because of a failure (see the last result and log line above), the same cause can stop it again. ipactl start is deliberately not used: if any IPA service fails to start, ipactl stops all IPA services.
+    Verify (tied to this incident):
+      - krb5kdc.service is active
+      - This server's KDC (krb5kdc) is not running: no longer found by a fresh ipa-diagnose replication run
+      run: sudo ipa-diagnose replication --verify
+NEXT READ-ONLY STEPS
+  systemctl status krb5kdc (read-only)
+  journalctl -u krb5kdc -n 50 (read-only)
+  on ipa03.lab.test: systemctl status dirsrv@LAB-TEST; ipactl status (read-only)
+NOT VERIFIED
+  - reverse direction [domain:ipa03.lab.test]: not observed from this server (blocked: needs 'Peer Directory Server answers (root DSE)' to pass first (it was FAIL)); to read it from here, run 'kinit admin' in the same (root) session and run again (sudo does not pass your own ticket on), or run ipa-diagnose replication on the peer
+TOPOLOGY (context)
+  servers: ipa01.lab.test, ipa02.lab.test, ipa03.lab.test
+  ca: 1 segment(s)
+  domain: 2 segment(s); articulation point(s): ipa02.lab.test
+  only one server holds: DNS (ipa01.lab.test)
+  CA renewal master: ipa01.lab.test
+LIMITATIONS
+  Replication is directional and per suffix: this server sees its OWN outbound agreements. The reverse direction is only reported when it could be read from the peer (read-only, with your own Kerberos ticket); otherwise it is NOT VERIFIED and a handoff to the peer is printed.
+  Nothing is changed on this server or any other; no command runs on another server; fixes are printed only for causes on this server, and only when every safety gate passes.
+  planner: 25 of 30 checks run, 3.43 s; stop: every relevant check in the plan was visited

@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1044" height="1317" viewBox="0 0 1044 1317" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" font-size="13.5">
+<rect width="1044" height="1317" rx="8" fill="#0d1117"/>
+<rect width="1044" height="34" rx="8" fill="#161b22"/>
+<circle cx="18" cy="17" r="5" fill="#ff5f56"/><circle cx="36" cy="17" r="5" fill="#ffbd2e"/><circle cx="54" cy="17" r="5" fill="#27c93f"/>
+<text x="76" y="22" fill="#8b949e">$ ipa-diagnose --json   (exit 2)</text>
+<rect x="18" y="44" width="1008" height="22" rx="4" fill="#12261e"/>
+<text x="26" y="60" fill="#3fb950" font-weight="bold">REAL LIVE CAPTURE - FreeIPA 4.13.4 / Fedora 43 lab - commit d06c16c, run 36724948194</text>
+<text x="18" y="89" fill="#c9d1d9" xml:space="preserve">{</text>
+<text x="18" y="106" fill="#c9d1d9" xml:space="preserve">  &quot;generated_at&quot;: &quot;2026-09-30T14:05:21Z&quot;,</text>
+<text x="18" y="123" fill="#c9d1d9" xml:space="preserve">  &quot;hostname&quot;: &quot;ipa01.lab.test&quot;,</text>
+<text x="18" y="140" fill="#ff7b72" xml:space="preserve">  &quot;overall_status&quot;: &quot;CRITICAL&quot;,</text>
+<text x="18" y="157" fill="#c9d1d9" xml:space="preserve">  &quot;packs_evaluated&quot;: [</text>
+<text x="18" y="174" fill="#c9d1d9" xml:space="preserve">    &quot;directory-server&quot;,</text>
+<text x="18" y="191" fill="#c9d1d9" xml:space="preserve">    &quot;dns&quot;,</text>
+<text x="18" y="208" fill="#c9d1d9" xml:space="preserve">    &quot;kerberos&quot;,</text>
+<text x="18" y="225" fill="#c9d1d9" xml:space="preserve">    &quot;replication&quot;,</text>
+<text x="18" y="242" fill="#c9d1d9" xml:space="preserve">    &quot;certificates&quot;</text>
+<text x="18" y="259" fill="#c9d1d9" xml:space="preserve">  ],</text>
+<text x="18" y="276" fill="#c9d1d9" xml:space="preserve">  &quot;collection_errors&quot;: [</text>
+<text x="18" y="293" fill="#c9d1d9" xml:space="preserve">    &quot;ipa-healthcheck-coverage: ipa-healthcheck reported no ipahealthcheck.ds.* checks; a full run always does, so health</text>
+<text x="18" y="310" fill="#c9d1d9" xml:space="preserve"> cannot be verified from this output&quot;,</text>
+<text x="18" y="327" fill="#c9d1d9" xml:space="preserve">    &quot;replication_agreements: ipa-replica-manage list -v ipa01.lab.test exited 1: ; ipa-replica-manage list-ruv exited 1:</text>
+<text x="18" y="344" fill="#c9d1d9" xml:space="preserve"> ; read-only LDAPI fallback unavailable: ldapsearch exited 255: ldap_sasl_interactive_bind: Can&#x27;t contact LDAP server (-</text>
+<text x="18" y="361" fill="#c9d1d9" xml:space="preserve">1); ldapsearch exited 255 (CA suffix): ldap_sasl_interactive_bind: Can&#x27;t contact LDAP...&quot;</text>
+<text x="18" y="378" fill="#c9d1d9" xml:space="preserve">  ],</text>
+<text x="18" y="395" fill="#c9d1d9" xml:space="preserve">  &quot;unclaimed_warnings&quot;: 1,</text>
+<text x="18" y="412" fill="#c9d1d9" xml:space="preserve">  &quot;has_undiagnosed_findings&quot;: true,</text>
+<text x="18" y="429" fill="#c9d1d9" xml:space="preserve">  &quot;undiagnosed_count&quot;: 1,</text>
+<text x="18" y="446" fill="#c9d1d9" xml:space="preserve">  &quot;undiagnosed_findings&quot;: [</text>
+<text x="18" y="463" fill="#c9d1d9" xml:space="preserve">    {</text>
+<text x="18" y="480" fill="#c9d1d9" xml:space="preserve">      &quot;source&quot;: &quot;ipahealthcheck.meta.core&quot;,</text>
+<text x="18" y="497" fill="#c9d1d9" xml:space="preserve">      &quot;check&quot;: &quot;MetaCheck&quot;,</text>
+<text x="18" y="514" fill="#c9d1d9" xml:space="preserve">      &quot;severity&quot;: &quot;WARNING&quot;,</text>
+<text x="18" y="531" fill="#c9d1d9" xml:space="preserve">      &quot;message&quot;: &quot;(no message; fields: key, fqdn, fips, acme, ipa_version, ipa_api_version)&quot;,</text>
+<text x="18" y="548" fill="#c9d1d9" xml:space="preserve">      &quot;key&quot;: &quot;meta&quot;,</text>
+<text x="18" y="565" fill="#c9d1d9" xml:space="preserve">      &quot;reason&quot;: &quot;ipa-diagnose has no rule that explains this finding; it may or may not matter.&quot;,</text>
+<text x="18" y="582" fill="#c9d1d9" xml:space="preserve">      &quot;check_crashed&quot;: false,</text>
+<text x="18" y="599" fill="#c9d1d9" xml:space="preserve">      &quot;check_known_since_ipa_healthcheck&quot;: &quot;0.2&quot;,</text>
+<text x="18" y="616" fill="#c9d1d9" xml:space="preserve">      &quot;ipa_healthcheck_version&quot;: &quot;0.19-2.fc43&quot;</text>
+<text x="18" y="633" fill="#c9d1d9" xml:space="preserve">    }</text>
+<text x="18" y="650" fill="#c9d1d9" xml:space="preserve">  ],</text>
+<text x="18" y="667" fill="#c9d1d9" xml:space="preserve">  &quot;fully_verified&quot;: false,</text>
+<text x="18" y="684" fill="#c9d1d9" xml:space="preserve">  &quot;evidence_completeness&quot;: {</text>
+<text x="18" y="701" fill="#d29922" xml:space="preserve">    &quot;level&quot;: &quot;partial&quot;,</text>
+<text x="18" y="718" fill="#c9d1d9" xml:space="preserve">    &quot;healthcheck_collected&quot;: true,</text>
+<text x="18" y="735" fill="#c9d1d9" xml:space="preserve">    &quot;ruv_state&quot;: &quot;NOT_VERIFIED&quot;,</text>
+<text x="18" y="752" fill="#c9d1d9" xml:space="preserve">    &quot;ruv_reason&quot;: &quot;ipa-replica-manage list -v ipa01.lab.test exited 1: ; ipa-replica-manage list-ruv exited 1: ; read-on</text>
+<text x="18" y="769" fill="#c9d1d9" xml:space="preserve">ly LDAPI fallback unavailable: ldapsearch exited 255: ldap_sasl_interactive_bind: Can&#x27;t contact LDAP server (-1); ldapse</text>
+<text x="18" y="786" fill="#c9d1d9" xml:space="preserve">arch exited 255 (CA suffix): ldap_sasl_interactive_bind: Can&#x27;t contact LDAP...&quot;,</text>
+<text x="18" y="803" fill="#c9d1d9" xml:space="preserve">    &quot;unverified&quot;: [</text>
+<text x="18" y="820" fill="#c9d1d9" xml:space="preserve">      {</text>
+<text x="18" y="837" fill="#c9d1d9" xml:space="preserve">        &quot;capability&quot;: &quot;ipa-healthcheck coverage (Directory Server and IPA checks)&quot;,</text>
+<text x="18" y="854" fill="#c9d1d9" xml:space="preserve">        &quot;collector&quot;: &quot;ipa-healthcheck-coverage&quot;,</text>
+<text x="18" y="871" fill="#c9d1d9" xml:space="preserve">        &quot;reason&quot;: &quot;ipa-healthcheck reported no ipahealthcheck.ds.* checks; a full run always does, so health cannot be v</text>
+<text x="18" y="888" fill="#c9d1d9" xml:space="preserve">erified from this output&quot;,</text>
+<text x="18" y="905" fill="#c9d1d9" xml:space="preserve">        &quot;permission_related&quot;: false,</text>
+<text x="18" y="922" fill="#c9d1d9" xml:space="preserve">        &quot;hint&quot;: &quot;&quot;</text>
+<text x="18" y="939" fill="#c9d1d9" xml:space="preserve">      },</text>
+<text x="18" y="956" fill="#c9d1d9" xml:space="preserve">      {</text>
+<text x="18" y="973" fill="#c9d1d9" xml:space="preserve">        &quot;capability&quot;: &quot;Replication agreements / RUV&quot;,</text>
+<text x="18" y="990" fill="#c9d1d9" xml:space="preserve">        &quot;collector&quot;: &quot;replication_agreements&quot;,</text>
+<text x="18" y="1007" fill="#c9d1d9" xml:space="preserve">        &quot;reason&quot;: &quot;ipa-replica-manage list -v ipa01.lab.test exited 1: ; ipa-replica-manage list-ruv exited 1: ; read-on</text>
+<text x="18" y="1024" fill="#c9d1d9" xml:space="preserve">ly LDAPI fallback unavailable: ldapsearch exited 255: ldap_sasl_interactive_bind: Can&#x27;t contact LDAP server (-1); ldapse</text>
+<text x="18" y="1041" fill="#c9d1d9" xml:space="preserve">arch exited 255 (CA suffix): ldap_sasl_interactive_bind: Can&#x27;t contact LDAP...&quot;,</text>
+<text x="18" y="1058" fill="#c9d1d9" xml:space="preserve">        &quot;permission_related&quot;: false,</text>
+<text x="18" y="1075" fill="#c9d1d9" xml:space="preserve">        &quot;hint&quot;: &quot;&quot;</text>
+<text x="18" y="1092" fill="#c9d1d9" xml:space="preserve">      }</text>
+<text x="18" y="1109" fill="#c9d1d9" xml:space="preserve">    ]</text>
+<text x="18" y="1126" fill="#c9d1d9" xml:space="preserve">  },</text>
+<text x="18" y="1143" fill="#c9d1d9" xml:space="preserve">  &quot;replay_source&quot;: null,</text>
+<text x="18" y="1160" fill="#c9d1d9" xml:space="preserve">  &quot;environment&quot;: {</text>
+<text x="18" y="1177" fill="#c9d1d9" xml:space="preserve">    &quot;distro&quot;: &quot;fedora&quot;,</text>
+<text x="18" y="1194" fill="#c9d1d9" xml:space="preserve">    &quot;distro_version&quot;: &quot;43&quot;,</text>
+<text x="18" y="1211" fill="#c9d1d9" xml:space="preserve">    &quot;python_version&quot;: &quot;3.14.7&quot;,</text>
+<text x="18" y="1228" fill="#c9d1d9" xml:space="preserve">    &quot;freeipa_version&quot;: &quot;4.13.4-2.fc43&quot;,</text>
+<text x="18" y="1307" fill="#6e7681" font-size="11">lines 1-60 of 274 of the captured output; long lines folded at 120 columns, as a 120-column terminal shows them</text>
+</svg>

@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1044" height="1198" viewBox="0 0 1044 1198" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" font-size="13.5">
+<rect width="1044" height="1198" rx="8" fill="#0d1117"/>
+<rect width="1044" height="34" rx="8" fill="#161b22"/>
+<circle cx="18" cy="17" r="5" fill="#ff5f56"/><circle cx="36" cy="17" r="5" fill="#ffbd2e"/><circle cx="54" cy="17" r="5" fill="#27c93f"/>
+<text x="76" y="22" fill="#8b949e">$ ipa-diagnose replication   (exit 1)</text>
+<rect x="18" y="44" width="1008" height="22" rx="4" fill="#12261e"/>
+<text x="26" y="60" fill="#3fb950" font-weight="bold">REAL LIVE CAPTURE - FreeIPA 4.13.4 / Fedora 43 lab - commit d06c16c, run 36724948206</text>
+<text x="18" y="89" fill="#c9d1d9" xml:space="preserve">ipa-diagnose replication: ipa01.lab.test (realm LAB.TEST)</text>
+<text x="18" y="106" fill="#c9d1d9" xml:space="preserve">  LIVE; FreeIPA 4.13.4, 389-ds 3.1.5</text>
+<text x="18" y="123" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="140" fill="#c9d1d9" xml:space="preserve">ipa01.lab.test: ipa02.lab.test is unreachable from ipa01.lab.test.</text>
+<text x="18" y="157" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="174" fill="#c9d1d9" xml:space="preserve">REPLICATION (per suffix and direction; observed from ipa01.lab.test)</text>
+<text x="18" y="191" fill="#c9d1d9" xml:space="preserve">  ca      ipa01.lab.test -&gt; ipa02.lab.test  OK  [LDAP/SASL/GSSAPI, port 389] last session ended 2026-09-30T14:10:10Z</text>
+<text x="18" y="208" fill="#c9d1d9" xml:space="preserve">  ca      ipa02.lab.test -&gt; ipa01.lab.test  NOT OBSERVED  (not readable from here; see HANDOFF)</text>
+<text x="18" y="225" fill="#c9d1d9" xml:space="preserve">  domain  ipa01.lab.test -&gt; ipa02.lab.test  OK  [LDAP/SASL/GSSAPI, port 389] last session ended 2026-09-30T14:10:23Z</text>
+<text x="18" y="242" fill="#c9d1d9" xml:space="preserve">  domain  ipa02.lab.test -&gt; ipa01.lab.test  NOT OBSERVED  (not readable from here; see HANDOFF)</text>
+<text x="18" y="259" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="276" fill="#c9d1d9" xml:space="preserve">ROOT CAUSE</text>
+<text x="18" y="293" fill="#c9d1d9" xml:space="preserve">  [PRIMARY] ipa02.lab.test is unreachable from ipa01.lab.test - confidence HIGH</text>
+<text x="18" y="310" fill="#c9d1d9" xml:space="preserve">      Unreachable from ipa01.lab.test at 2026-09-30T14:16:19Z: TCP 389 unreachable, TCP 443 unreachable. The agreement&#x27;s</text>
+<text x="18" y="327" fill="#c9d1d9" xml:space="preserve"> last session ended 2026-09-30T14:10:10Z with: Error (0) Replica acquired successfully: Incremental update succeeded. Th</text>
+<text x="18" y="344" fill="#c9d1d9" xml:space="preserve">e agreement&#x27;s own status still shows its last session as successful (ended 2026-09-30T14:10:10Z); it has not recorded th</text>
+<text x="18" y="361" fill="#c9d1d9" xml:space="preserve">is yet.</text>
+<text x="18" y="378" fill="#c9d1d9" xml:space="preserve">      Impact: No replication ipa01.lab.test -&gt; ipa02.lab.test; changes pile up in ipa01.lab.test&#x27;s changelog until ipa02</text>
+<text x="18" y="395" fill="#c9d1d9" xml:space="preserve">.lab.test is reachable again.</text>
+<text x="18" y="412" fill="#c9d1d9" xml:space="preserve">      Chain: ipa02.lab.test&#x27;s Directory Server gives no LDAP answer to ipa01.lab.test  -&gt;  ipa02.lab.test is unreachable</text>
+<text x="18" y="429" fill="#c9d1d9" xml:space="preserve"> from ipa01.lab.test at 2026-09-30T14:16:19Z (TCP 389: unreachable, TCP 443: unreachable)</text>
+<text x="18" y="446" fill="#c9d1d9" xml:space="preserve">      Stops here: a host that is down and a network path that blocks this host look the same from here; nothing here say</text>
+<text x="18" y="463" fill="#c9d1d9" xml:space="preserve">s ipa02.lab.test is gone for good</text>
+<text x="18" y="480" fill="#c9d1d9" xml:space="preserve">      Chain: ipa02.lab.test&#x27;s Directory Server gives no LDAP answer to ipa01.lab.test  -&gt;  ipa02.lab.test is unreachable</text>
+<text x="18" y="497" fill="#c9d1d9" xml:space="preserve"> from ipa01.lab.test at 2026-09-30T14:16:25Z (TCP 389: unreachable, TCP 443: unreachable)</text>
+<text x="18" y="514" fill="#c9d1d9" xml:space="preserve">      Stops here: a host that is down and a network path that blocks this host look the same from here; nothing here say</text>
+<text x="18" y="531" fill="#c9d1d9" xml:space="preserve">s ipa02.lab.test is gone for good</text>
+<text x="18" y="548" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="565" fill="#c9d1d9" xml:space="preserve">HANDOFF (the remaining evidence is on another server; nothing was changed)</text>
+<text x="18" y="582" fill="#c9d1d9" xml:space="preserve">  On ipa02.lab.test run:</text>
+<text x="18" y="599" fill="#c9d1d9" xml:space="preserve">    sudo ipa-diagnose replication --peer ipa01.lab.test</text>
+<text x="18" y="616" fill="#c9d1d9" xml:space="preserve">  Why: ipa02.lab.test is unreachable from ipa01.lab.test. Whether ipa02.lab.test is running can only be seen on ipa02.la</text>
+<text x="18" y="633" fill="#c9d1d9" xml:space="preserve">b.test (or its console). Nothing was changed on ipa01.lab.test or ipa02.lab.test; ipa-diagnose never changes another ser</text>
+<text x="18" y="650" fill="#c9d1d9" xml:space="preserve">ver.</text>
+<text x="18" y="667" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="684" fill="#c9d1d9" xml:space="preserve">RESOLUTION (only for causes on this server)</text>
+<text x="18" y="701" fill="#c9d1d9" xml:space="preserve">  No fix is printed: the causes found are not on this server, or no fix is established for them (see HANDOFF and the nex</text>
+<text x="18" y="718" fill="#c9d1d9" xml:space="preserve">t read-only steps).</text>
+<text x="18" y="735" fill="#c9d1d9" xml:space="preserve">NEXT READ-ONLY STEPS</text>
+<text x="18" y="752" fill="#c9d1d9" xml:space="preserve">  on ipa01.lab.test: ip route get $(getent ahosts ipa02.lab.test | awk &#x27;NR==1{print $1}&#x27;) (read-only)</text>
+<text x="18" y="769" fill="#c9d1d9" xml:space="preserve">  check whether ipa02.lab.test is running (its console) and the firewall between the two</text>
+<text x="18" y="786" fill="#d29922" xml:space="preserve">NOT VERIFIED</text>
+<text x="18" y="803" fill="#c9d1d9" xml:space="preserve">  - reverse direction [ca:ipa02.lab.test]: not observed from this server (blocked: needs &#x27;Peer Directory Server answers </text>
+<text x="18" y="820" fill="#c9d1d9" xml:space="preserve">(root DSE)&#x27; to pass first (it was FAIL)); to read it from here, run &#x27;kinit admin&#x27; in the same (root) session and run aga</text>
+<text x="18" y="837" fill="#c9d1d9" xml:space="preserve">in (sudo does not pass your own ticket on), or run ipa-diagnose replication on the peer</text>
+<text x="18" y="854" fill="#c9d1d9" xml:space="preserve">  - reverse direction [domain:ipa02.lab.test]: not observed from this server (blocked: needs &#x27;Peer Directory Server answ</text>
+<text x="18" y="871" fill="#c9d1d9" xml:space="preserve">ers (root DSE)&#x27; to pass first (it was FAIL)); to read it from here, run &#x27;kinit admin&#x27; in the same (root) session and run</text>
+<text x="18" y="888" fill="#c9d1d9" xml:space="preserve"> again (sudo does not pass your own ticket on), or run ipa-diagnose replication on the peer</text>
+<text x="18" y="905" fill="#c9d1d9" xml:space="preserve">TOPOLOGY (context)</text>
+<text x="18" y="922" fill="#c9d1d9" xml:space="preserve">  servers: ipa01.lab.test, ipa02.lab.test, ipa03.lab.test</text>
+<text x="18" y="939" fill="#c9d1d9" xml:space="preserve">  ca: 1 segment(s)</text>
+<text x="18" y="956" fill="#c9d1d9" xml:space="preserve">  domain: 2 segment(s); articulation point(s): ipa02.lab.test</text>
+<text x="18" y="973" fill="#c9d1d9" xml:space="preserve">  only one server holds: DNS (ipa01.lab.test)</text>
+<text x="18" y="990" fill="#c9d1d9" xml:space="preserve">  CA renewal master: ipa01.lab.test</text>
+<text x="18" y="1007" fill="#c9d1d9" xml:space="preserve">LIMITATIONS</text>
+<text x="18" y="1024" fill="#c9d1d9" xml:space="preserve">  Replication is directional and per suffix: this server sees its OWN outbound agreements. The reverse direction is only</text>
+<text x="18" y="1041" fill="#d29922" xml:space="preserve"> reported when it could be read from the peer (read-only, with your own Kerberos ticket); otherwise it is NOT VERIFIED a</text>
+<text x="18" y="1058" fill="#c9d1d9" xml:space="preserve">nd a handoff to the peer is printed.</text>
+<text x="18" y="1075" fill="#c9d1d9" xml:space="preserve">  Nothing is changed on this server or any other; no command runs on another server; fixes are printed only for causes o</text>
+<text x="18" y="1092" fill="#c9d1d9" xml:space="preserve">n this server, and only when every safety gate passes.</text>
+<text x="18" y="1109" fill="#c9d1d9" xml:space="preserve">  planner: 17 of 23 checks run, 12.939 s; stop: every relevant check in the plan was visited</text>
+<text x="18" y="1188" fill="#6e7681" font-size="11">43 lines, complete; long lines folded at 120 columns, as a 120-column terminal shows them</text>
+</svg>

@@ -1,0 +1,15 @@
+{
+ "captured_at": "2026-09-30T14:00:16Z",
+ "columns": 120,
+ "command": "ipa-diagnose access alice client1.lab.test sshd --runtime",
+ "commit": "d06c16c03584fef907f0a6975cce80cafb747c48",
+ "container": "ipa-c",
+ "env": [
+  "KRB5CCNAME=FILE:/root/admin.ccache"
+ ],
+ "exit": 5,
+ "name": "client-04-access-runtime-hbac-pass-sssd-stopped",
+ "run_id": "36724948253",
+ "scenario": "C09 FreeIPA HBAC allows alice on client1 via sshd; SSSD stopped on client1",
+ "user": "root"
+}

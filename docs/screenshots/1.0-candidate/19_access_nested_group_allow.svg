@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1044" height="909" viewBox="0 0 1044 909" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" font-size="13.5">
+<rect width="1044" height="909" rx="8" fill="#0d1117"/>
+<rect width="1044" height="34" rx="8" fill="#161b22"/>
+<circle cx="18" cy="17" r="5" fill="#ff5f56"/><circle cx="36" cy="17" r="5" fill="#ffbd2e"/><circle cx="54" cy="17" r="5" fill="#27c93f"/>
+<text x="76" y="22" fill="#8b949e">$ ipa-diagnose access carol app01.lab.test sshd   (exit 0)</text>
+<rect x="18" y="44" width="1008" height="22" rx="4" fill="#12261e"/>
+<text x="26" y="60" fill="#3fb950" font-weight="bold">REAL LIVE CAPTURE - FreeIPA 4.13.4 / Fedora 43 lab - commit d06c16c, run 36724948123</text>
+<text x="18" y="89" fill="#c9d1d9" xml:space="preserve">ipa-diagnose access: carol -&gt; app01.lab.test via sshd</text>
+<text x="18" y="106" fill="#c9d1d9" xml:space="preserve">  LIVE; asked FreeIPA as admin@LAB.TEST on ipa01.lab.test (API 4.13.4)</text>
+<text x="18" y="123" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="140" fill="#c9d1d9" xml:space="preserve">FreeIPA HBAC policy authorizes carol to access app01.lab.test through sshd.</text>
+<text x="18" y="157" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="174" fill="#d29922" xml:space="preserve">  AUTHENTICATION  NOT VERIFIED the IPA account exists and is enabled; no credential was tested</text>
+<text x="18" y="191" fill="#c9d1d9" xml:space="preserve">  AUTHORIZATION   PASS         FreeIPA HBAC policy allows this request (rule: r_nested)</text>
+<text x="18" y="208" fill="#d29922" xml:space="preserve">  RUNTIME ACCESS  NOT VERIFIED not tested; the host has no keytab in FreeIPA, so it may not be enrolled</text>
+<text x="18" y="225" fill="#c9d1d9" xml:space="preserve">                               no login was attempted; the host&#x27;s SSSD, PAM configuration, network path and keytab were </text>
+<text x="18" y="242" fill="#c9d1d9" xml:space="preserve">not checked</text>
+<text x="18" y="259" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="276" fill="#c9d1d9" xml:space="preserve">ROOT CAUSE</text>
+<text x="18" y="293" fill="#c9d1d9" xml:space="preserve">  no blocker found in FreeIPA HBAC policy or in the account attributes read (disabled, principal expiry, preserved). Not</text>
+<text x="18" y="310" fill="#c9d1d9" xml:space="preserve"> checked: whether the password or other credential is valid, and lockout after failed logins.</text>
+<text x="18" y="327" fill="#c9d1d9" xml:space="preserve">WHY</text>
+<text x="18" y="344" fill="#c9d1d9" xml:space="preserve">  Matched rule r_nested (enabled) - user: carol is a nested member of devs (carol -&gt; backend -&gt; devs) | host: app01.lab.</text>
+<text x="18" y="361" fill="#c9d1d9" xml:space="preserve">test listed directly | service: sshd listed directly</text>
+<text x="18" y="378" fill="#c9d1d9" xml:space="preserve">ALSO NOTED</text>
+<text x="18" y="395" fill="#c9d1d9" xml:space="preserve">  FreeIPA holds no Kerberos key for app01.lab.test: The host entry exists but has no keytab, which usually means it is n</text>
+<text x="18" y="412" fill="#c9d1d9" xml:space="preserve">ot (or no longer) enrolled: SSSD on it cannot use FreeIPA, whatever the policy says. Runtime access is not checked by th</text>
+<text x="18" y="429" fill="#c9d1d9" xml:space="preserve">is command.</text>
+<text x="18" y="446" fill="#c9d1d9" xml:space="preserve">CHECKED FOR YOU</text>
+<text x="18" y="463" fill="#c9d1d9" xml:space="preserve">  [ok  ] user carol exists, enabled, no principal expiration set or readable; 2 direct and 1 nested groups</text>
+<text x="18" y="480" fill="#c9d1d9" xml:space="preserve">  [!!  ] host app01.lab.test exists; 0 direct and 0 nested hostgroups; no keytab in IPA</text>
+<text x="18" y="497" fill="#c9d1d9" xml:space="preserve">  [ok  ] HBAC service sshd is defined; in 0 service group(s)</text>
+<text x="18" y="514" fill="#c9d1d9" xml:space="preserve">  [ok  ] FreeIPA evaluated 13 enabled HBAC rule(s): access granted; matched: r_nested</text>
+<text x="18" y="531" fill="#c9d1d9" xml:space="preserve">  [ok  ] rule r_nested: enabled</text>
+<text x="18" y="548" fill="#c9d1d9" xml:space="preserve">  [ok  ] group devs contains backend of this object&#x27;s groups (read to explain the nesting)</text>
+<text x="18" y="565" fill="#c9d1d9" xml:space="preserve">IMPACT</text>
+<text x="18" y="582" fill="#c9d1d9" xml:space="preserve">  FreeIPA HBAC policy is not what stops this login. If the login still fails, the cause is elsewhere (credentials, locko</text>
+<text x="18" y="599" fill="#c9d1d9" xml:space="preserve">ut, the host&#x27;s SSSD, PAM, network or keytab), which this command does not test.</text>
+<text x="18" y="616" fill="#c9d1d9" xml:space="preserve">RESOLUTION</text>
+<text x="18" y="633" fill="#c9d1d9" xml:space="preserve">  Nothing to fix in FreeIPA HBAC policy for this request.</text>
+<text x="18" y="650" fill="#c9d1d9" xml:space="preserve">RISK</text>
+<text x="18" y="667" fill="#c9d1d9" xml:space="preserve">  None from this command: it only reads.</text>
+<text x="18" y="684" fill="#c9d1d9" xml:space="preserve">VERIFY</text>
+<text x="18" y="701" fill="#c9d1d9" xml:space="preserve">  ipa hbactest --user=carol --host=app01.lab.test --service=sshd (FreeIPA&#x27;s own evaluation, read-only)</text>
+<text x="18" y="718" fill="#c9d1d9" xml:space="preserve">  ipa user-status carol (read-only; failed logins and lockout on each server)</text>
+<text x="18" y="735" fill="#c9d1d9" xml:space="preserve">  on app01.lab.test, as root: sssctl user-checks carol -a acct -s sshd (the host&#x27;s SSSD account check for this service; </text>
+<text x="18" y="752" fill="#c9d1d9" xml:space="preserve">read-only; runtime evidence this command does not collect)</text>
+<text x="18" y="769" fill="#c9d1d9" xml:space="preserve">LIMITATIONS</text>
+<text x="18" y="786" fill="#c9d1d9" xml:space="preserve">  Runtime access is not tested: no login is attempted, and the host&#x27;s SSSD (including its offline cache), PAM stack, acc</text>
+<text x="18" y="803" fill="#c9d1d9" xml:space="preserve">ess_provider setting, network path and keytab are not checked.</text>
+<text x="18" y="820" fill="#c9d1d9" xml:space="preserve">  (--details lists every limitation, the API calls made and the relationships read)</text>
+<text x="18" y="899" fill="#6e7681" font-size="11">36 lines, complete; long lines folded at 120 columns, as a 120-column terminal shows them</text>
+</svg>

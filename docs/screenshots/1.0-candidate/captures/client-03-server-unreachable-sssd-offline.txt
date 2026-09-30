@@ -1,0 +1,59 @@
+ipa-diagnose client: client1.lab.test (IPA domain lab.test, server ipa01.lab.test)
+  LIVE; asked about user alice, service sshd; SSSD 2.12.0, IPA client 4.13.4
+
+client1.lab.test: The IPA server ipa01.lab.test does not answer.
+
+  AUTHENTICATION  FAIL         online authentication against IPA fails on this host: The IPA server ipa01.lab.test does not answer
+  AUTHORIZATION   NOT VERIFIED not evaluated by client mode: FreeIPA's own decision comes from ipa-diagnose access USER HOST SERVICE
+  RUNTIME ACCESS  NOT VERIFIED online authentication against IPA fails (The IPA server ipa01.lab.test does not answer): logins that need IPA (for example a first password login) fail; users with cached credentials or SSH keys may still log in
+
+ROOT CAUSE
+  [PRIMARY] The IPA server ipa01.lab.test does not answer - confidence HIGH
+      ipa01.lab.test resolves, but its HTTPS and LDAP ports do not answer (refused): the server is down, or a firewall or route blocks this client.
+      Impact: SSSD goes offline: only cached users can log in, with cached credentials; new users, group and HBAC changes are not seen.
+  [RELATED] No KDC answers this host (caused by The IPA server ipa01.lab.test does not answer) - confidence HIGH
+      kinit with the host keytab failed: kdc unreachable (kinit: Cannot contact any KDC for realm 'LAB.TEST' while getting initial credentials). TCP 88 on the server is refused.
+      Impact: Kerberos authentication (host and users) fails; SSSD goes offline.
+  [RELATED] SSSD is offline (caused by The IPA server ipa01.lab.test does not answer) - confidence HIGH
+      SSSD domain lab.test is OFFLINE; active IPA ipa01.lab.test; explained by: The IPA server ipa01.lab.test does not answer. SSSD log signals: offline, server_unreachable.
+      Impact: Only cached users and groups resolve, and only users who logged in before can log in (with cached credentials, if enabled). New users and policy changes are not seen.
+
+CHECKED FOR YOU
+  ✓ IPA client configuration present: enrolled in lab.test (LAB.TEST) as client1.lab.test; server ipa01.lab.test
+  ✓ SSSD and IPA client versions: SSSD 2.12.0, IPA client 4.13.4, fedora 43
+  ✓ SSSD configured for the IPA domain: sssd.conf: IPA domain lab.test, servers _srv_, ipa01.lab.test, access_provider ipa
+  ✓ Resolvers configured: 1 resolver(s) in /etc/resolv.conf; search lab.test
+  ✓ IPA server name resolves: ipa01.lab.test resolves to 172.30.0.10
+  ✓ LDAP SRV records (_ldap._tcp): _ldap._tcp.lab.test: 1 record(s) (ipa01.lab.test)
+  ✓ Kerberos SRV records (_kerberos._tcp): _kerberos._tcp.lab.test: 1 record(s) (ipa01.lab.test)
+  ✗ IPA server answers on 443 (HTTPS): TCP ipa01.lab.test:443: refused
+  ✗ IPA server answers on 389 (LDAP): TCP ipa01.lab.test:389: refused
+  ✗ IPA server answers on 88 (Kerberos, TCP): TCP ipa01.lab.test:88: refused
+  ✓ Host keytab present with this host's key: /etc/krb5.keytab has keys for host/client1.lab.test@LAB.TEST (kvno 1)
+  ✗ KDC accepts this host's key: kinit with the host keytab failed: kdc unreachable (kinit: Cannot contact any KDC for realm 'LAB.TEST' while getting initial credentials)
+  ✓ This host's NTP synchronization: clock offset +0.001 s, leap status Normal
+  ✓ SSSD service running: sssd.service is running
+  ✓ SSSD configuration valid (sssctl config-check): sssctl config-check found no issue
+  ✗ SSSD online with the IPA server: SSSD domain lab.test is OFFLINE; active IPA ipa01.lab.test
+  ✓ User resolves through SSSD: SSSD (getent -s sss) resolves alice (UID 1549800003)
+  ✓ User resolves through the system NSS stack: the system's NSS stack (getent) resolves alice (UID 1549800003)
+  ✓ PAM service reaches SSSD: PAM service sshd: pam_sss in account yes, in auth yes
+  ✓ PAM account phase for the user (sssctl user-checks): PAM account check for alice via sshd on this host: Success
+  ! SSSD log signals: 1164 recent SSSD log line(s): offline x5, server_unreachable x4
+  (3 blocked, 4 not needed check(s) not run; --details says why)
+RULED OUT
+  enrollment configuration is present; SSSD is configured for the IPA domain; the IPA server name resolves; LDAP SRV records exist; Kerberos SRV records exist; the host keytab holds this host's key; SSSD is running; the SSSD configuration is valid; SSSD resolves the user; the system NSS stack resolves the user; the PAM service uses SSSD; SSSD's account check accepts the user
+RESOLUTION
+  No fix is suggested; the next read-only steps are below.
+NEXT READ-ONLY STEPS
+  curl -sI https://ipa01.lab.test/ipa/config/ca.crt (read-only)
+  on the server: ipactl status (read-only)
+  on the server: systemctl status krb5kdc (read-only)
+  grep -A5 '\[realms\]' /etc/krb5.conf (read-only)
+  sssctl domain-status lab.test -o -a (read-only)
+  journalctl -u sssd -n 50 (read-only)
+VERIFY
+  Run ipa-diagnose client --user alice --service sshd again after any change: every check is re-run with fresh evidence.
+LIMITATIONS
+  No login is attempted and no credential is tested: RUNTIME ACCESS and AUTHENTICATION are never reported as PASS.
+  planner: 21 of 28 checks run, 0 result(s) reused, 0.132 s; stop: every relevant check in the plan was visited
