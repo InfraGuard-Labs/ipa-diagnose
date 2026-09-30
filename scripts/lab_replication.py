@@ -184,7 +184,10 @@ def trigger(c: str, suffix: str = "domain") -> None:
     if suffix == "domain":
         ipa(c, f"user-add probe{_probe[0]}x{c} --first=Probe --last=Lab")
     else:
-        ipa(c, f"certprofile-mod caIPAserviceCert --desc='lab probe {_probe[0]} from {c}'")
+        # a change in o=ipaca: re-importing a profile writes it to Dogtag's LDAP profile store (the CA suffix);
+        # a --desc change alone only touches IPA's own entry in the domain suffix (lesson of run 36652068103)
+        sh(c, "ipa certprofile-show caIPAserviceCert --out /root/probe-profile.cfg >/dev/null && "
+              "ipa certprofile-mod caIPAserviceCert --file /root/probe-profile.cfg >/dev/null", cc=ADMIN_CC)
 
 
 def wait_agreement(c: str, peer: str, suffix: str, want_ok: bool, since: datetime.datetime, timeout: int = 240) -> dict:
@@ -206,8 +209,13 @@ def wait_agreement(c: str, peer: str, suffix: str, want_ok: bool, since: datetim
     return a
 
 
+LAST_PENDING: list = []
+
+
 def wait_green(timeout: int = 600) -> bool:
-    """Every agreement of every server reports a fresh successful session (the lab is healthy again)."""
+    """Every agreement of every server is green: its last session succeeded (a domain agreement: a session that
+    ended after this wait began) and none is in progress. A CA agreement that had no session since its server
+    started is accepted only while nothing else fails (the lab's CA changes are rare)."""
 
     start = now()
     time.sleep(2)
@@ -218,8 +226,14 @@ def wait_green(timeout: int = 600) -> bool:
             for a in agreements(c):
                 st = a.get("nsds5replicalastupdatestatus", "")
                 end = _end(a)
-                if not (st.startswith("Error (0) Replica acquired successfully") and end and end > start):
-                    pending.append(f"{c}->{a.get('nsds5replicahost')}/{a['suffix']}: {st[:80]}")
+                ok = st.startswith("Error (0) Replica acquired successfully")
+                if a["suffix"] == "domain":
+                    ok = ok and end is not None and end > start
+                else:
+                    ok = ok or "No replication sessions started" in st
+                if not ok or a.get("nsds5replicaupdateinprogress", "").upper() == "TRUE":
+                    pending.append(f"{c}->{a.get('nsds5replicahost')}/{a['suffix']}: {st[:90]}")
+        LAST_PENDING[:] = pending
         if not pending:
             return True
         log("wait-green", f"{iso(now())} pending: {pending}")
@@ -400,7 +414,8 @@ def restore(tag: str) -> None:
     for c in SERVERS:
         sh(c, "systemctl start dirsrv@LAB-TEST krb5kdc; ipactl start >/dev/null 2>&1; true", timeout=600)
     if not wait_green():
-        _write({"scenario": f"restore-after-{tag}", "result": "FAIL", "problems": ["the lab did not return to green"]})
+        _write({"scenario": f"restore-after-{tag}", "result": "FAIL",
+                "problems": [f"the lab did not return to green: {LAST_PENDING}"]})
         raise SystemExit(f"lab not green after {tag}")
 
 
@@ -436,6 +451,7 @@ def setup() -> None:
              "agreements": {c: [f"{a.get('nsds5replicahost')}/{a['suffix']} {a.get('nsds5replicatransportinfo')} "
                                 f"{a.get('nsds5replicabindmethod')} {a.get('nsds5replicaport')}" for a in agreements(c)]
                             for c in SERVERS}}
+    proof["not_green"] = list(LAST_PENDING)
     ok = proof["segments_domain"] == 2 and proof["segments_ca"] == 1 and green and all(seen.values())
     _write({"scenario": "R00-topology-and-healthy-replication-proven", "result": "PASS" if ok else "FAIL",
             "problems": [] if ok else [f"topology/replication not as designed: {proof}"], "proof": proof})
