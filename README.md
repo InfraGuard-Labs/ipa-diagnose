@@ -118,7 +118,8 @@ checkout: `ipa-diagnose --replay tests/fixtures/resolution/service-not-running`.
 
 ## How it stays safe
 
-- **Investigation is read-only.** Every check is a fixed command (no shell) with a timeout. One upstream side effect:
+- **Investigation is read-only, with one upstream exception.** Every check is a fixed command (no shell) with a
+  timeout. The exception:
   ipa-healthcheck's certificate checks start a stopped certmonger unless it is masked, and the report says when that
   happened.
 - **Fixes are printed, never executed.** A fix appears only when its values come from structured evidence and
@@ -156,16 +157,16 @@ Details: [docs/architecture.md](docs/architecture.md).
 ## Installation
 
 **RPM** (recommended when you run it as root, which the server and client commands need). Download the file for your
-platform from the [latest release](https://github.com/InfraGuard-Labs/ipa-diagnose/releases/latest) and check it
-against `SHA256SUMS`:
+platform from the [latest release](https://github.com/InfraGuard-Labs/ipa-diagnose/releases/latest). The packages are
+not GPG-signed: check the file against `SHA256SUMS` (`sha256sum -c --ignore-missing SHA256SUMS`).
 
 ```bash
-# RHEL / Rocky / AlmaLinux 9 or 10 (rich comes from EPEL)
+# Rocky Linux / AlmaLinux 9 or 10 (rich comes from EPEL; on RHEL enable CodeReady Builder and EPEL the Red Hat way)
 sudo dnf install -y epel-release dnf-plugins-core && sudo dnf config-manager --set-enabled crb
 sudo dnf install ./ipa-diagnose-<version>.el9.noarch.rpm        # or .el10.
 # RHEL / Rocky / AlmaLinux 8 (uses the python39 module, installed alongside the system Python)
 sudo dnf install -y python39 && sudo dnf install ./ipa-diagnose-<version>.el8.noarch.rpm
-# Fedora
+# Fedora 44 (only the .fc44 file is published; on Fedora 43 use pipx)
 sudo dnf install ./ipa-diagnose-<version>.fc44.noarch.rpm
 ```
 
@@ -180,14 +181,14 @@ pipx install ipa-diagnose
 then `pipx install ipa-diagnose` and `ipa-diagnose`), or call it by path: `sudo "$HOME/.local/bin/ipa-diagnose"`.
 The RPM installs to `/usr/bin` and has no such caveat.
 
-Per-distribution details, what the EL8 package does to Python, unsigned-package checksums, AI extras and the files
-it writes: [docs/installation.md](docs/installation.md).
+Per-distribution details, what the EL8 package does to Python, AI extras and the files it writes:
+[docs/installation.md](docs/installation.md).
 
 ## Supported and validated environments
 
 | Evidence | What was covered | Where it is recorded |
 |---|---|---|
-| **LIVE** | Disposable `freeipa/freeipa-server:fedora-43` containers on free GitHub runners. FreeIPA 4.13.3 for the Slice 1-3 runs, 4.13.4 for Slices 4-5 and the freeze runs; Fedora 43 only. Labs: a single server (DNS + CA); a server plus an enrolled Fedora 43 client (SSSD 2.12); three servers in a line (two with a CA). Every fault injected and independently confirmed, the tool run blind, printed fixes applied verbatim, then verified | [docs/truth/](docs/truth/) |
+| **LIVE** | Disposable `freeipa/freeipa-server:fedora-43` containers on GitHub-hosted runners: FreeIPA 4.13.3 (the image's package until late September 2026) and 4.13.4 (the image's package since then, including every run on the current code); Fedora 43 only. Labs: a single server (DNS + CA); a server plus an enrolled Fedora 43 client (SSSD 2.12); three servers in a line (two with a CA). Every fault injected and independently confirmed, the tool run blind, printed fixes applied verbatim, then verified | [docs/truth/](docs/truth/) |
 | **LIVE SIMULATED** | Clock skew: only ipa-diagnose's own process clock was shifted (libfaketime); no server or client clock was changed | client C05, replication R12 |
 | **PACKAGING / CONTAINER** | RPM build, install, `--version`, `--help`, replay, uninstall and reinstall on Rocky/Alma 8 and 9, AlmaLinux 10, Fedora 43 and 44. Rocky and Alma stand in for RHEL; **RHEL itself was never tested**. pipx paths; wheel and sdist; the full test suite on Python 3.9-3.14 | [docs/compatibility.md](docs/compatibility.md) |
 | **FIXTURE / REPLAY** | Everything else, for example stale RUVs, CA-suffix-only failures, generation-ID mismatch, real clock skew, an expiring DS certificate, the clock-step and SSSD cache procedures, EL8-era ipa-healthcheck | `tests/` |
