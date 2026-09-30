@@ -85,8 +85,9 @@ _PHRASES: Tuple[Tuple[str, "re.Pattern[str]"], ...] = (
     (INVALID_CREDENTIALS, re.compile(r"(?i)invalid credentials")),
     (TLS, re.compile(r"(?i)tls (?:negotiation|handshake|error)|ssl (?:handshake|error)|certificate verify failed|"
                      r"peer's certificate|tls: hostname does not match|unable to get local issuer")),
-    (TRANSPORT, re.compile(r"(?i)can'?t contact ldap server|server is unavailable|connect(?:ion)? (?:error|refused)|"
-                           r"timed out|timeout|server down|no route to host|network is unreachable")),
+    # NOT "(connection error)": 389-DS appends it to EVERY failure of the connection phase, whatever the cause
+    (TRANSPORT, re.compile(r"(?i)can'?t contact ldap server|server is unavailable|connect error|connection refused|"
+                           r"timed out|timeout|server down|no route to host|network is unreachable")),
 )
 
 # LDAP result codes (OpenLDAP numbering; 389-DS reports the client library's code for connection failures)
@@ -175,7 +176,7 @@ def parse_status(text: Optional[str], json_text: Optional[str] = None) -> Agreem
         return AgreementStatus(NO_SESSIONS, ldap_rc, repl_rc, state, msg, source)
     phrase = classify_text(message)
     if (ldap_rc in (0, None) and repl_rc in (0, None) and phrase in (UNCLASSIFIED, OK)
-            and (_SUCCESS.search(message) or state == "green")):
+            and (_SUCCESS.search(message) or (state == "green" and ldap_rc == 0 and repl_rc == 0))):
         return AgreementStatus(OK, ldap_rc, repl_rc, state, msg, source)
     if phrase != UNCLASSIFIED:
         return AgreementStatus(phrase, ldap_rc, repl_rc, state, msg, source)

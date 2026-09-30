@@ -576,4 +576,5 @@ REGISTRY.update({s.check_id: s for s in _client_checks.specs()})
 # Replication checks (Slice 5) belong to the same closed registry.
 from ipa_diagnose.replication import checks as _replication_checks  # noqa: E402
 
-REGISTRY.update({s.check_id: s for s in _replication_checks.specs()})
+if hasattr(_replication_checks, "specs"):  # otherwise that module is still loading and registers itself at its end
+    REGISTRY.update({s.check_id: s for s in _replication_checks.specs()})

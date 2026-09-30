@@ -499,8 +499,10 @@ def _agreements(params):
     rc3, tasks, _, _ = _ldapi_search(uri, "cn=cleanallruv,cn=tasks,cn=config", "one", "(objectClass=*)", ("cn",))
     clean_tasks = len(tasks) if rc3 == 0 else (0 if rc3 == 32 else None)
     dm = _whoami_dm(uri)
-    complete = dm is True and rc2 == 0 and not any(o.get("kind") == "other" and o.get("consumer") is None
-                                                   for o in other if isinstance(o, dict))
+    # an agreement of an IPA suffix that cannot become a subject (its consumer name does not validate) is one this
+    # run cannot investigate: the enumeration is then not complete
+    complete = dm is True and rc2 == 0 and not any(isinstance(o, dict) and o.get("kind") in T.SUFFIX_KINDS
+                                                   for o in other)
     agreements.sort(key=lambda a: a["subject"])
     fields = {"agreements": agreements, "other_agreements": other[:16], "replicas": replicas,
               "ruv": {"domain": ruv_dom, "ca": ruv_ca}, "ruv_error": "; ".join(x for x in (re1, re2) if x) or None,
@@ -780,3 +782,13 @@ def specs() -> List[CheckSpec]:
                   secrets="nsDS5ReplicaCredentials is never requested; the operator's ticket is only used, never "
                           "copied"),
     ]
+
+
+def _register() -> None:
+    from ipa_diagnose.resolution.checks import REGISTRY
+
+    for s in specs():
+        REGISTRY.setdefault(s.check_id, s)
+
+
+_register()
