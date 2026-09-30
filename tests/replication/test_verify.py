@@ -18,6 +18,18 @@ KDC = f"LOCAL_KDC_NOT_RUNNING@server:{IPA01}"
 SYM_D = f"REPLICATION_FAILING@domain:{IPA01}>{IPA02}"
 
 
+@pytest.fixture(autouse=True)
+def _fresh_clock():
+    """NOW/LATER per test, not per import: a baseline is stamped with the real time when a test runs, so on a slow
+    full-suite run (this module reached more than 5 minutes after collection) an import-time LATER fell before the
+    baseline and a RESOLVED case read as PENDING (freeze campaign: failed locally at 8m53s)."""
+
+    global NOW, LATER
+    NOW = datetime.datetime.now(datetime.timezone.utc)
+    LATER = NOW + datetime.timedelta(minutes=5)
+    yield
+
+
 def baseline(lab, **kw):
     r = H.run(lab, **kw)
     doc = V.to_state(r)
