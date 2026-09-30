@@ -111,8 +111,10 @@ sudo ipa-diagnose --no-ai            # never contact an AI provider (also what h
 in the root session itself: `sudo -i`, `kinit <user>`, then run the command. To try it without a FreeIPA host, replay recorded evidence from a git
 checkout: `ipa-diagnose --replay tests/fixtures/resolution/service-not-running`. Replayed output is labelled as such.
 
-**In monitoring, alert on any non-zero exit.** For the server diagnosis: 0 HEALTHY, 1 DEGRADED, 2 CRITICAL,
-3 UNKNOWN, 4 NOT_FULLY_VERIFIED; `access --runtime` adds 5 (policy allows, the host would refuse) and
+**In monitoring, interpret exit codes per command.** For `diagnose`, `client` and `replication`, non-zero means a
+problem, incomplete evidence or pending verification. For `access`, exit 1 can simply mean FreeIPA policy does not
+authorize the requested access, which is not necessarily an operational failure. For the server diagnosis:
+0 HEALTHY, 1 DEGRADED, 2 CRITICAL, 3 UNKNOWN, 4 NOT_FULLY_VERIFIED; `access --runtime` adds 5 (policy allows, the host would refuse) and
 `replication --verify` 3 (PENDING). 3 and 4 never count as OK. Every command's codes:
 [docs/exit-codes.md](docs/exit-codes.md).
 

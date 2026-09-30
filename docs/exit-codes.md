@@ -1,7 +1,9 @@
 # Status words and exit codes, per command
 
-One vocabulary across the product. **Alert on any non-zero exit.** "Could not check" is never reported as healthy,
-passed or resolved, by any command.
+One vocabulary across the product. **Interpret exit codes per command.** For `diagnose`, `client` and `replication`,
+non-zero means a problem, incomplete evidence or pending verification. For `access`, exit 1 can simply mean FreeIPA
+policy does not authorize the requested access; that is an answer, not necessarily an operational failure. "Could not
+check" is never reported as healthy, passed or resolved, by any command.
 
 ## Exit codes
 
