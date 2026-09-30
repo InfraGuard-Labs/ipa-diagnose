@@ -46,6 +46,7 @@ REQUIRED = [
     "R03-peer-unreachable", "R04-local-dns-break-for-peer", "R05-local-kdc-stopped-and-fix", "R05b-verify-after-fix",
     "R06-ds-keytab-unreadable-disposable-replica", "R07-peer-kdc-stopped-reverse-direction",
     "R08-multi-cause-middle-server", "R09-budget-scope-peer", "R10-non-root", "R11-support-bundle",
+    "R12-simulated-clock-offset",
 ]
 
 
@@ -246,8 +247,8 @@ def confirm(c: str, cmd: str, expect_substring: str = None, expect_rc: int = Non
 # ---------------------------------------------------------------- running ipa-diagnose blind
 
 
-def tool(c: str, args: str = "", ticket: bool = True, user: str = "root"):
-    cmd = f"{TOOL} replication {args} --json".strip()
+def tool(c: str, args: str = "", ticket: bool = True, user: str = "root", prefix: str = ""):
+    cmd = f"{prefix}{TOOL} replication {args} --json".strip()
     if user != "root":
         cmd = f"cd /tmp && {cmd}"
     rc, out, err, secs = dx(c, cmd, cc=ADMIN_CC if ticket else "FILE:/nonexistent-lab-cache", user=user, timeout=500)
@@ -678,11 +679,30 @@ def r11() -> None:
             "exit": rc, "validate_exit": vrc, "members": members.split(), "seconds": secs})
 
 
+def r12() -> None:
+    """SIMULATED: only ipa-diagnose's own process tree runs 15 minutes ahead (libfaketime); the servers' clocks
+    are untouched (containers share the host's kernel clock, so a real skew cannot be made here)."""
+
+    lib = sh("ipa01", "ls /usr/lib64/faketime/libfaketime.so.1 2>/dev/null").strip()
+    if not lib:
+        _write({"scenario": "R12-simulated-clock-offset", "result": "FAIL", "problems": ["libfaketime missing"]})
+        return
+    prefix = f"FAKETIME=+15m LD_PRELOAD={lib} "
+    ind = {"process_clock_shifted": confirm("ipa01", f"{prefix}date -u +%s; date -u +%s")}
+    rc, doc, secs = tool("ipa01", prefix=prefix)
+    key = f"PAIR_CLOCK_SKEW@pair:{FQ['ipa01']}>{FQ['ipa02']}"
+    text = json.dumps(doc or {}).lower()
+    row("R12-simulated-clock-offset",
+        {"status": ["PROBLEM_FOUND"], "primary": [key], "offered": {}, "absent": ["LOCAL_"]},
+        rc, doc, secs, ind, {"simulated": "libfaketime +15m on ipa-diagnose only",
+                             "claims_ntp_state_of_peer": "chronyd" in text and "stopped" in text})
+
+
 def run() -> None:
     OUT.mkdir(exist_ok=True)
     for c in SERVERS:
         admin(c)
-    for fn in (r01, r02, r03, r04, r05, r06, r07, r08, r09, r10, r11):
+    for fn in (r01, r02, r03, r04, r05, r06, r07, r08, r09, r10, r11, r12):
         try:
             fn()
         except SystemExit as e:
