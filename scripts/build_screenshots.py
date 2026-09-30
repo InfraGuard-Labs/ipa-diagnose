@@ -68,7 +68,7 @@ def main(argv: list) -> int:
             continue
         meta, text = caps[m["capture"]]
         title = f"$ {meta['command']}   (exit {meta['exit']})"
-        svg = render(text, title, _banner(m["prov"], meta), m["lines"], m["start"])
+        svg = render(text, title, _banner(m["prov"], meta), m["lines"], m["start"], wrap=120)
         (OUT / m["image"]).write_text(svg, encoding="utf-8", newline="\n")
         (OUT / "captures" / f"{m['capture']}.txt").write_text(text, encoding="utf-8", newline="\n")
         (OUT / "captures" / f"{m['capture']}.json").write_text(json.dumps(meta, indent=1, sort_keys=True) + "\n",

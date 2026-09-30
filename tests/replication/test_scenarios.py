@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from ipa_diagnose.replication.causal import check_chain
@@ -90,6 +92,8 @@ def test_a_peer_that_does_not_answer_now_is_found_even_while_the_status_is_still
     r = H.run(getattr(Lab(), fault)(IPA02, recorded=False))
     p = H.primary(r)
     assert p.code == code and "has not recorded this yet" in p.detail
+    # the sentence names the agreement it is about (freeze: CA and domain statuses can differ for one peer finding)
+    assert re.search(r"The (domain|ca) agreement \S+ -> \S+ still shows its last session", p.detail)
     assert H.rel(r, f"domain:{IPA01}>{IPA02}")["state"] == "OK"  # the recorded state is shown as it is
     assert r.status == "PROBLEM_FOUND" and r.handoffs and not H.offered(r)
     assert all(c.links[0].discriminator.endswith("-now") for c in r.chains)
@@ -140,7 +144,7 @@ def test_the_peer_finding_never_calls_a_failing_status_successful(fault):
     r = H.run(getattr(Lab(), fault)(IPA02, recorded=False).set_status(IPA02, S.LOCAL_ERROR_TEXT))
     root = next(d for d in r.diagnoses if d.code in ("PEER_DS_NOT_ACCEPTING", "PEER_UNREACHABLE"))
     assert "still shows its last session as successful" not in root.detail
-    assert "last recorded status is" in root.detail
+    assert re.search(r"last recorded status of the (domain|ca) agreement \S+ -> \S+ is:", root.detail)
     assert root.role == "PRIMARY"  # a real root outranks the unlinked symptoms
     sym = next(d for d in r.diagnoses if d.code == "REPLICATION_FAILING")
     assert any("reported separately" in c.boundary for c in r.chains if c.chain_id in sym.chain_ids)

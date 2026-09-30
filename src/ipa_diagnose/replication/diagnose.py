@@ -457,13 +457,17 @@ def _peer_path(t: _T, b: _Builder, me: str, item: Dict[str, Any], subj: str, rel
     hstate = https.facts.get("state") if https and https.outcome in (P, F) else None
     peer_here = f"server:{consumer}"
     recorded_ok = (item.get("status_class") or S.UNCLASSIFIED) == S.OK
+    # name the agreement: one peer finding can explain several agreements (suffixes) whose recorded statuses differ
+    # (freeze live run: the CA agreement still said "succeeded" while the domain agreement had recorded the failure)
+    suffix, _sep, pair = rel_key.partition(":")
+    which = f"the {suffix} agreement {pair.replace('>', ' -> ')}" if pair else "the agreement"
     if not now:
         stale = ""
     elif recorded_ok:
-        stale = (f" The agreement's own status still shows its last session as successful (ended "
+        stale = (f" {which[0].upper() + which[1:]} still shows its last session as successful (ended "
                  f"{item.get('last_update_end') or 'at an unknown time'}); it has not recorded this yet.")
     else:
-        stale = (f" The agreement's last recorded status is: {status_text} (ended "
+        stale = (f" The last recorded status of {which} is: {status_text} (ended "
                  f"{item.get('last_update_end') or 'at an unknown time'}); this host's own checks now show the "
                  "above.")
     if dns is not None and dns.outcome == F:
