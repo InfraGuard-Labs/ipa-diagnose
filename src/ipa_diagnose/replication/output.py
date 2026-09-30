@@ -139,6 +139,8 @@ def render(r: ReplicationResult, console: Console, details: bool = False) -> Non
                     extra += " (not investigated: budget)"
             elif label == "NOT OBSERVED":
                 extra = "  (not readable from here; see HANDOFF)"
+            elif x.get("last_update_end"):
+                extra = f"  (read from {x['supplier']}; its last session ended {x['last_update_end']})"
             p(extra, "dim")
         p()
     diags = d["diagnoses"]

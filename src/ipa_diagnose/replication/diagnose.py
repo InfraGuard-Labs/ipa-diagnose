@@ -520,7 +520,8 @@ def _agreement(t: _T, b: _Builder, me: str, realm: str, item: Dict[str, Any],
                     next_steps=chain.next_action, handoff=chain.handoff))
             elif pstate in ("timeout", "unreachable", "error") and hstate in ("timeout", "unreachable", "error"):
                 pair = f"pair:{me}>{consumer}"
-                when = rd.collected_at or _now()
+                when = ("an unrecorded time (recorded evidence)" if rd.source == "REPLAY"
+                        else rd.collected_at or _now())
                 chain = b.chain(rel_key, [
                     L0, Link(f"{consumer}'s Directory Server gives no LDAP answer to {me}", peer_here, "PEER_DS",
                              [rd.step_id], "status-transport", "peer"),
@@ -634,7 +635,8 @@ def _agreement(t: _T, b: _Builder, me: str, realm: str, item: Dict[str, Any],
                         next_action=[f"ipa-replica-manage list -v {_q(me)}   (read-only, with an admin ticket)",
                                      "ipa-healthcheck --source ipahealthcheck.ds.replication   (read-only)"])
         root = b.add(ReplDiagnosis(
-            "REPLICA_NEEDS_ADMIN_ACTION", rel_key, f"The {suffix} replica on {consumer} needs administrator action",
+            "REPLICA_NEEDS_ADMIN_ACTION", rel_key, f"{me} and {consumer} hold {suffix} data that needs administrator "
+            "action (which side is right is not established)",
             "REPLICA_DATA", "FAIL", "HIGH", f"Status: {status_text}.",
             f"{suffix} changes from {me} do not reach {consumer} until an administrator acts.", ev0, "pair",
             next_steps=chain.next_action, resolution_key="replication.needs-admin-action", variant=cls))

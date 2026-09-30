@@ -28,7 +28,26 @@ def kdc_live(lab=None, **kw):
 # ---------------------------------------------------------------- the validated local procedures
 
 
-def test_local_kdc_fix_is_exact_complete_and_no_google():
+LIVE_REC = ({"tier": "LIVE", "freeipa": "4.13.3", "os": "fedora-43", "date": "2026-09-30",
+             "evidence": "lab run (test record)"},)
+
+
+@pytest.fixture
+def replication_live(monkeypatch):
+    meta = dict(G.SLICE5_PROCEDURES["proc.service.start-stopped-service"], replication_live=LIVE_REC)
+    monkeypatch.setitem(G.SLICE5_PROCEDURES, "proc.service.start-stopped-service", meta)
+
+
+def test_no_google_needs_a_live_record_in_a_replication_incident():
+    """The command's live record from the single-server service scenarios does not count for replication."""
+
+    r = kdc_live()
+    ng = r.gates[KDC_KEY]["no_google"]
+    assert r.resolutions[KDC_KEY].status == "OFFERED"
+    assert not ng["claimed"] and ng["missing"] == ["live_verified_here"]
+
+
+def test_local_kdc_fix_is_exact_complete_and_no_google(replication_live):
     r = kdc_live()
     res = r.resolutions[KDC_KEY]
     assert res.status == "OFFERED" and res.procedure_id == "proc.service.start-stopped-service"
@@ -53,7 +72,7 @@ def test_only_one_fix_when_the_kdc_is_down_because_the_ds_is_down():
     assert list(H.offered(r)) == [DS_KEY]
 
 
-def test_no_google_is_not_claimed_on_a_version_without_a_live_record():
+def test_no_google_is_not_claimed_on_a_version_without_a_live_record(replication_live):
     r = kdc_live(Lab(freeipa="4.13.4").local_kdc_stopped())
     res = r.resolutions[KDC_KEY]
     assert res.status == "OFFERED"

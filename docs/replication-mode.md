@@ -36,6 +36,18 @@ What one server can observe:
 An empty answer from the peer is "not visible with this identity", never "no agreement". The reverse direction is
 never derived from the outbound one.
 
+`sudo` does not pass your own Kerberos ticket on (a KCM or KEYRING cache belongs to your user). To let the reverse
+direction be read, get the ticket in the root session itself:
+
+```bash
+sudo -i
+kinit admin
+ipa-diagnose replication
+```
+
+Without a ticket the reverse direction is NOT VERIFIED (exit 4 on an otherwise healthy server) and a handoff to the
+peer is printed.
+
 Transport and bind method are read from each agreement (`nsDS5ReplicaTransportInfo`, `nsDS5ReplicaBindMethod`,
 `nsDS5ReplicaPort`), never assumed. Topology-managed agreements normally use SASL/GSSAPI over LDAP on port 389; the
 checks use whatever the agreement says. A SIMPLE-bind agreement's stored credential is never read, so its bind cannot
@@ -119,13 +131,14 @@ A fix is printed only for a cause on **this** server and only when every machine
 - the deepest chain link is ESTABLISHED and is this diagnosis; the role is PRIMARY or INDEPENDENT; confidence is HIGH;
   nothing is UNDIAGNOSED, CONTRADICTING or TRANSIENT; no contradiction anywhere in the run;
 - the subject is `server:<this host>`: a peer's cause never gets a command (no remote mutation, no SSH);
-- the evidence is LIVE and at most 300 s old; REPLAY evidence never offers a fix (the same procedure and argv are
-  shown as a clearly labelled preview for parity only);
+- the evidence is LIVE and at most 300 s old; REPLAY evidence never offers a fix (for testing parity only, the
+  JSON carries the procedure and argv the same evidence would lead to under `safety_gate.replay_preview`, labelled
+  never to be run; the console shows no command);
 - the exact target is re-checked with a FRESH check (a service that started meanwhile withholds the fix);
 - topology predicates a procedure declares (sole CA/KRA/DNS holder, renewal master, DNSSEC key master, articulation
   point) must be established as safe from a complete topology read;
-- the procedure is on the Slice 5 allowlist, its programs are allowlisted (`systemctl start` and its rollback
-  `systemctl stop`), nothing in it matches a forbidden operation; then the Slice 1 gates (applicability by FreeIPA
+- the procedure is on the replication allowlist, its programs are allowlisted (`systemctl start` and its rollback
+  `systemctl stop`), nothing in it matches a forbidden operation; then the general procedure gates (applicability by FreeIPA
   version, prerequisites, `withhold_if`, typed arguments) apply unchanged.
 
 In this version the only procedure a replication diagnosis can lead to is `proc.service.start-stopped-service`, for
@@ -137,8 +150,10 @@ agreement, renewal-master/CRL/DNSSEC role changes.
 **No-Google** is claimed only when the printed fix names its target, gives the exact command, the host each step runs
 on, prerequisites shown as met, what changes, the expected result, what to do if a step fails, the risk, a backup (or
 a reason from a closed list), a rollback (or a reason from a closed list), verification criteria tied to the original
-incident, AND the procedure has a LIVE record (inject, confirm independently, run blind, apply only the printed steps,
-fresh verify RESOLVED) on this exact FreeIPA version and OS. Otherwise the fix is still shown with what is missing.
+incident, AND the procedure has a LIVE record **in a replication incident** (inject, confirm independently, run
+`ipa-diagnose replication` blind, apply only the printed steps, fresh `replication --verify` RESOLVED) on this exact
+FreeIPA version and OS. A live record of the same command in another context (for example the single-server service
+scenarios) does not count. Otherwise the fix is still shown with what is missing.
 
 ## Verification and PENDING
 
@@ -166,7 +181,7 @@ with its subject), `verification`, `limitations`.
 
 `ipa-diagnose bundle --replication [--peer FQDN]` adds `replication.json` to a support bundle: pseudonymized,
 structure only (states, codes, chain capabilities and discriminators, step outcomes), no status text, no commands, no
-principals, no LDAP entries; the Slice 2 pipeline and leak self-test apply unchanged.
+principals, no LDAP entries; the support bundle's pipeline and leak self-test apply unchanged.
 
 ## Limits
 

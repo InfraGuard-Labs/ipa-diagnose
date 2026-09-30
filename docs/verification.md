@@ -41,7 +41,7 @@ examples - note that `STILL_PRESENT` here comes from a second, independent
 evidence-collection pass against the *same* fixture, not a cached copy of
 the first report.
 
-## Replication `--verify` (Slice 5)
+## Replication `--verify`
 
 `ipa-diagnose replication --verify` holds a replication incident to a stricter standard than "the command
 succeeded": each earlier failing agreement (identified by suffix, supplier and consumer) must report a successful

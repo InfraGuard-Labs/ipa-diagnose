@@ -41,6 +41,10 @@ SLICE5_PROCEDURES: Dict[str, Dict[str, Any]] = {
                        "stops every IPA service when one of them fails to start."),
         "topology": (),
         "revalidate": ("systemd.unit", "service"),
+        # LIVE records of THIS procedure resolving a REPLICATION incident (lab: fault injected and confirmed,
+        # ipa-diagnose replication run blind, only the printed steps run, replication --verify RESOLVED). The
+        # catalogue's own verified_on records (single-server service scenarios) do not count here.
+        "replication_live": (),
     },
 }
 # closed lists of reasons a procedure may give for having no backup / no rollback step
@@ -229,8 +233,8 @@ def no_google(res: Any, procedure: Optional[Dict[str, Any]], me: str, freeipa: O
         "backup": bool(res.confirm_first) or meta.get("backup") in BACKUP_REASONS,
         "rollback": bool(res.rollback) or meta.get("rollback") in ROLLBACK_REASONS,
         "verification_tied_to_incident": bool(res.verify) and bool(incident_criteria),
-        "live_verified_here": procedure is not None and _live_match(procedure.get("provenance") or {}, freeipa,
-                                                                    os_id) is not None,
+        "live_verified_here": procedure is not None and _live_match(
+            {"verified_on": list(meta.get("replication_live") or ())}, freeipa, os_id) is not None,
     }
     missing = [k for k, v in checklist.items() if not v]
     return {

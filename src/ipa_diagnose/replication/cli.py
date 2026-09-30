@@ -169,13 +169,14 @@ def _render_verify(cmp, console: Console) -> None:
     if not cmp["items"]:
         p("  Nothing was found last time.")
     for i in cmp["items"]:
-        p(f"  {i.outcome:<18} {_safe(i.title, 200)}: {_safe(i.detail, 400)}", style.get(i.outcome))
+        p(f"  {i.outcome:<18} (found last time) {_safe(i.title, 200)}: {_safe(i.detail, 400)}", style.get(i.outcome))
     for d in cmp["new_conditions"]:
         p(f"  {'NEW':<18} {_safe(d.title, 200)}", "red")
     if cmp["reverse_not_verified"]:
         p("  Not verified (not observable from here): " + ", ".join(_safe(x, 200) for x in cmp["reverse_not_verified"]),
           "yellow")
     p("  Exact RUV equality is not required; a fresh successful session after the saved result is.", "dim")
+    p("  The VERIFY answer above is authoritative; below is the current state from this run.", "dim")
 
 
 def _replay_root(fixture_dir: str) -> bool:

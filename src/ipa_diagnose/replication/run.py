@@ -115,7 +115,9 @@ def _completeness(trace: Trace, reverse: Dict[str, str], peer: Optional[str]) ->
             r = trace.get("reverse", subject=subj)
             why = (r.summary if r is not None and r.outcome == U else r.skip_reason if r is not None else "not run")
             gaps.append({"step": f"reverse@{subj}", "check": f"reverse direction [{subj}]",
-                         "reason": f"not observed from this server ({why})"})
+                         "reason": f"not observed from this server ({why}); to read it from here, run "
+                                   "'kinit admin' in the same (root) session and run again (sudo does not pass your own "
+                                   "ticket on), or run ipa-diagnose replication on the peer"})
     return {"level": "complete" if not gaps else "partial", "not_verified": gaps, "scope": (
         f"only the agreements towards {peer} (--peer)" if peer else "every outbound agreement of this server"),
         "planner": trace.summary()}
@@ -321,6 +323,14 @@ def investigate(runner: Any, peer: Optional[str] = None, is_root: Optional[bool]
                              f"{me}) was not observed from {me}",
                              "why": f"{consumer} sees its own outbound agreements; nothing was changed anywhere."})
     notes = list(extra.get("ruv_notes") or [])
+    me_ = env.get("host")
+    for name, sfx in (topo.get("suffixes") or {}).items():
+        cut = sorted({d.subject.split(">", 1)[1] for d in diags if d.code == "REPLICATION_FAILING"
+                      and d.subject.startswith(f"{name}:{me_}>")} & set(sfx.get("neighbours_of_this_server") or []))
+        if me_ in (sfx.get("articulation_points") or []) and len(cut) >= 2:
+            notes.append(f"{me_} is an articulation point of the {name} topology and its agreements to "
+                         f"{', '.join(cut)} fail: servers on different sides of {me_} do not replicate {name} "
+                         "changes with each other until this is fixed")
     ag = trace.get("agreements")
     if ag is not None and ag.outcome in (P, W) and ag.facts.get("peer_found") is False:
         notes.append(f"this server has no outbound agreement towards {peer}")

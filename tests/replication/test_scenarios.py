@@ -93,6 +93,23 @@ def test_unreachable_peer_is_never_called_dead_and_says_from_where_and_when():
     assert [x.capability for x in chain.links] == ["REPLICATION", "PEER_DS", "NETWORK"]
 
 
+def test_replay_never_invents_the_time_of_an_observation():
+    r = H.run(Lab().peer_unreachable(IPA02))
+    assert "unrecorded time (recorded evidence)" in H.primary(r).detail
+
+
+def test_an_articulation_point_that_loses_both_neighbours_says_so():
+    lab = Lab(me=IPA02).peer_unreachable(IPA01).peer_ds_stopped(IPA03)
+    r = H.run(lab)
+    assert any("articulation point of the domain topology" in n for n in r.notes)
+
+
+def test_missing_reverse_direction_says_how_to_read_it():
+    r = H.run(Lab().set_reverse(IPA02, status="NOT_RUN"))
+    gap = next(g for g in r.completeness["not_verified"] if g["step"].startswith("reverse@"))
+    assert "kinit admin" in gap["reason"] and "sudo does not pass" in gap["reason"]
+
+
 def test_dns_failure_is_observer_relative_and_stops_at_the_name():
     r = H.run(Lab().dns_broken(IPA02))
     p = H.primary(r)
@@ -110,7 +127,12 @@ def test_transport_error_that_the_peer_no_longer_shows_is_transient_not_a_root_c
 # ---------------------------------------------------------------- Kerberos: KDC, clock, principal, keytab, 49
 
 
-def test_local_kdc_stopped_explains_both_suffixes_as_one_shared_root_with_a_local_fix():
+def test_local_kdc_stopped_explains_both_suffixes_as_one_shared_root_with_a_local_fix(monkeypatch):
+    from ipa_diagnose.replication import safety as G
+
+    meta = dict(G.SLICE5_PROCEDURES["proc.service.start-stopped-service"], replication_live=(
+        {"tier": "LIVE", "freeipa": "4.13.3", "os": "fedora-43"},))
+    monkeypatch.setitem(G.SLICE5_PROCEDURES, "proc.service.start-stopped-service", meta)
     r = H.run(Lab().local_kdc_stopped(), live=True)
     p = H.primary(r)
     assert p.code == "LOCAL_KDC_NOT_RUNNING" and p.subject == f"server:{IPA01}"

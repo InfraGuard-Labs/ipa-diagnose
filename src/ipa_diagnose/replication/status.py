@@ -214,7 +214,7 @@ MEANING: Dict[str, str] = {
     GSSAPI_CLOCK_SKEW: "Kerberos refused the exchange because the clocks are too far apart",
     GSSAPI_NO_KDC: "the supplier's Kerberos library could not reach a KDC",
     GSSAPI_CREDENTIALS: "the supplier has no usable Kerberos credentials for its LDAP service principal",
-    GSSAPI_OTHER: "the GSSAPI (Kerberos) bind failed without a recognizable reason",
+    GSSAPI_OTHER: "the GSSAPI (Kerberos) bind failed; the status text alone does not say why",
     INVALID_CREDENTIALS: "the consumer rejected the supplier's credentials (LDAP 49)",
     INSUFFICIENT_ACCESS: "the consumer does not let the supplier's identity send updates (LDAP 50 / permission "
                          "denied)",
