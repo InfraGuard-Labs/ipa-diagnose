@@ -142,6 +142,17 @@ def test_a_peer_cause_that_only_changed_shape_is_changed_not_resolved():
     assert out2[unreach] == "CHANGED", out2
 
 
+def test_an_unrelated_problem_already_there_does_not_make_a_fixed_peer_cause_changed():
+    """Freeze re-review probe: the peer DS was fixed, a CA-data problem with the same peer was already there before
+    and stays - the peer-DS item is not CHANGED because of it."""
+
+    peer = f"PEER_DS_NOT_ACCEPTING@server:{IPA02}"
+    _r, prev = baseline(Lab().peer_ds_stopped(IPA02, recorded=False).set_status(IPA02, S.GENERATION_TEXT, suffix="ca"))
+    _c, out, code = verify(prev, fixed_later().set_status(IPA02, S.GENERATION_TEXT, suffix="ca"))
+    assert out[peer] != "CHANGED", out
+    assert code != 0  # the CA problem is still there
+
+
 def test_still_failing_is_still_present():
     _r, prev = baseline(Lab().local_kdc_stopped())
     _c, out, code = verify(prev, Lab(now=LATER).local_kdc_stopped())

@@ -24,7 +24,7 @@ from __future__ import annotations
 import re
 from typing import Any, Optional, Tuple
 
-from ipa_diagnose.planner.core import Classified, Context, Outcome, Req, Step
+from ipa_diagnose.planner.core import NOT_RUN_ON_PURPOSE, Classified, Context, Outcome, Req, Step
 
 KRB_TOLERANCE = 300  # MIT Kerberos default clockskew (seconds); FreeIPA does not change it
 CLOCK_WARN = 60
@@ -355,12 +355,14 @@ def g_user_checks(ctx) -> Tuple[bool, str]:
         return False, "SSSD does not resolve the user; the PAM account phase would only repeat that failure"
     acct = ctx.fact("pam.stack.account_modules")
     if not isinstance(acct, list):
-        return False, ("the service's PAM stack could not be read, so it is unknown whether its account phase would "
-                       "reset failed-login counters (pam_faillock / pam_tally2); not run")
+        return False, (f"{NOT_RUN_ON_PURPOSE} the service's PAM stack could not be read (or was too large to read "
+                       "completely), so it is unknown whether its account phase would reset failed-login counters "
+                       "(pam_faillock / pam_tally2)")
     if any(m in _COUNTER_RESETTING for m in acct):
         # pam_faillock's (and pam_tally2's) account phase resets the user's failed-login records: running it would
-        # unlock a locked-out account - a write, not a check (freeze FreeIPA-SME review)
-        return False, ("the service's PAM account phase includes a failed-login counter module ("
+        # unlock a locked-out account - a write, not a check (freeze FreeIPA-SME review). The question stays open:
+        # a gap, so the run is never 'complete' without it (freeze re-review)
+        return False, (f"{NOT_RUN_ON_PURPOSE} the service's PAM account phase includes a failed-login counter module ("
                        + ", ".join(m for m in acct if m in _COUNTER_RESETTING) + ") that resets the user's counters; "
                        "ipa-diagnose does not run it (it could unlock a locked account)")
     return True, "the user resolves: does SSSD's account check (HBAC and account state, as at login) accept it here?"

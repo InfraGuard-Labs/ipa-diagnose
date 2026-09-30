@@ -258,6 +258,10 @@ def build_report(
             cause_note = " and ".join(causes)
             if d.status == DiagnosisStatus.DIAGNOSED:
                 d.why = f"{d.why}\n\nLikely a downstream symptom of the {cause_note} problem reported above."
+                if _is_service_down(d) and any("service-not-running-dirsrv" in u.diagnosis_id for u in diagnoses):
+                    # freeze re-review: 'symptom' must not suggest it recovers by itself
+                    d.why += (" It does not start by itself when the Directory Server is started: once dirsrv is "
+                              "running, run ipa-diagnose again (or verify), which then shows its own fix.")
             else:
                 d.why = f"{d.why}\n\nMay be a downstream symptom of the {cause_note} problem reported above (not established)."
         elif d.severity == Severity.WARNING and d.status == DiagnosisStatus.DIAGNOSED:

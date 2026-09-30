@@ -56,6 +56,9 @@ MAX_DEPTH = 12
 MAX_FANOUT = 10
 MAX_WALL_SECONDS = 180.0
 MAX_RETRIES = 1
+# a relevance gate whose reason starts with this declines a check on purpose (for safety): its question is left
+# open, so the skip is a gap in what was verified ("not applicable"), never "not needed"
+NOT_RUN_ON_PURPOSE = "not run on purpose:"
 MAX_INSTANCES = 16
 """per template: the most subjects one for_each may investigate."""
 HARD_MAX_STEPS = 200
@@ -439,8 +442,10 @@ class _Run:
             rec.selected_because = why
             if not ok:
                 # unusable evidence is a gap in what could be checked, not a check that was not needed
-                rec.skip_reason = (f"not applicable: {why}" if why.startswith("the evidence this decision needs")
-                                   else f"not needed: {why}")
+                # a gate may also decline a check on purpose (for safety) while its question stays open: that is
+                # a gap too, never "not needed" (freeze re-review: the pam_faillock skip read as full coverage)
+                gap = why.startswith(("the evidence this decision needs", NOT_RUN_ON_PURPOSE))
+                rec.skip_reason = f"not applicable: {why}" if gap else f"not needed: {why}"
                 return None
         if step.needs_root and not self.is_root:
             rec.skip_reason = f"privilege: needs root ({self.privilege_hint})"

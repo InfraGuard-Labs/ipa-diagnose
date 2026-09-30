@@ -288,8 +288,9 @@ def compare(previous: Dict[str, Any], fresh: ReplicationResult, runner: Any,
                 # a peer-side cause moves subject as the evidence changes shape (server:<peer> -> pair:<me>><peer>,
                 # refused -> no answer): any FAIL still about that peer means it changed, never RESOLVED (freeze
                 # review: PEER_DS_NOT_ACCEPTING was RESOLVED while PEER_DS_NOT_ANSWERING appeared for the same peer)
-                same = [x for x in fresh.diagnoses if x.severity == "FAIL" and x.key != key
-                        and _peer_of(x.subject) == peer]
+                old = {o["key"] for o in previous["diagnoses"]}
+                same = [x for x in fresh.diagnoses if x.severity == "FAIL" and x.key != key and x.key not in old
+                        and _peer_of(x.subject) == peer and x.code.startswith(("PEER_", "PAIR_"))]
             if not answered:
                 it = VerifyItem(key, code, subject, title, "UNABLE_TO_VERIFY", why)
             elif same:

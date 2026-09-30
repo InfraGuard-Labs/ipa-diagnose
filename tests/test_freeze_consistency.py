@@ -189,8 +189,25 @@ def test_the_pam_account_phase_is_never_run_when_it_would_reset_failed_login_cou
     rec = r.trace.get("pam.acct")
     assert rec is not None and rec.outcome.value == "SKIPPED" and "failed-login counter" in rec.skip_reason
     assert r.runtime.state != "PASS"
+    # the skipped account check is a GAP: never HEALTHY or 'complete' without it (freeze re-review)
+    assert rec.skip_reason.startswith("not applicable:")
+    assert r.status == "NOT_FULLY_VERIFIED" and r.completeness["level"] != "complete"
+    # and a host that refuses the user (pam_denied) is never reported healthy just because the check was skipped
+    rd = CH.run("pam-denied", mutate=with_counter_module, hbac="PASS")
+    assert rd.status != "HEALTHY" and rd.runtime.state != "PASS"
     r2 = CH.run("healthy")
     assert r2.trace.get("pam.acct").outcome.value == "PASS"
+
+
+def test_a_pam_stack_read_only_in_part_is_unknown_for_the_counter_gate():
+    from tests.client import scenarios as CS
+
+    def cut_short(d):
+        d[CS.key("pam.stack", service=CS.SERVICE)]["fields"]["account_modules"] = None
+
+    r = CH.run("healthy", mutate=cut_short)
+    assert r.trace.get("pam.acct").skip_reason.startswith("not applicable: not run on purpose")
+    assert r.status == "NOT_FULLY_VERIFIED"
 
 
 def _help(capsys, argv):
