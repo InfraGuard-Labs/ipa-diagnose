@@ -519,11 +519,11 @@ class LiveRunner(Runner):
     pass
 
 
-def _replay_value(v: Any, depth: int = 0) -> Any:
+def _replay_value(v: Any, depth: int = 0, limit: int = 240) -> Any:
     """A recorded field value is untrusted: strings are sanitized at every level, structures are bounded."""
 
     if isinstance(v, str):
-        return sanitize_text(v, 240)
+        return sanitize_text(v, limit)
     if isinstance(v, bool) or v is None or isinstance(v, int):
         return v
     if isinstance(v, float):
@@ -531,9 +531,9 @@ def _replay_value(v: Any, depth: int = 0) -> Any:
     if depth >= 4:
         return None
     if isinstance(v, list):
-        return [_replay_value(x, depth + 1) for x in v[:200]]
+        return [_replay_value(x, depth + 1, limit) for x in v[:200]]
     if isinstance(v, dict):
-        return {sanitize_text(k, 60): _replay_value(x, depth + 1) for k, x in list(v.items())[:100]}
+        return {sanitize_text(k, 60): _replay_value(x, depth + 1, limit) for k, x in list(v.items())[:100]}
     return None
 
 
@@ -542,8 +542,10 @@ class ReplayRunner(Runner):
 
     replay = True
 
-    def __init__(self, fixture_dir: Optional[str], filename: str = "resolution_checks.json") -> None:
+    def __init__(self, fixture_dir: Optional[str], filename: str = "resolution_checks.json",
+                 field_limit: int = 240) -> None:
         super().__init__()
+        self._field_limit = field_limit
         self._data: Dict[str, Any] = {}
         if fixture_dir:
             p = pathlib.Path(fixture_dir) / filename
@@ -559,7 +561,7 @@ class ReplayRunner(Runner):
         if not isinstance(entry, dict):
             return _res(spec.check_id, params, NOT_RUN, {}, "not recorded in this replay fixture")
         fields = entry.get("fields") if isinstance(entry.get("fields"), dict) else {}
-        fields = {sanitize_text(k, 60): _replay_value(v) for k, v in list(fields.items())[:200]}
+        fields = {sanitize_text(k, 60): _replay_value(v, 0, self._field_limit) for k, v in list(fields.items())[:200]}
         if "not_after_in_days" in fields and isinstance(fields["not_after_in_days"], int):
             fields["days_left"] = fields.pop("not_after_in_days")
         status = entry.get("status") if entry.get("status") in (OK, FAILED, NOT_RUN, DENIED) else FAILED
@@ -570,3 +572,8 @@ class ReplayRunner(Runner):
 from ipa_diagnose.resolution import client_checks as _client_checks  # noqa: E402
 
 REGISTRY.update({s.check_id: s for s in _client_checks.specs()})
+
+# Replication checks (Slice 5) belong to the same closed registry.
+from ipa_diagnose.replication import checks as _replication_checks  # noqa: E402
+
+REGISTRY.update({s.check_id: s for s in _replication_checks.specs()})
