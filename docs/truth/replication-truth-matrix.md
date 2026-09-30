@@ -31,8 +31,10 @@ here, via [claim-register.md](claim-register.md) (section "Slice 5").
 | [36657552130](https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36657552130) | e36e5e0 | 13/20, 0 false root causes, 0 missed causes, 0 unsafe fixes | both live findings confirmed fixed; local dirsrv stopped -> printed `systemctl start dirsrv@LAB-TEST.service` run verbatim -> `--verify` RESOLVED (second LIVE record); **389-DS's real status for a failed GSSAPI bind is `Error (-2) Problem connecting to replica - LDAP error: Local error (connection error)`** (no Kerberos detail: the cause comes from ipa-diagnose's own reproduction, as the correctness review predicted). Harness: an expectation of R02d was wrong (the peer-side root is the item that resolves); R07 aborted because `kinit` on a server whose own KDC is stopped fails (an IPA server's Kerberos library uses its own KDC) - lab changes now go through LDAPI |
 | [36660487204](https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36660487204) | 175cb7f | 16/20, 0 false root causes, 0 missed, 0 unsafe | peer KDC stopped (reverse direction read from the peer and handed off; this server's own direction stays OK - no "peer KDC required" assumption) and two independent causes on the middle server pass. **Live findings:** a NATURAL backoff (`Error (18) Can't acquire replica (Incremental update transient warning. Backing off, will retry update later.)`) was reported NOT_FULLY_VERIFIED, never green; after a restarted Directory Server came back, the PEER still recorded that it could not reach it - now TRANSIENT, not a new failure (e58c12f); `Error (-1) Unable to receive the response for a startReplication extended operation to consumer. Will retry later.` is classified TRANSPORT. Harness: a non-root user could not execute the tool under /root; libfaketime path |
 | [36663200048](https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36663200048) | e58c12f | **20/20 PASS**, 0 false root causes, 0 missed causes, 0 unsafe fixes | every scenario below |
+| [36695043258](https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36695043258) | 637eb8d | **20/20 PASS**, 0 / 0 / 0 | after the re-review fix: the reverse link to this server's keytab only for acceptor-side forms |
+| [36696040195](https://github.com/InfraGuard-Labs/ipa-diagnose/actions/runs/36696040195) | **54b5943 (final product code)** | **20/20 PASS**, 0 false root causes, 0 missed causes, 0 unsafe fixes | after the final re-review fixes (peer finding text, root ranking); the scenario table below holds on this run |
 
-## Live scenarios (run 36663200048 on e58c12f: 20/20 PASS)
+## Live scenarios (20/20 PASS on runs 36663200048 / e58c12f, 36695043258 / 637eb8d and 36696040195 / 54b5943, the final product code)
 
 FreeIPA 4.13.4-2.fc43, 389-ds-base 3.1.5-4.fc43, krb5 1.22.2-4.fc43, Fedora 43 containers; every agreement LDAP/389
 with SASL/GSSAPI. "Blind" = ipa-diagnose was not told the fault. A fix was run only as the exact printed argv.
@@ -59,8 +61,9 @@ Counts over the 20 rows: **0 false root causes, 0 missed expected causes, 0 unsa
 another server, or containing a forbidden operation). Not attempted live, on purpose: a CA-suffix-only failure (every
 safe way needs LDAP or topology damage), stale RUV, changelog purge, generation-ID mismatch (see the fixture table).
 
-Performance (live, the same rows): a healthy server 2.4-3.4 s; a stopped peer 3.4 s; an unreachable peer 11.8 s (TCP
-and LDAP timeouts); a broken resolver 3.2 s; `--peer` 1.9 s; non-root 0.3 s.
+Performance (live, runs 36663200048 and 36696040195): a healthy server 2.4-3.4 s; a stopped peer 3.4 s; an
+unreachable peer 11.8-14.7 s (TCP and LDAP timeouts, bounded per peer); a broken resolver 3.2 s; `--peer` 1.9 s;
+non-root 0.2-0.3 s. Slow or unreachable peers dominate the run time; the timeouts were not raised.
 
 
 ## Fixture and synthetic evidence (not live)

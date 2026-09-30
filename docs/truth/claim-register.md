@@ -132,7 +132,7 @@ blockers found and fixed with regression tests; the last focused review found no
 
 Evidence: [replication-truth-matrix.md](replication-truth-matrix.md) (live lab: three disposable FreeIPA 4.13.4 /
 389-ds-base 3.1.5 / Fedora 43 servers in a line topology ipa01 -- ipa02 -- ipa03, CA on ipa01 and ipa02; rows
-R00-R12, 20/20 PASS on e58c12f, run 36663200048). Fixture and synthetic evidence: `tests/replication/`,
+R00-R12, 20/20 PASS on the final product code 54b5943, run 36696040195, and on e58c12f and 637eb8d). Fixture and synthetic evidence: `tests/replication/`,
 `tests/fixtures/replication-mode/`. Reviews: fresh model reviewer agents (architecture and replication
 correctness, resolution safety and security/privacy, fresh-user/support, focused re-reviews after every blocker fix),
 not independent humans. **Only one FreeIPA version, one OS and one topology shape were validated live.**
@@ -151,4 +151,4 @@ not independent humans. **Only one FreeIPA version, one OS and one topology shap
 | Z10 | Clock skew between servers | FIXTURE + LIVE (simulated) | fixtures; R12 (only ipa-diagnose's process clock shifted) | containers share the kernel clock: no real skewed server | "It measures the clock difference to each peer and stops at that measurement; in tests and a simulated offset it reported the difference without blaming either server's time service." | "detects real clock skew between servers" |
 | Z11 | Stale RUV, changelog purge, generation-ID mismatch | FIXTURE | tests only | never reproduced live (it would mean damaging 389-DS) | "RUV elements without a current server and replica-data errors are recognized in tests and reported as candidates or administrator decisions, never with a clean-up command." | "detects stale RUVs" (live) |
 | Z12 | Replication bundle is structure only | LIVE + SYNTHETIC | R11 (no lab host, domain, realm or IP inside; validates), tests | pattern-based redaction elsewhere unchanged | "`bundle --replication` adds per-suffix, per-direction states, diagnosis codes and cause-chain structure under pseudonyms, without status text, commands, principals or LDAP entries." | "secret-free" |
-| Z13 | Fast | LIVE | truth matrix timing | one lab | "In the lab a replication investigation took about 2-4 s per server, and about 12 s with an unreachable peer (timeouts)." | performance beyond the lab |
+| Z13 | Fast | LIVE | truth matrix timing | one lab | "In the lab a replication investigation took about 2-4 s per server, and 12-15 s with an unreachable peer (timeouts)." | performance beyond the lab |
