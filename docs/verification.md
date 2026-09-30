@@ -41,6 +41,18 @@ examples - note that `STILL_PRESENT` here comes from a second, independent
 evidence-collection pass against the *same* fixture, not a cached copy of
 the first report.
 
+## Replication `--verify` (Slice 5)
+
+`ipa-diagnose replication --verify` holds a replication incident to a stricter standard than "the command
+succeeded": each earlier failing agreement (identified by suffix, supplier and consumer) must report a successful
+session that ENDED AFTER the saved result, with no update in progress, and the cause that explained it must no
+longer be found. It answers RESOLVED, STILL_PRESENT, CHANGED, PARTIALLY_RESOLVED, UNABLE_TO_VERIFY or **PENDING**
+(exit 3, never 0): the failure is gone but no fresh successful session has happened yet, or the agreement is busy,
+backing off or has had no session. PENDING has a recheck time and a 10-minute bound from its first answer, then
+becomes STILL_PRESENT or UNABLE_TO_VERIFY. Exact RUV equality is not required. A direction that cannot be observed
+from this server is listed as not verified, never as resolved. Details:
+[replication-mode.md](replication-mode.md#verification-and-pending).
+
 ## What this does not do
 
 - It does not know a remediation was even attempted - `verify` is a

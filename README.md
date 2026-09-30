@@ -197,6 +197,7 @@ sudo ipa-diagnose bundle --preview   # what a support bundle would contain; writ
 sudo ipa-diagnose bundle             # write a sanitized support bundle to share (never uploaded)
 kinit admin; ipa-diagnose access john app03.example.com sshd   # may john log in there through sshd, and why?
 sudo ipa-diagnose client --user john --service sshd   # on a client: enrolled? resolves john? why not?
+sudo ipa-diagnose replication                         # on a server: replication per suffix and direction, why not?
 ```
 
 `ipa-diagnose` must run as **root on the IPA server** (it reads root-only
@@ -346,6 +347,25 @@ cache entry, and `sssctl cache-remove` only on proven cache-database errors, nev
 `--verify` re-checks with fresh evidence. No login is attempted: RUNTIME ACCESS is FAIL or NOT VERIFIED, never
 PASS. Details: [docs/client-mode.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/docs/client-mode.md).
 
+## Replication mode
+
+`sudo ipa-diagnose replication [--peer FQDN]` answers, on an IPA server: does replication to and from this server
+work, per suffix (the domain suffix and `o=ipaca` separately) and per direction, and if not, what is the deepest
+cause the evidence proves? It reads this server's own topology, roles and outbound agreements (read-only, over the
+local LDAPI socket), then, per agreement and within a fixed budget: does the peer's name resolve from here, does
+its port answer, does its Directory Server answer an anonymous root-DSE read (and what time is it there), does
+this server's own GSSAPI bind succeed when reproduced with the Directory Server's keytab, and what does the peer's
+agreement back towards this server say (read-only, with your own Kerberos ticket, only if you have one). Causes are
+reported as explicit chains that stop where the evidence stops: a 900 s clock difference is reported as that, never
+as "chronyd is stopped" on the peer; a refused port on a host that is up is "not accepting connections"; a
+timeout is "unreachable from this server at a time", never "dead". When the remaining evidence is on another
+server, it prints a precise handoff (`On ipa02 run: sudo ipa-diagnose replication --peer ipa01`) and changes
+nothing anywhere. A fix is printed only for a cause on THIS server that passes every safety gate (in this version:
+starting this server's stopped Directory Server or KDC); re-initialization, force-sync, RUV clean-up, topology
+changes, keytab or principal changes and clock steps are never printed. `--verify` requires a fresh successful
+session after the saved result, and answers PENDING (exit 3, time-bounded) while the agreement has not had one.
+Details: [docs/replication-mode.md](https://github.com/InfraGuard-Labs/ipa-diagnose/blob/master/docs/replication-mode.md).
+
 ## The evidence model
 
 Every `Finding` and `EvidenceItem` the engine reasons about carries a
@@ -480,7 +500,9 @@ no longer want it). Set `IPA_DIAGNOSE_STATE_DIR` to change the location.
 `ipa-diagnose bundle` writes only the bundle file you asked for (mode 0600, never overwriting an existing file)
 and never changes the saved report.
 `ipa-diagnose client` saves its last result for `client --verify` next to it (`client_last.json`, replay runs
-`client_last.replay.json`; same modes and directory). `ipa-diagnose access` saves nothing.
+`client_last.replay.json`; same modes and directory). `ipa-diagnose replication` saves its last result for
+`replication --verify` there too (`replication_last.json`, replay runs `replication_last.replay.json`).
+`ipa-diagnose access` saves nothing.
 
 ## Limitations
 

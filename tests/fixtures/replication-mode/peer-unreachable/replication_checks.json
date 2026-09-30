@@ -1,0 +1,436 @@
+{
+ "chrony.tracking|": {
+  "command": "",
+  "display": "clock offset +0.000 s",
+  "fields": {
+   "direction": "ahead of",
+   "leap_status": "Normal",
+   "offset_abs": 0.0002,
+   "offset_seconds": 0.0002,
+   "reference": "x",
+   "synchronized": true
+  },
+  "status": "OK"
+ },
+ "dns.address|name=ipa02.lab.test": {
+  "command": "",
+  "display": "ipa02.lab.test resolves to 172.30.0.11",
+  "fields": {
+   "addresses": [
+    "172.30.0.11"
+   ],
+   "exit": 0,
+   "resolved": true,
+   "seconds": 0.01
+  },
+  "status": "OK"
+ },
+ "host.privilege|": {
+  "command": "",
+  "display": "running as root",
+  "fields": {
+   "is_root": true
+  },
+  "status": "OK"
+ },
+ "net.tcp|host=ipa02.lab.test,port=389": {
+  "command": "",
+  "display": "TCP ipa02.lab.test:389: timeout",
+  "fields": {
+   "open": false,
+   "seconds": 5.0,
+   "state": "timeout"
+  },
+  "status": "OK"
+ },
+ "net.tcp|host=ipa02.lab.test,port=443": {
+  "command": "",
+  "display": "TCP ipa02.lab.test:443: timeout",
+  "fields": {
+   "open": false,
+   "seconds": 5.0,
+   "state": "timeout"
+  },
+  "status": "OK"
+ },
+ "repl.agreements|": {
+  "command": "",
+  "display": "2 outbound agreement(s)",
+  "fields": {
+   "agreements": [
+    {
+     "bind_method": "SASL/GSSAPI",
+     "consumer": "ipa02.lab.test",
+     "consumer_raw": null,
+     "enabled": true,
+     "last_init_end": null,
+     "last_init_status": "Error (0) Total update succeeded",
+     "last_update_end": "2026-09-29T11:59:30Z",
+     "last_update_start": "2026-09-29T11:59:30Z",
+     "name": "meToipa02.lab.test",
+     "port": "389",
+     "status_json": null,
+     "status_text": "Error (-1) Problem connecting to replica - LDAP error: Can't contact LDAP server (connection error)",
+     "subject": "ca:ipa02.lab.test",
+     "suffix_kind": "ca",
+     "suffix_root": "o=ipaca",
+     "transport": "LDAP",
+     "update_in_progress": false
+    },
+    {
+     "bind_method": "SASL/GSSAPI",
+     "consumer": "ipa02.lab.test",
+     "consumer_raw": null,
+     "enabled": true,
+     "last_init_end": null,
+     "last_init_status": "Error (0) Total update succeeded",
+     "last_update_end": "2026-09-29T11:59:30Z",
+     "last_update_start": "2026-09-29T11:59:30Z",
+     "name": "meToipa02.lab.test",
+     "port": "389",
+     "status_json": null,
+     "status_text": "Error (-1) Problem connecting to replica - LDAP error: Can't contact LDAP server (connection error)",
+     "subject": "domain:ipa02.lab.test",
+     "suffix_kind": "domain",
+     "suffix_root": "dc=lab,dc=test",
+     "transport": "LDAP",
+     "update_in_progress": false
+    }
+   ],
+   "clean_tasks": 0,
+   "complete": true,
+   "count": 2,
+   "identity_directory_manager": true,
+   "other_agreements": [],
+   "replicas": [
+    {
+     "bind_dn_group": true,
+     "replica_id": 4,
+     "suffix_kind": "domain"
+    }
+   ],
+   "ruv": {
+    "ca": [
+     {
+      "host": "ipa01.lab.test",
+      "max_csn": "jkl",
+      "port": "389",
+      "rid": 7
+     },
+     {
+      "host": "ipa02.lab.test",
+      "max_csn": "mno",
+      "port": "389",
+      "rid": 8
+     }
+    ],
+    "domain": [
+     {
+      "host": "ipa01.lab.test",
+      "max_csn": "abc",
+      "port": "389",
+      "rid": 4
+     },
+     {
+      "host": "ipa02.lab.test",
+      "max_csn": "def",
+      "port": "389",
+      "rid": 5
+     },
+     {
+      "host": "ipa03.lab.test",
+      "max_csn": "ghi",
+      "port": "389",
+      "rid": 6
+     }
+    ]
+   },
+   "ruv_error": null
+  },
+  "status": "OK"
+ },
+ "repl.ds_keytab|": {
+  "command": "",
+  "display": "/etc/dirsrv/ds.keytab: owner dirsrv:dirsrv, mode 0600",
+  "fields": {
+   "dirsrv_can_read": true,
+   "group": "dirsrv",
+   "is_regular": true,
+   "is_symlink": false,
+   "klist_ok": true,
+   "kvnos": {
+    "ldap/ipa01.lab.test@LAB.TEST": [
+     2
+    ]
+   },
+   "links": 1,
+   "mode": "0600",
+   "owner": "dirsrv",
+   "present": true,
+   "principals": [
+    "ldap/ipa01.lab.test@LAB.TEST"
+   ],
+   "size": 400,
+   "world_readable": false
+  },
+  "status": "OK"
+ },
+ "repl.gssapi_bind|host=ipa02.lab.test,port=389,principal=ldap/ipa01.lab.test@LAB.TEST,transport=LDAP": {
+  "command": "",
+  "display": "GSSAPI bind succeeded",
+  "fields": {
+   "authzid": "dn:krbprincipalname=ldap/ipa01.lab.test@LAB.TEST,cn=services,cn=accounts,dc=lab,dc=test",
+   "bind_attempted": true,
+   "bind_error_class": null,
+   "bind_ok": true,
+   "ccache_removed": true,
+   "kinit_class": null,
+   "kinit_ok": true
+  },
+  "status": "OK"
+ },
+ "repl.peer_agreement|host=ipa02.lab.test,port=389,self_host=ipa01.lab.test,transport=LDAP": {
+  "command": "",
+  "display": "ipa02.lab.test has agreements towards this server",
+  "fields": {
+   "agreements": [
+    {
+     "bind_method": "SASL/GSSAPI",
+     "consumer": "ipa01.lab.test",
+     "consumer_raw": null,
+     "enabled": true,
+     "last_init_end": null,
+     "last_init_status": "Error (0) Total update succeeded",
+     "last_update_end": "2026-09-29T11:59:30Z",
+     "last_update_start": "2026-09-29T11:59:30Z",
+     "name": "meToipa01.lab.test",
+     "port": "389",
+     "status_json": null,
+     "status_text": "Error (0) Replica acquired successfully: Incremental update succeeded",
+     "subject": "ca:ipa01.lab.test",
+     "suffix_kind": "ca",
+     "suffix_root": "o=ipaca",
+     "supplier": "ipa02.lab.test",
+     "transport": "LDAP",
+     "update_in_progress": false
+    },
+    {
+     "bind_method": "SASL/GSSAPI",
+     "consumer": "ipa01.lab.test",
+     "consumer_raw": null,
+     "enabled": true,
+     "last_init_end": null,
+     "last_init_status": "Error (0) Total update succeeded",
+     "last_update_end": "2026-09-29T11:59:30Z",
+     "last_update_start": "2026-09-29T11:59:30Z",
+     "name": "meToipa01.lab.test",
+     "port": "389",
+     "status_json": null,
+     "status_text": "Error (0) Replica acquired successfully: Incremental update succeeded",
+     "subject": "domain:ipa01.lab.test",
+     "suffix_kind": "domain",
+     "suffix_root": "dc=lab,dc=test",
+     "supplier": "ipa02.lab.test",
+     "transport": "LDAP",
+     "update_in_progress": false
+    }
+   ],
+   "ticket": true,
+   "visible": true
+  },
+  "status": "OK"
+ },
+ "repl.peer_rootdse|host=ipa02.lab.test,port=389,transport=LDAP": {
+  "command": "",
+  "display": "ipa02.lab.test:389: no answer",
+  "fields": {
+   "answered": false,
+   "detail": "timed out after 15s",
+   "error_class": "TRANSPORT",
+   "exit": null,
+   "naming_contexts": [],
+   "offset_seconds": null,
+   "ok": false,
+   "peer_time": null,
+   "sasl_gssapi": null,
+   "seconds": 15.0,
+   "vendor": null
+  },
+  "status": "OK"
+ },
+ "repl.principals|": {
+  "command": "",
+  "display": "3 ldap/ service principal(s)",
+  "fields": {
+   "complete": true,
+   "ldap_principals": [
+    "ipa01.lab.test",
+    "ipa02.lab.test",
+    "ipa03.lab.test"
+   ],
+   "managers_read": true,
+   "replication_managers": [
+    "ipa01.lab.test",
+    "ipa02.lab.test",
+    "ipa03.lab.test"
+   ]
+  },
+  "status": "OK"
+ },
+ "repl.server|": {
+  "command": "",
+  "display": "IPA server ipa01.lab.test",
+  "fields": {
+   "basedn": "dc=lab,dc=test",
+   "domain": "lab.test",
+   "ds_instance": "LAB-TEST",
+   "ds_instances": [
+    "LAB-TEST"
+   ],
+   "ds_version": "3.1.5",
+   "freeipa": "4.13.3",
+   "host": "ipa01.lab.test",
+   "ipa_conf_present": true,
+   "ipactl": true,
+   "is_ipa_server": true,
+   "is_root": true,
+   "krb5_ktname": "/etc/dirsrv/ds.keytab",
+   "krb5_ktname_source": "/etc/sysconfig/dirsrv-LAB-TEST",
+   "ldap_principal": "ldap/ipa01.lab.test@LAB.TEST",
+   "os": "fedora",
+   "os_version": "43",
+   "realm": "LAB.TEST",
+   "systemd": true
+  },
+  "status": "OK"
+ },
+ "repl.storage|": {
+  "command": "",
+  "display": "/var/lib/dirsrv: 10240 MiB free",
+  "fields": {
+   "free_bytes": 10737418240,
+   "free_percent": 50.0,
+   "read_only": false,
+   "total_bytes": 21474836480
+  },
+  "status": "OK"
+ },
+ "repl.topology|": {
+  "command": "",
+  "display": "3 IPA server(s); 3 topology segment(s)",
+  "fields": {
+   "complete": true,
+   "flags": {
+    "ipa01.lab.test": [
+     "caRenewalMaster"
+    ]
+   },
+   "hidden": [],
+   "identity_directory_manager": true,
+   "masters": [
+    "ipa01.lab.test",
+    "ipa02.lab.test",
+    "ipa03.lab.test"
+   ],
+   "rejected_names": 0,
+   "roles": {
+    "ipa01.lab.test": [
+     "CA",
+     "DNS",
+     "HTTP",
+     "KDC"
+    ],
+    "ipa02.lab.test": [
+     "CA",
+     "HTTP",
+     "KDC"
+    ],
+    "ipa03.lab.test": [
+     "HTTP",
+     "KDC"
+    ]
+   },
+   "segments": [
+    {
+     "direction": "both",
+     "left": "ipa01.lab.test",
+     "name": "ipa01-to-ipa02",
+     "right": "ipa02.lab.test",
+     "suffix": "domain"
+    },
+    {
+     "direction": "both",
+     "left": "ipa02.lab.test",
+     "name": "ipa02-to-ipa03",
+     "right": "ipa03.lab.test",
+     "suffix": "domain"
+    },
+    {
+     "direction": "both",
+     "left": "ipa01.lab.test",
+     "name": "ipa01-to-ipa02",
+     "right": "ipa02.lab.test",
+     "suffix": "ca"
+    }
+   ],
+   "suffixes": [
+    {
+     "name": "ca",
+     "root": "o=ipaca"
+    },
+    {
+     "name": "domain",
+     "root": "dc=lab,dc=test"
+    }
+   ],
+   "topology_read": true
+  },
+  "status": "OK"
+ },
+ "systemd.journal_tail|unit=dirsrv@LAB-TEST.service": {
+  "command": "",
+  "display": "last log line",
+  "fields": {
+   "last_line": "stopped",
+   "lines": 3
+  },
+  "status": "OK"
+ },
+ "systemd.journal_tail|unit=krb5kdc.service": {
+  "command": "",
+  "display": "last log line",
+  "fields": {
+   "last_line": "stopped",
+   "lines": 3
+  },
+  "status": "OK"
+ },
+ "systemd.unit|service=dirsrv": {
+  "command": "",
+  "display": "dirsrv@LAB-TEST.service: active (running)",
+  "fields": {
+   "active_state": "active",
+   "load_state": "loaded",
+   "result": "success",
+   "start_method": "ipactl",
+   "sub_state": "running",
+   "unit": "dirsrv@LAB-TEST.service",
+   "unit_file_state": "enabled"
+  },
+  "status": "OK"
+ },
+ "systemd.unit|service=krb5kdc": {
+  "command": "",
+  "display": "krb5kdc.service: active (running)",
+  "fields": {
+   "active_state": "active",
+   "load_state": "loaded",
+   "result": "success",
+   "start_method": "ipactl",
+   "sub_state": "running",
+   "unit": "krb5kdc.service",
+   "unit_file_state": "enabled"
+  },
+  "status": "OK"
+ }
+}

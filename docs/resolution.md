@@ -50,6 +50,9 @@ a high-risk procedure that ipa-diagnose has not verified, so it points to the do
 | **Client**: SSSD's cache database is failing | `sssctl cache-remove --stop --start` (backs up local overrides; removes cached passwords) | HIGH | all of the above plus SSSD's own log reporting cache-database errors and the cache entry unreadable; you accept the loss of offline logins first. Never `rm /var/lib/sss/db/*` |
 | **Client**: clock skew, stale/missing/wrong host keytab, host principal unknown, not enrolled | none - reasons shown (no clock step on clients, no keytab replacement, no re-enrollment) | - | - |
 
+| **Replication** (`ipa-diagnose replication`): this server's own Directory Server or KDC is stopped | `systemctl start dirsrv@<INSTANCE>.service` / `systemctl start krb5kdc.service` (the same procedure as a stopped IPA service), rollback `systemctl stop` | MEDIUM | in addition to that procedure's gates, the replication Resolution Safety gate: the cause is on THIS server and is the deepest proven link of its chain, PRIMARY or INDEPENDENT, HIGH confidence, no contradiction, LIVE evidence younger than 300 s, the unit re-checked stopped just now; a KDC stopped because the Directory Server is stopped gets no fix of its own ([replication-mode.md](replication-mode.md)) |
+| **Replication**: peer-side causes, keytab/principal problems, clock skew, replica data needing re-initialization, RUV candidates, missing replication manager | none - a handoff or the reason is shown; re-initialization, force-sync, RUV clean-up, topology changes, keytab replacement and clock steps are never printed | - | - |
+
 ### Verification status
 
 - **Required service not running**: `BUILT_IN_VERIFIED`, promoted by the maintainer after the Slice 1 truth

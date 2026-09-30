@@ -8,6 +8,10 @@ name: Release candidate (build + lifecycle)
 # is published by this workflow. RHEL claims are proxy (Rocky/Alma) - see docs.
 on:
   workflow_dispatch:
+  # On a slice branch, also when .github/ci-trigger changes (candidate artifacts are never published from here).
+  push:
+    branches: ["slice[0-9]*/**"]
+    paths: [".github/ci-trigger"]
 
 permissions:
   contents: read

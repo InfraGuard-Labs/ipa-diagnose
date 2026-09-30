@@ -19,6 +19,7 @@ sudo ipa-diagnose bundle --output case-123.tar.gz
 ipa-diagnose bundle validate case-123.tar.gz  # check a bundle without extracting it (no root needed)
 ipa-diagnose bundle --replay tests/fixtures/replication/peer-unreachable --preview   # recorded evidence
 sudo ipa-diagnose bundle --client --user alice --service sshd   # on a client: add its client investigation
+sudo ipa-diagnose bundle --replication [--peer ipa02.example.test]   # on a server: add its replication investigation
 ```
 
 Add `--json` to any of them for machine-readable output. Nothing is interactive.
@@ -67,6 +68,7 @@ A gzip-compressed tar holding exactly these files in one directory,
 | `verification.json` | whether a verify baseline exists and which fixes await a verify (context only) |
 | `access.json` (only with `--access`) | one access answer: states, FreeIPA's decision, rule paths; pseudonymized |
 | `client.json` (only with `--client`) | one client investigation (`ipa-diagnose client`): states, diagnosis codes and roles, step outcomes, a few enumerated facts (error classes, online state, signal names); pseudonymized; no check output, log lines, commands, principals or key versions |
+| `replication.json` (only with `--replication`) | one replication investigation (`ipa-diagnose replication`): per-suffix, per-direction states, diagnosis codes and roles, cause-chain structure (capabilities and discriminators, never the claim text), topology shape, step outcomes, a few enumerated facts; pseudonymized; no agreement status text, LDAP entries, commands, principals or key material |
 | `redaction-report.json` | counts only: identifiers pseudonymized by class, values redacted by category, fields removed, text truncated |
 | `SHA256SUMS` | SHA-256 of every other file, in `sha256sum -c` format |
 

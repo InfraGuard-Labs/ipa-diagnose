@@ -69,6 +69,15 @@ check "bundle is pseudonymized (no fixture host name inside)" python3 -c "import
 check "an existing bundle file is never overwritten (exit 5)" bash -c "ipa-diagnose bundle --replay /fixtures/replication/peer-unreachable --output /tmp/pkg-bundle.tar.gz; test \$? -eq 5"
 rm -f /tmp/pkg-bundle.tar.gz
 
+step "4e. Slice 5: replication mode from the installed package (replay; nothing changed)"
+ipa-diagnose replication --replay /fixtures/replication-mode/healthy; rc=$?
+check "replication replay: healthy exits 0" test "${rc}" -eq 0
+ipa-diagnose replication --replay /fixtures/replication-mode/peer-ds-stopped --json > /tmp/rp.json; rc=$?
+python3 -c "import json; d=json.load(open('/tmp/rp.json')); p=[x for x in d['diagnoses'] if x['role']=='PRIMARY']; assert d['status']=='PROBLEM_FOUND' and p and p[0]['code']=='PEER_DS_NOT_ACCEPTING' and d['handoffs'], d['status']"
+check "replication replay: peer DS stopped -> PEER_DS_NOT_ACCEPTING + handoff (exit 1)" bash -c "test ${rc} -eq 1 && test $? -eq 0"
+ipa-diagnose replication --replay /fixtures/replication-mode/reverse-not-observable; rc=$?
+check "replication replay: unobservable reverse direction is never healthy (exit 4)" test "${rc}" -eq 4
+
 step "5. --json exposes evidence completeness"
 ipa-diagnose --replay /fixtures/replication/healthy --json > /tmp/j.json; python3 - <<'PY'
 import json
