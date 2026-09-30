@@ -53,6 +53,7 @@ AGREEMENT_ATTRS = ("cn", "objectClass", "nsDS5ReplicaHost", "nsDS5ReplicaPort", 
                    "nsds5replicaLastUpdateEnd", "nsds5replicaUpdateInProgress", "nsds5replicaLastInitStatus",
                    "nsds5replicaLastInitEnd")
 _SECRET_ATTRS = ("nsds5replicacredentials", "userpassword", "nsds5replicabootstrapcredentials")
+BIND_METHODS = ("SIMPLE", "SASL/GSSAPI", "SASL/DIGEST-MD5", "SSLCLIENTAUTH")
 KNOWN_ROLES = ("CA", "KRA", "DNS", "DNSSEC", "KDC", "HTTP", "ADTRUST")
 _NSDS50RUV = re.compile(r"\{replica\s+(\d{1,5})\s+ldap://([A-Za-z0-9.-]{1,253}):(\d{1,5})\}(?:\s+(\S{1,40}))?(?:\s+(\S{1,40}))?")
 
@@ -320,8 +321,17 @@ def _ldapi_search(uri: str, base: str, scope: str, flt: str, attrs: Tuple[str, .
     for e in entries:
         for a in _SECRET_ATTRS:
             e.pop(a, None)
+    if rc == 0 and (len(out) >= _MAX or len(entries) >= ldif.MAX_ENTRIES):
+        _TRUNCATED.add(base)  # the read was cut: whatever lists it holds are never complete
     cmd = " ".join(shlex.quote(a) for a in argv[:8]) + " ..."
     return rc, entries, _c(_redact_log_line(err), 200), cmd
+
+
+_TRUNCATED: set = set()
+
+
+def _cut(*bases: str) -> bool:
+    return any(b in _TRUNCATED for b in bases)
 
 
 def _whoami_dm(uri: str) -> Optional[bool]:
@@ -341,6 +351,7 @@ def _rdns(dn: str) -> List[Tuple[str, str]]:
 
 
 def _topology(params):
+    _TRUNCATED.clear()
     uri, basedn, err = _ldapi()
     if err:
         return _res("repl.topology", params, DENIED if "root" in err else NOT_RUN, {}, err)
@@ -400,7 +411,8 @@ def _topology(params):
                 else:
                     rejected += 1
     dm = _whoami_dm(uri)
-    complete = rc2 == 0 and dm is True and rejected == 0 and bool(masters)
+    complete = (rc2 == 0 and dm is True and rejected == 0 and bool(masters)
+                and not _cut(masters_base, topo_base))
     fields = {"masters": sorted(set(masters)), "roles": {h: sorted(set(r)) for h, r in sorted(roles.items())},
               "flags": {h: sorted(set(f)) for h, f in sorted(flags.items())}, "hidden": sorted(hidden),
               "suffixes": sorted(suffixes, key=lambda s: s["name"]),
@@ -426,8 +438,8 @@ def _agreement_projection(e: Dict[str, object], basedn: str) -> Dict[str, Any]:
         "suffix_kind": kind, "suffix_root": _c(root, 200), "consumer": consumer,
         "consumer_raw": _c(ldif.first(e, "nsDS5ReplicaHost"), 120) if not consumer else None,
         "port": T.validate("ldap_port", ldif.first(e, "nsDS5ReplicaPort", "389").strip()),
-        "transport": transport if transport in T.REPL_TRANSPORTS else _c(transport, 20),
-        "bind_method": _c(bind, 30), "enabled": ldif.first(e, "nsds5ReplicaEnabled", "on").strip().lower() != "off",
+        "transport": transport if transport in T.REPL_TRANSPORTS else "other",
+        "bind_method": bind if bind in BIND_METHODS else "other", "enabled": ldif.first(e, "nsds5ReplicaEnabled", "on").strip().lower() != "off",
         "status_text": _c(ldif.first(e, "nsds5replicaLastUpdateStatus"), 800),
         "status_json": ldif.first(e, "nsds5replicaLastUpdateStatusJSON")[:4096] or None,
         "last_update_start": _gentime(ldif.first(e, "nsds5replicaLastUpdateStart")),
@@ -463,6 +475,7 @@ def _ruv(uri: str, base: str) -> Tuple[Optional[List[Dict[str, Any]]], str]:
 
 
 def _agreements(params):
+    _TRUNCATED.clear()
     uri, basedn, err = _ldapi()
     if err:
         return _res("repl.agreements", params, DENIED if "root" in err else NOT_RUN, {}, err)
@@ -501,8 +514,8 @@ def _agreements(params):
     dm = _whoami_dm(uri)
     # an agreement of an IPA suffix that cannot become a subject (its consumer name does not validate) is one this
     # run cannot investigate: the enumeration is then not complete
-    complete = dm is True and rc2 == 0 and not any(isinstance(o, dict) and o.get("kind") in T.SUFFIX_KINDS
-                                                   for o in other)
+    complete = (dm is True and rc2 == 0 and not _cut("cn=mapping tree,cn=config")
+                and not any(isinstance(o, dict) and o.get("kind") in T.SUFFIX_KINDS for o in other))
     agreements.sort(key=lambda a: a["subject"])
     fields = {"agreements": agreements, "other_agreements": other[:16], "replicas": replicas,
               "ruv": {"domain": ruv_dom, "ca": ruv_ca}, "ruv_error": "; ".join(x for x in (re1, re2) if x) or None,
@@ -516,6 +529,7 @@ def _agreements(params):
 
 
 def _principals(params):
+    _TRUNCATED.clear()
     uri, basedn, err = _ldapi()
     if err:
         return _res("repl.principals", params, DENIED if "root" in err else NOT_RUN, {}, err)
@@ -541,7 +555,7 @@ def _principals(params):
                     managers.add(m.group(1).lower())
     dm = _whoami_dm(uri)
     fields = {"ldap_principals": sorted(hosts), "replication_managers": sorted(managers),
-              "managers_read": rc2 == 0, "complete": dm is True and rc2 == 0}
+              "managers_read": rc2 == 0, "complete": dm is True and rc2 == 0 and not _TRUNCATED}
     return _res("repl.principals", params, OK, fields,
                 f"{len(hosts)} ldap/ service principal(s); {len(managers)} in cn=replication managers (this server's "
                 "copy of the directory)", "ldapsearch -Y EXTERNAL (LDAPI, read-only) cn=services and "

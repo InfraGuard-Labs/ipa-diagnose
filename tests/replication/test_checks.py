@@ -150,6 +150,29 @@ def test_agreements_are_projected_per_suffix_and_never_carry_credentials(monkeyp
         assert "nsDS5ReplicaCredentials" not in argv
 
 
+def test_a_truncated_read_is_never_complete(monkeypatch, ldapi):
+    many = "".join(f"dn: cn=a{i},cn=mapping tree,cn=config\nobjectClass: nsds5replicationagreement\n"
+                   f"nsDS5ReplicaHost: h{i}.lab.test\nnsDS5ReplicaRoot: dc=lab,dc=test\n\n"
+                   for i in range(ldif.MAX_ENTRIES + 5))
+    monkeypatch.setattr(C, "_exec", FakeExec([("nsds5replicationagreement", (0, many, "")),
+                                              ("objectClass=nsds5replica)", (0, "", "")),
+                                              ("nsTombstone", (0, "", "")), ("cleanallruv", (32, "", "")),
+                                              ("ldapwhoami", (0, "dn: cn=directory manager", ""))]))
+    assert C._agreements({}).fields["complete"] is False
+
+
+def test_bind_method_and_transport_are_closed_enums(monkeypatch, ldapi):
+    text = AGREEMENTS_LDIF.replace("nsDS5ReplicaBindMethod: SASL/GSSAPI", "nsDS5ReplicaBindMethod: ipa02.secret.corp", 1)
+    text = text.replace("nsDS5ReplicaTransportInfo: LDAP", "nsDS5ReplicaTransportInfo: evil.example.com", 1)
+    monkeypatch.setattr(C, "_exec", FakeExec([("nsds5replicationagreement", (0, text, "")),
+                                              ("objectClass=nsds5replica)", (0, "", "")),
+                                              ("nsTombstone", (0, "", "")), ("cleanallruv", (32, "", "")),
+                                              ("ldapwhoami", (0, "dn: cn=directory manager", ""))]))
+    f = C._agreements({}).fields
+    assert "secret.corp" not in repr(f) and "evil.example.com" not in repr(f)
+    assert {a["bind_method"] for a in f["agreements"]} <= {"SASL/GSSAPI", "other"}
+
+
 def test_agreements_read_failure_is_not_ok(monkeypatch, ldapi):
     monkeypatch.setattr(C, "_exec", FakeExec([("nsds5replicationagreement", (50, "", "Insufficient access"))]))
     assert C._agreements({}).status == "FAILED"

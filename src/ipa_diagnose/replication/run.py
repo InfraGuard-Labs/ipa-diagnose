@@ -229,8 +229,10 @@ def _resolve(diags: List[ReplDiagnosis], chains: List[Chain], env: Dict[str, Any
             if replay and all("REPLAY" in r for r in reasons):
                 try:  # parity: which procedure and argv the same evidence leads to (never to be run from REPLAY)
                     pr = resolve_diagnosis(ed, info, runner, catalogue)
-                    if pr is not None and pr.status == OFFERED:
-                        preview = {"procedure_id": pr.procedure_id, "steps": [s.argv for s in pr.steps]}
+                    if pr is not None and pr.status == OFFERED and not G.check_offered(pr):
+                        preview = {"procedure_id": pr.procedure_id, "steps": [s.argv for s in pr.steps],
+                                   "do_not_run": ("parity preview from RECORDED evidence: never revalidated on a "
+                                                  "live host; not a command to run")}
                 except Exception:  # noqa: BLE001
                     preview = None
             out[d.key] = Resolution(diagnosis_id=diag_id, status=WITHHELD, procedure_id=pid, title=proc.get("title", ""),

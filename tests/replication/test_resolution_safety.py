@@ -167,11 +167,47 @@ TOPO = {"complete": True, "roles": {IPA01: ["CA", "DNS"], IPA02: ["CA"]}, "renew
 
 @pytest.mark.parametrize("pred,me,expect", [
     ("not_sole_ca", IPA01, True), ("not_sole_dns", IPA01, False), ("not_sole_dns", IPA02, True),
-    ("not_sole_kra", IPA01, True), ("not_renewal_master", IPA01, False), ("not_renewal_master", IPA02, True),
-    ("not_dnssec_key_master", IPA01, True), ("not_articulation_point", IPA02, False),
+    ("not_sole_kra", IPA01, None), ("not_renewal_master", IPA01, False), ("not_renewal_master", IPA02, True),
+    ("not_dnssec_key_master", IPA01, None), ("not_articulation_point", IPA02, False),
     ("not_articulation_point", IPA01, True)])
 def test_topology_predicates(pred, me, expect):
     assert G.topology_predicate(pred, me, TOPO) is expect
+
+
+def test_role_predicates_need_exactly_one_established_holder():
+    two = dict(TOPO, renewal_master=None)  # the summary keeps it only when exactly one server carries the flag
+    assert G.topology_predicate("not_renewal_master", IPA01, two) is None
+    assert G.topology_predicate("not_sole_ca", IPA01, dict(TOPO, roles={})) is None
+
+
+def test_a_link_of_another_capability_on_the_same_subject_is_not_this_diagnosis():
+    r = kdc_live()
+    d = next(x for x in r.diagnoses if x.key == KDC_KEY)
+    wrong = dataclasses.replace(d, capability="LOCAL_DS")
+    assert any("deepest proven link" in x for x in G.resolution_gate(wrong, _ctx(r), "proc.service.start-stopped-service"))
+
+
+def test_a_diagnosis_without_evidence_fails_the_age_gate():
+    r = kdc_live()
+    d = dataclasses.replace(next(x for x in r.diagnoses if x.key == KDC_KEY), evidence=[])
+    assert any("names no evidence" in x for x in G.resolution_gate(d, _ctx(r), "proc.service.start-stopped-service"))
+
+
+def test_stop_is_allowed_only_as_a_rollback():
+    assert G.check_offered(_res([["systemctl", "stop", "krb5kdc.service"]]))
+
+
+def test_the_replay_preview_is_labelled_never_to_be_run():
+    prev = H.run(Lab().local_kdc_stopped()).gates[KDC_KEY]["replay_preview"]
+    assert "not a command to run" in prev["do_not_run"]
+
+
+def test_unknown_storage_under_a_stopped_ds_withholds_the_start():
+    lab = Lab().unit("dirsrv")
+    lab.data[S.key("repl.storage", {})] = {"status": "FAILED", "fields": {}, "display": "statvfs failed"}
+    r = H.run(lab, live=True)
+    ds = next(d for d in r.diagnoses if d.code == "LOCAL_DS_NOT_RUNNING")
+    assert ds.resolution_key is None and not H.offered(r)
 
 
 def test_topology_predicates_are_never_true_from_a_partial_read():

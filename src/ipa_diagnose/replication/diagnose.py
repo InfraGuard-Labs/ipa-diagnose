@@ -178,8 +178,9 @@ def _local(t: _T, b: _Builder, me: str) -> Dict[str, Optional[ReplDiagnosis]]:
             "No replication to or from this server; IPA on this server (LDAP, KDC, API) does not work.",
             ["local.ds"], "local", chain_ids=[c.chain_id], next_steps=c.next_action,
             related_to=roots["storage"].key if storage_bad else None,
-            resolution_key=None if storage_bad else "healthcheck.service-not-running",
-            bindings={} if storage_bad else {"service": "dirsrv"}))
+            # the start is offered only when the file system under it is established fine (UNKNOWN withholds)
+            resolution_key="healthcheck.service-not-running" if t.o("local.storage") in (P, W) else None,
+            bindings={"service": "dirsrv"} if t.o("local.storage") in (P, W) else {}))
         if storage_bad:
             roots["storage"].explains.append(d.key)
         roots["ds"] = d

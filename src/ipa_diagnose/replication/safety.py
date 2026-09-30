@@ -99,11 +99,14 @@ def topology_predicate(name: str, me: str, topo: Dict[str, Any]) -> Optional[boo
     if name in ("not_sole_ca", "not_sole_kra", "not_sole_dns"):
         role = {"not_sole_ca": "CA", "not_sole_kra": "KRA", "not_sole_dns": "DNS"}[name]
         h = holders(role)
+        if not h:
+            return None  # no holder established: nothing is known, never "safe"
         return not (h == [me])
-    if name == "not_renewal_master":
-        return topo.get("renewal_master") != me
-    if name == "not_dnssec_key_master":
-        return topo.get("dnssec_key_master") != me
+    if name in ("not_renewal_master", "not_dnssec_key_master"):
+        holder = topo.get("renewal_master" if name == "not_renewal_master" else "dnssec_key_master")
+        if holder is None:
+            return None  # none, or more than one, flagged: not established
+        return holder != me
     if name == "not_articulation_point":
         return all(me not in (s.get("articulation_points") or []) for s in (topo.get("suffixes") or {}).values())
     return None
@@ -127,7 +130,8 @@ def resolution_gate(d: Any, ctx: GateContext, procedure_id: Optional[str]) -> Li
         reasons.append(f"The cause is established with {d.confidence.lower()} confidence only.")
     for cid in d.chain_ids:
         ch = ctx.chains.get(cid)
-        if ch is None or not ch.links or ch.links[-1].subject != d.subject or not ch.links[-1].evidence:
+        if (ch is None or not ch.links or ch.links[-1].subject != d.subject or not ch.links[-1].evidence
+                or ch.links[-1].capability != d.capability):
             reasons.append("The deepest proven link of its cause chain is not this diagnosis.")
             break
     if not d.chain_ids:
@@ -139,6 +143,8 @@ def resolution_gate(d: Any, ctx: GateContext, procedure_id: Optional[str]) -> Li
     if ctx.replay:
         reasons.append("This is recorded (REPLAY) evidence: it cannot revalidate the target now, so no command is "
                        "shown from it.")
+    elif not d.evidence:
+        reasons.append("The diagnosis names no evidence, so its age cannot be established.")
     else:
         for sid in d.evidence:
             r = ctx.trace.get(sid)
@@ -174,11 +180,12 @@ def check_offered(res: Any) -> List[str]:
     local only, HIGH risk needs rollback and backup). Reasons to withhold it."""
 
     out: List[str] = []
-    argvs = [s.argv for s in res.steps] + [r["argv"] for r in res.rollback if r.get("argv")]
-    for argv in argvs:
+    argvs = [(s.argv, ALLOWED_SYSTEMCTL) for s in res.steps] + [(r["argv"], frozenset({"stop"}))
+                                                                 for r in res.rollback if r.get("argv")]
+    for argv, verbs in argvs:
         if not argv or argv[0] not in ALLOWED_PROGRAMS:
             out.append(f"'{argv[0] if argv else ''}' is not a program ipa-diagnose replication may print.")
-        elif argv[0] == "systemctl" and (len(argv) != 3 or argv[1] not in ALLOWED_SYSTEMCTL | {"stop"}):
+        elif argv[0] == "systemctl" and (len(argv) != 3 or argv[1] not in verbs):
             out.append("Only 'systemctl start UNIT' (and its rollback 'systemctl stop UNIT') may be printed.")
         joined = " ".join(argv)
         if any(rx.search(joined) for rx in FORBIDDEN):
