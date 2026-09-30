@@ -456,9 +456,16 @@ def _peer_path(t: _T, b: _Builder, me: str, item: Dict[str, Any], subj: str, rel
     pstate = prt.facts.get("state") if prt and prt.outcome in (P, F) else None
     hstate = https.facts.get("state") if https and https.outcome in (P, F) else None
     peer_here = f"server:{consumer}"
-    stale = (f" The agreement's own status still shows its last session as successful (ended "
-             f"{item.get('last_update_end') or 'at an unknown time'}); it has not recorded this yet."
-             if now else "")
+    recorded_ok = (item.get("status_class") or S.UNCLASSIFIED) == S.OK
+    if not now:
+        stale = ""
+    elif recorded_ok:
+        stale = (f" The agreement's own status still shows its last session as successful (ended "
+                 f"{item.get('last_update_end') or 'at an unknown time'}); it has not recorded this yet.")
+    else:
+        stale = (f" The agreement's last recorded status is: {status_text} (ended "
+                 f"{item.get('last_update_end') or 'at an unknown time'}); this host's own checks now show the "
+                 "above.")
     if dns is not None and dns.outcome == F:
         pair = f"pair:{me}>{consumer}"
         chain = b.chain(rel_key, base + [Link(f"{consumer} does not resolve through {me}'s resolver", pair, "DNS",
@@ -542,9 +549,9 @@ def _peer_path(t: _T, b: _Builder, me: str, item: Dict[str, Any], subj: str, rel
 
 
 def _peer_now(t: _T, b: _Builder, me: str, item: Dict[str, Any], subj: str, rel_key: str) -> None:
-    """The agreement's recorded status is green (or transient), but this host's own checks show the consumer does
-    not answer NOW (389-DS keeps the last session's status until its next attempt is recorded - live lab, run
-    36654176983): the peer-side cause is reported from those checks, without a failing-status link."""
+    """This host's own checks show the consumer does not answer NOW, whatever the agreement's recorded status says
+    (389-DS keeps the last session's status until its next attempt is recorded - live lab, run 36654176983): the
+    peer-side cause is reported from those checks as its own chain, without a link from the recorded status."""
 
     dns, rd = t.rec("peer.dns", subj), t.rec("peer.rootdse", subj)
     if (dns is not None and dns.outcome == F) or (rd is not None and rd.outcome == F):
@@ -701,11 +708,15 @@ def _agreement(t: _T, b: _Builder, me: str, realm: str, item: Dict[str, Any],
     if isinstance(off, (int, float)) and abs(off) >= KRB_TOLERANCE and b.get("PAIR_CLOCK_SKEW",
                                                                                f"pair:{me}>{consumer}") is None:
         _pair_skew(t, b, me, consumer, subj, off, via_chain=False)  # established, whatever else fails
+    peer_now_before = len(b.chains)
     if root is None and cls != S.TRANSPORT:
         # the recorded status is stale-possible (live lab); what this host sees of the peer NOW is its own chain
         _peer_now(t, b, me, item, subj, rel_key)
+    peer_seen = len(b.chains) > peer_now_before
     if chain is None:
         chain = b.chain(rel_key, [L0], boundary=(
+            f"not linked to what this host sees of {consumer} now (reported separately above): a stopped or "
+            "unreachable peer does not by itself explain this status" if peer_seen else
             "the status is not one ipa-diagnose recognizes" if cls == S.UNCLASSIFIED else
             "the evidence needed to go further could not be collected"),
             next_action=[f"ipa-replica-manage list -v {_q(me)}   (read-only, with an admin ticket)"])
@@ -824,7 +835,11 @@ def _reverse(t: _T, b: _Builder, me: str, realm: str, item: Dict[str, Any],
             f"{consumer})", "REPLICATION", "FAIL", "HIGH",
             f"{S.MEANING.get(cls, cls)}. {consumer}'s own status: {r.facts.get('status_text') or '?'}.",
             f"{suffix} changes made on {consumer} (and the ones it relays) do not reach {me}.", [r.step_id], "peer",
-            chain_ids=[c.chain_id], related_to=kt.key, next_steps=kt.next_steps))
+            chain_ids=[c.chain_id], related_to=kt.key, next_steps=kt.next_steps,
+            handoff=handoff(consumer, me, "A generic Local error can also start on the peer's side.")
+            if cls == S.GSSAPI_OTHER else None))
+        if cls == S.GSSAPI_OTHER:
+            d.confidence = "MEDIUM"
         kt.chain_ids.append(c.chain_id)
         kt.explains.append(d.key)
         return "FAILING"
@@ -929,6 +944,14 @@ def diagnose(trace: Trace, inputs: Dict[str, Any]) -> Tuple[List[ReplDiagnosis],
     for item in sorted((i for i in (t.f("agreements", "subjects") or []) if isinstance(i, dict)
                         and i.get("subject") in set(enum.get("dropped") or [])), key=lambda i: i["subject"]):
         _dropped(b, me, item)
+    if t.o("time.local") == W and t.f("time.local", "synchronized") is False and not any(
+            d.code == "PAIR_CLOCK_SKEW" for d in b.diags.values()):
+        b.add(ReplDiagnosis(
+            "LOCAL_NTP_NOT_SYNCHRONIZED", f"server:{me}", f"This server's time service is not synchronized",
+            "TIME", "WARN", "HIGH", t.rec("time.local").summary + ". Checked because a clock question was in view "
+            "(a Kerberos clock-skew answer or a clock difference to a peer).",
+            "Kerberos fails once this server's clock drifts more than 300 s from a KDC or a peer.", ["time.local"],
+            "local", next_steps=["chronyc sources; timedatectl   (read-only)"]))
     _topology_checks(t, b, me, items, inputs.get("peer"))
     extra["ruv_notes"] = _ruv_context(t, b, me)
     return _roles(list(b.diags.values())), b.chains, extra
@@ -941,8 +964,9 @@ def _roles(out: List[ReplDiagnosis]) -> List[ReplDiagnosis]:
             d.related_to = None
     primary_set = False
     scope_rank = {"local": 0, "directory": 1, "pair": 2, "peer": 3, "unknown": 4}
-    for d in sorted(out, key=lambda x: (x.severity != "FAIL", scope_rank.get(x.scope, 9), LAYER.get(x.capability, 99),
-                                        x.subject, x.code)):
+    for d in sorted(out, key=lambda x: (x.severity != "FAIL", x.code in ("REPLICATION_FAILING",
+                                                                          "REVERSE_REPLICATION_FAILING"),
+                                        scope_rank.get(x.scope, 9), LAYER.get(x.capability, 99), x.subject, x.code)):
         if d.kind == CONTRADICTING:
             d.role = CONTRADICTING
         elif d.severity == "WARN":

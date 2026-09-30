@@ -135,6 +135,33 @@ def test_a_failing_non_transport_status_still_uses_what_the_peer_shows_now(fault
     assert r.handoffs
 
 
+@pytest.mark.parametrize("fault", ["peer_ds_stopped", "peer_unreachable"])
+def test_the_peer_finding_never_calls_a_failing_status_successful(fault):
+    r = H.run(getattr(Lab(), fault)(IPA02, recorded=False).set_status(IPA02, S.LOCAL_ERROR_TEXT))
+    root = next(d for d in r.diagnoses if d.code in ("PEER_DS_NOT_ACCEPTING", "PEER_UNREACHABLE"))
+    assert "still shows its last session as successful" not in root.detail
+    assert "last recorded status is" in root.detail
+    assert root.role == "PRIMARY"  # a real root outranks the unlinked symptoms
+    sym = next(d for d in r.diagnoses if d.code == "REPLICATION_FAILING")
+    assert any("reported separately" in c.boundary for c in r.chains if c.chain_id in sym.chain_ids)
+
+
+def test_a_generic_local_error_towards_this_server_keeps_the_peer_handoff():
+    r = H.run(Lab(me=IPA03).keytab(owner="root", group="root", dirsrv_can_read=False).set_reverse(
+        IPA02, S.LOCAL_ERROR_TEXT, suffix="domain"))
+    rev = next(d for d in r.diagnoses if d.code == "REVERSE_REPLICATION_FAILING")
+    assert rev.role == "RELATED" and rev.confidence == "MEDIUM" and rev.handoff["host"] == IPA02
+
+
+def test_an_unsynchronized_local_ntp_in_a_clock_question_is_reported():
+    lab = Lab().kerberos_failure(IPA02, kinit_ok=False, kinit_class="clock_skew", bind_attempted=False,
+                                 bind_ok=False)
+    lab.data[S.key("chrony.tracking", {})]["fields"].update(synchronized=False, leap_status="Not synchronised")
+    r = H.run(lab)
+    d = next(x for x in r.diagnoses if x.code == "LOCAL_NTP_NOT_SYNCHRONIZED")
+    assert d.severity == "WARN" and "PAIR_CLOCK_SKEW" not in {x.code for x in r.diagnoses}
+
+
 def test_a_kinit_clock_skew_is_not_the_pairs_clock():
     lab = Lab().kerberos_failure(IPA02, kinit_ok=False, kinit_class="clock_skew", bind_attempted=False,
                                  bind_ok=False)

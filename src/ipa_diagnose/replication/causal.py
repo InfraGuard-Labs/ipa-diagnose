@@ -81,8 +81,8 @@ DISCRIMINATORS: Dict[str, Discriminator] = {d.disc_id: d for d in [
     _d("peer-tls-fails-now", SYMPTOM, "TLS",
        "this host's own TLS connection to the agreement's port fails at the TLS layer now"),
     _d("reverse-acceptor-kerberos", "REPLICATION", "KERBEROS",
-       "the peer's agreement towards this server fails with LDAP 49 or a GSSAPI class: its GSSAPI bind fails, and "
-       "this server is the side that accepts it"),
+       "the peer's agreement towards this server fails with LDAP 49 or 389-DS's generic Local error (no specific "
+       "Kerberos class, no measured skew of 300 s or more): its GSSAPI bind fails, and this server accepts it"),
     _d("acceptor-keytab-unusable", "KERBEROS", "KEYTAB",
        "this server, the accepting side of that GSSAPI bind, cannot use its own Directory Server keytab (missing, "
        "not readable by dirsrv, or without its ldap/ key)"),
