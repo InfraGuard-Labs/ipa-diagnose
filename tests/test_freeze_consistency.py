@@ -70,6 +70,24 @@ def test_access_runtime_fix_shows_the_expected_result_and_the_replay_warning(cap
     assert "Recorded evidence (--replay): these commands describe the recorded system, not this host." in out
 
 
+def test_a_policy_allow_points_to_the_runtime_check_and_runtime_does_not_repeat_it(capsys, tmp_path):
+    import json
+
+    from tests.access.helpers import World
+    from tests.client import scenarios as CS
+
+    d = tmp_path / "allow"
+    CH.write_checks(CH.scenario("healthy"), directory=d)
+    World().user("alice").host(CS.HOST).service("sshd").rule(
+        "r1", users=["alice"], hosts=[CS.HOST], services=["sshd"]).write(d, "alice", CS.HOST, "sshd")
+    main(["access", "alice", CS.HOST, "sshd", "--replay", str(d), "--json"])
+    verify = json.loads(capsys.readouterr().out)["verify"]
+    assert any(f"ipa-diagnose access alice {CS.HOST} sshd --runtime" in v for v in verify)
+    main(["access", "alice", CS.HOST, "sshd", "--replay", str(d), "--json", "--runtime"])
+    verify = json.loads(capsys.readouterr().out)["verify"]
+    assert not any("--runtime" in v or "sssctl user-checks" in v for v in verify)
+
+
 def test_replayed_server_and_client_fixes_say_not_to_run_them_here(capsys, tmp_path):
     main(["--replay", str(FIXTURES / "resolution" / "service-not-running")])
     assert "Do not run them here." in _flat(capsys.readouterr().out)

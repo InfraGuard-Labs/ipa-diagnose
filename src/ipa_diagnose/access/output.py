@@ -301,6 +301,9 @@ def verify_steps(r: AccessResult) -> List[str]:
     if r.authentication.state != State.FAIL:
         steps.append(f"ipa user-status {q(user)}   (read-only; failed logins and lockout on each server)")
     if r.authorization.state == State.PASS and r.authentication.state != State.FAIL:
+        # the product's own next step first (freeze journey audit), the raw SSSD check as the manual alternative
+        steps.append(f"on {host}, as root: ipa-diagnose access {q(user)} {q(host)} {q(svc)} --runtime   (continues "
+                     "into that host's runtime side: SSSD, NSS, PAM stack and account phase; read-only; no login)")
         steps.append(f"on {host}, as root: sssctl user-checks {q(user)} -a acct -s {q(svc)}   "
                      "(the host's SSSD account check for this service; read-only; runtime evidence this command "
                      "does not collect)")
@@ -430,7 +433,7 @@ def to_dict(r: AccessResult) -> Dict[str, Any]:
                                      for s in cd["steps"]]
             if any(v["status"] == "OFFERED" for v in cd["resolution"].values()):
                 doc["verify"].append("after a fix on this host: ipa-diagnose client --verify   (fresh checks)")
-            doc["verify"] = [s for s in doc["verify"] if "sssctl user-checks" not in s]
+            doc["verify"] = [s for s in doc["verify"] if "sssctl user-checks" not in s and " --runtime " not in s]
             doc["limitations"] = ["Runtime prerequisites were checked on this host with client mode (SSSD, identity "
                                   "lookup, NSS, PAM stack and account phase); no login is attempted and no "
                                   "credential is tested."] + doc["limitations"][1:]
