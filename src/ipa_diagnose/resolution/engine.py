@@ -526,6 +526,10 @@ def resolve_diagnosis(d: Diagnosis, env: Optional[EnvironmentInfo], runner: Runn
     r.rollback = _dedupe(r.rollback, lambda x: tuple(x["argv"]) if x["argv"] else x["text"])
     r.risk = max((s.risk for s in r.steps), key=lambda x: RISK_RANK[x])
     r.definitive, r.verification_label = _label(proc, env)
+    if r.replay:  # recorded evidence verifies nothing about a live system (freeze resolution-safety review)
+        r.definitive = False
+        r.verification_label = ("Recorded evidence (--replay): an example for the recorded system, not a fix for "
+                                "this host. " + r.verification_label)
     # Minimal verify baseline: which procedure (and exact definition), the typed values it was filled with, and
     # a digest of the criteria they produced. `verify` rebuilds the criteria from the CURRENT catalogue and
     # FRESH read-only checks; it never runs criteria, commands or statuses read back from the saved report.

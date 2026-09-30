@@ -96,6 +96,35 @@ def test_replayed_server_and_client_fixes_say_not_to_run_them_here(capsys, tmp_p
     assert "Do not run them here." in _flat(capsys.readouterr().out)
 
 
+def test_a_tampered_recorded_unit_never_becomes_a_command_target(capsys, tmp_path):
+    """Freeze resolution-safety review: a replay fixture whose recorded unit for 'dirsrv' was emergency.service
+    printed 'systemctl start emergency.service', labelled definitive."""
+
+    import json
+    import shutil
+
+    fx = tmp_path / "tampered"
+    shutil.copytree(FIXTURES / "resolution" / "service-not-running", fx)
+    p = fx / "resolution_checks.json"
+    data = json.loads(p.read_text(encoding="utf-8"))
+    k = next(k for k in data if k.startswith("systemd.unit|"))
+    data[k]["fields"]["unit"] = "emergency.service"
+    p.write_text(json.dumps(data), encoding="utf-8")
+    main(["--replay", str(fx), "--json", "--no-ai"])
+    res = json.loads(capsys.readouterr().out)["v2"]["resolutions"]
+    assert all(r["status"] != "OFFERED" for r in res)
+    assert "emergency.service" not in json.dumps([r.get("steps") for r in res])
+
+
+def test_a_replayed_fix_is_never_definitive_and_says_it_is_recorded(capsys):
+    import json
+
+    main(["--replay", str(FIXTURES / "resolution" / "service-not-running"), "--json", "--no-ai"])
+    r = next(x for x in json.loads(capsys.readouterr().out)["v2"]["resolutions"] if x["status"] == "OFFERED")
+    assert r["definitive"] is False and r["source"] == "recorded"
+    assert r["verification_label"].startswith("Recorded evidence (--replay)")
+
+
 def _help(capsys, argv):
     with pytest.raises(SystemExit) as e:
         main(argv)

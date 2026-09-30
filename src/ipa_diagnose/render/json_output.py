@@ -164,6 +164,7 @@ def resolution_to_dict(r) -> Dict[str, Any]:
         "applies_to": r.applies_to,
         "tier": r.tier,
         "definitive": r.definitive,
+        "source": "recorded" if getattr(r, "replay", False) else "live",
         "verification_label": r.verification_label,
         "limitations": r.limitations,
         "reference": r.reference,
