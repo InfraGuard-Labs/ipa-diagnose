@@ -1,0 +1,333 @@
+name: Capture terminal sessions for documentation figures
+
+# Throwaway capture branch (capture/**), created from the pinned commit; only capture scripts and this workflow differ
+# from it. Each job boots its OWN fresh disposable lab (real FreeIPA 4.13.4 on Fedora 43 containers), installs
+# ipa-diagnose from the PINNED commit with pipx (git+URL@commit, the command a reader would use), injects ONE fault,
+# confirms it independently, and records a typed interactive terminal session in a real pty (scripts/pty_record.py).
+# Which jobs run is listed in .github/capture-figures-trigger (one job name per line; a change of that file triggers a run).
+# Only fake lab identities and fake lab credentials exist. ipa-diagnose itself never changes anything.
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: ["capture/**"]
+    paths: [".github/capture-figures-trigger"]
+
+env:
+  IMAGE: fedora-43
+  IPA_PASSWORD: LiveLabSecret123
+  PIN_COMMIT: dc936b08cf8ef32f5470364af89b5c3139db4fd8
+  REPO_URL: https://github.com/InfraGuard-Labs/ipa-diagnose.git
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      jobs: ${{ steps.p.outputs.jobs }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Prove the product code on this branch is the pinned commit
+        run: |
+          set -e
+          git cat-file -e "$PIN_COMMIT^{commit}"
+          git diff --stat "$PIN_COMMIT" HEAD -- src knowledge pyproject.toml tests packaging Dockerfile docker-compose.yml | tee code-diff.txt
+          test ! -s code-diff.txt
+          echo "no difference to $PIN_COMMIT in src knowledge pyproject.toml tests packaging Dockerfile docker-compose.yml"
+      - id: p
+        run: echo "jobs=$(grep -v '^#' .github/capture-figures-trigger | tr '\n' ' ')" >> "$GITHUB_OUTPUT"
+
+  wronggroup:
+    needs: plan
+    if: ${{ contains(needs.plan.outputs.jobs, 'wronggroup') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Boot a fresh FreeIPA server (integrated DNS + CA)
+        run: |
+          set +e
+          docker volume create ipa-data
+          docker run -d --name ipa-s --privileged --cgroupns=host \
+            -v /sys/fs/cgroup:/sys/fs/cgroup:rw -v ipa-data:/data \
+            -h ipa01.lab.test -e PASSWORD=${IPA_PASSWORD} \
+            freeipa/freeipa-server:$IMAGE \
+            ipa-server-install -U -r LAB.TEST --no-ntp --skip-mem-check --setup-dns --auto-forwarders --auto-reverse
+          for i in $(seq 1 120); do
+            sleep 10
+            if docker exec ipa-s systemctl is-active ipa.service 2>/dev/null | grep -qx active; then echo "active after ~$((i*10))s"; sleep 20; break; fi
+          done
+          docker exec ipa-s ipactl status || { docker logs ipa-s 2>&1 | tail -40; exit 1; }
+      - name: Install ipa-diagnose from the pinned commit (pipx, git+URL)
+        run: |
+          set -e
+          mkdir -p out
+          docker exec ipa-s bash -c 'cp /etc/resolv.conf /etc/resolv.conf.bak; printf "nameserver 1.1.1.1\nnameserver 8.8.8.8\n" > /etc/resolv.conf'
+          docker exec ipa-s bash -c 'for a in 1 2 3; do dnf install -y python3-pip git-core && break; sleep 15; done'
+          docker exec ipa-s python3 -m pip install -q pipx
+          docker exec ipa-s python3 -m pipx install "git+${REPO_URL}@${PIN_COMMIT}"
+          docker exec ipa-s cp /etc/resolv.conf.bak /etc/resolv.conf
+          docker exec ipa-s bash -c 'cat $(find /root/.local -name direct_url.json -path "*ipa_diagnose*" | head -1)' | tee out/direct_url.json
+          python3 -c 'import json,os; d=json.load(open("out/direct_url.json")); assert d["vcs_info"]["commit_id"]==os.environ["PIN_COMMIT"], d; print("installed commit == pin")'
+          {
+            echo "pin: $PIN_COMMIT"; echo "branch head: $GITHUB_SHA"; echo "image: freeipa/freeipa-server:$IMAGE"
+            echo "direct_url: $(tr -d '\n ' < out/direct_url.json)"
+            docker exec ipa-s /root/.local/bin/ipa-diagnose --version
+            docker exec ipa-s rpm -q freeipa-server freeipa-healthcheck 389-ds-base
+            docker exec ipa-s python3 --version
+            docker exec ipa-s cat /etc/os-release | grep -E '^(NAME|VERSION)='
+          } | tee out/env.txt
+      - name: Fault, confirmation, recorded session
+        run: python3 scripts/lab_figures.py wronggroup
+      - name: Publish captures (1)
+        if: always()
+        run: |
+          python3 scripts/lab_captures.py attach env-wronggroup out/env.txt
+          python3 scripts/lab_captures.py attach setup-wronggroup out/lab-setup.log
+          python3 scripts/lab_captures.py emit 0
+      - name: Publish captures (2)
+        if: always()
+        run: python3 scripts/lab_captures.py emit 10
+      - name: Cleanup
+        if: always()
+        run: docker rm -f ipa-s 2>/dev/null || true; docker volume rm ipa-data 2>/dev/null || true
+
+  certmask:
+    needs: plan
+    if: ${{ contains(needs.plan.outputs.jobs, 'certmask') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Boot a fresh FreeIPA server (integrated DNS + CA)
+        run: |
+          set +e
+          docker volume create ipa-data
+          docker run -d --name ipa-s --privileged --cgroupns=host \
+            -v /sys/fs/cgroup:/sys/fs/cgroup:rw -v ipa-data:/data \
+            -h ipa01.lab.test -e PASSWORD=${IPA_PASSWORD} \
+            freeipa/freeipa-server:$IMAGE \
+            ipa-server-install -U -r LAB.TEST --no-ntp --skip-mem-check --setup-dns --auto-forwarders --auto-reverse
+          for i in $(seq 1 120); do
+            sleep 10
+            if docker exec ipa-s systemctl is-active ipa.service 2>/dev/null | grep -qx active; then echo "active after ~$((i*10))s"; sleep 20; break; fi
+          done
+          docker exec ipa-s ipactl status || { docker logs ipa-s 2>&1 | tail -40; exit 1; }
+      - name: Install ipa-diagnose from the pinned commit (pipx, git+URL)
+        run: |
+          set -e
+          mkdir -p out
+          docker exec ipa-s bash -c 'cp /etc/resolv.conf /etc/resolv.conf.bak; printf "nameserver 1.1.1.1\nnameserver 8.8.8.8\n" > /etc/resolv.conf'
+          docker exec ipa-s bash -c 'for a in 1 2 3; do dnf install -y python3-pip git-core && break; sleep 15; done'
+          docker exec ipa-s python3 -m pip install -q pipx
+          docker exec ipa-s python3 -m pipx install "git+${REPO_URL}@${PIN_COMMIT}"
+          docker exec ipa-s cp /etc/resolv.conf.bak /etc/resolv.conf
+          docker exec ipa-s bash -c 'cat $(find /root/.local -name direct_url.json -path "*ipa_diagnose*" | head -1)' | tee out/direct_url.json
+          python3 -c 'import json,os; d=json.load(open("out/direct_url.json")); assert d["vcs_info"]["commit_id"]==os.environ["PIN_COMMIT"], d; print("installed commit == pin")'
+          {
+            echo "pin: $PIN_COMMIT"; echo "branch head: $GITHUB_SHA"; echo "image: freeipa/freeipa-server:$IMAGE"
+            echo "direct_url: $(tr -d '\n ' < out/direct_url.json)"
+            docker exec ipa-s /root/.local/bin/ipa-diagnose --version
+            docker exec ipa-s rpm -q freeipa-server freeipa-healthcheck 389-ds-base
+            docker exec ipa-s python3 --version
+            docker exec ipa-s cat /etc/os-release | grep -E '^(NAME|VERSION)='
+          } | tee out/env.txt
+      - name: Fault, confirmation, recorded session
+        run: python3 scripts/lab_figures.py certmask
+      - name: Publish captures (1)
+        if: always()
+        run: |
+          python3 scripts/lab_captures.py attach env-certmask out/env.txt
+          python3 scripts/lab_captures.py attach setup-certmask out/lab-setup.log
+          python3 scripts/lab_captures.py emit 0
+      - name: Publish captures (2)
+        if: always()
+        run: python3 scripts/lab_captures.py emit 10
+      - name: Cleanup
+        if: always()
+        run: docker rm -f ipa-s 2>/dev/null || true; docker volume rm ipa-data 2>/dev/null || true
+
+  alice:
+    needs: plan
+    if: ${{ contains(needs.plan.outputs.jobs, 'alice') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Private network and a fresh FreeIPA server (integrated DNS + CA)
+        run: |
+          set +e
+          docker network create --subnet 172.30.0.0/24 ipanet
+          docker volume create ipa-data
+          docker run -d --name ipa-s --privileged --cgroupns=host \
+            -v /sys/fs/cgroup:/sys/fs/cgroup:rw -v ipa-data:/data \
+            --network ipanet --ip 172.30.0.10 -h ipa01.lab.test -e PASSWORD=${IPA_PASSWORD} \
+            freeipa/freeipa-server:$IMAGE \
+            ipa-server-install -U -r LAB.TEST --no-ntp --skip-mem-check --setup-dns --no-forwarders \
+              --auto-reverse --ip-address=172.30.0.10
+          for i in $(seq 1 120); do
+            sleep 10
+            if docker exec ipa-s systemctl is-active ipa.service 2>/dev/null | grep -qx active; then echo "active after ~$((i*10))s"; sleep 20; break; fi
+          done
+          docker exec ipa-s ipactl status || { docker logs ipa-s 2>&1 | tail -40; exit 1; }
+      - name: Build and start a fresh Fedora 43 client
+        run: |
+          set -e
+          cat > Containerfile.client <<'EOF'
+          FROM registry.fedoraproject.org/fedora:43
+          RUN for a in 1 2 3; do dnf -y install freeipa-client sssd-tools sssd-dbus systemd dbus-broker \
+                openssh-server python3 python3-pip git-core procps-ng chrony bind-utils iptables-nft \
+                util-linux && break; sleep 20; done && dnf clean all
+          CMD ["/usr/sbin/init"]
+          EOF
+          docker build -t lab-client -f Containerfile.client .
+          docker run -d --name ipa-c --privileged --cgroupns=host -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
+            --network ipanet --ip 172.30.0.20 -h client1.lab.test lab-client
+          sleep 15
+          docker exec ipa-c systemctl is-system-running --wait || true
+      - name: Install ipa-diagnose on the client from the pinned commit (pipx, git+URL)
+        run: |
+          set -e
+          mkdir -p out
+          docker exec ipa-c python3 -m pip install -q pipx
+          docker exec ipa-c python3 -m pipx install "git+${REPO_URL}@${PIN_COMMIT}"
+          docker exec ipa-c bash -c 'cat $(find /root/.local -name direct_url.json -path "*ipa_diagnose*" | head -1)' | tee out/direct_url.json
+          python3 -c 'import json,os; d=json.load(open("out/direct_url.json")); assert d["vcs_info"]["commit_id"]==os.environ["PIN_COMMIT"], d; print("installed commit == pin")'
+      - name: Enroll the client (and prove the enrollment)
+        run: python3 scripts/lab_client.py enroll
+      - name: Record environment
+        run: |
+          {
+            echo "pin: $PIN_COMMIT"; echo "branch head: $GITHUB_SHA"; echo "server image: freeipa/freeipa-server:$IMAGE"
+            echo "direct_url: $(tr -d '\n ' < out/direct_url.json)"
+            docker exec ipa-c /root/.local/bin/ipa-diagnose --version
+            docker exec ipa-s rpm -q freeipa-server
+            docker exec ipa-c rpm -q freeipa-client sssd-common sssd-tools
+            docker exec ipa-c cat /etc/os-release | grep -E '^(NAME|VERSION)='
+          } | tee out/env.txt
+      - name: Policy, fault, confirmation, recorded sessions
+        run: python3 scripts/lab_figures.py alice
+      - name: Publish captures (1)
+        if: always()
+        run: |
+          python3 scripts/lab_captures.py attach env-alice out/env.txt
+          python3 scripts/lab_captures.py attach setup-alice out/lab-setup.log
+          python3 scripts/lab_captures.py emit 0
+      - name: Publish captures (2)
+        if: always()
+        run: python3 scripts/lab_captures.py emit 10
+      - name: Cleanup
+        if: always()
+        run: |
+          docker rm -f ipa-c ipa-s 2>/dev/null || true
+          docker volume rm ipa-data 2>/dev/null || true
+          docker network rm ipanet 2>/dev/null || true
+
+  replication:
+    needs: plan
+    if: ${{ contains(needs.plan.outputs.jobs, 'replication') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - name: Private network and the first server ipa01 (integrated DNS + CA)
+        run: |
+          set +e
+          docker network create --subnet 172.31.0.0/24 ipanet
+          for n in 1 2 3; do docker volume create ipa0$n-data; done
+          docker pull freeipa/freeipa-server:$IMAGE
+          docker run -d --name ipa01 --privileged --cgroupns=host \
+            -v /sys/fs/cgroup:/sys/fs/cgroup:rw -v ipa01-data:/data \
+            --network ipanet --ip 172.31.0.11 -h ipa01.lab.test -e PASSWORD=${IPA_PASSWORD} \
+            freeipa/freeipa-server:$IMAGE \
+            ipa-server-install -U -r LAB.TEST --no-ntp --skip-mem-check --setup-dns --auto-forwarders \
+              --auto-reverse --ip-address=172.31.0.11
+          for i in $(seq 1 120); do
+            sleep 10
+            if docker exec ipa01 systemctl is-active ipa.service 2>/dev/null | grep -qx active; then echo "ipa01 active after ~$((i*10))s"; sleep 20; break; fi
+          done
+          docker exec ipa01 ipactl status || { docker logs ipa01 2>&1 | tail -40; exit 1; }
+      - name: Replica ipa02 (with CA) from ipa01
+        run: python3 scripts/lab_replication.py replica ipa02 ipa01 --ca
+      - name: Replica ipa03 (without CA) from ipa02
+        run: python3 scripts/lab_replication.py replica ipa03 ipa02
+      - name: Install ipa-diagnose from the pinned commit on every server (pipx, git+URL)
+        run: |
+          set -e
+          mkdir -p out
+          for c in ipa01 ipa02 ipa03; do
+            docker exec $c bash -c 'cp /etc/resolv.conf /etc/resolv.conf.lab; printf "nameserver 1.1.1.1\nnameserver 8.8.8.8\n" > /etc/resolv.conf'
+            docker exec $c bash -c 'for a in 1 2 3; do dnf install -y python3-pip git-core && break; sleep 15; done'
+            docker exec $c python3 -m pip install -q pipx
+            docker exec $c python3 -m pipx install "git+${REPO_URL}@${PIN_COMMIT}"
+            docker exec $c bash -c 'cp /etc/resolv.conf.lab /etc/resolv.conf'
+            docker exec $c bash -c 'cat $(find /root/.local -name direct_url.json -path "*ipa_diagnose*" | head -1)' > out/direct_url_$c.json
+            python3 -c 'import json,os,sys; d=json.load(open(sys.argv[1])); assert d["vcs_info"]["commit_id"]==os.environ["PIN_COMMIT"], d; print(sys.argv[1], "commit == pin")' out/direct_url_$c.json
+          done
+      - name: Record environment
+        run: |
+          {
+            echo "pin: $PIN_COMMIT"; echo "branch head: $GITHUB_SHA"; echo "image: freeipa/freeipa-server:$IMAGE"
+            echo "direct_url: $(tr -d '\n ' < out/direct_url_ipa01.json)"
+            docker exec ipa01 /root/.local/bin/ipa-diagnose --version
+            for c in ipa01 ipa02 ipa03; do echo "$c: $(docker exec $c rpm -q freeipa-server 389-ds-base krb5-server | tr '\n' ' ')"; done
+            docker exec ipa01 cat /etc/os-release | grep -E '^(NAME|VERSION)='
+          } | tee out/env.txt
+      - name: Prove the topology and healthy replication
+        run: python3 scripts/lab_replication.py setup
+      - name: Fault, confirmation, recorded sessions
+        run: python3 scripts/lab_figures.py replication
+      - name: Publish captures (1)
+        if: always()
+        run: |
+          python3 scripts/lab_captures.py attach env-replication out/env.txt
+          python3 scripts/lab_captures.py attach setup-replication out/lab-setup.log
+          python3 scripts/lab_captures.py emit 0
+      - name: Publish captures (2)
+        if: always()
+        run: python3 scripts/lab_captures.py emit 10
+      - name: Cleanup
+        if: always()
+        run: |
+          docker rm -f ipa01 ipa02 ipa03 2>/dev/null || true
+          for n in 1 2 3; do docker volume rm ipa0$n-data 2>/dev/null || true; done
+          docker network rm ipanet 2>/dev/null || true
+
+  replay:
+    needs: plan
+    if: ${{ contains(needs.plan.outputs.jobs, 'replay') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: A plain container with the pinned commit (no FreeIPA lab, this figure is a replay)
+        run: |
+          set -e
+          mkdir -p out
+          docker run -d --name rp -h lab registry.fedoraproject.org/fedora:43 sleep infinity
+          docker exec rp bash -c 'for a in 1 2 3; do dnf install -y python3-pip git-core && break; sleep 15; done'
+          docker exec rp python3 -m pip install -q pipx
+          docker exec rp python3 -m pipx install "git+${REPO_URL}@${PIN_COMMIT}"
+          docker exec rp bash -c "cd /root && git clone -q ${REPO_URL} && cd ipa-diagnose && git checkout -q ${PIN_COMMIT}"
+          docker exec rp bash -c 'cat $(find /root/.local -name direct_url.json -path "*ipa_diagnose*" | head -1)' | tee out/direct_url.json
+          python3 -c 'import json,os; d=json.load(open("out/direct_url.json")); assert d["vcs_info"]["commit_id"]==os.environ["PIN_COMMIT"], d; print("installed commit == pin")'
+          {
+            echo "pin: $PIN_COMMIT"; echo "branch head: $GITHUB_SHA"; echo "evidence class: REPLAY of a constructed fixture"
+            echo "direct_url: $(tr -d '\n ' < out/direct_url.json)"
+            docker exec rp /root/.local/bin/ipa-diagnose --version
+            docker exec rp bash -c 'cd /root/ipa-diagnose && git rev-parse HEAD'
+            docker exec rp cat /etc/os-release | grep -E '^(NAME|VERSION)='
+          } | tee out/env.txt
+      - name: Recorded session
+        run: python3 scripts/lab_figures.py replay
+      - name: Publish captures
+        if: always()
+        run: |
+          python3 scripts/lab_captures.py attach env-replay out/env.txt
+          python3 scripts/lab_captures.py attach setup-replay out/lab-setup.log
+          python3 scripts/lab_captures.py emit 0
+      - name: Cleanup
+        if: always()
+        run: docker rm -f rp 2>/dev/null || true
