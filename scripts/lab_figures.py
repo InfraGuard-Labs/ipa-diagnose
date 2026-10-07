@@ -85,8 +85,13 @@ def record(c: str, name: str, scenario: str, host: str, cmds: list, env: tuple =
 
     REC.mkdir(parents=True, exist_ok=True)
     CAP.mkdir(parents=True, exist_ok=True)
-    subprocess.run(["docker", "cp", "scripts/pty_record.py", f"{c}:/tmp/pty_record.py"], check=True)
-    argv = ["python3", "/tmp/pty_record.py", name, "--host", host, "--cols", str(cols), "--cwd", cwd]
+    def note(text: str) -> None:
+        with open(SETUP_LOG, "a", encoding="utf-8") as f:
+            f.write(_mask(text) + "\n")
+
+    cp = subprocess.run(["docker", "cp", "scripts/pty_record.py", f"{c}:/root/pty_record.py"], capture_output=True, text=True)
+    note(f"[record {name}] docker cp recorder -> rc={cp.returncode} {cp.stderr.strip()}")
+    argv = ["python3", "/root/pty_record.py", name, "--out", "/root/rec", "--host", host, "--cols", str(cols), "--cwd", cwd]
     if prompt:
         argv += ["--prompt", prompt]
     for e in env:
@@ -94,9 +99,13 @@ def record(c: str, name: str, scenario: str, host: str, cmds: list, env: tuple =
     for cmd in cmds:
         argv += ["--cmd", cmd]
     rc, out, err, secs = dx(c, " ".join(shlex.quote(x) for x in argv), timeout=1500)
+    note(f"[record {name}] recorder rc={rc} secs={secs}\n{out.strip()}\n{err.strip()}")
     print(out.strip() or err.strip())
     for ext in ("raw", "json"):
-        subprocess.run(["docker", "cp", f"{c}:/tmp/rec/{name}.{ext}", str(REC / f"{name}.{ext}")], check=True)
+        cpo = subprocess.run(["docker", "cp", f"{c}:/root/rec/{name}.{ext}", str(REC / f"{name}.{ext}")], capture_output=True, text=True)
+        note(f"[record {name}] docker cp {ext} back -> rc={cpo.returncode} {cpo.stderr.strip()}")
+        if cpo.returncode != 0:
+            raise SystemExit(f"recording {name}: nothing to copy back (see the setup log)")
     raw = (REC / f"{name}.raw").read_bytes()
     for bad in [x for x in (PW, "zqlivecanary") if len(x) >= 6]:
         if bad.encode().lower() in raw.lower():
