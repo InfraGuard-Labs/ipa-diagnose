@@ -57,7 +57,7 @@ Fedora 43 works too (tested), but only the `.fc44.` file is published; install i
 
 Download the file for your platform from the
 [latest release](https://github.com/InfraGuard-Labs/ipa-diagnose/releases/latest). Names look like
-`ipa-diagnose-0.1.3-1.el9.el9.noarch.rpm` (the target - `.el8.`, `.el9.`, `.el10.`, `.fc44.` - is repeated by the
+`ipa-diagnose-<version>-1.el9.el9.noarch.rpm` (the target - `.el8.`, `.el9.`, `.el10.`, `.fc44.` - is repeated by the
 build; that is cosmetic). Verify the download, in the same directory as `SHA256SUMS`:
 
 ```bash

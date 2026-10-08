@@ -1,4 +1,4 @@
-%{!?version: %global version 0.1.3}
+%{!?version: %global version 0.2.0}
 %{!?release: %global release 1}
 
 Name:           ipa-diagnose
@@ -59,6 +59,8 @@ installed separately via pip extras (see /usr/share/doc/ipa-diagnose).}
 %{_bindir}/ipa-diagnose
 
 %changelog
+* Thu Oct 08 2026 Azeem Siddiqui <azeemsidd509@gmail.com> - 0.2.0-1
+- 0.2.0: adds evidence-gated resolution and fresh verification, privacy-reduced support bundles, HBAC access diagnosis, client/SSSD diagnosis with a bounded planner, and per-suffix/per-direction replication diagnosis with environment modeling and peer handoff.
 * Sun Sep 20 2026 Azeem Siddiqui <azeemsidd509@gmail.com> - 0.1.3-1
 - 0.1.3: every failed ipa-healthcheck finding is accounted for. Findings no rule
   explains are listed as UNDIAGNOSED and make the run NOT_FULLY_VERIFIED (exit 4),
