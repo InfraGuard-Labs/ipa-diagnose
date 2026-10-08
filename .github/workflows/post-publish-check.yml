@@ -9,18 +9,18 @@ name: Post-publish check (public release, from scratch)
 #   * healthy replay fixture                 -> HEALTHY (exit 0)
 #   * partial evidence (RUV unreadable)      -> NOT_FULLY_VERIFIED (exit 4)
 #   * fully verified healthy (live path)     -> HEALTHY (exit 0)
-#   * (0.1.3) only an undiagnosed finding    -> NOT_FULLY_VERIFIED (exit 4), visible in console + JSON
-#   * (0.1.3) DSCERTLE0002                   -> certificate-expiry diagnosis, never an NSS DB mismatch
-#   * (0.1.3) unknown future ERROR           -> NOT_FULLY_VERIFIED, not diagnosed
+#   * only an undiagnosed finding            -> NOT_FULLY_VERIFIED (exit 4), visible in console + JSON
+#   * DSCERTLE0002                           -> certificate-expiry diagnosis, never an NSS DB mismatch
+#   * unknown future ERROR                   -> NOT_FULLY_VERIFIED, not diagnosed
 # The "live path" cases use tiny stand-in ipa-healthcheck / ipa-replica-manage
 # scripts that print real output shapes; they test ipa-diagnose's semantics, not FreeIPA.
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Released version to verify (e.g. 0.1.3)"
+        description: "Released version to verify (e.g. 0.2.0)"
         required: true
-        default: "0.1.3"
+        default: "0.2.0"
 
 permissions:
   contents: read
